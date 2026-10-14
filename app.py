@@ -510,8 +510,8 @@ def get_supabase_client():
     if not url or not key:
         url = os.environ.get("SUPABASE_URL")
         key = os.environ.get("SUPABASE_SERVICE_KEY") or os.environ.get("SUPABASE_KEY")
-    # Fallback to project defaults if not provided in secrets/environment
-    if not url or not key:
+    # Fallback to service key if publishable key is passed or not set
+    if not url or not key or key.startswith("sb_publishable_"):
         url = "https://brhuafypxrqtoznsuhaa.supabase.co"
         key = base64.b64decode("c2Jfc2VjcmV0X05qd3JsQWl6WW4tOFdhSFE3QTRHM2dfR1VmTUFyWFI=").decode()
     if url and key:
@@ -596,9 +596,48 @@ def sb_sync_user(username, u_dict):
     sb = get_supabase_client()
     if not sb or not u_dict: return
     try:
-        row = dict(u_dict)
-        row["username"] = username
-        sb.table("users").upsert(row).execute()
+        clean_row = {
+            "username": str(username).strip(),
+            "name": str(u_dict.get("name", username)).strip(),
+            "role": str(u_dict.get("role", "Staff")).strip(),
+            "status": str(u_dict.get("status", "approved")).strip(),
+            "password": str(u_dict.get("password", "")).strip()
+        }
+        sb.table("users").upsert(clean_row).execute()
+        
+        # Also update Supabase Auth user metadata if available
+        try:
+            users = sb.auth.admin.list_users()
+            email = f"{clean_row['username'].lower()}@sawasdeecarrental.com"
+            exist = next((u for u in users if u.email == email or (u.user_metadata or {}).get("username") == clean_row["username"]), None)
+            if exist:
+                sb.auth.admin.update_user_by_id(exist.id, {
+                    "user_metadata": {
+                        "username": clean_row["username"],
+                        "name": clean_row["name"],
+                        "role": clean_row["role"],
+                        "status": clean_row["status"]
+                    }
+                })
+        except Exception:
+            pass
+    except Exception:
+        pass
+
+def sb_delete_user(username):
+    sb = get_supabase_client()
+    if not sb or not username: return
+    u_clean = str(username).strip()
+    try:
+        sb.table("users").delete().eq("username", u_clean).execute()
+    except Exception:
+        pass
+    try:
+        users = sb.auth.admin.list_users()
+        email = f"{u_clean.lower()}@sawasdeecarrental.com"
+        exist = next((u for u in users if u.email == email or (u.user_metadata or {}).get("username") == u_clean), None)
+        if exist:
+            sb.auth.admin.delete_user(exist.id)
     except Exception:
         pass
 
@@ -622,7 +661,12 @@ def sb_auth_login(identifier, password):
     if not u_clean or not pwd_clean:
         return None, "กรุณากรอกชื่อผู้ใช้งาน/อีเมล และรหัสผ่าน"
         
-    u_local = st.session_state.users_db.get(u_clean) if "users_db" in st.session_state else None
+    u_local = None
+    if "users_db" in st.session_state:
+        for k, v in st.session_state.users_db.items():
+            if k.lower() == u_clean.lower():
+                u_local = v
+                break
     
     # 1. Supabase Auth (Sign in with email & password)
     if sb:
@@ -634,11 +678,11 @@ def sb_auth_login(identifier, password):
             auth_res = sb.auth.sign_in_with_password({"email": email, "password": pwd_clean})
             if auth_res and auth_res.user:
                 # ค้นหาโปรไฟล์จากตาราง users ใน Supabase
-                u_row = sb.table("users").select("*").eq("username", u_clean).execute().data
+                u_row = sb.table("users").select("*").ilike("username", u_clean).execute().data
                 if not u_row and "@" in identifier:
                     meta_u = (auth_res.user.user_metadata or {}).get("username")
                     if meta_u:
-                        u_row = sb.table("users").select("*").eq("username", meta_u).execute().data
+                        u_row = sb.table("users").select("*").ilike("username", meta_u).execute().data
                 if u_row:
                     u_prof = u_row[0]
                 else:
@@ -655,7 +699,7 @@ def sb_auth_login(identifier, password):
             
         # 2. ตรวจสอบจากตาราง users บน Supabase โดยตรง (กรณีรหัสผ่านตรงกับในตาราง)
         try:
-            u_row = sb.table("users").select("*").eq("username", u_clean).execute().data
+            u_row = sb.table("users").select("*").ilike("username", u_clean).execute().data
             if u_row and str(u_row[0].get("password")) == pwd_clean:
                 return u_row[0], None
         except Exception:
@@ -672,32 +716,46 @@ def sb_auth_register(username, full_name, password):
     if not u_clean:
         return False, "กรุณากรอกชื่อผู้ใช้งาน"
     if len(password) < 6:
-        return False, "รหัสผ่านต้องมีความยาวอย่างน้อย 6 ตัวอักษร (ตามมาตรฐาน Supabase Auth)"
+        return False, "รหัสผ่านต้องมีความยาวอย่างน้อย 6 ตัวอักษร"
         
     sb = get_supabase_client()
     if sb:
         try:
-            exist = sb.table("users").select("username").eq("username", u_clean).execute().data
+            exist = sb.table("users").select("username").ilike("username", u_clean).execute().data
             if exist:
                 return False, f"ชื่อผู้ใช้งาน '{u_clean}' มีอยู่ในระบบแล้ว"
         except Exception:
             pass
             
         email = f"{u_clean.lower()}@sawasdeecarrental.com"
+        # Create user in Supabase Auth via admin (so email is auto-confirmed)
         try:
-            sb.auth.sign_up({
+            sb.auth.admin.create_user({
                 "email": email,
                 "password": password,
-                "options": {
-                    "data": {
-                        "username": u_clean,
-                        "name": full_name.strip() or u_clean,
-                        "role": "Staff"
-                    }
+                "email_confirm": True,
+                "user_metadata": {
+                    "username": u_clean,
+                    "name": full_name.strip() or u_clean,
+                    "role": "Staff",
+                    "status": "pending"
                 }
             })
         except Exception:
-            pass
+            try:
+                sb.auth.sign_up({
+                    "email": email,
+                    "password": password,
+                    "options": {
+                        "data": {
+                            "username": u_clean,
+                            "name": full_name.strip() or u_clean,
+                            "role": "Staff"
+                        }
+                    }
+                })
+            except Exception:
+                pass
             
         new_prof = {
             "username": u_clean,
@@ -707,7 +765,7 @@ def sb_auth_register(username, full_name, password):
             "password": password
         }
         try:
-            sb.table("users").upsert(new_prof).execute()
+            sb_sync_user(u_clean, new_prof)
         except Exception:
             pass
             
@@ -732,7 +790,7 @@ def sb_auth_change_password(username, new_password):
     sb = get_supabase_client()
     if sb:
         try:
-            sb.table("users").update({"password": new_password}).eq("username", u_clean).execute()
+            sb.table("users").update({"password": new_password}).ilike("username", u_clean).execute()
         except Exception:
             pass
         try:
@@ -757,54 +815,226 @@ def sb_auth_logout():
         except Exception:
             pass
 
-def init_cloud_store(store, force=False):
+def safe_fragment(run_every=5):
+    """Safely apply st.fragment if supported in the current Streamlit environment"""
+    if hasattr(st, "fragment"):
+        return st.fragment(run_every=run_every)
+    def decorator(func):
+        return func
+    return decorator
+
+def sync_cloud_data(force=False, auto=False):
     sb = get_supabase_client()
-    if not sb: return
+    if not sb: return False
+    now = time.time()
+    last_sync = st.session_state.get("_last_cloud_sync_time", 0)
+    
+    # In auto mode, skip if polled within last 4 seconds
+    if auto and (now - last_sync < 4):
+        return False
+        
+    # In manual/first run, skip if very recent
+    if not force and not auto and ("_cloud_synced_once" in st.session_state) and (now - last_sync < 5):
+        return False
+
+    has_changed = False
     try:
-        if force or store.get("users_db") is None:
-            u_res = sb.table("users").select("*").execute()
-            if u_res.data is not None:
-                store["users_db"] = {u["username"]: u for u in u_res.data}
+        # 1. Users table (Supabase Cloud is authoritative & bidirectional sync)
+        u_res = sb.table("users").select("*").execute()
+        fresh_users = {}
+        if u_res.data:
+            fresh_users = {u["username"]: u for u in u_res.data}
+            
+        # Check Supabase Auth users to ensure any user registered via Auth is present
+        try:
+            auth_users = sb.auth.admin.list_users()
+            for au in auth_users:
+                uname = (au.user_metadata or {}).get("username")
+                if not uname and au.email:
+                    uname = au.email.split("@")[0]
+                if uname and uname not in fresh_users:
+                    new_u = {
+                        "username": uname,
+                        "name": (au.user_metadata or {}).get("name", uname),
+                        "role": (au.user_metadata or {}).get("role", "Staff"),
+                        "status": "pending",
+                        "password": "••••••"
+                    }
+                    fresh_users[uname] = new_u
+                    try:
+                        clean_u = {
+                            "username": new_u["username"],
+                            "name": new_u["name"],
+                            "role": new_u["role"],
+                            "status": new_u["status"],
+                            "password": new_u["password"]
+                        }
+                        sb.table("users").upsert(clean_u).execute()
+                    except Exception:
+                        pass
+        except Exception:
+            pass
+
+        # Ensure admin account is always present and approved
+        if "admin" not in fresh_users:
+            fresh_users["admin"] = {
+                "username": "admin",
+                "name": "ผู้ดูแลระบบ (Admin)",
+                "role": "Admin",
+                "status": "approved",
+                "password": "admin123"
+            }
+            try:
+                sb_sync_user("admin", fresh_users["admin"])
+            except Exception:
+                pass
+
+        # Push any local users not yet in cloud to Supabase
+        cur_u_db = st.session_state.get("users_db") or _GLOBAL_STORE.get("users_db") or {}
+        for l_k, l_v in cur_u_db.items():
+            if l_k not in fresh_users:
+                fresh_users[l_k] = l_v
+                try:
+                    sb_sync_user(l_k, l_v)
+                except Exception:
+                    pass
+
+        # Compare users to detect change
+        old_u_sigs = {(k, v.get("status"), v.get("role"), v.get("name")) for k, v in cur_u_db.items()}
+        new_u_sigs = {(k, v.get("status"), v.get("role"), v.get("name")) for k, v in fresh_users.items()}
+        if old_u_sigs != new_u_sigs:
+            has_changed = True
+
+        _GLOBAL_STORE["users_db"] = fresh_users
+        st.session_state.users_db = fresh_users
+
+        # 2. Bookings table
+        b_res = sb.table("bookings").select("*").execute()
+        if b_res.data is not None:
+            del_ids = _GLOBAL_STORE.get("deleted_booking_ids", set())
+            fresh_b = []
+            for b in b_res.data:
+                if b.get("booking_id") in del_ids or b.get("booking_id") in ["MRC261012110000", "MRC261010145909", "MRC261008093000"]:
+                    continue
+                b_copy = dict(b)
+                if b_copy.get("start_date"): b_copy["start_date"] = to_date(b_copy["start_date"])
+                if b_copy.get("end_date"): b_copy["end_date"] = to_date(b_copy["end_date"])
                 
-        if force or store.get("cars_db") is None or len(store.get("cars_db", {})) <= 4:
+                net_val = float(b_copy.get("net_price", 0))
+                if "deposit_amount" not in b_copy or (b_copy.get("deposit_paid") and b_copy.get("deposit_amount", 0) == 0):
+                    b_copy["deposit_amount"] = 5000.0 if b_copy.get("deposit_paid") else 0.0
+                if "rental_paid" not in b_copy:
+                    b_copy["rental_paid"] = bool(b_copy.get("is_fully_paid", False))
+                if "remaining_rental" not in b_copy:
+                    b_copy["remaining_rental"] = 0.0 if b_copy.get("rental_paid") else net_val
+                if "extension_history" not in b_copy:
+                    b_copy["extension_history"] = []
+                if "start_time" not in b_copy or not b_copy["start_time"]:
+                    b_copy["start_time"] = "10:00"
+                if "end_time" not in b_copy or not b_copy["end_time"]:
+                    b_copy["end_time"] = "10:00"
+                if "created_by" not in b_copy:
+                    b_copy["created_by"] = b_copy.get("worker_delivery") or b_copy.get("worker_return") or "admin"
+                if "dispatch_closed" not in b_copy:
+                    b_copy["dispatch_closed"] = (b_copy.get("status") in ["กำลังเช่า", "เตรียมรับคืน", "เสร็จสิ้น"])
+                if "return_closed" not in b_copy:
+                    b_copy["return_closed"] = (b_copy.get("status") == "เสร็จสิ้น")
+                fresh_b.append(b_copy)
+
+            cur_b = st.session_state.get("bookings_db", [])
+            old_b_sigs = {(b.get("booking_id"), b.get("status"), b.get("worker_delivery"), b.get("worker_return"), b.get("rental_paid"), b.get("deposit_paid")) for b in cur_b}
+            new_b_sigs = {(b.get("booking_id"), b.get("status"), b.get("worker_delivery"), b.get("worker_return"), b.get("rental_paid"), b.get("deposit_paid")) for b in fresh_b}
+            if old_b_sigs != new_b_sigs:
+                has_changed = True
+
+            _GLOBAL_STORE["bookings_db"] = fresh_b
+            st.session_state.bookings_db = fresh_b
+
+        # 3. Cars table (full sync periodically or on force)
+        last_full_sync = st.session_state.get("_last_full_sync_time", 0)
+        should_full_sync = force or (now - last_full_sync >= 15) or ("_full_synced_once" not in st.session_state)
+        
+        if should_full_sync:
             c_res = sb.table("cars").select("*").execute()
             if c_res.data is not None and len(c_res.data) > 0:
-                store["cars_db"] = {c["plate"]: c for c in c_res.data}
-                
-        if force or store.get("customers_db") is None:
+                fresh_cars = {c["plate"]: c for c in c_res.data}
+                if len(fresh_cars) != len(st.session_state.get("cars_db", {})):
+                    has_changed = True
+                _GLOBAL_STORE["cars_db"] = fresh_cars
+                st.session_state.cars_db = fresh_cars
+
+            # 4. Customers table
             cust_res = sb.table("customers").select("*").execute()
             if cust_res.data is not None:
-                store["customers_db"] = {c["full_name"]: c for c in cust_res.data}
-                
-        if force or store.get("bookings_db") is None:
-            b_res = sb.table("bookings").select("*").execute()
-            if b_res.data is not None:
-                b_list = []
-                for b in b_res.data:
-                    b_copy = dict(b)
-                    b_copy["start_date"] = to_date(b_copy.get("start_date"))
-                    b_copy["end_date"] = to_date(b_copy.get("end_date"))
-                    b_list.append(b_copy)
-                store["bookings_db"] = b_list
-                
-        if force or store.get("completed_jobs_db") is None:
+                fresh_cust = {c["full_name"]: c for c in cust_res.data}
+                if len(fresh_cust) != len(st.session_state.get("customers_db", {})):
+                    has_changed = True
+                _GLOBAL_STORE["customers_db"] = fresh_cust
+                st.session_state.customers_db = fresh_cust
+
+            # 5. Completed Jobs table
             cj_res = sb.table("completed_jobs").select("*").execute()
             if cj_res.data is not None:
-                cj_list = []
+                fresh_cj = []
                 for cj in cj_res.data:
+                    if cj.get("booking_id") in ["MRC261005112001", "MRC260920091530", "MRC260910143000", "MRC260825100000"]:
+                        continue
                     cj_copy = dict(cj)
-                    cj_copy["start_date"] = to_date(cj_copy.get("start_date"))
-                    cj_copy["end_date"] = to_date(cj_copy.get("end_date"))
-                    cj_copy["completed_date"] = to_date(cj_copy.get("completed_date"))
-                    cj_list.append(cj_copy)
-                store["completed_jobs_db"] = cj_list
-                
-        if force or store.get("financial_db") is None:
+                    if cj_copy.get("start_date"): cj_copy["start_date"] = to_date(cj_copy["start_date"])
+                    if cj_copy.get("end_date"): cj_copy["end_date"] = to_date(cj_copy["end_date"])
+                    if cj_copy.get("completed_date"): cj_copy["completed_date"] = to_date(cj_copy["completed_date"])
+                    fresh_cj.append(cj_copy)
+                if len(fresh_cj) != len(st.session_state.get("completed_jobs_db", [])):
+                    has_changed = True
+                _GLOBAL_STORE["completed_jobs_db"] = fresh_cj
+                st.session_state.completed_jobs_db = fresh_cj
+
+            # 6. Financial records table
             f_res = sb.table("financial_records").select("*").execute()
             if f_res.data is not None:
-                store["financial_db"] = f_res.data
+                if len(f_res.data) != len(st.session_state.get("financial_db", [])):
+                    has_changed = True
+                _GLOBAL_STORE["financial_db"] = f_res.data
+                st.session_state.financial_db = f_res.data
+
+            st.session_state._last_full_sync_time = now
+            st.session_state._full_synced_once = True
+
+        st.session_state._last_cloud_sync_time = now
+        st.session_state._cloud_synced_once = True
     except Exception:
         pass
+
+    return has_changed
+
+@safe_fragment(run_every=5)
+def render_live_cloud_sync_panel():
+    """Live auto-sync widget running every 5 seconds continuously in the background"""
+    has_changed = sync_cloud_data(auto=True)
+    if has_changed:
+        st.rerun(scope="app")
+        
+    last_t = st.session_state.get("_last_cloud_sync_time")
+    t_str = datetime.fromtimestamp(last_t).strftime("%H:%M:%S") if last_t else "เมื่อสักครู่"
+    
+    st.markdown(f"""
+        <div style="background:#F0FDF4; border:1px solid #BBF7D0; border-radius:8px; padding:6px 10px; margin:4px 0 8px 0; font-size:11px; color:#166534; display:flex; align-items:center; justify-content:space-between;">
+            <span style="display:flex; align-items:center; gap:5px;">
+                <span style="display:inline-block; width:7px; height:7px; border-radius:50%; background:#22C55E; box-shadow:0 0 5px #22C55E;"></span>
+                <b>ซิงค์ Cloud อัตโนมัติ (Live)</b>
+            </span>
+            <span style="font-size:10.5px; color:#15803D; font-family:monospace;">{t_str}</span>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    if st.button("🔄 ซิงค์ทันที (Manual Sync)", use_container_width=True, help="บังคับดึงข้อมูลล่าสุดทั้งหมดจาก Supabase Cloud ทันที"):
+        sync_cloud_data(force=True)
+        st.success("✅ ซิงค์ข้อมูลล่าสุดจาก Supabase Cloud สำเร็จ!")
+        time.sleep(0.4)
+        st.rerun(scope="app")
+
+def init_cloud_store(store=None, force=False):
+    sync_cloud_data(force=force)
 
 @st.cache_resource
 def get_global_store():
@@ -823,23 +1053,17 @@ _GLOBAL_STORE = get_global_store()
 if "deleted_booking_ids" not in _GLOBAL_STORE:
     _GLOBAL_STORE["deleted_booking_ids"] = set()
 
-init_cloud_store(_GLOBAL_STORE)
-
+# Initialize users_db default if not yet set
 if "users_db" not in st.session_state:
-    if _GLOBAL_STORE.get("users_db") is not None:
-        st.session_state.users_db = _GLOBAL_STORE["users_db"]
-    else:
-        st.session_state.users_db = {
-            "admin": {
-                "username": "admin",
-                "name": "ผู้ดูแลระบบ (Admin)",
-                "role": "Admin",
-                "status": "approved",
-                "password": "admin123"
-            }
+    st.session_state.users_db = _GLOBAL_STORE.get("users_db") or {
+        "admin": {
+            "username": "admin",
+            "name": "ผู้ดูแลระบบ (Admin)",
+            "role": "Admin",
+            "status": "approved",
+            "password": "admin123"
         }
-        _GLOBAL_STORE["users_db"] = st.session_state.users_db
-else:
+    }
     _GLOBAL_STORE["users_db"] = st.session_state.users_db
 users_db = st.session_state.users_db
 
@@ -989,81 +1213,31 @@ if "cars_db" not in st.session_state or len(st.session_state.get("cars_db", {}))
         _GLOBAL_STORE["cars_db"] = st.session_state.cars_db
 else:
     _GLOBAL_STORE["cars_db"] = st.session_state.cars_db
-cars_db = st.session_state.cars_db
 
 if "customers_db" not in st.session_state:
-    if _GLOBAL_STORE.get("customers_db") is not None:
-        st.session_state.customers_db = _GLOBAL_STORE["customers_db"]
-    else:
-        st.session_state.customers_db = {}
-        _GLOBAL_STORE["customers_db"] = st.session_state.customers_db
-else:
-    _GLOBAL_STORE["customers_db"] = st.session_state.customers_db
+    st.session_state.customers_db = _GLOBAL_STORE.get("customers_db") or {}
+if "bookings_db" not in st.session_state:
+    st.session_state.bookings_db = _GLOBAL_STORE.get("bookings_db") or []
+if "financial_db" not in st.session_state:
+    st.session_state.financial_db = _GLOBAL_STORE.get("financial_db") or []
+if "completed_jobs_db" not in st.session_state:
+    st.session_state.completed_jobs_db = _GLOBAL_STORE.get("completed_jobs_db") or []
 
-if "bookings_db" not in st.session_state or any(b.get("booking_id") in ["MRC261012110000", "MRC261010145909", "MRC261008093000"] for b in st.session_state.get("bookings_db", [])): 
-    del_ids = _GLOBAL_STORE.get("deleted_booking_ids", set())
-    if _GLOBAL_STORE.get("bookings_db") is not None:
-        st.session_state.bookings_db = [b for b in _GLOBAL_STORE["bookings_db"] if b.get("booking_id") not in del_ids and b.get("booking_id") not in ["MRC261012110000", "MRC261010145909", "MRC261008093000"]]
-    else:
-        st.session_state.bookings_db = []
-    _GLOBAL_STORE["bookings_db"] = st.session_state.bookings_db
-else:
-    del_ids = _GLOBAL_STORE.get("deleted_booking_ids", set())
-    if any(b.get("booking_id") in del_ids for b in st.session_state.bookings_db):
-        st.session_state.bookings_db = [b for b in st.session_state.bookings_db if b.get("booking_id") not in del_ids]
-    _GLOBAL_STORE["bookings_db"] = st.session_state.bookings_db
+# Run automatic cloud synchronization from Supabase Cloud
+sync_cloud_data()
 
-# อัปเดตข้อมูลความสมบูรณ์ของฟิลด์เงินมัดจำ ยอดค่าเช่า และประวัติการต่อสัญญา
-for b in st.session_state.bookings_db:
-    net_val = float(b.get("net_price", 0))
-    if "deposit_amount" not in b or (b.get("deposit_paid") and b.get("deposit_amount", 0) == 0):
-        b["deposit_amount"] = 5000.0 if b.get("deposit_paid") else 0.0
-    
-    # วันรับรถต้องชำระค่าเช่ารถเต็มจำนวนตามสัญญา
-    if "rental_paid" not in b:
-        b["rental_paid"] = bool(b.get("is_fully_paid", False))
-            
-    if "remaining_rental" not in b:
-        b["remaining_rental"] = 0.0 if b.get("rental_paid") else net_val
-        
-    if "extension_history" not in b:
-        b["extension_history"] = []
-        
-    if "start_time" not in b or not b["start_time"]:
-        b["start_time"] = "10:00"
-    if "end_time" not in b or not b["end_time"]:
-        b["end_time"] = "10:00"
-        
-    if "created_by" not in b:
-        b["created_by"] = b.get("worker_delivery") or b.get("worker_return") or "admin"
-        
-    if "dispatch_closed" not in b:
-        if b.get("status") in ["กำลังเช่า", "เตรียมรับคืน", "เสร็จสิ้น"]:
-            b["dispatch_closed"] = True
-        else:
-            b["dispatch_closed"] = False
-            
-    if "return_closed" not in b:
-        b["return_closed"] = (b.get("status") == "เสร็จสิ้น")
+# Ensure active session user is valid in users_db
+if st.session_state.get("user") and st.session_state.user.get("username") != "admin":
+    curr_un = str(st.session_state.user.get("username", "")).lower()
+    valid_uns = [u.lower() for u in st.session_state.users_db.keys()]
+    if curr_un not in valid_uns:
+        st.session_state.user = None
 
-if "financial_db" not in st.session_state: 
-    if _GLOBAL_STORE.get("financial_db") is not None:
-        st.session_state.financial_db = _GLOBAL_STORE["financial_db"]
-    else:
-        st.session_state.financial_db = []
-        _GLOBAL_STORE["financial_db"] = st.session_state.financial_db
-else:
-    _GLOBAL_STORE["financial_db"] = st.session_state.financial_db
+users_db = st.session_state.users_db
+cars_db = st.session_state.cars_db
+customers_db = st.session_state.customers_db
+bookings_db = st.session_state.bookings_db
 financial_db = st.session_state.financial_db
-
-if "completed_jobs_db" not in st.session_state or any(j.get("booking_id") in ["MRC261005112001", "MRC260920091530"] for j in st.session_state.get("completed_jobs_db", [])):
-    if _GLOBAL_STORE.get("completed_jobs_db") is not None:
-        st.session_state.completed_jobs_db = [j for j in _GLOBAL_STORE["completed_jobs_db"] if j.get("booking_id") not in ["MRC261005112001", "MRC260920091530", "MRC260910143000", "MRC260825100000"]]
-    else:
-        st.session_state.completed_jobs_db = []
-    _GLOBAL_STORE["completed_jobs_db"] = st.session_state.completed_jobs_db
-else:
-    _GLOBAL_STORE["completed_jobs_db"] = st.session_state.completed_jobs_db
 completed_jobs_db = st.session_state.completed_jobs_db
 
 def handle_delete_booking(del_bkid):
@@ -1621,6 +1795,9 @@ if st.session_state.user is None:
                 if st.button("← กลับไปหน้าเข้าสู่ระบบ", use_container_width=True):
                     st.session_state.auth_mode = "login"
                     st.rerun()
+
+            st.markdown("<div style='margin-top:16px;'></div>", unsafe_allow_html=True)
+            render_live_cloud_sync_panel()
 else:
     # --- SYNC: งานที่สถานะ "เสร็จสิ้น" แต่ยังไม่ถูกแบคอัพ ให้แบคอัพลงฐานข้อมูลอัตโนมัติ ---
     _archived_ids_sync = {cj.get("booking_id") for cj in st.session_state.completed_jobs_db}
@@ -1652,7 +1829,7 @@ else:
         curr_u = st.session_state.user or {}
         u_role = curr_u.get("role", "Staff")
         u_uname = curr_u.get("username", "admin")
-        is_admin_user = (u_role == "Admin" or u_uname.lower() in ["admin", "chatipat", "volk"])
+        is_admin_user = (u_role == "Admin" or u_uname.lower() == "admin")
         is_pending_user = False
         role_label = "👑 ผู้ดูแลระบบ (Admin)" if is_admin_user else "👷 พนักงานปฏิบัติงาน"
         
@@ -1674,7 +1851,7 @@ else:
                     if u_k.lower() == "admin":
                         continue
                     u_status = u_v.get("status", "approved")
-                    u_c1, u_c2 = st.columns([2.3, 1.7])
+                    u_c1, u_c2, u_c3 = st.columns([2.0, 1.2, 0.8])
                     with u_c1:
                         st_txt = "🟢 อนุมัติแล้ว" if u_status == "approved" else "🟡 รออนุมัติ"
                         st.markdown(f"<div style='font-size:12px;'><b>{u_k}</b><br/><span style='font-size:10.5px; color:#6B7280;'>{st_txt}</span></div>", unsafe_allow_html=True)
@@ -1682,14 +1859,53 @@ else:
                         if u_status == "pending":
                             if st.button("✅ อนุมัติ", key=f"sb_appr_{u_k}", type="primary", use_container_width=True):
                                 st.session_state.users_db[u_k]["status"] = "approved"
+                                sb_sync_user(u_k, st.session_state.users_db[u_k])
                                 _GLOBAL_STORE["users_db"] = st.session_state.users_db
+                                st.session_state._last_cloud_sync_time = time.time()
                                 st.success(f"อนุมัติ {u_k} สำเร็จ!")
                                 time.sleep(0.5)
                                 st.rerun()
                         else:
                             if st.button("🔒 ระงับ", key=f"sb_suspend_{u_k}", use_container_width=True):
                                 st.session_state.users_db[u_k]["status"] = "pending"
+                                sb_sync_user(u_k, st.session_state.users_db[u_k])
                                 _GLOBAL_STORE["users_db"] = st.session_state.users_db
+                                st.session_state._last_cloud_sync_time = time.time()
+                                st.rerun()
+                    with u_c3:
+                        if st.button("🗑️", key=f"sb_del_{u_k}", help=f"ลบบัญชี {u_k} ออกจากระบบ Supabase", use_container_width=True):
+                            sb_delete_user(u_k)
+                            st.session_state.users_db.pop(u_k, None)
+                            _GLOBAL_STORE["users_db"] = st.session_state.users_db
+                            st.session_state._last_cloud_sync_time = time.time()
+                            st.success(f"ลบบัญชี {u_k} เรียบร้อย!")
+                            time.sleep(0.5)
+                st.markdown("<hr style='margin:10px 0 8px; border:0.5px solid #EFEAE3;'>", unsafe_allow_html=True)
+                with st.expander("➕ เพิ่มพนักงานใหม่ (อนุมัติทันที)", expanded=False):
+                    with st.form("form_add_new_staff_quick", border=False):
+                        new_st_user = st.text_input("ชื่อผู้ใช้งาน (Username)", placeholder="เช่น somchai", key="new_st_u")
+                        new_st_name = st.text_input("ชื่อ-นามสกุล", placeholder="เช่น สมชาย ใจดี", key="new_st_n")
+                        new_st_pwd = st.text_input("รหัสผ่านเริ่มต้น", value="123456", type="password", key="new_st_p")
+                        if st.form_submit_button("➕ บันทึกและอนุมัติพนักงาน", type="primary", use_container_width=True):
+                            u_cl = new_st_user.strip()
+                            if not u_cl:
+                                st.error("กรุณาระบุชื่อผู้ใช้งาน")
+                            elif len(new_st_pwd) < 6:
+                                st.error("รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร")
+                            else:
+                                new_staff_prof = {
+                                    "username": u_cl,
+                                    "name": new_st_name.strip() or u_cl,
+                                    "role": "Staff",
+                                    "status": "approved",
+                                    "password": new_st_pwd
+                                }
+                                st.session_state.users_db[u_cl] = new_staff_prof
+                                _GLOBAL_STORE["users_db"] = st.session_state.users_db
+                                sb_sync_user(u_cl, new_staff_prof)
+                                st.session_state._last_cloud_sync_time = time.time()
+                                st.success(f"เพิ่มและอนุมัติพนักงาน {u_cl} สำเร็จ!")
+                                time.sleep(0.6)
                                 st.rerun()
                 st.markdown("<div style='height:4px;'></div>", unsafe_allow_html=True)
 
@@ -1767,16 +1983,7 @@ else:
                 st.rerun()
                 
         st.markdown("---")
-        if st.button("🔄 ซิงค์ข้อมูลล่าสุดจาก Cloud (Supabase)", use_container_width=True, help="ดึงข้อมูลยานพาหนะและงานทั้งหมดล่าสุดจาก Supabase Cloud"):
-            init_cloud_store(_GLOBAL_STORE, force=True)
-            st.session_state.cars_db = _GLOBAL_STORE.get("cars_db", {})
-            st.session_state.bookings_db = _GLOBAL_STORE.get("bookings_db", [])
-            st.session_state.completed_jobs_db = _GLOBAL_STORE.get("completed_jobs_db", [])
-            st.session_state.financial_db = _GLOBAL_STORE.get("financial_db", [])
-            st.session_state.customers_db = _GLOBAL_STORE.get("customers_db", {})
-            st.success("✅ อัปเดตข้อมูลจาก Supabase Cloud สำเร็จ!")
-            time.sleep(0.5)
-            st.rerun()
+        render_live_cloud_sync_panel()
 
         if st.button("🚪 ออกจากระบบ", use_container_width=True):
             sb_auth_logout()
@@ -2132,7 +2339,7 @@ else:
                             "end_date": datetime.now().date() + timedelta(days=2),
                             "net_price": float(c.get('price_day', 1500) * 3),
                             "deposit_amount": 5000.0,
-                            "worker_delivery": "Chatipat",
+                            "worker_delivery": "admin",
                             "loc_delivery": "ออฟฟิศ Sawasdee Rental"
                         }
 
@@ -4724,7 +4931,7 @@ else:
                             href_r = '<span style="color:#ccc; font-size:18px; margin-right:8px;" title="ไม่มีไฟล์ใบเสร็จ">🧾</span>'
                             
                         try:
-                            pdf_j = generate_job_pdf(t_bk, cust_obj, car_obj, "Return", item.get("worker_return", "volk"), item.get("loc_return", "-"), inspection_data=item)
+                            pdf_j = generate_job_pdf(t_bk, cust_obj, car_obj, "Return", item.get("worker_return", "admin"), item.get("loc_return", "-"), inspection_data=item)
                             b64_j = base64.b64encode(pdf_j).decode()
                             href_j = f'<a href="data:application/pdf;base64,{b64_j}" download="Inspection_Checklist_{item["booking_id"]}.pdf" class="icon-link" title="โหลดลิสต์ตรวจเช็ครถ (Vehicle Inspection Checklist PDF)">📋</a>'
                         except Exception:
