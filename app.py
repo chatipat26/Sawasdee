@@ -2499,15 +2499,105 @@ else:
                                 - **วันหมดอายุประกันภัย:** {c.get('ins_expiry', '-')}
                                 - **เลขไมล์สะสม:** {c.get('mileage', '-')} km
                                 """)
-                                if c['status'] != "ซ่อมบำรุง":
-                                    btn_label = f"✅ ทำสัญญาเช่ารถคันนี้ ({plate})" if c['status'] == "ว่างพร้อมใช้งาน" else f"📅 จองล่วงหน้าคันนี้ ({plate})"
-                                    if st.button(btn_label, key=f"sel_det_{plate}", type="primary"):
-                                        st.session_state.draft_car = plate
-                                        if f_avail_start:
-                                            st.session_state.draft_start_date = f_avail_start
-                                            st.session_state.draft_end_date = f_avail_end if f_avail_end and f_avail_end >= f_avail_start else (f_avail_start + timedelta(days=3))
-                                        st.session_state.workflow_tab = "3. จัดทำสัญญาเช่า"
-                                        st.rerun()
+                                # --- ปุ่มทำสัญญาเช่า & ปุ่มแก้ไขข้อมูลรถยนต์ ---
+                                act_c1, act_c2 = st.columns([1.5, 1])
+                                with act_c1:
+                                    if c['status'] != "ซ่อมบำรุง":
+                                        btn_label = f"✅ ทำสัญญาเช่ารถคันนี้ ({plate})" if c['status'] == "ว่างพร้อมใช้งาน" else f"📅 จองล่วงหน้าคันนี้ ({plate})"
+                                        if st.button(btn_label, key=f"sel_det_{plate}", type="primary", use_container_width=True):
+                                            st.session_state.draft_car = plate
+                                            if f_avail_start:
+                                                st.session_state.draft_start_date = f_avail_start
+                                                st.session_state.draft_end_date = f_avail_end if f_avail_end and f_avail_end >= f_avail_start else (f_avail_start + timedelta(days=3))
+                                            st.session_state.workflow_tab = "3. จัดทำสัญญาเช่า"
+                                            st.rerun()
+                                    else:
+                                        st.button(f"⚠️ อยู่ระหว่างซ่อมบำรุง ({plate})", disabled=True, use_container_width=True, key=f"dis_rep_{plate}")
+                                
+                                with act_c2:
+                                    with st.popover("✏️ แก้ไขข้อมูลรถ", use_container_width=True):
+                                        st.markdown(f"<div style='font-weight:700; color:#E85826; font-size:14px; margin-bottom:8px;'>✏️ แก้ไขข้อมูลรถยนต์ ({plate})</div>", unsafe_allow_html=True)
+                                        
+                                        b_opts = ["Toyota", "Honda", "GWM", "BYD", "Mercedes-Benz", "BMW", "Isuzu", "Ford", "Nissan", "Mazda", "MG", "Tesla", "Hyundai", "อื่นๆ"]
+                                        c_b = c.get('brand', 'Toyota')
+                                        if c_b not in b_opts: b_opts.append(c_b)
+                                        
+                                        grp_opts = ["รถเก๋ง (Sedan/Hatchback)", "SUV", "รถตู้ (Van)", "รถกระบะ", "รถสปอร์ต/หรูหรา"]
+                                        c_grp = c.get('car_group', grp_opts[0])
+                                        if c_grp not in grp_opts: grp_opts.append(c_grp)
+                                        
+                                        fuel_opts = ["เบนซิน", "ดีเซล", "เบนซิน/Hybrid", "ดีเซล/Hybrid", "ไฟฟ้า (EV)"]
+                                        c_fuel = c.get('fuel_type', 'เบนซิน')
+                                        if c_fuel not in fuel_opts: fuel_opts.append(c_fuel)
+                                        
+                                        comp_opts = ["Sawasdee Rent A Car", "P.D.P. Co., Ltd.", "Sawasdee Car Rent"]
+                                        c_comp = c.get('company', comp_opts[0])
+                                        if c_comp not in comp_opts: comp_opts.append(c_comp)
+                                        
+                                        st_opts = ["ว่างพร้อมใช้งาน", "ซ่อมบำรุง", "เตรียมส่งมอบ", "กำลังเช่า"]
+                                        c_st = c.get('status', 'ว่างพร้อมใช้งาน')
+                                        if c_st not in st_opts: st_opts.append(c_st)
+                                        
+                                        with st.form(key=f"form_edit_car_{plate}", border=False):
+                                            e_brand = st.selectbox("ยี่ห้อ (Brand)*", b_opts, index=b_opts.index(c_b), key=f"eb_{plate}")
+                                            e_model = st.text_input("รุ่น (Model)*", value=c.get('model', ''), key=f"em_{plate}").strip()
+                                            e_color = st.text_input("สีตัวถัง (Color)", value=c.get('color', ''), key=f"ec_{plate}").strip()
+                                            e_group = st.selectbox("กลุ่มรถ (Car Group)*", grp_opts, index=grp_opts.index(c_grp), key=f"eg_{plate}")
+                                            e_cc = st.text_input("ขนาดเครื่องยนต์ (CC / EV)", value=str(c.get('engine_cc', '1500')), key=f"ecc_{plate}").strip()
+                                            e_fuel = st.selectbox("ระบบเชื้อเพลิง*", fuel_opts, index=fuel_opts.index(c_fuel), key=f"ef_{plate}")
+                                            e_comp = st.selectbox("เจ้าของกรรมสิทธิ์*", comp_opts, index=comp_opts.index(c_comp), key=f"ecp_{plate}")
+                                            e_vin = st.text_input("เลขตัวถัง (VIN)", value=c.get('chassis_no', '-'), key=f"evin_{plate}").strip()
+                                            e_mileage = st.text_input("เลขไมล์สะสม (km)", value=str(c.get('mileage', '0')), key=f"emil_{plate}").strip()
+                                            
+                                            st.markdown("<b style='font-size:12px; color:#374151;'>💰 อัตราค่าเช่า (บาท):</b>", unsafe_allow_html=True)
+                                            ep_c1, ep_c2, ep_c3 = st.columns(3)
+                                            with ep_c1:
+                                                e_pday = st.number_input("รายวัน", min_value=0, value=int(c.get('price_day', 0)), step=100, key=f"epd_{plate}")
+                                            with ep_c2:
+                                                e_pweek = st.number_input("รายสัปดาห์", min_value=0, value=int(c.get('price_week', 0)), step=500, key=f"epw_{plate}")
+                                            with ep_c3:
+                                                e_pmonth = st.number_input("รายเดือน", min_value=0, value=int(c.get('price_month', 0)), step=1000, key=f"epm_{plate}")
+                                                
+                                            ed_c1, ed_c2 = st.columns(2)
+                                            with ed_c1:
+                                                e_act = st.date_input("📅 วันหมดอายุ พ.ร.บ.", value=parse_date_dmy(c.get('act_expiry'), date.today()), format="DD/MM/YYYY", key=f"eact_{plate}")
+                                            with ed_c2:
+                                                e_ins = st.date_input("📅 วันหมดอายุ ประกันภัย", value=parse_date_dmy(c.get('ins_expiry'), date.today()), format="DD/MM/YYYY", key=f"eins_{plate}")
+                                                
+                                            e_status = st.selectbox("สถานะรถยนต์*", st_opts, index=st_opts.index(c_st), key=f"est_{plate}")
+                                            
+                                            st.markdown("<div style='height:8px;'></div>", unsafe_allow_html=True)
+                                            save_edit_sub = st.form_submit_button("💾 บันทึกการแก้ไขข้อมูลรถ", type="primary", use_container_width=True)
+                                            
+                                        if save_edit_sub:
+                                            if not e_model:
+                                                st.error("⚠️ กรุณาระบุรุ่นรถยนต์")
+                                            else:
+                                                up_car = dict(c)
+                                                up_car["brand"] = e_brand
+                                                up_car["model"] = e_model
+                                                up_car["color"] = e_color or "-"
+                                                up_car["car_group"] = e_group
+                                                up_car["engine_cc"] = str(e_cc)
+                                                up_car["fuel_type"] = e_fuel
+                                                up_car["company"] = e_comp
+                                                up_car["chassis_no"] = e_vin or "-"
+                                                up_car["mileage"] = e_mileage or "0"
+                                                up_car["price_day"] = int(e_pday)
+                                                up_car["price_week"] = int(e_pweek)
+                                                up_car["price_month"] = int(e_pmonth)
+                                                up_car["act_expiry"] = e_act.strftime("%d/%m/%Y") if isinstance(e_act, (date, datetime)) else str(e_act or "-")
+                                                up_car["ins_expiry"] = e_ins.strftime("%d/%m/%Y") if isinstance(e_ins, (date, datetime)) else str(e_ins or "-")
+                                                up_car["status"] = e_status
+                                                
+                                                st.session_state.cars_db[plate] = up_car
+                                                cars_db[plate] = up_car
+                                                if "_GLOBAL_STORE" in globals() and "cars_db" in _GLOBAL_STORE and _GLOBAL_STORE["cars_db"]:
+                                                    _GLOBAL_STORE["cars_db"][plate] = up_car
+                                                sb_sync_car(plate, up_car)
+                                                st.success(f"✅ บันทึกข้อมูลรถยนต์ทะเบียน '{plate}' เรียบร้อยแล้ว!")
+                                                time.sleep(0.8)
+                                                st.rerun()
 
                 if matched_count == 0:
                     st.info("ℹ️ ไม่พบรถที่ตรงตามเงื่อนไขการค้นหา หรือไม่มีรถว่างในวันที่ท่านเลือก กรุณาลองปรับเปลี่ยนตัวกรอง")
