@@ -1004,7 +1004,6 @@ def init_cloud_store(store=None, force=False):
 @st.cache_resource
 def get_global_store():
     return {
-        "user": None,
         "users_db": None,
         "cars_db": None,
         "customers_db": None,
@@ -1016,6 +1015,7 @@ def get_global_store():
     }
 
 _GLOBAL_STORE = get_global_store()
+_GLOBAL_STORE.pop("user", None)
 if "deleted_booking_ids" not in _GLOBAL_STORE:
     _GLOBAL_STORE["deleted_booking_ids"] = set()
 if "deleted_usernames" not in _GLOBAL_STORE:
@@ -1060,16 +1060,7 @@ def is_job_owner_or_admin(booking, username, is_admin=False):
     return u in [o for o in owner_candidates if o and o not in ["wait", "-", "none", ""]] or True
 
 if "user" not in st.session_state:
-    if st.query_params.get("close_job") or st.query_params.get("settle_job") or st.query_params.get("extend_job") or st.query_params.get("deposit_job") or st.query_params.get("module") or _GLOBAL_STORE.get("user"):
-        st.session_state.user = _GLOBAL_STORE.get("user") or {"username": "admin", "name": "ผู้ดูแลระบบ (Admin)", "role": "Admin", "email": "admin@sawasdeecarrental.com"}
-        st.session_state.selected_module = st.query_params.get("module") or ("Back Office" if st.query_params.get("close_job") else "Front Office")
-        if st.query_params.get("settle_job") or st.query_params.get("extend_job") or st.query_params.get("deposit_job"):
-            st.session_state.workflow_tab = "4. รับมัดจำ (ล็อกคิว/ใบเสร็จ)"
-    else:
-        st.session_state.user = None
-else:
-    if st.session_state.user:
-        _GLOBAL_STORE["user"] = st.session_state.user
+    st.session_state.user = None
 
 if "auth_mode" not in st.session_state:
     if st.query_params.get("mode") == "register":
@@ -1694,7 +1685,6 @@ if st.session_state.user is None:
                                 "role": user_rec.get("role", "Staff"),
                                 "email": user_rec.get("email") or f"{user_rec['username']}@sawasdeecarrental.com"
                             }
-                            _GLOBAL_STORE["user"] = st.session_state.user
                             if is_pending_login:
                                 # บัญชีรออนุมัติ: เข้าดูได้เฉพาะหน้าแดชบอร์ด
                                 st.session_state.selected_module = "Dashboard และรายงานผู้บริหาร"
@@ -1988,7 +1978,7 @@ else:
         if st.button("🚪 ออกจากระบบ", use_container_width=True):
             sb_auth_logout()
             st.session_state.user = None
-            _GLOBAL_STORE["user"] = None
+            _GLOBAL_STORE.pop("user", None)
             st.session_state.auth_mode = "login"
             for qk in list(st.query_params.keys()):
                 del st.query_params[qk]
