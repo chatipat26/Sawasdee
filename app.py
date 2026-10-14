@@ -629,13 +629,13 @@ def sb_delete_user(username):
     if not sb or not username: return
     u_clean = str(username).strip()
     try:
-        sb.table("users").delete().eq("username", u_clean).execute()
+        sb.table("users").delete().ilike("username", u_clean).execute()
     except Exception:
         pass
     try:
         users = sb.auth.admin.list_users()
         email = f"{u_clean.lower()}@sawasdeecarrental.com"
-        exist = next((u for u in users if u.email == email or (u.user_metadata or {}).get("username") == u_clean), None)
+        exist = next((u for u in users if (u.email and u.email.lower() == email) or str((u.user_metadata or {}).get("username", "")).lower() == u_clean.lower()), None)
         if exist:
             sb.auth.admin.delete_user(exist.id)
     except Exception:
@@ -839,41 +839,15 @@ def sync_cloud_data(force=False, auto=False):
 
     has_changed = False
     try:
-        # 1. Users table (Supabase Cloud is authoritative & bidirectional sync)
+        # 1. Users table (Supabase Cloud is authoritative)
         u_res = sb.table("users").select("*").execute()
         fresh_users = {}
+        del_unames = _GLOBAL_STORE.get("deleted_usernames", set())
         if u_res.data:
-            fresh_users = {u["username"]: u for u in u_res.data}
-            
-        # Check Supabase Auth users to ensure any user registered via Auth is present
-        try:
-            auth_users = sb.auth.admin.list_users()
-            for au in auth_users:
-                uname = (au.user_metadata or {}).get("username")
-                if not uname and au.email:
-                    uname = au.email.split("@")[0]
-                if uname and uname not in fresh_users:
-                    new_u = {
-                        "username": uname,
-                        "name": (au.user_metadata or {}).get("name", uname),
-                        "role": (au.user_metadata or {}).get("role", "Staff"),
-                        "status": "pending",
-                        "password": "••••••"
-                    }
-                    fresh_users[uname] = new_u
-                    try:
-                        clean_u = {
-                            "username": new_u["username"],
-                            "name": new_u["name"],
-                            "role": new_u["role"],
-                            "status": new_u["status"],
-                            "password": new_u["password"]
-                        }
-                        sb.table("users").upsert(clean_u).execute()
-                    except Exception:
-                        pass
-        except Exception:
-            pass
+            fresh_users = {
+                u["username"]: u for u in u_res.data
+                if str(u.get("username", "")).lower() not in del_unames
+            }
 
         # Ensure admin account is always present and approved
         if "admin" not in fresh_users:
@@ -889,18 +863,9 @@ def sync_cloud_data(force=False, auto=False):
             except Exception:
                 pass
 
-        # Push any local users not yet in cloud to Supabase
-        cur_u_db = st.session_state.get("users_db") or _GLOBAL_STORE.get("users_db") or {}
-        for l_k, l_v in cur_u_db.items():
-            if l_k not in fresh_users:
-                fresh_users[l_k] = l_v
-                try:
-                    sb_sync_user(l_k, l_v)
-                except Exception:
-                    pass
-
         # Compare users to detect change
-        old_u_sigs = {(k, v.get("status"), v.get("role"), v.get("name")) for k, v in cur_u_db.items()}
+        cur_users = st.session_state.get("users_db") or {}
+        old_u_sigs = {(k, v.get("status"), v.get("role"), v.get("name")) for k, v in cur_users.items()}
         new_u_sigs = {(k, v.get("status"), v.get("role"), v.get("name")) for k, v in fresh_users.items()}
         if old_u_sigs != new_u_sigs:
             has_changed = True
@@ -1047,11 +1012,14 @@ def get_global_store():
         "completed_jobs_db": None,
         "financial_db": None,
         "deleted_booking_ids": set(),
+        "deleted_usernames": set(),
     }
 
 _GLOBAL_STORE = get_global_store()
 if "deleted_booking_ids" not in _GLOBAL_STORE:
     _GLOBAL_STORE["deleted_booking_ids"] = set()
+if "deleted_usernames" not in _GLOBAL_STORE:
+    _GLOBAL_STORE["deleted_usernames"] = set()
 
 # Initialize users_db default if not yet set
 if "users_db" not in st.session_state:
@@ -1857,35 +1825,61 @@ else:
                     if u_k.lower() == "admin":
                         continue
                     u_status = u_v.get("status", "approved")
-                    u_c1, u_c2, u_c3 = st.columns([2.0, 1.2, 0.8])
-                    with u_c1:
-                        st_txt = "🟢 อนุมัติแล้ว" if u_status == "approved" else "🟡 รออนุมัติ"
-                        st.markdown(f"<div style='font-size:12px;'><b>{u_k}</b><br/><span style='font-size:10.5px; color:#6B7280;'>{st_txt}</span></div>", unsafe_allow_html=True)
-                    with u_c2:
-                        if u_status == "pending":
-                            if st.button("✅ อนุมัติ", key=f"sb_appr_{u_k}", type="primary", use_container_width=True):
-                                st.session_state.users_db[u_k]["status"] = "approved"
-                                sb_sync_user(u_k, st.session_state.users_db[u_k])
-                                _GLOBAL_STORE["users_db"] = st.session_state.users_db
-                                st.session_state._last_cloud_sync_time = time.time()
-                                st.success(f"อนุมัติ {u_k} สำเร็จ!")
-                                time.sleep(0.5)
+                    del_confirm_key = f"confirm_del_u_{u_k}"
+                    
+                    st.markdown(f"""
+                        <div style="background:#FFFFFF; border:1px solid #EFEAE3; border-radius:8px; padding:7px 10px; margin-top:6px; margin-bottom:5px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <span style="font-size:12px; font-weight:700; color:#1F2937;">👤 {u_k}</span>
+                                <span style="font-size:10px; font-weight:600; color:{'#15803D' if u_status == 'approved' else '#B45309'}; background:{'#F0FDF4' if u_status == 'approved' else '#FEF3C7'}; padding:1px 7px; border-radius:10px;">
+                                    {'🟢 อนุมัติแล้ว' if u_status == 'approved' else '🟡 รออนุมัติ'}
+                                </span>
+                            </div>
+                        </div>
+                    """, unsafe_allow_html=True)
+                    
+                    if not st.session_state.get(del_confirm_key, False):
+                        c_act1, c_act2 = st.columns([1.5, 1])
+                        with c_act1:
+                            if u_status == "pending":
+                                if st.button("✅ อนุมัติ", key=f"sb_appr_{u_k}", type="primary", use_container_width=True):
+                                    st.session_state.users_db[u_k]["status"] = "approved"
+                                    sb_sync_user(u_k, st.session_state.users_db[u_k])
+                                    _GLOBAL_STORE["users_db"] = st.session_state.users_db
+                                    st.session_state._last_cloud_sync_time = time.time()
+                                    st.toast(f"อนุมัติ {u_k} สำเร็จ!", icon="✅")
+                                    st.rerun()
+                            else:
+                                if st.button("🔒 ระงับ", key=f"sb_suspend_{u_k}", use_container_width=True):
+                                    st.session_state.users_db[u_k]["status"] = "pending"
+                                    sb_sync_user(u_k, st.session_state.users_db[u_k])
+                                    _GLOBAL_STORE["users_db"] = st.session_state.users_db
+                                    st.session_state._last_cloud_sync_time = time.time()
+                                    st.toast(f"ระงับสิทธิ์ {u_k} เรียบร้อย", icon="🔒")
+                                    st.rerun()
+                        with c_act2:
+                            if st.button("🗑️ ลบ", key=f"sb_del_init_{u_k}", use_container_width=True):
+                                st.session_state[del_confirm_key] = True
                                 st.rerun()
-                        else:
-                            if st.button("🔒 ระงับ", key=f"sb_suspend_{u_k}", use_container_width=True):
-                                st.session_state.users_db[u_k]["status"] = "pending"
-                                sb_sync_user(u_k, st.session_state.users_db[u_k])
-                                _GLOBAL_STORE["users_db"] = st.session_state.users_db
+                    else:
+                        st.markdown(f"<div style='font-size:11px; color:#DC2626; font-weight:600; padding:2px 0;'>⚠️ ยืนยันลบบัญชี {u_k}?</div>", unsafe_allow_html=True)
+                        c_y, c_n = st.columns(2)
+                        with c_y:
+                            if st.button("ยืนยัน", key=f"sb_del_yes_{u_k}", type="primary", use_container_width=True):
+                                sb_delete_user(u_k)
+                                del_unames = _GLOBAL_STORE.setdefault("deleted_usernames", set())
+                                del_unames.add(u_k.lower())
+                                st.session_state.users_db.pop(u_k, None)
+                                if _GLOBAL_STORE.get("users_db"):
+                                    _GLOBAL_STORE["users_db"].pop(u_k, None)
+                                st.session_state[del_confirm_key] = False
                                 st.session_state._last_cloud_sync_time = time.time()
+                                st.toast(f"🗑️ ลบบัญชี '{u_k}' เรียบร้อยแล้ว", icon="✅")
                                 st.rerun()
-                    with u_c3:
-                        if st.button("🗑️", key=f"sb_del_{u_k}", help=f"ลบบัญชี {u_k} ออกจากระบบ Supabase", use_container_width=True):
-                            sb_delete_user(u_k)
-                            st.session_state.users_db.pop(u_k, None)
-                            _GLOBAL_STORE["users_db"] = st.session_state.users_db
-                            st.session_state._last_cloud_sync_time = time.time()
-                            st.success(f"ลบบัญชี {u_k} เรียบร้อย!")
-                            time.sleep(0.5)
+                        with c_n:
+                            if st.button("ยกเลิก", key=f"sb_del_no_{u_k}", use_container_width=True):
+                                st.session_state[del_confirm_key] = False
+                                st.rerun()
                 st.markdown("<hr style='margin:10px 0 8px; border:0.5px solid #EFEAE3;'>", unsafe_allow_html=True)
                 with st.expander("➕ เพิ่มพนักงานใหม่ (อนุมัติทันที)", expanded=False):
                     with st.form("form_add_new_staff_quick", border=False):
