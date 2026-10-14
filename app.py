@@ -2065,15 +2065,15 @@ else:
         st.markdown("<div style='height: 4px;'></div>", unsafe_allow_html=True)
         if "global_search_kw" not in st.session_state:
             st.session_state.global_search_kw = ""
-        if "sb_search_input_box" not in st.session_state:
-            st.session_state.sb_search_input_box = st.session_state.global_search_kw
+        if "search_box_version" not in st.session_state:
+            st.session_state.search_box_version = 0
             
         sb_search_input = st.text_input(
             "ค้นหา",
             value=st.session_state.get("global_search_kw", ""),
             placeholder="🔍 ค้นหา (เลขที่จอง / ทะเบียน / ลูกค้า)",
             label_visibility="collapsed",
-            key="sb_search_input_box"
+            key=f"sb_search_input_box_{st.session_state.search_box_version}"
         )
         st.session_state.global_search_kw = sb_search_input
         st.session_state.search_plate_filter = sb_search_input
@@ -2112,8 +2112,8 @@ else:
                 
             if sc2.button("❌ ล้าง", key="btn_clear_sb_search", use_container_width=True):
                 st.session_state.global_search_kw = ""
-                st.session_state.sb_search_input_box = ""
                 st.session_state.search_plate_filter = ""
+                st.session_state.search_box_version = st.session_state.get("search_box_version", 0) + 1
                 st.rerun()
             
             has_quick_results = bool(matched_bk or matched_c or matched_cu or matched_hist)
@@ -2138,7 +2138,8 @@ else:
                             
                             if st.button(btn_label, key=f"sb_nav_bk_{b_id}", use_container_width=True, help=btn_help):
                                 st.session_state.global_search_kw = b_id
-                                st.session_state.sb_search_input_box = b_id
+                                st.session_state.search_plate_filter = b_id
+                                st.session_state.search_box_version = st.session_state.get("search_box_version", 0) + 1
                                 if st.session_state.selected_module == "Back Office":
                                     pass
                                 else:
@@ -2156,7 +2157,8 @@ else:
                         for p in matched_c[:3]:
                             if st.button(f"🚗 {p}", key=f"sb_nav_car_{p}", use_container_width=True):
                                 st.session_state.global_search_kw = p
-                                st.session_state.sb_search_input_box = p
+                                st.session_state.search_plate_filter = p
+                                st.session_state.search_box_version = st.session_state.get("search_box_version", 0) + 1
                                 st.session_state.selected_module = "Front Office"
                                 st.session_state.workflow_tab = "2. เลือกรถยนต์"
                                 st.rerun()
@@ -2165,7 +2167,8 @@ else:
                         for cu_name in matched_cu[:3]:
                             if st.button(f"👤 {cu_name[:16]}", key=f"sb_nav_cu_{cu_name}", use_container_width=True):
                                 st.session_state.global_search_kw = cu_name
-                                st.session_state.sb_search_input_box = cu_name
+                                st.session_state.search_plate_filter = cu_name
+                                st.session_state.search_box_version = st.session_state.get("search_box_version", 0) + 1
                                 st.session_state.selected_module = "Front Office"
                                 st.session_state.workflow_tab = "3. จัดทำสัญญาเช่า"
                                 st.session_state.selected_customer_name = cu_name
@@ -2180,7 +2183,8 @@ else:
                             if st.button(f"📁 {cj_id} ({cj_car})", key=f"sb_nav_cj_{cj_id}", use_container_width=True):
                                 st.session_state.selected_module = "Back Office"
                                 st.session_state.global_search_kw = cj_id
-                                st.session_state.sb_search_input_box = cj_id
+                                st.session_state.search_plate_filter = cj_id
+                                st.session_state.search_box_version = st.session_state.get("search_box_version", 0) + 1
                                 st.rerun()
 
                                 
@@ -3298,8 +3302,8 @@ else:
                         st.session_state.draft_car = None
                         st.session_state.active_deposit_bk_id = new_bk_id
                         st.session_state.global_search_kw = ""
-                        st.session_state.sb_search_input_box = ""
                         st.session_state.search_plate_filter = ""
+                        st.session_state.search_box_version = st.session_state.get("search_box_version", 0) + 1
                         st.success(f"🎉 สร้างสัญญาและบันทึกคิวจองสำเร็จ! (รหัสการจอง: {new_bk_id}) รายการจะปรากฏในแผงควบคุมคิวการจอง, แท็บรับมัดจำ, และตารางงาน Back Office ทันที")
                         time.sleep(0.8)
                         st.session_state.workflow_tab = "1. แผงควบคุมการจอง"
