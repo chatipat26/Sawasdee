@@ -1103,7 +1103,13 @@ else:
     if st.session_state.user:
         _GLOBAL_STORE["user"] = st.session_state.user
 
-if "auth_mode" not in st.session_state: st.session_state.auth_mode = "login"
+if "auth_mode" not in st.session_state:
+    if st.query_params.get("mode") == "register":
+        st.session_state.auth_mode = "register"
+    elif st.query_params.get("mode") == "forgot":
+        st.session_state.auth_mode = "forgot"
+    else:
+        st.session_state.auth_mode = "login"
 if "selected_module" not in st.session_state: st.session_state.selected_module = "Front Office"
 if "workflow_tab" not in st.session_state: st.session_state.workflow_tab = "1. แผงควบคุมการจอง"
 if "draft_car" not in st.session_state: st.session_state.draft_car = None
