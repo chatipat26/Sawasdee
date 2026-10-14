@@ -1486,6 +1486,24 @@ dashboard_luxury_css = """
 .bo-table th { background-color: #FAF7F2; color: #E85826; font-weight: 600; border-top: 1px solid #EFEAE3; }
 .icon-link { text-decoration: none; font-size: 18px; margin-right: 8px; display: inline-block; transition: transform 0.2s; cursor: pointer; }
 .icon-link:hover { transform: scale(1.15); }
+
+/* =========================================================================
+   STICKY FLEET SELECTION SEARCH BAR (ล็อกแถบค้นหาและแมตช์รถให้อยู่ด้านบนเสมอเวลาเลื่อนดูรถ)
+   ========================================================================= */
+div[data-testid="stVerticalBlockBorderWrapper"]:has(.st-key-fleet_filter_bar),
+div[data-testid="stVerticalBlock"]:has(> div > .st-key-fleet_filter_bar),
+.st-key-fleet_filter_bar {
+    position: -webkit-sticky !important;
+    position: sticky !important;
+    top: 50px !important;
+    z-index: 99 !important;
+    background: #FFFFFF !important;
+    box-shadow: 0 10px 28px rgba(31, 41, 55, 0.12) !important;
+    border: 1.5px solid #EFEAE3 !important;
+    border-top: 3.5px solid #E85826 !important;
+    border-radius: 14px !important;
+    margin-bottom: 14px !important;
+}
 </style>
 """
 
@@ -2134,7 +2152,7 @@ else:
 
         # --- TAB 2: FLEET SELECTION ---
         elif current_tab == "2. เลือกรถยนต์":
-            with st.container(border=True):
+            with st.container(border=True, key="fleet_filter_bar"):
                 st.markdown("<h3 style='font-size:16px; font-weight:700;'>🚘 ค้นหาและแมตช์รถ (Fleet Selection)</h3>", unsafe_allow_html=True)
                 
                 # แสดงตัวกรอง 5 ช่องหลัก
@@ -2193,9 +2211,8 @@ else:
                 search_kw = st.session_state.get("global_search_kw", st.session_state.get("search_plate_filter", "")).strip()
                 if search_kw:
                     st.caption(f"🔎 กรองผลลัพธ์ตามคำค้นหาจากไซด์บาร์: **{search_kw}**")
-                
-                st.markdown("---")
-                
+            
+            with st.container():
                 # --- ADD NEW VEHICLE TO FLEET DATABASE (เพิ่มรถใหม่) ---
                 with st.expander("🚗➕ เพิ่มรถยนต์ใหม่เข้าสู่ฐานข้อมูล (Add New Vehicle to Fleet)", expanded=False):
                     st.markdown("<div style='font-size:13.5px; font-weight:700; color:#E85826; margin-bottom:12px;'>📋 แบบฟอร์มลงทะเบียนรถยนต์ใหม่เข้าสู่ฐานข้อมูล</div>", unsafe_allow_html=True)
