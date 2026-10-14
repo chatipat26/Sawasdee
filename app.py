@@ -1525,7 +1525,7 @@ div[data-baseweb="input"] input, div[data-baseweb="base-input"] input, textarea 
     color: #1F2937 !important;
     -webkit-text-fill-color: #1F2937 !important;
 }}
-div[data-baseweb="select"] * {{
+div[data-baseweb="select"] span, div[data-baseweb="select"] div, div[data-baseweb="select"] input {{
     color: #1F2937 !important;
     -webkit-text-fill-color: #1F2937 !important;
 }}
@@ -1533,7 +1533,9 @@ div[data-baseweb="popover"], div[data-baseweb="menu"], ul[role="listbox"] {{
     background-color: #FFFFFF !important;
     color: #1F2937 !important;
 }}
-div[data-baseweb="popover"] *, div[data-baseweb="menu"] *, ul[role="listbox"] * {{
+div[data-baseweb="popover"] span, div[data-baseweb="popover"] div, div[data-baseweb="popover"] li,
+div[data-baseweb="menu"] span, div[data-baseweb="menu"] div, div[data-baseweb="menu"] li,
+ul[role="listbox"] span, ul[role="listbox"] div, ul[role="listbox"] li {{
     color: #1F2937 !important;
     -webkit-text-fill-color: #1F2937 !important;
 }}
@@ -1591,7 +1593,10 @@ div[class*="st-key-btn_q_del_"] button:hover {{
 }}
 </style>
 """
-st.markdown(css_clean_luxury, unsafe_allow_html=True)
+if hasattr(st, "html"):
+    st.html(css_clean_luxury)
+else:
+    st.markdown(css_clean_luxury, unsafe_allow_html=True)
 
 dashboard_luxury_css = """
 <style>
@@ -2230,7 +2235,10 @@ else:
     # 7.1 FRONT OFFICE MODULE
     # =========================================================================
     if module == "Front Office":
-        st.markdown(folder_tabs_luxury_css, unsafe_allow_html=True)
+        if hasattr(st, "html"):
+            st.html(folder_tabs_luxury_css)
+        else:
+            st.markdown(folder_tabs_luxury_css, unsafe_allow_html=True)
         st.markdown("""
             <div style="margin-bottom: 16px;">
                 <h1 style="font-size: 25px; font-weight: 700; color: #1F2937; margin: 0; display:flex; align-items:center; gap:8px;">
@@ -4767,7 +4775,10 @@ else:
     # =========================================================================
     elif module == "Dashboard และรายงานผู้บริหาร":
         with st.container(key="executive_dashboard"):
-            st.markdown(dashboard_luxury_css, unsafe_allow_html=True)
+            if hasattr(st, "html"):
+                st.html(dashboard_luxury_css)
+            else:
+                st.markdown(dashboard_luxury_css, unsafe_allow_html=True)
             st.markdown("""
                 <div style="margin-bottom: 20px;">
                     <h1 style="font-size: 28px; font-weight: 700; color: #1F2937; margin: 0; display:flex; align-items:center; gap:8px;">
