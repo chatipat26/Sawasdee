@@ -525,13 +525,45 @@ def sb_sync_booking(b):
     sb = get_supabase_client()
     if not sb or not b: return
     try:
-        row = dict(b)
-        row.pop("_booking_obj", None)
-        if "start_date" in row and row["start_date"]:
-            row["start_date"] = str(row["start_date"])
-        if "end_date" in row and row["end_date"]:
-            row["end_date"] = str(row["end_date"])
-        sb.table("bookings").upsert(row).execute()
+        # 1. ตรวจสอบและซิงค์ข้อมูลลูกค้าลงตาราง customers ใน Supabase ก่อน (ป้องกัน Foreign Key Error)
+        cust_name = b.get("customer")
+        if cust_name:
+            cust_dict = None
+            if hasattr(st, "session_state") and "customers_db" in st.session_state and cust_name in st.session_state.customers_db:
+                cust_dict = st.session_state.customers_db[cust_name]
+            elif _GLOBAL_STORE.get("customers_db") and cust_name in _GLOBAL_STORE["customers_db"]:
+                cust_dict = _GLOBAL_STORE["customers_db"][cust_name]
+            
+            if not cust_dict:
+                cust_dict = {
+                    "full_name": cust_name, "nationality": "THAI",
+                    "dob": "01/01/1990", "passport_id": "-", "licence_no": "-", "issue_place": "-",
+                    "licence_expiry": "01/01/2030", "home_address": "-", "thai_address": "-",
+                    "contact_no": "-", "whatsapp": "-", "email": "-"
+                }
+            sb_sync_customer(cust_name, cust_dict)
+
+        # 2. กรองเฉพาะคอลัมน์ที่มีอยู่จริงในตาราง bookings บน Supabase Cloud
+        VALID_BOOKING_COLS = {
+            'booking_id', 'car_id', 'customer', 'start_date', 'end_date',
+            'start_time', 'end_time', 'contract_type', 'base_price', 'discount',
+            'net_price', 'deposit_paid', 'deposit_amount', 'rental_paid',
+            'remaining_rental', 'is_fully_paid', 'rental_payment_method',
+            'extension_history', 'created_by', 'status', 'worker_delivery',
+            'worker_return', 'loc_delivery', 'loc_return', 'dispatch_closed',
+            'return_closed'
+        }
+        clean_row = {}
+        for k, v in b.items():
+            if k in VALID_BOOKING_COLS:
+                clean_row[k] = v
+
+        if "start_date" in clean_row and clean_row["start_date"]:
+            clean_row["start_date"] = str(clean_row["start_date"])
+        if "end_date" in clean_row and clean_row["end_date"]:
+            clean_row["end_date"] = str(clean_row["end_date"])
+
+        sb.table("bookings").upsert(clean_row).execute()
     except Exception:
         pass
 
@@ -568,8 +600,13 @@ def sb_sync_completed_job(job_dict):
     sb = get_supabase_client()
     if not sb or not job_dict: return
     try:
-        row = dict(job_dict)
-        row.pop("_booking_obj", None)
+        VALID_CJ_COLS = {
+            'booking_id', 'car_id', 'customer', 'start_date', 'end_date',
+            'completed_date', 'base_price', 'discount', 'net_price', 'fuel_level',
+            'inspection_notes', 'inspection_photos', 'mileage', 'worker_delivery',
+            'worker_return', 'status', 'contract_type'
+        }
+        row = {k: v for k, v in job_dict.items() if k in VALID_CJ_COLS}
         if "start_date" in row and row["start_date"]:
             row["start_date"] = str(row["start_date"])
         if "end_date" in row and row["end_date"]:
@@ -906,7 +943,18 @@ def sync_cloud_data(force=False, auto=False):
                     b_copy["return_closed"] = (b_copy.get("status") == "เสร็จสิ้น")
                 fresh_b.append(b_copy)
 
+            # ผสานรายการจองในหน่วยความจำที่เพิ่งสร้างและยังไม่ถูกดึงมาจากคลาวด์ (ป้องกันการถูกล้างหาย)
             cur_b = st.session_state.get("bookings_db", [])
+            fresh_ids = {b.get("booking_id") for b in fresh_b}
+            for b_loc in cur_b:
+                b_lid = b_loc.get("booking_id")
+                if b_lid and b_lid not in fresh_ids and b_lid not in del_ids:
+                    fresh_b.append(b_loc)
+                    try:
+                        sb_sync_booking(b_loc)
+                    except Exception:
+                        pass
+
             old_b_sigs = {(b.get("booking_id"), b.get("status"), b.get("worker_delivery"), b.get("worker_return"), b.get("rental_paid"), b.get("deposit_paid")) for b in cur_b}
             new_b_sigs = {(b.get("booking_id"), b.get("status"), b.get("worker_delivery"), b.get("worker_return"), b.get("rental_paid"), b.get("deposit_paid")) for b in fresh_b}
             if old_b_sigs != new_b_sigs:
@@ -1015,7 +1063,6 @@ def get_global_store():
     }
 
 _GLOBAL_STORE = get_global_store()
-_GLOBAL_STORE.pop("user", None)
 if "deleted_booking_ids" not in _GLOBAL_STORE:
     _GLOBAL_STORE["deleted_booking_ids"] = set()
 if "deleted_usernames" not in _GLOBAL_STORE:
@@ -1059,8 +1106,10 @@ def is_job_owner_or_admin(booking, username, is_admin=False):
     ]
     return u in [o for o in owner_candidates if o and o not in ["wait", "-", "none", ""]] or True
 
-if "user" not in st.session_state:
-    st.session_state.user = None
+if "user" not in st.session_state or st.session_state.user is None:
+    st.session_state.user = _GLOBAL_STORE.get("user")
+elif st.session_state.user:
+    _GLOBAL_STORE["user"] = st.session_state.user
 
 if "auth_mode" not in st.session_state:
     if st.query_params.get("mode") == "register":
@@ -1105,7 +1154,6 @@ if st.query_params.get("assign_job"):
     st.session_state.selected_module = "Front Office"
     st.session_state.workflow_tab = "5. ใบงานส่ง/รับรถ"
     st.session_state.active_assign_bk_id = st.query_params.get("assign_job")
-    del st.query_params["assign_job"]
 
 if st.query_params.get("close_job"):
     st.session_state.selected_module = "Back Office"
@@ -1191,12 +1239,15 @@ if "completed_jobs_db" not in st.session_state:
 # Run automatic cloud synchronization from Supabase Cloud
 sync_cloud_data()
 
-# Ensure active session user is valid in users_db
-if st.session_state.get("user") and st.session_state.user.get("username") != "admin":
+# Ensure active session user is valid and synchronized
+if st.session_state.get("user"):
+    _GLOBAL_STORE["user"] = st.session_state.user
     curr_un = str(st.session_state.user.get("username", "")).lower()
-    valid_uns = [u.lower() for u in st.session_state.users_db.keys()]
-    if curr_un not in valid_uns:
+    if curr_un in _GLOBAL_STORE.get("deleted_usernames", set()):
         st.session_state.user = None
+        _GLOBAL_STORE.pop("user", None)
+elif _GLOBAL_STORE.get("user"):
+    st.session_state.user = _GLOBAL_STORE.get("user")
 
 users_db = st.session_state.users_db
 cars_db = st.session_state.cars_db
@@ -1433,7 +1484,59 @@ a.status-pill-clickable:hover {{
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12) !important;
     filter: brightness(0.95) !important;
 }}
-.stButton > button:is([kind="primary"]) {{ background: var(--brand-gradient); border: none; color: white; font-weight: 600; }}
+/* Secondary / Standard Streamlit Buttons */
+div.stButton > button {{
+    background-color: #FFFFFF !important;
+    color: #1F2937 !important;
+    border: 1.5px solid #D1D5DB !important;
+    border-radius: 8px !important;
+    font-weight: 600 !important;
+    font-size: 13.5px !important;
+    transition: all 0.2s ease-in-out !important;
+}}
+div.stButton > button:hover {{
+    background-color: #F9FAFB !important;
+    border-color: #E85826 !important;
+    color: #E85826 !important;
+    box-shadow: 0 2px 8px rgba(232, 88, 38, 0.12) !important;
+}}
+div.stButton > button:is([kind="primary"]) {{
+    background: var(--brand-gradient) !important;
+    border: none !important;
+    color: #FFFFFF !important;
+    font-weight: 700 !important;
+    box-shadow: 0 2px 6px rgba(232, 88, 38, 0.25) !important;
+}}
+div.stButton > button:is([kind="primary"]):hover {{
+    filter: brightness(1.08) !important;
+    box-shadow: 0 4px 12px rgba(232, 88, 38, 0.35) !important;
+    color: #FFFFFF !important;
+}}
+
+/* Form inputs, selectboxes, date/time inputs high contrast light theme */
+div[data-baseweb="input"], div[data-baseweb="base-input"], div[data-baseweb="select"] {{
+    background-color: #FFFFFF !important;
+    border-color: #D1D5DB !important;
+    border-radius: 8px !important;
+    color: #1F2937 !important;
+}}
+div[data-baseweb="input"] input, div[data-baseweb="base-input"] input, textarea {{
+    background-color: #FFFFFF !important;
+    color: #1F2937 !important;
+    -webkit-text-fill-color: #1F2937 !important;
+}}
+div[data-baseweb="select"] * {{
+    color: #1F2937 !important;
+    -webkit-text-fill-color: #1F2937 !important;
+}}
+div[data-baseweb="popover"], div[data-baseweb="menu"], ul[role="listbox"] {{
+    background-color: #FFFFFF !important;
+    color: #1F2937 !important;
+}}
+div[data-baseweb="popover"] *, div[data-baseweb="menu"] *, ul[role="listbox"] * {{
+    color: #1F2937 !important;
+    -webkit-text-fill-color: #1F2937 !important;
+}}
 div[class*="st-key-pop_rent_"] div[data-testid="stPopover"] > button,
 div[class*="st-key-pop_rent_"] button {{
     background: #FFF7ED !important;
@@ -1457,7 +1560,34 @@ div[class*="st-key-pop_rent_"] button:hover {{
     background: #FFEDD5 !important;
     border-color: #FB923C !important;
     color: #C2410C !important;
-    box-shadow: 0 2px 6px rgba(234, 88, 12, 0.15) !important;
+}}
+div[class*="st-key-btn_q_dep_"] button {{
+    background: linear-gradient(135deg, #FFF7ED 0%, #FFEDD5 100%) !important;
+    color: #C2410C !important;
+    border: 1.5px solid #FB923C !important;
+    font-weight: 700 !important;
+    font-size: 11.5px !important;
+    line-height: 1.25 !important;
+    white-space: pre-line !important;
+    padding: 6px 8px !important;
+}}
+div[class*="st-key-btn_q_dep_"] button:hover {{
+    background: linear-gradient(135deg, #FFEDD5 0%, #FED7AA 100%) !important;
+    border-color: #EA580C !important;
+    color: #9A3412 !important;
+    box-shadow: 0 2px 8px rgba(234, 88, 12, 0.2) !important;
+}}
+div[class*="st-key-btn_q_del_"] button {{
+    background: #FEF2F2 !important;
+    color: #DC2626 !important;
+    border: 1.5px solid #FECACA !important;
+    font-weight: 700 !important;
+}}
+div[class*="st-key-btn_q_del_"] button:hover {{
+    background: #FEE2E2 !important;
+    border-color: #EF4444 !important;
+    color: #B91C1C !important;
+    box-shadow: 0 2px 6px rgba(220, 38, 38, 0.2) !important;
 }}
 </style>
 """
@@ -1482,8 +1612,13 @@ dashboard_luxury_css = """
 .donut-stat-row span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-right: 6px; }
 .donut-stat-row b { white-space: nowrap; flex-shrink: 0; }
 .bo-table { width: 100%; border-collapse: collapse; font-family: var(--font-ui, sans-serif); font-size: 13px; background: white; border-radius: 8px; overflow: hidden; }
-.bo-table th, .bo-table td { border-bottom: 1px solid #EFEAE3; padding: 12px 10px; text-align: left; }
-.bo-table th { background-color: #FAF7F2; color: #E85826; font-weight: 600; border-top: 1px solid #EFEAE3; }
+.bo-table th, .bo-table td { border-bottom: 1px solid #EFEAE3; padding: 12px 10px; text-align: left; vertical-align: middle; }
+.bo-table th { background-color: #FAF7F2; color: #E85826; font-weight: 600; border-top: 1px solid #EFEAE3; white-space: nowrap; }
+.bo-table td { color: #1F2937; }
+.bo-table th:nth-child(2), .bo-table td:nth-child(2) { min-width: 100px; white-space: nowrap; }
+.bo-table th:nth-child(3), .bo-table td:nth-child(3) { min-width: 110px; white-space: nowrap; }
+.bo-table th:nth-child(4), .bo-table td:nth-child(4) { min-width: 140px; }
+.bo-table th:nth-child(5), .bo-table td:nth-child(5) { min-width: 155px; white-space: nowrap; }
 .icon-link { text-decoration: none; font-size: 18px; margin-right: 8px; display: inline-block; transition: transform 0.2s; cursor: pointer; }
 .icon-link:hover { transform: scale(1.15); }
 
@@ -1657,6 +1792,9 @@ folder_tabs_luxury_css = """
 # =========================================================================
 # 5. AUTHENTICATION (LOGIN)
 # =========================================================================
+if st.session_state.user is None and _GLOBAL_STORE.get("user") is not None:
+    st.session_state.user = _GLOBAL_STORE["user"]
+
 if st.session_state.user is None:
     st.markdown("<div style='height: 30px;'></div>", unsafe_allow_html=True)
     col_a, col_b, col_c = st.columns([1, 1.25, 1])
@@ -1703,6 +1841,7 @@ if st.session_state.user is None:
                                 "role": user_rec.get("role", "Staff"),
                                 "email": user_rec.get("email") or f"{user_rec['username']}@sawasdeecarrental.com"
                             }
+                            _GLOBAL_STORE["user"] = st.session_state.user
                             if is_pending_login:
                                 # บัญชีรออนุมัติ: เข้าดูได้เฉพาะหน้าแดชบอร์ด
                                 st.session_state.selected_module = "Dashboard และรายงานผู้บริหาร"
@@ -1919,10 +2058,15 @@ else:
 
         # --- UNIFIED SEARCH IN SIDEBAR (ค้นหาข้อมูลส่วนกลาง รวมทุกระบบ) ---
         st.markdown("<div style='height: 4px;'></div>", unsafe_allow_html=True)
+        if "global_search_kw" not in st.session_state:
+            st.session_state.global_search_kw = ""
+        if "sb_search_input_box" not in st.session_state:
+            st.session_state.sb_search_input_box = st.session_state.global_search_kw
+            
         sb_search_input = st.text_input(
             "ค้นหา",
             value=st.session_state.get("global_search_kw", ""),
-            placeholder="🔍 ค้นหา",
+            placeholder="🔍 ค้นหา (เลขที่จอง / ทะเบียน / ลูกค้า)",
             label_visibility="collapsed",
             key="sb_search_input_box"
         )
@@ -1931,27 +2075,83 @@ else:
 
         if sb_search_input.strip():
             kw_clean = sb_search_input.strip().lower()
-            matched_c = [p for p, c in cars_db.items() if kw_clean in f"{p} {c['brand']} {c['model']} {c.get('car_group','')} {c.get('company','')}".lower()]
-            matched_cu = [k for k, v in st.session_state.customers_db.items() if kw_clean in f"{k} {v.get('contact_no','')} {v.get('email','')} {v.get('licence_no','')} {v.get('passport_id','')}".lower()]
-            matched_hist = [cj for cj in st.session_state.completed_jobs_db if kw_clean in f"{cj.get('booking_id','')} {cj.get('car_id','')} {cj.get('customer','')} {cj.get('worker_delivery','')} {cj.get('worker_return','')}".lower()]
+            kw_no_symbol = kw_clean.replace("-", "").replace(" ", "")
+            matched_bk = [
+                b for b in st.session_state.bookings_db
+                if kw_clean in f"{b.get('booking_id','')} {b.get('car_id','')} {b.get('customer','')}".lower()
+                or kw_no_symbol in str(b.get('booking_id','')).lower().replace("-", "").replace(" ", "")
+                or kw_no_symbol in str(b.get('car_id','')).lower().replace("-", "").replace(" ", "")
+            ]
+            matched_c = [
+                p for p, c in cars_db.items()
+                if kw_clean in f"{p} {c.get('brand','')} {c.get('model','')} {c.get('car_group','')} {c.get('company','')}".lower()
+                or kw_no_symbol in p.lower().replace("-", "").replace(" ", "")
+            ]
+            matched_cu = [
+                k for k, v in st.session_state.customers_db.items()
+                if kw_clean in f"{k} {v.get('contact_no','')} {v.get('email','')} {v.get('licence_no','')} {v.get('passport_id','')}".lower()
+                or kw_no_symbol in f"{v.get('contact_no','')} {v.get('passport_id','')}".lower().replace("-", "").replace(" ", "")
+            ]
+            matched_hist = [
+                cj for cj in st.session_state.completed_jobs_db
+                if kw_clean in f"{cj.get('booking_id','')} {cj.get('car_id','')} {cj.get('customer','')} {cj.get('worker_delivery','')} {cj.get('worker_return','')}".lower()
+                or kw_no_symbol in str(cj.get('booking_id','')).lower().replace("-", "").replace(" ", "")
+                or kw_no_symbol in str(cj.get('car_id','')).lower().replace("-", "").replace(" ", "")
+            ]
         
             sc1, sc2 = st.columns([2, 1])
             if is_pending_user:
                 sc1.caption(f"พบในประวัติ: {len(matched_hist)} งาน")
             else:
-                sc1.caption(f"พบ: รถ {len(matched_c)} | ลูกค้า {len(matched_cu)} | ประวัติ {len(matched_hist)}")
+                sc1.caption(f"พบ: จอง {len(matched_bk)} | รถ {len(matched_c)} | ลูกค้า {len(matched_cu)} | ประวัติ {len(matched_hist)}")
                 
             if sc2.button("❌ ล้าง", key="btn_clear_sb_search", use_container_width=True):
                 st.session_state.global_search_kw = ""
+                st.session_state.sb_search_input_box = ""
                 st.session_state.search_plate_filter = ""
                 st.rerun()
             
-            if not is_pending_user and (matched_c or matched_cu):
+            has_quick_results = bool(matched_bk or matched_c or matched_cu or matched_hist)
+            if not is_pending_user and has_quick_results:
                 with st.expander("🎯 ผลลัพธ์ที่พบด่วน", expanded=True):
+                    if matched_bk:
+                        st.markdown("<b style='font-size:11px; color:#E85826;'>📋 การจองที่พบ:</b>", unsafe_allow_html=True)
+                        for b_item in matched_bk[:4]:
+                            b_id = b_item.get("booking_id", "")
+                            b_car = b_item.get("car_id", "")
+                            b_cust = b_item.get("customer", "")
+                            b_st = b_item.get("status", "")
+                            w_d = b_item.get("worker_delivery")
+                            has_delivery = bool(w_d and str(w_d).strip() and str(w_d).strip() != "Wait")
+                            is_pending_dep = (not b_item.get("deposit_paid")) or (b_st == "รอชำระมัดจำ")
+                            
+                            badge_icon = "🟡" if is_pending_dep else ("🚚" if not has_delivery else "🟢")
+                            tag_str = "รอชำระมัดจำ" if is_pending_dep else ("รอลงใบงาน" if not has_delivery else b_st)
+                            
+                            btn_label = f"{badge_icon} {b_id} ({b_car})"
+                            btn_help = f"ลูกค้า: {b_cust} | สถานะ: {tag_str} | คนขับ: {w_d or 'Wait'}"
+                            
+                            if st.button(btn_label, key=f"sb_nav_bk_{b_id}", use_container_width=True, help=btn_help):
+                                st.session_state.global_search_kw = b_id
+                                st.session_state.sb_search_input_box = b_id
+                                if st.session_state.selected_module == "Back Office":
+                                    pass
+                                else:
+                                    st.session_state.selected_module = "Front Office"
+                                    if is_pending_dep:
+                                        st.session_state.workflow_tab = "1. แผงควบคุมการจอง"
+                                    elif not has_delivery:
+                                        st.session_state.workflow_tab = "5. ใบงานส่ง/รับรถ"
+                                        st.session_state.active_assign_bk_id = b_id
+                                    else:
+                                        st.session_state.selected_module = "Back Office"
+                                st.rerun()
                     if matched_c:
-                        st.markdown("<b style='font-size:11px; color:#E85826;'>🚘 รถยนต์ที่พบ:</b>", unsafe_allow_html=True)
+                        st.markdown("<b style='font-size:11px; color:#EA580C;'>🚘 รถยนต์ที่พบ:</b>", unsafe_allow_html=True)
                         for p in matched_c[:3]:
                             if st.button(f"🚗 {p}", key=f"sb_nav_car_{p}", use_container_width=True):
+                                st.session_state.global_search_kw = p
+                                st.session_state.sb_search_input_box = p
                                 st.session_state.selected_module = "Front Office"
                                 st.session_state.workflow_tab = "2. เลือกรถยนต์"
                                 st.rerun()
@@ -1959,11 +2159,23 @@ else:
                         st.markdown("<b style='font-size:11px; color:#3B82F6;'>👤 ข้อมูลลูกค้าที่พบ:</b>", unsafe_allow_html=True)
                         for cu_name in matched_cu[:3]:
                             if st.button(f"👤 {cu_name[:16]}", key=f"sb_nav_cu_{cu_name}", use_container_width=True):
+                                st.session_state.global_search_kw = cu_name
+                                st.session_state.sb_search_input_box = cu_name
                                 st.session_state.selected_module = "Front Office"
                                 st.session_state.workflow_tab = "3. จัดทำสัญญาเช่า"
                                 st.session_state.selected_customer_name = cu_name
                                 st.session_state.show_edit_customer = True
                                 st.session_state.show_add_customer = False
+                                st.rerun()
+                    if matched_hist and not matched_bk:
+                        st.markdown("<b style='font-size:11px; color:#6B7280;'>📂 ประวัติงานเดิม:</b>", unsafe_allow_html=True)
+                        for cj_item in matched_hist[:3]:
+                            cj_id = cj_item.get("booking_id", "")
+                            cj_car = cj_item.get("car_id", "")
+                            if st.button(f"📁 {cj_id} ({cj_car})", key=f"sb_nav_cj_{cj_id}", use_container_width=True):
+                                st.session_state.selected_module = "Back Office"
+                                st.session_state.global_search_kw = cj_id
+                                st.session_state.sb_search_input_box = cj_id
                                 st.rerun()
 
                                 
@@ -2053,97 +2265,163 @@ else:
         # --- TAB 1: BOOKING DASHBOARD (แสดงเฉพาะงานที่ยังไม่ได้ลงใบงาน) ---
         if current_tab == "1. แผงควบคุมการจอง":
             with st.container(border=True):
-                st.markdown("<h3 style='font-size:16px; font-weight:700;'>📋 แผงควบคุมคิวการจอง — รายการรอลงใบงาน (Booking Queue)</h3>", unsafe_allow_html=True)
+                # รวบรวมงานจองทั้งหมดที่ยังไม่เสร็จสิ้น/ยกเลิก
+                all_active_bks = [b for b in st.session_state.bookings_db if b.get('status') not in ["เสร็จสิ้น", "ยกเลิก"]]
+                all_active_bks.sort(key=lambda x: str(x.get("booking_id", "")), reverse=True)
                 
-                # กรองเฉพาะงานที่ "ยังไม่ได้ลงใบงาน"
+                # กรองเฉพาะงานที่ "รอชำระมัดจำ หรือ ยังไม่ได้มอบหมายคนขับ"
                 unassigned_jobs = []
-                for b in st.session_state.bookings_db:
-                    if b.get('status') in ["เสร็จสิ้น", "ยกเลิก"]: 
-                        continue
-                    # ถ้ารถคันนี้ลงใบงานมอบหมายคนขับแล้ว (มี worker_delivery) จะไม่แสดงในหน้านี้ (ย้ายไป Back Office)
+                for b in all_active_bks:
                     w_d = b.get("worker_delivery")
                     has_delivery_job = bool(w_d and str(w_d).strip() and str(w_d).strip() != "Wait")
-                    if has_delivery_job:
-                        continue
-                    unassigned_jobs.append(b)
+                    is_pending_dep = (not b.get("deposit_paid")) or (b.get("status") == "รอชำระมัดจำ")
+                    if is_pending_dep or not has_delivery_job:
+                        unassigned_jobs.append(b)
+                
+                c_q_head, c_q_filter = st.columns([1.4, 1.6])
+                with c_q_head:
+                    st.markdown("<h3 style='font-size:16px; font-weight:700;'>📋 แผงควบคุมคิวการจอง (Booking Operations)</h3>", unsafe_allow_html=True)
+                with c_q_filter:
+                    q_view_mode = st.radio(
+                        "ตัวกรองคิว:",
+                        [f"📌 คิวรอลงใบงาน / รอมัดจำ ({len(unassigned_jobs)})", f"📋 งานจองทั้งหมด ({len(all_active_bks)})"],
+                        horizontal=True,
+                        label_visibility="collapsed",
+                        key="rad_q_filter_mode"
+                    )
+
+                display_jobs = unassigned_jobs if "คิวรอลงใบงาน" in q_view_mode else all_active_bks
                 
                 # กรองตามคำค้นหาจากไซด์บาร์ถ้ามี
                 sb_kw = st.session_state.get("global_search_kw", "").strip().lower()
                 if sb_kw:
-                    unassigned_jobs = [
-                        b for b in unassigned_jobs
-                        if sb_kw in f"{b['booking_id']} {b['customer']} {b['car_id']}".lower()
+                    sb_kw_clean = sb_kw.replace("-", "").replace(" ", "")
+                    display_jobs = [
+                        b for b in display_jobs
+                        if sb_kw in f"{b.get('booking_id','')} {b.get('customer','')} {b.get('car_id','')}".lower()
+                        or sb_kw_clean in str(b.get('booking_id','')).lower().replace("-", "").replace(" ", "")
+                        or sb_kw_clean in str(b.get('car_id','')).lower().replace("-", "").replace(" ", "")
                     ]
                     st.caption(f"🔎 กรองผลลัพธ์ตามคำค้นหาจากไซด์บาร์: **{sb_kw}**")
                 
-                if not unassigned_jobs:
-                    st.info("✅ **ไม่มีงานค้างที่ยังไม่ลงใบงาน** (งานที่บันทึกลงใบงานแล้วทั้งหมดจะย้ายไปแสดงและจัดการในหน้า 'Back Office (ตารางใบงาน)')")
-                    if st.button("📋 ไปที่ Back Office (ตารางใบงาน)", type="secondary"):
-                        st.session_state.selected_module = "Back Office"
-                        st.rerun()
+                if not display_jobs:
+                    if sb_kw:
+                        sb_kw_clean = sb_kw.replace("-", "").replace(" ", "")
+                        matched_in_all = [
+                            b for b in st.session_state.bookings_db 
+                            if sb_kw in f"{b.get('booking_id','')} {b.get('customer','')} {b.get('car_id','')}".lower()
+                            or sb_kw_clean in str(b.get('booking_id','')).lower().replace("-", "").replace(" ", "")
+                            or sb_kw_clean in str(b.get('car_id','')).lower().replace("-", "").replace(" ", "")
+                        ]
+                        if matched_in_all:
+                            target_matched = matched_in_all[0]
+                            st.info(f"📌 พบรหัสการจอง **{target_matched['booking_id']}** (รถ {target_matched['car_id']}) — สามารถดูรายละเอียดได้ที่ Back Office")
+                            if st.button(f"📋 ไปที่ Back Office เพื่อดูใบงาน {target_matched['booking_id']}", type="primary"):
+                                st.session_state.selected_module = "Back Office"
+                                st.rerun()
+                        else:
+                            st.info(f"🔍 ไม่พบรายการจองตามคำค้นหา '{sb_kw}'")
+                    else:
+                        if "คิวรอลงใบงาน" in q_view_mode and all_active_bks:
+                            st.success(f"✅ **ไม่มีงานค้างในคิวรอลงใบงาน** (มีงานจองที่ลงใบงานแล้ว {len(all_active_bks)} รายการ แสดงอยู่ใน 'Back Office (ตารางใบงาน)' หรือสลับดูที่แท็บ 'งานจองทั้งหมด' ด้านบน)")
+                            c_no_j1, c_no_j2 = st.columns([1.5, 1.5])
+                            with c_no_j1:
+                                if st.button("➕ สร้างรายการจองใหม่ (ไปที่หน้าเลือกรถ)", type="primary", use_container_width=True):
+                                    st.session_state.workflow_tab = "2. เลือกรถยนต์"
+                                    st.rerun()
+                            with c_no_j2:
+                                if st.button("📋 ไปที่ Back Office (ตารางใบงาน)", type="secondary", use_container_width=True):
+                                    st.session_state.selected_module = "Back Office"
+                                    st.rerun()
+                        else:
+                            st.info("📋 **ยังไม่มีรายการจองในระบบ** กดปุ่มด้านล่างเพื่อเริ่มเลือกรถและจัดทำสัญญาได้ทันที")
+                            c_no_j1, c_no_j2 = st.columns([1.5, 1.5])
+                            with c_no_j1:
+                                if st.button("➕ สร้างรายการจองใหม่ (ไปที่หน้าเลือกรถ)", type="primary", use_container_width=True):
+                                    st.session_state.workflow_tab = "2. เลือกรถยนต์"
+                                    st.rerun()
+                            with c_no_j2:
+                                if st.button("📋 ไปที่ Back Office (ตารางใบงาน)", type="secondary", use_container_width=True):
+                                    st.session_state.selected_module = "Back Office"
+                                    st.rerun()
                 else:
-                    st.caption("📌 แสดงเฉพาะคิวการจองที่ **ยังไม่ได้ลงใบงาน** (เมื่อบันทึกใบงานในขั้นตอนที่ 5 แล้ว รายการจะย้ายไปที่ Back Office)")
-                    for b in unassigned_jobs:
+                    st.caption("📌 แสดงรายการจอง (สามารถกดรับมัดจำเพื่อออกสัญญา หรือกดออกใบงานเพื่อมอบหมายคนขับได้ทันที)")
+                    for b in display_jobs:
+                        b_id = b['booking_id']
                         c_info = cars_db.get(b['car_id'], {})
                         is_dep_paid = b.get('deposit_paid', False)
                         is_rent_paid = b.get('rental_paid', False)
+                        w_d_val = b.get("worker_delivery")
+                        has_worker = bool(w_d_val and str(w_d_val).strip() not in ["Wait", "-", ""])
                         
-                        # 1. สถานะมัดจำ / ปุ่มรับมัดจำ
-                        if not is_dep_paid or b.get('status') == "รอชำระมัดจำ":
-                            status_dep_ui = (
-                                f"<a href='?deposit_job={b['booking_id']}&module=Front+Office' target='_self' "
-                                f"class='status-pill status-maintenance status-pill-clickable' title='💳 คลิกเพื่อรับชำระมัดจำ ฿5,000 (ล็อกคิว/ออกสัญญา)'>"
-                                f"● รอชำระมัดจำ<br/>(฿5,000)"
-                                f"</a>"
-                            )
-                        else:
-                            status_dep_ui = (
-                                f"<span class='status-pill status-completed' style='line-height:1.35; padding:6px 12px; text-align:center;' title='🟢 ได้รับเงินมัดจำประกันสัญญา ฿5,000 เรียบร้อยแล้ว'>"
-                                f"🟢 มัดจำแล้ว<br/>(฿5,000)"
-                                f"</span>"
-                            )
+                        # สร้างลิงก์ดาวน์โหลดสัญญาเช่าล่วงหน้าถ้ามัดจำแล้ว
+                        contract_link_html = ""
+                        if is_dep_paid:
+                            try:
+                                pdf_c_t1 = generate_filled_pdf("rental_template_blank_v2.pdf", b, st.session_state.customers_db.get(b['customer']), c_info)
+                                b64_c_t1 = base64.b64encode(pdf_c_t1).decode()
+                                contract_link_html = f'<br/><a href="data:application/pdf;base64,{b64_c_t1}" download="Agreement_{b_id}.pdf" style="font-size:11px; font-weight:700; color:#2563EB; text-decoration:none;" title="ดาวน์โหลดสัญญาเช่า (มัดจำแล้ว)">📝 สัญญาเช่า (PDF)</a>'
+                            except Exception:
+                                pass
                         
-                        # 2. ปุ่มออกใบงาน (อยู่ข้างๆ ตามคำขอ: ให้มีปุ่มกดออกใบงานข้างๆ)
-                        btn_assign_ui = (
-                            f"<a href='?assign_job={b['booking_id']}&module=Front+Office' target='_self' "
-                            f"class='status-pill status-dispatch-btn status-pill-clickable' title='🚚 คลิกเพื่อออกใบงานจัดส่ง & มอบหมายคนขับ'>"
-                            f"🚚 ออกใบงาน"
-                            f"</a>"
-                        )
+                        # ดึงข้อมูลเบอร์โทรลูกค้า
+                        c_cust_obj = st.session_state.customers_db.get(b['customer'], {})
+                        c_phone_no = c_cust_obj.get("contact_no", "")
+                        c_phone_tag = f"<br/><span style='font-size:11px; color:#6B7280;'>📞 {c_phone_no}</span>" if c_phone_no and c_phone_no != "-" else ""
                         
-                        # 3. ปุ่มลบการจอง (ขึ้นมาอยู่ข้างๆ ในแถวเดียวกัน ตามคำขอ: เอาปุ่มลบขึ้นไปด้วยเวลาดูจะได้ง่าย)
-                        btn_del_ui = (
-                            f"<a href='?del_booking={b['booking_id']}&module=Front+Office' target='_self' "
-                            f"class='status-pill status-delete-pill status-pill-clickable' title='🗑️ คลิกเพื่อลบรายการจองนี้ออกจากระบบ' "
-                            f"onclick=\"return confirm('⚠️ ยืนยันลบรายการจอง {b['booking_id']} ({b['car_id']}) ออกจากระบบ?');\">"
-                            f"🗑️ ลบ"
-                            f"</a>"
-                        )
-                        
-                        st.markdown(f"""
-                        <div class="custom-row" style="align-items: center; justify-content: space-between;">
-                            <div style="flex: 1.3; min-width: 130px;">
-                                <b style="color: #E85826; font-size: 14px;">{b['booking_id']}</b><br/>
-                                <span style="font-size: 12px; color: #666;">👤 {b['customer']}</span>
-                            </div>
-                            <div style="flex: 1.8; min-width: 150px;">
-                                <b style="font-size: 14px;">🚘 {b['car_id']}</b><br/>
-                                <span style="font-size: 12px; color: #666;">{c_info.get('brand')} {c_info.get('model')}</span>
-                            </div>
-                            <div style="flex: 1.5; min-width: 140px; font-size: 12px; line-height: 1.45;">
-                                📅 {format_date_dmy(b['start_date'])} ({b.get('start_time', '10:00')})<br/>ถึง {format_date_dmy(b['end_date'])} ({b.get('end_time', '10:00')})
-                            </div>
-                            <div style="flex: 1.6; min-width: 140px; font-size: 12.5px;">
-                                <span style="color:#6B7280;">ค่าเช่า:</span> <b>฿{float(b.get('net_price', 0)):,.2f}</b><br/>
-                                {'<span style="color:#EA580C; font-size:11.5px; font-weight:700;">🟡 รอชำระมัดจำ ฿5,000</span>' if not is_dep_paid else ('<span style="color:#10B981; font-size:11.5px; font-weight:700;">🟢 มัดจำแล้ว</span>' + (' | <span style="color:#C2410C; font-size:11.5px;">รอจ่ายค่าเช่า</span>' if not is_rent_paid else ' | <span style="color:#10B981; font-size:11.5px;">ครบแล้ว</span>'))}
-                            </div>
-                            <div style="flex: 2.2; min-width: 250px; display: flex; align-items: center; justify-content: flex-end; gap: 8px;">
-                                {status_dep_ui}
-                                {btn_assign_ui}
-                                {btn_del_ui}
-                            </div>
-                        </div>
-                        """, unsafe_allow_html=True)
+                        with st.container(border=True):
+                            c_id, c_car, c_date, c_price, c_act1, c_act2, c_act3 = st.columns([1.5, 1.8, 1.8, 1.5, 1.4, 1.3, 0.7])
+                            with c_id:
+                                st.markdown(f"<div style='line-height:1.35;'><b style='color: #E85826; font-size: 14px;'>{b['booking_id']}</b><br/><b style='font-size: 12.5px; color: #1F2937;'>👤 {b['customer']}</b>{c_phone_tag}</div>", unsafe_allow_html=True)
+                            with c_car:
+                                st.markdown(f"<div style='line-height:1.35;'><b style='font-size: 14px;'>🚘 {b['car_id']}</b><br/><span style='font-size: 12px; color: #666;'>{c_info.get('brand','')} {c_info.get('model','')}</span></div>", unsafe_allow_html=True)
+                            with c_date:
+                                st.markdown(f"<div style='font-size: 12px; line-height: 1.45;'>📅 {format_date_dmy(b['start_date'])} ({b.get('start_time', '10:00')})<br/>ถึง {format_date_dmy(b['end_date'])} ({b.get('end_time', '10:00')})</div>", unsafe_allow_html=True)
+                            with c_price:
+                                dep_txt = '<span style="color:#EA580C; font-size:11.5px; font-weight:700;">🟡 รอชำระมัดจำ ฿5,000</span>' if not is_dep_paid else ('<span style="color:#10B981; font-size:11.5px; font-weight:700;">🟢 มัดจำแล้ว</span>' + (' | <span style="color:#C2410C; font-size:11.5px;">รอจ่ายค่าเช่า</span>' if not is_rent_paid else ' | <span style="color:#10B981; font-size:11.5px;">ครบแล้ว</span>'))
+                                st.markdown(f"<div style='font-size: 12.5px; line-height:1.35;'><span style='color:#6B7280;'>ค่าเช่า:</span> <b>฿{float(b.get('net_price', 0)):,.2f}</b><br/>{dep_txt}{contract_link_html}</div>", unsafe_allow_html=True)
+                            with c_act1:
+                                if not is_dep_paid or b.get('status') == "รอชำระมัดจำ":
+                                    if st.button("● รอมัดจำ\n฿5,000", key=f"btn_q_dep_{b_id}", use_container_width=True, help="💳 คลิกเพื่อรับชำระมัดจำ ฿5,000 (ล็อกคิว/ออกสัญญา)"):
+                                        st.session_state.active_deposit_bk_id = b_id
+                                        st.session_state.workflow_tab = "4. รับมัดจำ (ล็อกคิว/ใบเสร็จ)"
+                                        st.rerun()
+                                else:
+                                    st.button("🟢 มัดจำแล้ว", key=f"btn_q_depdone_{b_id}", disabled=True, use_container_width=True)
+                            with c_act2:
+                                if has_worker:
+                                    if st.button(f"📋 ดูใน Back Office\n({w_d_val})", key=f"btn_q_bo_{b_id}", type="secondary", use_container_width=True, help=f"มอบหมาย {w_d_val} แล้ว — คลิกเพื่อจัดการใน Back Office"):
+                                        st.session_state.selected_module = "Back Office"
+                                        st.rerun()
+                                else:
+                                    if st.button("🚚 ออกใบงาน", key=f"btn_q_assign_{b_id}", type="primary", use_container_width=True, help="🚚 คลิกเพื่อออกใบงานจัดส่ง & มอบหมายคนขับ"):
+                                        st.session_state.active_assign_bk_id = b_id
+                                        st.session_state.workflow_tab = "5. ใบงานส่ง/รับรถ"
+                                        st.rerun()
+                            with c_act3:
+                                del_key = f"del_confirm_{b_id}"
+                                if not st.session_state.get(del_key, False):
+                                    if st.button("🗑️", key=f"btn_q_del_{b_id}", use_container_width=True, help="ลบรายการจองนี้ออกจากระบบ"):
+                                        st.session_state[del_key] = True
+                                        st.rerun()
+                                else:
+                                    cd_y, cd_n = st.columns(2)
+                                    with cd_y:
+                                        if st.button("ลบ", key=f"btn_del_y_{b_id}", type="primary", use_container_width=True):
+                                            st.session_state.bookings_db = [x for x in st.session_state.bookings_db if x.get("booking_id") != b_id]
+                                            _GLOBAL_STORE["bookings_db"] = st.session_state.bookings_db
+                                            sb_delete_booking(b_id)
+                                            if b.get('car_id') in cars_db:
+                                                cars_db[b['car_id']]['status'] = "ว่างพร้อมใช้งาน"
+                                                sb_sync_car(b['car_id'], cars_db[b['car_id']])
+                                            st.session_state.pop(del_key, None)
+                                            st.success(f"ลบรายการจอง {b_id} เรียบร้อย")
+                                            time.sleep(0.5)
+                                            st.rerun()
+                                    with cd_n:
+                                        if st.button("ไม่", key=f"btn_del_n_{b_id}", use_container_width=True):
+                                            st.session_state.pop(del_key, None)
+                                            st.rerun()
 
                 st.markdown("---")
                 if st.button("➕ สร้างรายการจองใหม่ (ไปยังหน้าเลือกรถ)", type="primary"):
@@ -2645,13 +2923,15 @@ else:
                 
                 cust_list = list(st.session_state.customers_db.keys())
                 if not cust_list:
-                    st.session_state.customers_db["ลูกค้าทั่วไป (Walk-in)"] = {
+                    def_cust = {
                         "full_name": "ลูกค้าทั่วไป (Walk-in)", "nationality": "THAI",
                         "dob": "01/01/1990", "passport_id": "-", "licence_no": "-", "issue_place": "-",
                         "licence_expiry": "01/01/2030", "home_address": "-", "thai_address": "-",
                         "contact_no": "-", "whatsapp": "-", "email": "-"
                     }
+                    st.session_state.customers_db["ลูกค้าทั่วไป (Walk-in)"] = def_cust
                     _GLOBAL_STORE["customers_db"] = st.session_state.customers_db
+                    sb_sync_customer("ลูกค้าทั่วไป (Walk-in)", def_cust)
                     cust_list = list(st.session_state.customers_db.keys())
 
                 curr_chosen_cust = st.session_state.get("selected_customer_name")
@@ -2995,16 +3275,26 @@ else:
                             "rental_paid": False, "remaining_rental": float(net_price),
                             "remaining_amount": float(net_price), "is_fully_paid": False,
                             "extension_history": [],
-                            "created_by": curr_uname_cr, "status": "รอชำระมัดจำ"
+                            "created_by": curr_uname_cr, "status": "รอชำระมัดจำ",
+                            "worker_delivery": "Wait", "worker_return": "Wait",
+                            "loc_delivery": "-", "loc_return": "-",
+                            "dispatch_closed": False, "return_closed": False
                         }
                         st.session_state.bookings_db.append(new_bk_obj)
                         _GLOBAL_STORE["bookings_db"] = st.session_state.bookings_db
+                        if sel_car['plate'] in cars_db:
+                            cars_db[sel_car['plate']]['status'] = "ติดจอง"
+                            _GLOBAL_STORE["cars_db"] = st.session_state.cars_db
+                            sb_sync_car(sel_car['plate'], cars_db[sel_car['plate']])
                         sb_sync_booking(new_bk_obj)
                         st.session_state.draft_car = None
                         st.session_state.active_deposit_bk_id = new_bk_id
-                        st.success("สร้างสัญญาและจองคิวสำเร็จ! (รายการถูกส่งไปรอชำระในตารางหน้าถัดไปแล้ว กรุณากดชำระเงินเพื่อออกสัญญาและใบเสร็จ)")
-                        time.sleep(1)
-                        st.session_state.workflow_tab = "4. รับมัดจำ (ล็อกคิว/ใบเสร็จ)"
+                        st.session_state.global_search_kw = ""
+                        st.session_state.sb_search_input_box = ""
+                        st.session_state.search_plate_filter = ""
+                        st.success(f"🎉 สร้างสัญญาและบันทึกคิวจองสำเร็จ! (รหัสการจอง: {new_bk_id}) รายการจะปรากฏในแผงควบคุมคิวการจอง, แท็บรับมัดจำ, และตารางงาน Back Office ทันที")
+                        time.sleep(0.8)
+                        st.session_state.workflow_tab = "1. แผงควบคุมการจอง"
                         st.rerun()
 
         # --- TAB 4: DEPOSIT ---
@@ -3273,7 +3563,17 @@ else:
                     if b.get('status') not in ["ยกเลิก", "เสร็จสิ้น"] 
                     and not bool(b.get("rental_paid", b.get("is_fully_paid", False)))
                 ]
-                deposit_bks.sort(key=lambda x: x["booking_id"], reverse=True)
+                deposit_bks.sort(key=lambda x: str(x.get("booking_id", "")), reverse=True)
+
+                sb_kw_dep = st.session_state.get("global_search_kw", "").strip().lower()
+                if sb_kw_dep:
+                    sb_kw_dep_clean = sb_kw_dep.replace("-", "").replace(" ", "")
+                    deposit_bks = [
+                        b for b in deposit_bks
+                        if sb_kw_dep in f"{b.get('booking_id','')} {b.get('customer','')} {b.get('car_id','')}".lower()
+                        or sb_kw_dep_clean in str(b.get('booking_id','')).lower().replace("-", "").replace(" ", "")
+                        or sb_kw_dep_clean in str(b.get('car_id','')).lower().replace("-", "").replace(" ", "")
+                    ]
 
                 st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
                 with st.expander(f"📋 2. ตารางรายการรอชำระเงิน (มัดจำประกัน / ค่าเช่าวันรับรถ) — {len(deposit_bks)} รายการ", expanded=True):
@@ -3373,11 +3673,16 @@ else:
                             
                             bk_id_str = b["booking_id"]
                             btn_del_t4 = f'<a href="?del_booking={bk_id_str}&module=Front+Office" target="_self" class="icon-link" title="🗑️ ลบ/ยกเลิกรายการจองนี้" onclick="return confirm(\'⚠️ ยืนยันลบรายการจอง {bk_id_str} ออกจากระบบ?\');">🗑️</a>' if can_manage else ''
+                            b_cust_name = b.get('customer', '-')
+                            b_c_phone = b_cust.get("contact_no") or ""
+                            b_c_phone_txt = f"<br/><span style='font-size:11px; color:#6B7280;'>📞 {b_c_phone}</span>" if b_c_phone and b_c_phone != "-" else ""
+                            b_cust_html = f"<div style='min-width:130px;'><b style='color:#1F2937;'>👤 {b_cust_name}</b>{b_c_phone_txt}</div>"
+                            
                             row_html = (
                                 f"<tr>"
                                 f"<td style='color:#6B7280; font-size:12px; font-weight:700;'>{b['booking_id']}</td>"
                                 f"<td><b style='color:#1F2937;'>{b['car_id']}</b><br/><span style='font-size:11px; color:#6B7280;'>{b_car.get('brand','')} {b_car.get('model','')}</span></td>"
-                                f"<td>{b['customer']}</td>"
+                                f"<td>{b_cust_html}</td>"
                                 f"<td style='color:#4B5563; font-size:12px; white-space:nowrap;'>📅 {format_date_dmy(b['start_date'])} ถึง {format_date_dmy(b['end_date'])}{ext_badge_info}</td>"
                                 f"<td>{dep_col_html}</td>"
                                 f"<td style='font-weight:600;'>฿{net_amt:,.2f}</td>"
@@ -3552,12 +3857,16 @@ else:
                 with st.container(border=True):
                     st.markdown("<h3 style='font-size:15px; font-weight:700;'>🚚 ออกใบงานจัดส่งรถ (Dispatch)</h3>", unsafe_allow_html=True)
                     
-                    all_dispatch_opts = [b for b in st.session_state.bookings_db if b['status'] in ["รอส่งมอบ", "เตรียมส่งมอบ"]]
+                    all_dispatch_opts = [b for b in st.session_state.bookings_db if b['status'] in ["รอส่งมอบ", "เตรียมส่งมอบ", "รอชำระมัดจำ"]]
                     
                     if not all_dispatch_opts:
                         st.info("ไม่มีรายการรอจัดส่งรถ")
                     else:
-                        d_opts = {f"รหัส: {b['booking_id']} - รถ: {b['car_id']} (ลูกค้า: {b['customer']})": b for b in all_dispatch_opts}
+                        d_opts = {}
+                        for b in all_dispatch_opts:
+                            dep_prefix = "🟡 [รอชำระมัดจำ] " if (not b.get("deposit_paid") or b.get("status") == "รอชำระมัดจำ") else ""
+                            d_opts[f"{dep_prefix}รหัส: {b['booking_id']} - รถ: {b['car_id']} (ลูกค้า: {b['customer']})"] = b
+                            
                         target_assign_id = st.session_state.get("active_assign_bk_id") or st.query_params.get("assign_job")
                         def_disp_idx = 0
                         if target_assign_id:
@@ -3574,8 +3883,28 @@ else:
                         with col_d2:
                             st.date_input("📅 กำหนดคืนรถ", value=target_bk_d['end_date'], disabled=True, key=f"d_end_{target_bk_d['booking_id']}")
                         
+                        is_d_dep_paid = bool(target_bk_d.get('deposit_paid', False))
+                        d_dep_amt = float(target_bk_d.get('deposit_amount', 5000.0))
                         is_d_rent_paid = bool(target_bk_d.get('rental_paid', target_bk_d.get('is_fully_paid', False)))
                         d_net_price = float(target_bk_d.get('net_price', 0))
+                        
+                        if not is_d_dep_paid or target_bk_d.get('status') == 'รอชำระมัดจำ':
+                            st.markdown(f"""
+                                <div style='background:#FFF7ED; border:1.5px solid #FDBA74; border-radius:8px; padding:10px 14px; margin-bottom:12px;'>
+                                    <div style='display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;'>
+                                        <div>
+                                            <b style='color:#C2410C; font-size:13px;'>🟡 สถานะการจอง: รอชำระเงินมัดจำ (฿{d_dep_amt:,.2f})</b>
+                                            <div style='color:#9A3412; font-size:12px; margin-top:2px;'>สามารถมอบหมายคนขับ/สถานที่ส่งล่วงหน้าได้ หรือชำระมัดจำเพื่อล็อกคิวรถและออกสัญญา</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            """, unsafe_allow_html=True)
+                            c_dep_go1, c_dep_go2 = st.columns([1.5, 1.5])
+                            with c_dep_go2:
+                                if st.button(f"💳 ไปรับมัดจำ ฿{d_dep_amt:,.2f} (แท็บ 4)", key=f"btn_tab5_go_dep_{target_bk_d['booking_id']}", type="secondary", use_container_width=True):
+                                    st.session_state.active_deposit_bk_id = target_bk_d['booking_id']
+                                    st.session_state.workflow_tab = "4. รับมัดจำ (ล็อกคิว/ใบเสร็จ)"
+                                    st.rerun()
                         
                         col_pay_info, col_pay_btn = st.columns([2.3, 1.7])
                         with col_pay_info:
@@ -3593,8 +3922,9 @@ else:
                                 st.button("🧾 ใบเสร็จพร้อมแล้ว", disabled=True, use_container_width=True, key=f"btn_rec_done_{target_bk_d['booking_id']}")
                         
                         edit_key_d = f"edit_d_{target_bk_d['booking_id']}"
+                        is_d_worker_assigned = bool(target_bk_d.get("worker_delivery") and str(target_bk_d.get("worker_delivery")).strip() not in ["Wait", "-", ""])
                         
-                        if target_bk_d.get("worker_delivery") and not st.session_state.get(edit_key_d, False):
+                        if is_d_worker_assigned and not st.session_state.get(edit_key_d, False):
                             st.success(f"✅ มอบหมายพนักงานจัดส่งแล้ว: **{target_bk_d['worker_delivery']}**")
                             if target_bk_d.get("loc_delivery"):
                                 st.markdown(f"📍 **สถานที่ส่งมอบ:** {target_bk_d['loc_delivery']}")
@@ -3613,28 +3943,36 @@ else:
                                 else:
                                     st.button("✅ ค่าเช่าชำระแล้ว", disabled=True, use_container_width=True, key=f"btn_paid_done_{target_bk_d['booking_id']}")
                             with c_fin:
-                                if st.button("✅ จัดส่งรถเสร็จสิ้น (เริ่มเช่า)", key=f"btn_fin_d_{target_bk_d['booking_id']}", type="primary", use_container_width=True):
-                                    for b in st.session_state.bookings_db:
-                                        if b['booking_id'] == target_bk_d['booking_id']:
-                                            b['status'] = "กำลังเช่า"
-                                            b['dispatch_closed'] = True
-                                            cars_db[b['car_id']]['status'] = "กำลังเช่า"
-                                            break
-                                    st.success("อัปเดตสถานะเป็น 'กำลังเช่า' เรียบร้อย รถพร้อมเข้าสู่กระบวนการรับคืน")
-                                    time.sleep(1)
-                                    st.rerun()
+                                if not is_d_dep_paid:
+                                    st.button("🔒 รอมัดจำก่อนเริ่มเช่า", disabled=True, use_container_width=True, key=f"btn_fin_d_dis_{target_bk_d['booking_id']}", help="ต้องบันทึกรับเงินมัดจำในแท็บ 4 ก่อนส่งมอบรถให้ลูกค้า")
+                                else:
+                                    if st.button("✅ จัดส่งรถเสร็จสิ้น (เริ่มเช่า)", key=f"btn_fin_d_{target_bk_d['booking_id']}", type="primary", use_container_width=True):
+                                        for b in st.session_state.bookings_db:
+                                            if b['booking_id'] == target_bk_d['booking_id']:
+                                                b['status'] = "กำลังเช่า"
+                                                b['dispatch_closed'] = True
+                                                cars_db[b['car_id']]['status'] = "กำลังเช่า"
+                                                break
+                                        _GLOBAL_STORE["bookings_db"] = st.session_state.bookings_db
+                                        sb_sync_booking(target_bk_d)
+                                        sb_sync_car(target_bk_d['car_id'], cars_db[target_bk_d['car_id']])
+                                        st.success("อัปเดตสถานะเป็น 'กำลังเช่า' เรียบร้อย รถพร้อมเข้าสู่กระบวนการรับคืน")
+                                        time.sleep(1)
+                                        st.rerun()
                         else:
                             with st.form(f"dispatch_form_{target_bk_d['booking_id']}"):
                                 st.markdown("<span style='font-size:13px; font-weight:600;'>ข้อมูลพนักงานที่จะไปส่งรถ</span>", unsafe_allow_html=True)
                                 approved_staff_disp = get_approved_staff_list()
                                 curr_disp_w = target_bk_d.get("worker_delivery", "")
+                                if curr_disp_w in ["Wait", "-", ""]:
+                                    curr_disp_w = ""
                                 disp_w_idx = approved_staff_disp.index(curr_disp_w) if curr_disp_w in approved_staff_disp else 0
                                 worker = st.selectbox("เลือกพนักงานจัดส่ง / คนขับรถ (ผู้ใช้งานที่แอดมินอนุมัติ):", approved_staff_disp, index=disp_w_idx, key=f"disp_w_{target_bk_d['booking_id']}")
                                 loc = st.text_area("สถานที่นัดหมายส่งมอบรถ", value=target_bk_d.get("loc_delivery", ""), key=f"disp_l_{target_bk_d['booking_id']}")
                                 init_d_time = parse_time_val(target_bk_d.get("start_time"), d_time(10, 0))
                                 time_d = st.time_input("เวลาส่งมอบตามนัด", init_d_time, key=f"disp_t_{target_bk_d['booking_id']}")
                                 
-                                if target_bk_d.get("worker_delivery"):
+                                if is_d_worker_assigned:
                                     c_b1, c_b2 = st.columns(2)
                                     with c_b1:
                                         btn_submit = st.form_submit_button("📌 ยืนยันบันทึกข้อมูลจัดส่ง", type="primary", use_container_width=True)
@@ -3651,7 +3989,9 @@ else:
                                             b['loc_delivery'] = loc
                                             b['start_time'] = time_d.strftime("%H:%M")
                                             if b['status'] == "รอส่งมอบ":
-                                                b['status'] = "เตรียมส่งมอบ" 
+                                                b['status'] = "เตรียมส่งมอบ"
+                                            elif b['status'] == "รอชำระมัดจำ" and b.get("deposit_paid"):
+                                                b['status'] = "เตรียมส่งมอบ"
                                     _GLOBAL_STORE["bookings_db"] = st.session_state.bookings_db
                                     sb_sync_booking(target_bk_d)
                                     st.session_state[edit_key_d] = False
@@ -3682,8 +4022,9 @@ else:
                             st.date_input("📅 กำหนดคืนรถ", value=target_r_bk['end_date'], disabled=True, key=f"r_end_{target_r_bk['booking_id']}")
                             
                         edit_key_r = f"edit_r_{target_r_bk['booking_id']}"
+                        is_r_worker_assigned = bool(target_r_bk.get("worker_return") and str(target_r_bk.get("worker_return")).strip() not in ["Wait", "-", ""])
                         
-                        if target_r_bk.get("worker_return") and not st.session_state.get(edit_key_r, False):
+                        if is_r_worker_assigned and not st.session_state.get(edit_key_r, False):
                             st.success(f"✅ มอบหมายพนักงานรับรถแล้ว: **{target_r_bk['worker_return']}**")
                             loc_r_str = target_r_bk.get("loc_return") or "-"
                             time_r_str = target_r_bk.get("end_time", "10:00")
@@ -3718,13 +4059,15 @@ else:
                                 st.markdown("<span style='font-size:13px; font-weight:600;'>ข้อมูลพนักงานที่จะไปรับรถ</span>", unsafe_allow_html=True)
                                 approved_staff_ret = get_approved_staff_list()
                                 curr_ret_w = target_r_bk.get("worker_return", "")
+                                if curr_ret_w in ["Wait", "-", ""]:
+                                    curr_ret_w = ""
                                 ret_w_idx = approved_staff_ret.index(curr_ret_w) if curr_ret_w in approved_staff_ret else 0
                                 worker_r = st.selectbox("เลือกพนักงานรับรถ / คนขับรถ (ผู้ใช้งานที่แอดมินอนุมัติ):", approved_staff_ret, index=ret_w_idx, key=f"ret_w_{target_r_bk['booking_id']}")
                                 loc_r = st.text_area("สถานที่นัดหมายรับรถคืน", value=target_r_bk.get("loc_return", ""), key=f"ret_l_{target_r_bk['booking_id']}")
                                 init_r_time = parse_time_val(target_r_bk.get("end_time"), d_time(10, 0))
                                 time_r = st.time_input("เวลารับรถตามนัด", init_r_time, key=f"ret_t_{target_r_bk['booking_id']}")
                                 
-                                if target_r_bk.get("worker_return"):
+                                if is_r_worker_assigned:
                                     c_rb1, c_rb2 = st.columns(2)
                                     with c_rb1:
                                         btn_ret_sub = st.form_submit_button("📌 ยืนยันบันทึกข้อมูลรับรถ", type="primary", use_container_width=True)
@@ -3732,6 +4075,7 @@ else:
                                         btn_ret_can = st.form_submit_button("ยกเลิก", use_container_width=True)
                                 else:
                                     btn_ret_sub = st.form_submit_button("📌 ยืนยันเตรียมรับรถคืน (มอบหมายงาน)", type="primary", use_container_width=True)
+                                    btn_ret_can = False
                                     btn_ret_can = False
                                 
                                 if btn_ret_sub:
@@ -3835,9 +4179,12 @@ else:
             
             bo_kw = st.session_state.get("global_search_kw", "").strip().lower()
             if bo_kw:
+                bo_kw_clean = bo_kw.replace("-", "").replace(" ", "")
                 jobs_list = [
                     j for j in jobs_list
                     if bo_kw in f"{j['รหัสการจอง']} {j['ทะเบียนรถ']} {j['ลูกค้า']} {j['พนักงานปฏิบัติงาน']} {j['สถานที่']} {j['กำหนดวัน']}".lower()
+                    or bo_kw_clean in str(j['รหัสการจอง']).lower().replace("-", "").replace(" ", "")
+                    or bo_kw_clean in str(j['ทะเบียนรถ']).lower().replace("-", "").replace(" ", "")
                 ]
                 st.caption(f"🔎 กรองตารางใบงานตามคำค้นหาจากไซด์บาร์: **{bo_kw}**")
             
@@ -4266,7 +4613,28 @@ else:
                         del st.query_params["close_type"]
 
             if not jobs_list:
-                st.info("ยังไม่มีรายการใบงานในระบบ (หรือไม่มีรายการที่ตรงกับคำค้นหา)")
+                if bo_kw:
+                    bo_kw_clean = bo_kw.replace("-", "").replace(" ", "")
+                    unassigned_match = [
+                        b for b in st.session_state.bookings_db
+                        if bo_kw in f"{b.get('booking_id','')} {b.get('customer','')} {b.get('car_id','')}".lower()
+                        or bo_kw_clean in str(b.get('booking_id','')).lower().replace("-", "").replace(" ", "")
+                    ]
+                    if unassigned_match:
+                        target_unassigned = unassigned_match[0]
+                        st.info(f"📌 พบรหัสการจอง **{target_unassigned['booking_id']}** (รถ {target_unassigned['car_id']}) อยู่ในคิวรอลงใบงาน (หน้า 'Front Office')")
+                        if st.button(f"🔄 ไปที่ Front Office เพื่อดูรายการจอง {target_unassigned['booking_id']}", type="primary"):
+                            st.session_state.selected_module = "Front Office"
+                            st.session_state.workflow_tab = "1. แผงควบคุมการจอง"
+                            st.rerun()
+                    else:
+                        st.info(f"🔍 ไม่พบรายการใบงานตามคำค้นหา '{bo_kw}'")
+                else:
+                    st.info("📋 ยังไม่มีรายการใบงานในระบบ (เมื่อจัดทำสัญญาหรือจองรถแล้ว รายการจะปรากฏบนตารางงานนี้ทันที)")
+                    if st.button("➕ ไปจัดทำสัญญา / จองรถใหม่ (Front Office)", type="primary"):
+                        st.session_state.selected_module = "Front Office"
+                        st.session_state.workflow_tab = "2. เลือกรถยนต์"
+                        st.rerun()
             else:
                 table_html = (
                     '<div style="overflow-x:auto; border-radius: 8px; border: 1px solid #EFEAE3;">'
@@ -4280,7 +4648,7 @@ else:
                     '<th>พนักงาน</th>'
                     '<th>สถานที่</th>'
                     '<th>สถานะ</th>'
-                    '<th style="text-align:center;">เอกสาร & จัดการส่งงาน<br/><span style="font-size:11px; font-weight:normal; color:#8C827A;">(📝 สัญญา | 🧾 ใบเสร็จ | 📤 ส่งงาน | 🗑️ ลบ)</span></th>'
+                    '<th style="text-align:center;">เอกสาร & จัดการส่งงาน<br/><span style="font-size:11px; font-weight:normal; color:#8C827A;">(📝 สัญญา | 🧾 ใบเสร็จ | 💳 มัดจำ | 🚚 ใบงาน | 📤 ตรวจรับส่ง | 🗑️ ลบ)</span></th>'
                     '</tr>'
                 )
                 
@@ -4294,7 +4662,7 @@ else:
                         b64_contract = base64.b64encode(pdf_contract).decode()
                         href_contract = f'<a href="data:application/pdf;base64,{b64_contract}" download="Agreement_{t_bk["booking_id"]}.pdf" class="icon-link" title="โหลดสัญญาเช่า (มัดจำแล้ว)">📝</a>'
                     else:
-                        href_contract = '<span style="color:#D1D5DB; font-size:18px; margin-right:8px; cursor:not-allowed;" title="📝 รอชำระเงินมัดจำ ฿5,000 ก่อนออกสัญญาเช่า (ชำระได้ที่ Front Office แท็บ 4. รับเงินมัดจำ)">📝</span>'
+                        href_contract = '<span style="color:#D1D5DB; font-size:18px; margin-right:6px; cursor:not-allowed;" title="📝 รอชำระเงินมัดจำ ฿5,000 ก่อนออกสัญญาเช่า (ชำระได้ที่ Front Office แท็บ 4. รับมัดจำ)">📝</span>'
                     
                     # ใบเสร็จรับเงิน (ออกได้เมื่อชำระค่าเช่ารถวันรับรถครบถ้วนแล้ว)
                     is_rental_paid = bool(t_bk.get("rental_paid", t_bk.get("is_fully_paid", False)))
@@ -4305,9 +4673,9 @@ else:
                         b64_receipt = base64.b64encode(pdf_receipt).decode()
                         href_receipt = f'<a href="data:application/pdf;base64,{b64_receipt}" download="Receipt_{t_bk["booking_id"]}.pdf" class="icon-link" title="โหลดใบเสร็จรับเงินค่าเช่ารถ (ชำระแล้ว)">🧾</a>'
                     elif t_bk.get("deposit_paid"):
-                        href_receipt = f'<span style="color:#D1D5DB; font-size:18px; margin-right:8px; cursor:not-allowed;" title="🧾 รอชำระค่าเช่ารถวันรับรถ ฿{net_b_amt:,.2f} จึงจะออกใบเสร็จ (ชำระได้ที่ Front Office แท็บ 4. รับมัดจำ)">🧾</span>'
+                        href_receipt = f'<span style="color:#D1D5DB; font-size:18px; margin-right:6px; cursor:not-allowed;" title="🧾 รอชำระค่าเช่ารถวันรับรถ ฿{net_b_amt:,.2f} จึงจะออกใบเสร็จ (ชำระได้ที่ Front Office แท็บ 4. รับมัดจำ)">🧾</span>'
                     else:
-                        href_receipt = '<span style="color:#D1D5DB; font-size:18px; margin-right:8px; cursor:not-allowed;" title="🧾 ยังไม่ชำระเงินมัดจำประกันสัญญา (รอชำระมัดจำ ฿5,000 เพื่อออกสัญญาเช่า)">🧾</span>'
+                        href_receipt = '<span style="color:#D1D5DB; font-size:18px; margin-right:6px; cursor:not-allowed;" title="🧾 ยังไม่ชำระเงินมัดจำประกันสัญญา (รอชำระมัดจำ ฿5,000 เพื่อออกสัญญาเช่า)">🧾</span>'
                     
                     # ใบเสร็จต่อสัญญาเช่า (ถ้ามี)
                     href_ext_receipts = ""
@@ -4316,14 +4684,25 @@ else:
                         b64_ext = base64.b64encode(pdf_ext).decode()
                         href_ext_receipts += f' <a href="data:application/pdf;base64,{b64_ext}" download="Receipt_EXT_{t_bk["booking_id"]}_{ext_item.get("ext_id", 1)}.pdf" class="icon-link" title="โหลดใบเสร็จต่อสัญญา #{ext_item.get("ext_id")} (+{ext_item.get("days_added", 1)} วัน, ฿{float(ext_item.get("amount", 0)):,.2f})">🧾+</a>'
                     
+                    # ปุ่มลัดรับมัดจำ (ถ้ายังไม่ได้มัดจำ ให้มีปุ่ม 💳 คลิกไปรับมัดจำได้ทันที)
+                    if not t_bk.get("deposit_paid"):
+                        href_dep_btn = f'<a href="?deposit_job={t_bk["booking_id"]}&module=Front+Office" class="icon-link" title="💳 ยังไม่มัดจำ: คลิกเพื่อไปหน้าชำระมัดจำ ฿5,000">💳</a>'
+                    else:
+                        href_dep_btn = ''
+                        
+                    # ปุ่มลัดออกใบงานจัดส่ง (ถ้ายังไม่ได้มอบหมายคนขับ ให้มีปุ่ม 🚚 ออกใบงาน)
+                    w_curr_disp = t_bk.get("worker_delivery")
+                    if (not w_curr_disp or str(w_curr_disp).strip() in ["Wait", ""]) and j_type == "Dispatch":
+                        href_assign_btn = f'<a href="?assign_job={t_bk["booking_id"]}&module=Front+Office" class="icon-link" title="🚚 คลิกเพื่อออกใบงาน & มอบหมายคนขับ">🚚</a>'
+                    else:
+                        href_assign_btn = ''
+                    
                     if j['พนักงานปฏิบัติงาน'] == "Wait":
                         worker_display = '<span style="background-color:#FEF3C7; color:#D97706; padding:3px 9px; border-radius:12px; font-size:11px; font-weight:700;">Wait</span>'
                     else:
                         worker_display = f"<b style='color:#1F2937;'>{j['พนักงานปฏิบัติงาน']}</b>"
                     
                     # ปุ่มจัดการส่งมอบ / รับคืน
-                    w_row = j['พนักงานปฏิบัติงาน'].strip()
-                    
                     if j.get("is_locked"):
                         href_submit = '<span style="color:#D1D5DB; font-size:18px; margin-left:6px; cursor:not-allowed;" title="🔒 ป้องกันการเลือกผิด: ต้องตรวจส่งมอบรถ (ปิดงานส่งรถ) ให้เสร็จก่อน จึงจะทำรายการรับรถคืนได้">🔒</span>'
                     elif j['สถานะ'] == "เสร็จสิ้น":
@@ -4337,23 +4716,37 @@ else:
                     
                     if j['สถานะ'] == "🔒 รอส่งรถก่อน":
                         status_badge = '<span style="background-color:#FEE2E2; color:#991B1B; padding:4px 10px; border-radius:12px; font-size:11px; font-weight:700; white-space:nowrap;">🔒 รอส่งรถก่อน</span>'
+                    elif j['สถานะ'] == "รอชำระมัดจำ":
+                        status_badge = '<span style="background-color:#FFF7ED; color:#EA580C; border:1px solid #FED7AA; padding:4px 10px; border-radius:12px; font-size:11px; font-weight:700; white-space:nowrap;">🟡 รอชำระมัดจำ</span>'
                     else:
                         status_color = "#10B981" if j['สถานะ'] == "เสร็จสิ้น" else ("#E85826" if j['สถานะ'] in ["กำลังเช่า", "เตรียมรับคืน", "เตรียมส่งมอบ"] else "#F59E0B")
                         status_badge = f'<span style="background-color:{status_color}20; color:{status_color}; padding:4px 10px; border-radius:12px; font-size:11px; font-weight:600; white-space:nowrap;">{j["สถานะ"]}</span>'
                     
                     job_type_html = f"<b style='color:#E85826;'>🚚 จัดส่งรถ (Dispatch)</b>" if j_type == "Dispatch" else f"<b style='color:#2563EB;'>📥 รับรถคืน (Return)</b>"
                     
+                    c_plate = j.get('ทะเบียนรถ', '-')
+                    c_car_info = cars_db.get(c_plate, {})
+                    c_brand_model = f"{c_car_info.get('brand', '')} {c_car_info.get('model', '')}".strip()
+                    c_sub_txt = f"<br/><span style='font-size:11px; color:#6B7280;'>{c_brand_model}</span>" if c_brand_model else ""
+                    car_cell_html = f"<div style='min-width:105px; white-space:nowrap;'><b style='color:#1F2937;'>🚘 {c_plate}</b>{c_sub_txt}</div>"
+
+                    c_cust_name = j.get('ลูกค้า', '-')
+                    c_cust_info = st.session_state.customers_db.get(c_cust_name, {})
+                    c_contact = c_cust_info.get("contact_no") or ""
+                    c_contact_txt = f"<br/><span style='font-size:11px; color:#6B7280;'>📞 {c_contact}</span>" if c_contact and c_contact != "-" else ""
+                    cust_cell_html = f"<div style='min-width:130px;'><b style='color:#1F2937;'>👤 {c_cust_name}</b>{c_contact_txt}</div>"
+
                     row_html = (
                         f"<tr>"
                         f"<td>{job_type_html}</td>"
-                        f"<td style='color:#6B7280; font-size:12px;'>{j['รหัสการจอง']}</td>"
-                        f"<td><b style='color:#1F2937;'>{j['ทะเบียนรถ']}</b></td>"
-                        f"<td>{j['ลูกค้า']}</td>"
+                        f"<td style='color:#6B7280; font-size:12px; font-weight:600;'>{j['รหัสการจอง']}</td>"
+                        f"<td>{car_cell_html}</td>"
+                        f"<td>{cust_cell_html}</td>"
                         f"<td style='color:#4B5563; font-size:12px; white-space:nowrap;'>📅 {j['กำหนดวัน']}</td>"
                         f"<td>{worker_display}</td>"
                         f"<td style='color:#6B7280; font-size:12px; max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;' title='{j['สถานที่']}'>{j['สถานที่']}</td>"
                         f"<td>{status_badge}</td>"
-                        f"<td style='text-align:center; white-space:nowrap;'>{href_contract} {href_receipt}{href_ext_receipts} {href_submit} {href_del_bo}</td>"
+                        f"<td style='text-align:center; white-space:nowrap;'>{href_contract} {href_receipt}{href_ext_receipts} {href_dep_btn} {href_assign_btn} {href_submit} {href_del_bo}</td>"
                         f"</tr>"
                     )
                     table_html += row_html
@@ -5045,12 +5438,18 @@ else:
                         p_badge = f"<span style='background:#E0E7FF; color:#4338CA; padding:2px 7px; border-radius:10px; font-size:11px; font-weight:700; margin-left:4px;'>📸 {len(p_list)} รูป</span>" if p_list else ""
                         fuel_cell = f"<div style='font-size:12px; white-space:nowrap;'><b>{f_lvl}</b>{p_badge}</div><div style='font-size:11px; color:#6B7280; max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;' title='{i_notes}'>{i_notes}</div>"
                         
+                        c_cust_r = item.get('customer', '-')
+                        c_cust_r_obj = st.session_state.customers_db.get(c_cust_r, {})
+                        c_cust_r_ph = c_cust_r_obj.get("contact_no") or ""
+                        c_cust_r_ph_str = f"<br/><span style='font-size:11px; color:#6B7280;'>📞 {c_cust_r_ph}</span>" if c_cust_r_ph and c_cust_r_ph != "-" else ""
+                        cust_r_cell = f"<div style='min-width:130px;'><b style='color:#1F2937;'>👤 {c_cust_r}</b>{c_cust_r_ph_str}</div>"
+
                         rpt_row = (
                             f"<tr>"
                             f"<td style='color:#6B7280; font-size:12px; font-weight:600;'>{item.get('booking_id')}</td>"
                             f"<td style='color:#1F2937; font-size:12px; white-space:nowrap;'>📅 {c_date_str}</td>"
-                            f"<td><b style='color:#1F2937;'>{item.get('car_id')}</b></td>"
-                            f"<td>{item.get('customer')}</td>"
+                            f"<td><b style='color:#1F2937;'>🚘 {item.get('car_id')}</b></td>"
+                            f"<td>{cust_r_cell}</td>"
                             f"<td style='color:#4B5563; font-size:12px;'>{item.get('company')}</td>"
                             f"<td><span style='background:#F3F4F6; color:#4B5563; padding:2px 8px; border-radius:10px; font-size:11px;'>{item.get('contract_type', 'รายวัน')}</span></td>"
                             f"<td style='text-align:right; font-weight:700; color:#E85826;'>{net_str}</td>"
