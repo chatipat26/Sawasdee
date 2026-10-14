@@ -759,22 +759,22 @@ def init_cloud_store(store):
     try:
         if store.get("users_db") is None:
             u_res = sb.table("users").select("*").execute()
-            if u_res.data:
+            if u_res.data is not None:
                 store["users_db"] = {u["username"]: u for u in u_res.data}
                 
         if store.get("cars_db") is None:
             c_res = sb.table("cars").select("*").execute()
-            if c_res.data:
+            if c_res.data is not None:
                 store["cars_db"] = {c["plate"]: c for c in c_res.data}
                 
         if store.get("customers_db") is None:
             cust_res = sb.table("customers").select("*").execute()
-            if cust_res.data:
+            if cust_res.data is not None:
                 store["customers_db"] = {c["full_name"]: c for c in cust_res.data}
                 
         if store.get("bookings_db") is None:
             b_res = sb.table("bookings").select("*").execute()
-            if b_res.data:
+            if b_res.data is not None:
                 b_list = []
                 for b in b_res.data:
                     b_copy = dict(b)
@@ -785,7 +785,7 @@ def init_cloud_store(store):
                 
         if store.get("completed_jobs_db") is None:
             cj_res = sb.table("completed_jobs").select("*").execute()
-            if cj_res.data:
+            if cj_res.data is not None:
                 cj_list = []
                 for cj in cj_res.data:
                     cj_copy = dict(cj)
@@ -797,7 +797,7 @@ def init_cloud_store(store):
                 
         if store.get("financial_db") is None:
             f_res = sb.table("financial_records").select("*").execute()
-            if f_res.data:
+            if f_res.data is not None:
                 store["financial_db"] = f_res.data
     except Exception:
         pass
@@ -831,21 +831,7 @@ if "users_db" not in st.session_state:
                 "name": "ผู้ดูแลระบบ (Admin)",
                 "role": "Admin",
                 "status": "approved",
-                "password": "admin"
-            },
-            "Chatipat": {
-                "username": "Chatipat",
-                "name": "Chatipat (พนักงานส่งรถ)",
-                "role": "Staff",
-                "status": "approved",
-                "password": "123"
-            },
-            "volk": {
-                "username": "volk",
-                "name": "volk (พนักงานรับรถ)",
-                "role": "Staff",
-                "status": "approved",
-                "password": "123"
+                "password": "admin123"
             }
         }
         _GLOBAL_STORE["users_db"] = st.session_state.users_db
@@ -860,7 +846,7 @@ def get_approved_staff_list():
         if u.get("status") == "approved"
     ]
     if not st_list:
-        st_list = ["admin", "Chatipat", "volk"]
+        st_list = ["admin"]
     return sorted(list(set(st_list)))
 
 def is_job_owner_or_admin(booking, username, is_admin=False):
@@ -868,7 +854,7 @@ def is_job_owner_or_admin(booking, username, is_admin=False):
     if not username:
         return True
     u = str(username).strip().lower()
-    if is_admin or u in ["admin", "chatipat", "volk"]:
+    if is_admin or u == "admin":
         return True
     owner_candidates = [
         str(booking.get("created_by", "")).strip().lower(),
@@ -940,9 +926,9 @@ if "cars_db" not in st.session_state:
     else:
         st.session_state.cars_db = {
             "7ขจ 1099 กทม.": {"plate": "7ขจ 1099 กทม.", "brand": "GWM", "model": "Tank 300", "color": "เทา (Grey)", "car_group": "SUV", "engine_cc": "2000", "fuel_type": "เบนซิน/Hybrid", "company": "Sawasdee Rent A Car", "price_day": 2600, "price_week": 15000, "price_month": 39000, "status": "ว่างพร้อมใช้งาน", "chassis_no": "MRXGWM0001", "act_expiry": "10/12/2027", "ins_expiry": "10/12/2027", "mileage": "15,200", "image": "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?auto=format&fit=crop&q=80&w=500"},
-            "กข 1234 กทม.": {"plate": "กข 1234 กทม.", "brand": "Toyota", "model": "Yaris", "color": "ขาว (White)", "car_group": "รถเก๋ง (Sedan/Hatchback)", "engine_cc": "1200", "fuel_type": "เบนซิน", "company": "P.D.P. Co., Ltd.", "price_day": 1000, "price_week": 6000, "price_month": 18000, "status": "กำลังเช่า", "chassis_no": "NCP150-123456", "act_expiry": "05/08/2027", "ins_expiry": "05/08/2027", "mileage": "45,000", "image": "https://images.unsplash.com/photo-1590362891991-f776e747a588?auto=format&fit=crop&q=80&w=500"},
+            "กข 1234 กทม.": {"plate": "กข 1234 กทม.", "brand": "Toyota", "model": "Yaris", "color": "ขาว (White)", "car_group": "รถเก๋ง (Sedan/Hatchback)", "engine_cc": "1200", "fuel_type": "เบนซิน", "company": "P.D.P. Co., Ltd.", "price_day": 1000, "price_week": 6000, "price_month": 18000, "status": "ว่างพร้อมใช้งาน", "chassis_no": "NCP150-123456", "act_expiry": "05/08/2027", "ins_expiry": "05/08/2027", "mileage": "45,000", "image": "https://images.unsplash.com/photo-1590362891991-f776e747a588?auto=format&fit=crop&q=80&w=500"},
             "ฮภ 999 กทม.": {"plate": "ฮภ 999 กทม.", "brand": "Toyota", "model": "Alphard", "color": "ดำ (Black)", "car_group": "รถตู้ (Van)", "engine_cc": "2500", "fuel_type": "เบนซิน/Hybrid", "company": "Sawasdee Car Rent", "price_day": 4500, "price_week": 28000, "price_month": 85000, "status": "ว่างพร้อมใช้งาน", "chassis_no": "AGH30-999999", "act_expiry": (date.today() + timedelta(days=14)).strftime("%d/%m/%Y"), "ins_expiry": "22/11/2027", "mileage": "28,400", "image": "https://images.unsplash.com/photo-1609521263047-f8f205293f24?auto=format&fit=crop&q=80&w=500"},
-            "9กง 4567 กทม.": {"plate": "9กง 4567 กทม.", "brand": "Honda", "model": "Civic", "color": "บรอนซ์เงิน (Silver)", "car_group": "รถเก๋ง (Sedan/Hatchback)", "engine_cc": "1500", "fuel_type": "เบนซิน", "company": "Sawasdee Rent A Car", "price_day": 1500, "price_week": 9000, "price_month": 25000, "status": "ซ่อมบำรุง", "chassis_no": "FC1-456789", "act_expiry": "14/02/2027", "ins_expiry": (date.today() + timedelta(days=6)).strftime("%d/%m/%Y"), "mileage": "62,100", "image": "https://images.unsplash.com/photo-1605559424843-9e4c228bf1c2?auto=format&fit=crop&q=80&w=500"}
+            "9กง 4567 กทม.": {"plate": "9กง 4567 กทม.", "brand": "Honda", "model": "Civic", "color": "บรอนซ์เงิน (Silver)", "car_group": "รถเก๋ง (Sedan/Hatchback)", "engine_cc": "1500", "fuel_type": "เบนซิน", "company": "Sawasdee Rent A Car", "price_day": 1500, "price_week": 9000, "price_month": 25000, "status": "ว่างพร้อมใช้งาน", "chassis_no": "FC1-456789", "act_expiry": "14/02/2027", "ins_expiry": (date.today() + timedelta(days=6)).strftime("%d/%m/%Y"), "mileage": "62,100", "image": "https://images.unsplash.com/photo-1605559424843-9e4c228bf1c2?auto=format&fit=crop&q=80&w=500"}
         }
         _GLOBAL_STORE["cars_db"] = st.session_state.cars_db
 else:
@@ -959,22 +945,7 @@ if "customers_db" not in st.session_state:
     if _GLOBAL_STORE.get("customers_db") is not None:
         st.session_state.customers_db = _GLOBAL_STORE["customers_db"]
     else:
-        st.session_state.customers_db = {
-            "MATHEW ROGER CUTTING": {
-                "full_name": "MATHEW ROGER CUTTING", "nationality": "BRITISH", "dob": "15/08/1985",
-                "passport_id": "GB123456789", "licence_no": "DL987654321", "issue_place": "UK",
-                "licence_expiry": "15/08/2030", "home_address": "10 Downing Street, London",
-                "thai_address": "Sukhumvit 31, Bangkok", "contact_no": "081-348-6888",
-                "whatsapp": "+447911123456", "email": "sawasdeecar@gmail.com"
-            },
-            "สมชาย วิจิตรศิลป์": {
-                "full_name": "สมชาย วิจิตรศิลป์", "nationality": "THAI", "dob": "20/05/1990",
-                "passport_id": "1103456789123", "licence_no": "65001234", "issue_place": "Bangkok",
-                "licence_expiry": "20/05/2028", "home_address": "123 หมู่ 4 ต.บางรัก อ.บางรัก กทม.",
-                "thai_address": "123 หมู่ 4 ต.บางรัก อ.บางรัก กทม.", "contact_no": "089-123-4567",
-                "whatsapp": "0891234567", "email": "somchai@test.com"
-            }
-        }
+        st.session_state.customers_db = {}
         _GLOBAL_STORE["customers_db"] = st.session_state.customers_db
 else:
     _GLOBAL_STORE["customers_db"] = st.session_state.customers_db
@@ -984,79 +955,7 @@ if "bookings_db" not in st.session_state:
     if _GLOBAL_STORE.get("bookings_db") is not None:
         st.session_state.bookings_db = [b for b in _GLOBAL_STORE["bookings_db"] if b.get("booking_id") not in del_ids]
     else:
-        seed_bookings = [
-            {
-                "booking_id": "MRC261012110000",
-                "car_id": "7ขจ 1099 กทม.",
-                "customer": "MATHEW ROGER CUTTING",
-                "start_date": datetime.now().date() - timedelta(days=1),
-                "end_date": datetime.now().date() + timedelta(days=3),
-                "contract_type": "รายวัน",
-                "base_price": 7800,
-                "discount": 0,
-                "net_price": 7800,
-                "deposit_paid": True,
-                "deposit_amount": 5000.0,
-                "rental_paid": False,
-                "remaining_rental": 7800.0,
-                "created_by": "volk",
-                "status": "กำลังเช่า",
-                "dispatch_closed": True,
-                "return_closed": False,
-                "worker_delivery": "volk",
-                "worker_return": "volk",
-                "loc_delivery": "สนามบินสุวรรณภูมิ",
-                "loc_return": "สุขุมวิท 31",
-                "extension_history": []
-            },
-            {
-                "booking_id": "MRC261010145909",
-                "car_id": "กข 1234 กทม.",
-                "customer": "สมชาย วิจิตรศิลป์",
-                "start_date": datetime.now().date(),
-                "end_date": datetime.now().date() + timedelta(days=3),
-                "contract_type": "รายวัน",
-                "base_price": 9000,
-                "discount": 0,
-                "net_price": 9000,
-                "deposit_paid": True,
-                "deposit_amount": 5000.0,
-                "rental_paid": True,
-                "remaining_rental": 0.0,
-                "created_by": "Chatipat",
-                "status": "เตรียมส่งมอบ",
-                "dispatch_closed": False,
-                "return_closed": False,
-                "worker_delivery": "Chatipat",
-                "worker_return": "Chatipat",
-                "loc_delivery": "สุขุมวิท",
-                "loc_return": "สุขุมวิท",
-                "extension_history": []
-            },
-            {
-                "booking_id": "MRC261008093000",
-                "car_id": "ฮภ 999 กทม.",
-                "customer": "สมชาย วิจิตรศิลป์",
-                "start_date": datetime.now().date() + timedelta(days=1),
-                "end_date": datetime.now().date() + timedelta(days=5),
-                "contract_type": "รายวัน",
-                "base_price": 15000,
-                "discount": 0,
-                "net_price": 15000,
-                "deposit_paid": False,
-                "deposit_amount": 0.0,
-                "rental_paid": False,
-                "remaining_rental": 15000.0,
-                "created_by": "Chatipat",
-                "status": "รอชำระมัดจำ",
-                "dispatch_closed": False,
-                "return_closed": False,
-                "worker_delivery": None,
-                "loc_delivery": "ออฟฟิศพระราม 3",
-                "extension_history": []
-            }
-        ]
-        st.session_state.bookings_db = [b for b in seed_bookings if b.get("booking_id") not in del_ids]
+        st.session_state.bookings_db = []
         _GLOBAL_STORE["bookings_db"] = st.session_state.bookings_db
 else:
     del_ids = _GLOBAL_STORE.get("deleted_booking_ids", set())
@@ -1072,10 +971,7 @@ for b in st.session_state.bookings_db:
     
     # วันรับรถต้องชำระค่าเช่ารถเต็มจำนวนตามสัญญา
     if "rental_paid" not in b:
-        if b.get("booking_id") == "MRC261012110000":
-            b["rental_paid"] = False
-        else:
-            b["rental_paid"] = bool(b.get("is_fully_paid", False))
+        b["rental_paid"] = bool(b.get("is_fully_paid", False))
             
     if "remaining_rental" not in b:
         b["remaining_rental"] = 0.0 if b.get("rental_paid") else net_val
@@ -1091,23 +987,6 @@ for b in st.session_state.bookings_db:
     if "created_by" not in b:
         b["created_by"] = b.get("worker_delivery") or b.get("worker_return") or "admin"
         
-    if b.get("booking_id") == "MRC261008093000" and not b.get("deposit_paid"):
-        b["status"] = "รอชำระมัดจำ"
-        
-    # ปรับปรุงความถูกต้องของสถานะสองขั้นตอน (ป้องกันการปลดล็อกผิดคัน)
-    if b.get("booking_id") == "MRC261012110000":
-        b["dispatch_closed"] = True
-        b["return_closed"] = False
-        if b.get("status") not in ["เสร็จสิ้น", "ยกเลิก"]:
-            b["status"] = "กำลังเช่า"
-    elif b.get("booking_id") == "MRC261010145909":
-        # ถ้ายังไม่เคยกดปิดงานจัดส่ง ให้เป็นงานเตรียมส่งมอบ
-        if not b.get("dispatch_closed"):
-            b["dispatch_closed"] = False
-            b["return_closed"] = False
-            b["status"] = "เตรียมส่งมอบ"
-            b["start_date"] = datetime.now().date()
-            
     if "dispatch_closed" not in b:
         if b.get("status") in ["กำลังเช่า", "เตรียมรับคืน", "เสร็จสิ้น"]:
             b["dispatch_closed"] = True
@@ -1121,9 +1000,7 @@ if "financial_db" not in st.session_state:
     if _GLOBAL_STORE.get("financial_db") is not None:
         st.session_state.financial_db = _GLOBAL_STORE["financial_db"]
     else:
-        st.session_state.financial_db = [
-            {"company": "Sawasdee Rent A Car", "type": "รายรับ", "category": "ค่าเช่ารถ", "amount": 39000.0, "ref": "MRC260810", "date": "2026-08-10", "detail": "ค่าเช่า Tank 300"},
-        ]
+        st.session_state.financial_db = []
         _GLOBAL_STORE["financial_db"] = st.session_state.financial_db
 else:
     _GLOBAL_STORE["financial_db"] = st.session_state.financial_db
@@ -1133,36 +1010,7 @@ if "completed_jobs_db" not in st.session_state:
     if _GLOBAL_STORE.get("completed_jobs_db") is not None:
         st.session_state.completed_jobs_db = _GLOBAL_STORE["completed_jobs_db"]
     else:
-        st.session_state.completed_jobs_db = [
-            {
-                "booking_id": "MRC261005112001", "car_id": "7ขจ 1099 กทม.", "customer": "MATHEW ROGER CUTTING",
-                "company": "Sawasdee Rent A Car", "start_date": datetime(2026, 10, 1).date(), "end_date": datetime(2026, 10, 5).date(),
-                "completed_date": datetime(2026, 10, 5).date(), "contract_type": "รายวัน", "base_price": 10400, "discount": 0, "net_price": 10400.0,
-                "worker_delivery": "Chatipat", "worker_return": "volk", "loc_delivery": "Suvarnabhumi Airport", "loc_return": "Sukhumvit 31", "status": "เสร็จสิ้น",
-                "fuel_level": "⛽ เต็มถัง (Full - 8/8) [100%]", "inspection_notes": "ตรวจสภาพรอบคันปกติ สะอาดเรียบร้อย", "inspection_photos": [], "mileage": "15,200"
-            },
-            {
-                "booking_id": "MRC260920091530", "car_id": "ฮภ 999 กทม.", "customer": "สมชาย วิจิตรศิลป์",
-                "company": "Sawasdee Car Rent", "start_date": datetime(2026, 9, 15).date(), "end_date": datetime(2026, 9, 20).date(),
-                "completed_date": datetime(2026, 9, 20).date(), "contract_type": "รายวัน", "base_price": 22500, "discount": 0, "net_price": 22500.0,
-                "worker_delivery": "Chatipat", "worker_return": "volk", "loc_delivery": "Don Mueang Airport", "loc_return": "Rama 3", "status": "เสร็จสิ้น",
-                "fuel_level": "⛽ เต็มถัง (Full - 8/8) [100%]", "inspection_notes": "ตรวจสภาพปกติ เลขไมล์ตรง อุปกรณ์ครบ", "inspection_photos": [], "mileage": "28,400"
-            },
-            {
-                "booking_id": "MRC260910143000", "car_id": "กข 1234 กทม.", "customer": "MATHEW ROGER CUTTING",
-                "company": "P.D.P. Co., Ltd.", "start_date": datetime(2026, 9, 1).date(), "end_date": datetime(2026, 9, 8).date(),
-                "completed_date": datetime(2026, 9, 8).date(), "contract_type": "รายสัปดาห์", "base_price": 6000, "discount": 0, "net_price": 6000.0,
-                "worker_delivery": "volk", "worker_return": "Chatipat", "loc_delivery": "Siam Paragon", "loc_return": "Siam Paragon", "status": "เสร็จสิ้น",
-                "fuel_level": "⛽ 7/8 ถัง (87%)", "inspection_notes": "สภาพปกติ มีเศษฝุ่นเล็กน้อย ทำความสะอาดเรียบร้อย", "inspection_photos": [], "mileage": "44,100"
-            },
-            {
-                "booking_id": "MRC260825100000", "car_id": "9กง 4567 กทม.", "customer": "สมชาย วิจิตรศิลป์",
-                "company": "Sawasdee Rent A Car", "start_date": datetime(2026, 8, 20).date(), "end_date": datetime(2026, 8, 25).date(),
-                "completed_date": datetime(2026, 8, 25).date(), "contract_type": "รายวัน", "base_price": 7500, "discount": 0, "net_price": 7500.0,
-                "worker_delivery": "volk", "worker_return": "volk", "loc_delivery": "Asoke", "loc_return": "Asoke", "status": "เสร็จสิ้น",
-                "fuel_level": "⛽ เต็มถัง (Full - 8/8) [100%]", "inspection_notes": "ส่งมอบสภาพสมบูรณ์ พร้อมใช้งาน", "inspection_photos": [], "mileage": "61,500"
-            }
-        ]
+        st.session_state.completed_jobs_db = []
         _GLOBAL_STORE["completed_jobs_db"] = st.session_state.completed_jobs_db
 else:
     _GLOBAL_STORE["completed_jobs_db"] = st.session_state.completed_jobs_db
@@ -1659,15 +1507,6 @@ if st.session_state.user is None:
                                 st.success(f"เข้าสู่ระบบสำเร็จในฐานะ: {st.session_state.user['name']} ☁️")
                             time.sleep(0.5)
                             st.rerun()
-
-                st.markdown("""
-                    <div style="background:#F9FAFB; border:1px solid #E5E7EB; border-radius:8px; padding:10px 14px; margin-top:10px; font-size:12px; color:#4B5563;">
-                        <b style="color:#1F2937;">🔑 บัญชีทดสอบระบบ (Supabase Auth):</b><br/>
-                        • 👑 <b>Admin:</b> <code>admin</code> / รหัสผ่าน: <code>admin123</code><br/>
-                        • 🚚 <b>พนักงานส่งรถ:</b> <code>Chatipat</code> / รหัสผ่าน: <code>123456</code><br/>
-                        • 📥 <b>พนักงานรับรถ:</b> <code>volk</code> / รหัสผ่าน: <code>123456</code>
-                    </div>
-                """, unsafe_allow_html=True)
 
                 st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
                 link_c1, link_c2 = st.columns(2)
