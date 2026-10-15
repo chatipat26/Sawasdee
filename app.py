@@ -2722,8 +2722,6 @@ else:
                 st.session_state.prev_sb_search_kw = ""
                 st.session_state.search_box_version = st.session_state.get("search_box_version", 0) + 1
                 st.rerun()
-        else:
-            st.session_state.prev_sb_search_kw = ""
             
             has_quick_results = bool(matched_bk or matched_c or matched_cu or matched_hist)
             if not is_pending_user and has_quick_results:
@@ -2795,6 +2793,8 @@ else:
                                 st.session_state.search_plate_filter = cj_id
                                 st.session_state.search_box_version = st.session_state.get("search_box_version", 0) + 1
                                 st.rerun()
+        else:
+            st.session_state.prev_sb_search_kw = ""
 
                                 
         st.markdown("<div style='height: 4px;'></div>", unsafe_allow_html=True)
