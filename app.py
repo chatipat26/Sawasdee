@@ -2685,8 +2685,9 @@ else:
             ]
             matched_c = [
                 p for p, c in cars_db.items()
-                if kw_clean in f"{p} {c.get('brand','')} {c.get('model','')} {c.get('car_group','')} {c.get('company','')}".lower()
+                if kw_clean in f"{p} {c.get('brand','')} {c.get('model','')} {c.get('car_group','')} {c.get('company','')} {c.get('color','')}".lower()
                 or kw_no_symbol in p.lower().replace("-", "").replace(" ", "")
+                or kw_no_symbol in f"{c.get('brand','')} {c.get('model','')}".lower().replace("-", "").replace(" ", "")
             ]
             matched_cu = [
                 k for k, v in st.session_state.customers_db.items()
@@ -2699,6 +2700,15 @@ else:
                 or kw_no_symbol in str(cj.get('booking_id','')).lower().replace("-", "").replace(" ", "")
                 or kw_no_symbol in str(cj.get('car_id','')).lower().replace("-", "").replace(" ", "")
             ]
+
+            # เมื่อพิมพ์ค้นหาทะเบียนรถ ยี่ห้อ รุ่น ระบบจะส่งมาที่หน้าเลือกรถและแสดงรถทั้งหมดตามที่ค้นหาไว้
+            if "prev_sb_search_kw" not in st.session_state:
+                st.session_state.prev_sb_search_kw = ""
+            if sb_search_input.strip() != st.session_state.prev_sb_search_kw:
+                st.session_state.prev_sb_search_kw = sb_search_input.strip()
+                if matched_c:
+                    st.session_state.selected_module = "Front Office"
+                    st.session_state.workflow_tab = "2. เลือกรถยนต์"
         
             sc1, sc2 = st.columns([2, 1])
             if is_pending_user:
@@ -2709,8 +2719,11 @@ else:
             if sc2.button("❌ ล้าง", key="btn_clear_sb_search", use_container_width=True):
                 st.session_state.global_search_kw = ""
                 st.session_state.search_plate_filter = ""
+                st.session_state.prev_sb_search_kw = ""
                 st.session_state.search_box_version = st.session_state.get("search_box_version", 0) + 1
                 st.rerun()
+        else:
+            st.session_state.prev_sb_search_kw = ""
             
             has_quick_results = bool(matched_bk or matched_c or matched_cu or matched_hist)
             if not is_pending_user and has_quick_results:
@@ -3044,25 +3057,23 @@ else:
             if "fleet_f_brand" not in st.session_state: st.session_state.fleet_f_brand = "ทั้งหมด"
             if "fleet_f_status" not in st.session_state: st.session_state.fleet_f_status = "ทั้งหมด"
             if "fleet_f_company" not in st.session_state: st.session_state.fleet_f_company = "ทั้งหมด"
-            if "fleet_f_search" not in st.session_state: st.session_state.fleet_f_search = ""
             if "fleet_f_start" not in st.session_state: st.session_state.fleet_f_start = None
             if "fleet_f_end" not in st.session_state: st.session_state.fleet_f_end = None
 
-            # เชื่อมโยงคำค้นหาจาก Sidebar หรือตาราง Dashboard เข้าสู่ช่องค้นหา
-            _global_kw = st.session_state.get("global_search_kw", st.session_state.get("search_plate_filter", "")).strip()
-            if _global_kw and not st.session_state.fleet_f_search:
-                st.session_state.fleet_f_search = _global_kw
+            # เชื่อมโยงคำค้นหาจากไซด์บาร์ (ยี่ห้อ, รุ่น, ทะเบียน, สี)
+            search_kw = st.session_state.get("global_search_kw", st.session_state.get("search_plate_filter", "")).strip()
 
             def reset_all_fleet_filters():
                 st.session_state.fleet_f_group = "ทั้งหมด"
                 st.session_state.fleet_f_brand = "ทั้งหมด"
                 st.session_state.fleet_f_status = "ทั้งหมด"
                 st.session_state.fleet_f_company = "ทั้งหมด"
-                st.session_state.fleet_f_search = ""
                 st.session_state.fleet_f_start = None
                 st.session_state.fleet_f_end = None
                 st.session_state.global_search_kw = ""
                 st.session_state.search_plate_filter = ""
+                st.session_state.prev_sb_search_kw = ""
+                st.session_state.search_box_version = st.session_state.get("search_box_version", 0) + 1
                 st.session_state.search_avail_start = None
                 st.session_state.search_avail_end = None
                 st.session_state._fleet_auto_kw = ""
@@ -3140,10 +3151,8 @@ else:
                     cur_st_idx = _status_options.index(st.session_state.fleet_f_status) if st.session_state.fleet_f_status in _status_options else 0
                     f_status = st.selectbox("สถานะรถ (Status)", _status_options, index=cur_st_idx, key="fleet_f_status")
 
-                # แถวที่ 2: คำค้นหาด่วน, กรรมสิทธิ์/บริษัท, ปุ่มล้างตัวกรอง
-                srch_c1, srch_c2, srch_c3 = st.columns([3, 1.8, 1.2])
-                with srch_c1:
-                    search_kw = st.text_input("🔎 ค้นหาด่วน (ยี่ห้อ, รุ่น, ทะเบียน, สี)", key="fleet_f_search", placeholder="พิมพ์เพื่อค้นหา เช่น Camry, BMW 7, 8กฐ 3303, ขาว, Alphard...").strip()
+                # แถวที่ 2: กรรมสิทธิ์/บริษัท, ปุ่มล้างตัวกรอง (นำช่องค้นหาด่วนออกตามคำขอเพราะมีช่องค้นหาที่ไซด์บาร์แล้ว)
+                srch_c2, srch_c3 = st.columns([3.8, 1.2])
                 with srch_c2:
                     cur_comp_idx = _company_options.index(st.session_state.fleet_f_company) if st.session_state.fleet_f_company in _company_options else 0
                     f_company = st.selectbox("กรรมสิทธิ์/บริษัท", _company_options, index=cur_comp_idx, key="fleet_f_company")
@@ -3151,16 +3160,25 @@ else:
                     st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
                     st.button("🔄 ล้างตัวกรอง", on_click=reset_all_fleet_filters, use_container_width=True, help="คืนค่าตัวกรองทั้งหมดและแสดงรถยนต์ทุกคันทันที")
 
+            # ซิงค์วันที่เลือกในหน้าดูรถยนต์เข้าสู่ดราฟต์สัญญาเช่า เพื่อให้หน้าทำสัญญาแสดงผลทันทีโดยไม่ต้องเลือกซ้ำ
+            if f_avail_start:
+                st.session_state.draft_start_date = f_avail_start
+            if f_avail_end:
+                st.session_state.draft_end_date = f_avail_end
+
             # --- 2) ระบบคัดกรองรถยนต์ (Match Engine) ---
             if f_avail_start and f_avail_end and f_avail_end < f_avail_start:
                 st.warning("⚠️ วันที่คืนรถต้องไม่น้อยกว่าวันที่ส่งรถ")
 
             _fleet_matched = []
             for plate, c in cars_db.items():
-                # กรองคำค้นหา
+                # กรองคำค้นหาจากไซด์บาร์ (ยี่ห้อ, รุ่น, ทะเบียน, สี, บริษัท)
                 if search_kw:
                     target_txt = f"{plate} {c.get('brand','')} {c.get('model','')} {c.get('car_group','')} {c.get('company','')} {c.get('color','')}".lower()
-                    if search_kw.lower() not in target_txt:
+                    target_no_sym = target_txt.replace("-", "").replace(" ", "")
+                    kw_clean = search_kw.lower()
+                    kw_no_sym = kw_clean.replace("-", "").replace(" ", "")
+                    if kw_clean not in target_txt and kw_no_sym not in target_no_sym:
                         continue
                 
                 # กรองหมวดหมู่
@@ -3638,7 +3656,17 @@ else:
                                             st.session_state.draft_car = plate
                                             if f_avail_start:
                                                 st.session_state.draft_start_date = f_avail_start
-                                                st.session_state.draft_end_date = f_avail_end if f_avail_end and f_avail_end >= f_avail_start else (f_avail_start + timedelta(days=3))
+                                                calc_end = f_avail_end if (f_avail_end and f_avail_end >= f_avail_start) else (f_avail_start + timedelta(days=3))
+                                                st.session_state.draft_end_date = calc_end
+                                            elif not st.session_state.get("draft_start_date"):
+                                                st.session_state.draft_start_date = datetime.now().date()
+                                                st.session_state.draft_end_date = datetime.now().date() + timedelta(days=3)
+                                            
+                                            # ถ่ายทอดวันที่เข้าสู่ Widget State ของหน้าทำสัญญาเช่าทันที เพื่อไม่ต้องเลือกซ้ำ
+                                            st.session_state["c_start_date_tab3"] = st.session_state.draft_start_date
+                                            st.session_state["c_end_date_tab3"] = st.session_state.draft_end_date
+                                            st.session_state["_last_synced_draft_start"] = st.session_state.draft_start_date
+                                            st.session_state["_last_synced_draft_end"] = st.session_state.draft_end_date
                                             st.session_state.workflow_tab = "3. จัดทำสัญญาเช่า"
                                             st.rerun()
                                     else:
@@ -3973,11 +4001,19 @@ else:
                     c_dt1, c_dt2 = st.columns(2)
                     with c_dt1:
                         init_start = st.session_state.get("draft_start_date") or datetime.now().date()
-                        start_d = st.date_input("📅 วันที่เริ่มเช่า (ส่งรถ)", init_start, format="DD/MM/YYYY")
+                        if "c_start_date_tab3" not in st.session_state or st.session_state.get("_last_synced_draft_start") != st.session_state.get("draft_start_date"):
+                            st.session_state["c_start_date_tab3"] = init_start
+                            st.session_state["_last_synced_draft_start"] = st.session_state.get("draft_start_date")
+                        start_d = st.date_input("📅 วันที่เริ่มเช่า (ส่งรถ)", key="c_start_date_tab3", format="DD/MM/YYYY")
+                        st.session_state.draft_start_date = start_d
                         start_t = st.time_input("⏰ เวลาส่งรถ", d_time(10, 0), key="c_start_time_tab3", help="เวลาส่งมอบรถเริ่มต้นรอบคิดค่าเช่า 24 ชม.")
                     with c_dt2:
-                        init_end = st.session_state.get("draft_end_date") or (init_start + timedelta(days=3))
-                        end_d = st.date_input("📅 วันที่คืนรถ (รับรถคืน)", init_end, format="DD/MM/YYYY")
+                        init_end = st.session_state.get("draft_end_date") or (start_d + timedelta(days=3))
+                        if "c_end_date_tab3" not in st.session_state or st.session_state.get("_last_synced_draft_end") != st.session_state.get("draft_end_date"):
+                            st.session_state["c_end_date_tab3"] = init_end
+                            st.session_state["_last_synced_draft_end"] = st.session_state.get("draft_end_date")
+                        end_d = st.date_input("📅 วันที่คืนรถ (รับรถคืน)", key="c_end_date_tab3", format="DD/MM/YYYY")
+                        st.session_state.draft_end_date = end_d
                         end_t = st.time_input("⏰ เวลารับรถคืน", d_time(10, 0), key="c_end_time_tab3", help="เวลาคืนรถ หากเกินเวลาส่งรถเกิน 4 ชม. จะปรับคิดเพิ่มเป็น 1 วัน")
                     
                     # คำนวณเวลาและวันเช่าตามเงื่อนไขหากล่าช้าเกิน 4 ชม. ปรับเป็น 1 วัน
@@ -4079,9 +4115,16 @@ else:
                             sb_sync_car(sel_car['plate'], cars_db[sel_car['plate']])
                         sb_sync_booking(new_bk_obj)
                         st.session_state.draft_car = None
+                        st.session_state.draft_start_date = None
+                        st.session_state.draft_end_date = None
+                        st.session_state._last_synced_draft_start = None
+                        st.session_state._last_synced_draft_end = None
+                        st.session_state.pop("c_start_date_tab3", None)
+                        st.session_state.pop("c_end_date_tab3", None)
                         st.session_state.active_deposit_bk_id = new_bk_id
                         st.session_state.global_search_kw = ""
                         st.session_state.search_plate_filter = ""
+                        st.session_state.prev_sb_search_kw = ""
                         st.session_state.search_box_version = st.session_state.get("search_box_version", 0) + 1
                         st.success(f"🎉 สร้างสัญญาและบันทึกคิวจองสำเร็จ! (รหัสการจอง: {new_bk_id}) รายการจะปรากฏในแผงควบคุมคิวการจอง, แท็บรับมัดจำ, และตารางงาน Back Office ทันที")
                         time.sleep(0.8)
