@@ -737,13 +737,13 @@ def sb_auth_login(identifier, password):
         # 2. ตรวจสอบจากตาราง users บน Supabase โดยตรง (กรณีรหัสผ่านตรงกับในตาราง)
         try:
             u_row = sb.table("users").select("*").ilike("username", u_clean).execute().data
-            if u_row and str(u_row[0].get("password")) == pwd_clean:
+            if u_row and u_row[0].get("password") and str(u_row[0].get("password")) == pwd_clean:
                 return u_row[0], None
         except Exception:
             pass
             
     # 3. ตรวจสอบจาก local users_db ในเครื่อง
-    if u_local and str(u_local.get("password")) == pwd_clean:
+    if u_local and u_local.get("password") and str(u_local.get("password")) == pwd_clean:
         return u_local, None
         
     return None, "❌ ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง"
@@ -886,19 +886,7 @@ def sync_cloud_data(force=False, auto=False):
                 if str(u.get("username", "")).lower() not in del_unames
             }
 
-        # Ensure admin account is always present and approved
-        if "admin" not in fresh_users:
-            fresh_users["admin"] = {
-                "username": "admin",
-                "name": "ผู้ดูแลระบบ (Admin)",
-                "role": "Admin",
-                "status": "approved",
-                "password": "admin123"
-            }
-            try:
-                sb_sync_user("admin", fresh_users["admin"])
-            except Exception:
-                pass
+        # บัญชี admin ต้องมีอยู่ใน Supabase (ตาราง users + Supabase Auth) เท่านั้น — ไม่สร้าง/ไม่ฮาร์ดโค้ดรหัสผ่านในโค้ด
 
         # Compare users to detect change
         cur_users = st.session_state.get("users_db") or {}
@@ -1075,8 +1063,8 @@ if "users_db" not in st.session_state:
             "username": "admin",
             "name": "ผู้ดูแลระบบ (Admin)",
             "role": "Admin",
-            "status": "approved",
-            "password": "admin123"
+            "status": "approved"
+            # ไม่มีรหัสผ่านในโค้ด — ล็อกอิน admin ผ่าน Supabase เท่านั้น
         }
     }
     _GLOBAL_STORE["users_db"] = st.session_state.users_db
@@ -1106,10 +1094,112 @@ def is_job_owner_or_admin(booking, username, is_admin=False):
     ]
     return u in [o for o in owner_candidates if o and o not in ["wait", "-", "none", ""]] or True
 
+# -------------------------------------------------------------------------
+# PER-BROWSER LOGIN SESSION (Signed cookie)
+# เดิมเก็บ user ไว้ใน _GLOBAL_STORE (st.cache_resource) ซึ่งแชร์กันทุกเบราว์เซอร์
+# ทำให้ใครเปิดลิงก์ก็ถูกล็อกอินเป็นบัญชีของคนล่าสุดอัตโนมัติ -> เปลี่ยนมาใช้คุกกี้ที่เซ็นด้วย HMAC แยกต่อเบราว์เซอร์
+# -------------------------------------------------------------------------
+import hmac as _hmac
+import hashlib as _hashlib
+import json as _json
+import secrets as _secrets_mod
+
+_SESSION_COOKIE_NAME = "sr_session"
+_SESSION_MAX_AGE = 60 * 60 * 12  # 12 ชั่วโมง
+
+@st.cache_resource
+def _get_fallback_session_secret():
+    return _secrets_mod.token_hex(32)
+
+def _get_session_secret():
+    try:
+        for k in ("SESSION_SECRET", "SUPABASE_SERVICE_KEY", "SUPABASE_KEY"):
+            v = st.secrets.get(k)
+            if v:
+                return ("sawasdee-session:" + str(v)).encode("utf-8")
+    except Exception:
+        pass
+    return _get_fallback_session_secret().encode("utf-8")
+
+def _make_session_token(user_dict):
+    payload = {
+        "u": {
+            "username": user_dict.get("username"),
+            "name": user_dict.get("name"),
+            "role": user_dict.get("role"),
+            "email": user_dict.get("email"),
+        },
+        "exp": int(time.time()) + _SESSION_MAX_AGE,
+    }
+    body = base64.urlsafe_b64encode(_json.dumps(payload, ensure_ascii=False).encode("utf-8")).decode("ascii").rstrip("=")
+    sig = _hmac.new(_get_session_secret(), body.encode("ascii"), _hashlib.sha256).hexdigest()
+    return f"{body}.{sig}"
+
+def _verify_session_token(token):
+    try:
+        body, sig = str(token).rsplit(".", 1)
+        expected = _hmac.new(_get_session_secret(), body.encode("ascii"), _hashlib.sha256).hexdigest()
+        if not _hmac.compare_digest(sig, expected):
+            return None
+        payload = _json.loads(base64.urlsafe_b64decode(body + "=" * (-len(body) % 4)).decode("utf-8"))
+        if int(payload.get("exp", 0)) < int(time.time()):
+            return None
+        u = payload.get("u") or {}
+        return u if u.get("username") else None
+    except Exception:
+        return None
+
+def _queue_session_cookie(token):
+    """ตั้งค่าคุกกี้ในรอบ render ถัดไป (token=None = ลบคุกกี้)"""
+    st.session_state["_pending_session_cookie"] = token if token else "__CLEAR__"
+
+def _render_pending_session_cookie():
+    pending = st.session_state.pop("_pending_session_cookie", None)
+    if not pending:
+        return
+    import streamlit.components.v1 as _components
+    if pending == "__CLEAR__":
+        js_val, max_age = "", 0
+    else:
+        js_val, max_age = pending, _SESSION_MAX_AGE
+    _components.html(
+        f"""<script>
+        (function() {{
+            var secure = (window.parent.location.protocol === 'https:') ? '; Secure' : '';
+            window.parent.document.cookie = '{_SESSION_COOKIE_NAME}={js_val}; path=/; max-age={max_age}; SameSite=Lax' + secure;
+        }})();
+        </script>""",
+        height=0,
+    )
+
+def _restore_user_from_cookie():
+    if st.session_state.get("_logged_out_this_session"):
+        return None
+    try:
+        token = st.context.cookies.get(_SESSION_COOKIE_NAME)
+    except Exception:
+        token = None
+    if not token:
+        return None
+    u = _verify_session_token(token)
+    if not u:
+        return None
+    un = str(u.get("username", "")).strip()
+    if un.lower() in _GLOBAL_STORE.get("deleted_usernames", set()):
+        return None
+    # อัปเดตชื่อ/สิทธิ์ล่าสุดจากฐานข้อมูลผู้ใช้ (ถ้ามี)
+    for k, v in (st.session_state.get("users_db") or {}).items():
+        if str(k).lower() == un.lower():
+            u["name"] = v.get("name", u.get("name"))
+            u["role"] = v.get("role", u.get("role"))
+            break
+    return u
+
+# ล้างค่า user ที่เคยเก็บแบบ global (แชร์ทุกคน) ทิ้ง
+_GLOBAL_STORE.pop("user", None)
+
 if "user" not in st.session_state or st.session_state.user is None:
-    st.session_state.user = _GLOBAL_STORE.get("user")
-elif st.session_state.user:
-    _GLOBAL_STORE["user"] = st.session_state.user
+    st.session_state.user = _restore_user_from_cookie()
 
 if "auth_mode" not in st.session_state:
     if st.query_params.get("mode") == "register":
@@ -1241,13 +1331,10 @@ sync_cloud_data()
 
 # Ensure active session user is valid and synchronized
 if st.session_state.get("user"):
-    _GLOBAL_STORE["user"] = st.session_state.user
     curr_un = str(st.session_state.user.get("username", "")).lower()
     if curr_un in _GLOBAL_STORE.get("deleted_usernames", set()):
         st.session_state.user = None
-        _GLOBAL_STORE.pop("user", None)
-elif _GLOBAL_STORE.get("user"):
-    st.session_state.user = _GLOBAL_STORE.get("user")
+        _queue_session_cookie(None)
 
 users_db = st.session_state.users_db
 cars_db = st.session_state.cars_db
@@ -1647,6 +1734,250 @@ div[data-testid="stVerticalBlock"]:has(> div > .st-key-fleet_filter_bar),
 </style>
 """
 
+fleet_cards_css = """
+<style>
+/* =========================================================================
+   FLEET SHOWCASE CARDS (Pastel Luxury Minimal - ตามภาพตัวอย่าง)
+   Palette: Soft Rose Gold (#E0B8B8), Muted Pastel Blue (#B4C6E7),
+            Pastel Champagne/Beige (#F5ECE0 / #EAE2D8)
+   ========================================================================= */
+
+/* 1. Hero Banner */
+.fleet-hero-banner {
+    background: radial-gradient(circle at 50% 20%, #FFFFFF 0%, #FAF6F0 60%, #F5ECE0 100%);
+    border: 1px solid #EAE2D8;
+    border-radius: 20px;
+    padding: 24px 20px 20px 20px;
+    text-align: center;
+    margin-bottom: 18px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+}
+.fleet-hero-pill {
+    display: inline-block;
+    padding: 4px 16px;
+    background: #FFFFFF;
+    border: 1px solid #E0B8B8;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2.5px;
+    color: #C98F88;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    box-shadow: 0 2px 8px rgba(224, 184, 184, 0.2);
+}
+.fleet-hero-title {
+    font-size: 22px;
+    font-weight: 800;
+    color: #1F2937;
+    margin: 4px 0 10px 0;
+    letter-spacing: 0.5px;
+    line-height: 1.35;
+}
+.fleet-palette-row {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 6px;
+}
+.fleet-palette-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 10px;
+    background: #FFFFFF;
+    border: 1px solid #EFEAE3;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #4B5563;
+}
+.fleet-palette-tag .color-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+/* 2. Instant Booking Bar */
+.fleet-booking-bar {
+    background: #FFFFFF;
+    border: 1px solid #EFE8E1;
+    border-radius: 20px;
+    padding: 16px 18px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.03);
+    margin-bottom: 16px;
+}
+.fleet-booking-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #8C827A;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+}
+.fleet-active-filters-box {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    background: #FDFBF9;
+    border: 1px dashed #E0B8B8;
+    border-radius: 12px;
+    padding: 8px 12px;
+    margin-top: 10px;
+}
+.fleet-filter-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: #FFF5F2;
+    border: 1px solid #E0B8B8;
+    color: #B87870;
+    font-size: 11.5px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 10px;
+}
+
+/* 3. Showcase Fleet Grid & Cards */
+div[class*="st-key-fleet_card_"] {
+    background: #FFFFFF !important;
+    border: 1px solid #EFE8E1 !important;
+    border-radius: 20px !important;
+    padding: 12px 12px 16px !important;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04) !important;
+    transition: all 0.25s ease-in-out;
+    text-align: center;
+}
+div[class*="st-key-fleet_card_"]:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 28px rgba(224, 184, 184, 0.28) !important;
+    border-color: #E0B8B8 !important;
+}
+div[class*="st-key-fleet_card_sel_"] {
+    border: 2px solid #C98F88 !important;
+    box-shadow: 0 12px 30px rgba(201, 143, 136, 0.28) !important;
+    background: #FFFAF8 !important;
+}
+.fleet-card-img-box {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 10;
+    border-radius: 14px;
+    overflow: hidden;
+    background: #F7F3EE;
+    margin-bottom: 10px;
+}
+.fleet-card-img-box img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: transform 0.3s ease;
+}
+div[class*="st-key-fleet_card_"]:hover .fleet-card-img-box img {
+    transform: scale(1.04);
+}
+.fleet-card-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #111827;
+    margin: 4px 0 4px 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: center;
+    letter-spacing: 0.2px;
+}
+.fleet-card-price-tag {
+    font-size: 15px;
+    font-weight: 800;
+    color: #111827;
+    margin-bottom: 10px;
+    text-align: center;
+}
+.fleet-card-price-tag span {
+    font-size: 11px;
+    font-weight: 600;
+    color: #8C827A;
+}
+/* ปุ่มดูรายละเอียด View Details แบบ Soft Rose Gold Pill Button */
+div[class*="st-key-fleet_card_"] div[class*="st-key-fleet_view_"] button {
+    background: linear-gradient(135deg, #E0B8B8 0%, #C98F88 100%) !important;
+    color: #FFFFFF !important;
+    border: none !important;
+    border-radius: 24px !important;
+    font-size: 12px !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    min-height: 38px !important;
+    box-shadow: 0 4px 14px rgba(201, 143, 136, 0.25) !important;
+    transition: all 0.2s ease !important;
+}
+div[class*="st-key-fleet_card_"] div[class*="st-key-fleet_view_"] button:hover {
+    background: linear-gradient(135deg, #D49B9B 0%, #B87870 100%) !important;
+    box-shadow: 0 6px 18px rgba(201, 143, 136, 0.4) !important;
+    transform: translateY(-1px);
+}
+div[class*="st-key-fleet_card_"] div[class*="st-key-fleet_view_"] button p {
+    color: #FFFFFF !important;
+    font-size: 12px !important;
+    font-weight: 700 !important;
+}
+
+/* 4. Section 4: Premium Services & Benefits Ribbon */
+.fleet-benefits-wrap {
+    background: linear-gradient(135deg, #FBF8F5 0%, #F6EFE6 100%);
+    border: 1px solid #EAE2D8;
+    border-radius: 18px;
+    padding: 22px 18px 20px 18px;
+    margin-top: 30px;
+    text-align: center;
+}
+.fleet-benefits-title {
+    font-size: 13px;
+    font-weight: 800;
+    color: #8C827A;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+}
+.fleet-benefits-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+}
+.fleet-benefit-item {
+    background: #FFFFFF;
+    border: 1px solid #EFE8E1;
+    border-radius: 14px;
+    padding: 14px 12px;
+    text-align: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+}
+.fleet-benefit-icon {
+    font-size: 24px;
+    margin-bottom: 6px;
+}
+.fleet-benefit-name {
+    font-size: 13px;
+    font-weight: 700;
+    color: #1F2937;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 2px;
+}
+.fleet-benefit-desc {
+    font-size: 11px;
+    color: #6B7280;
+}
+</style>
+"""
+
 folder_tabs_luxury_css = """
 <style>
 /* =========================================================================
@@ -1797,8 +2128,7 @@ folder_tabs_luxury_css = """
 # =========================================================================
 # 5. AUTHENTICATION (LOGIN)
 # =========================================================================
-if st.session_state.user is None and _GLOBAL_STORE.get("user") is not None:
-    st.session_state.user = _GLOBAL_STORE["user"]
+_render_pending_session_cookie()
 
 if st.session_state.user is None:
     st.markdown("<div style='height: 30px;'></div>", unsafe_allow_html=True)
@@ -1846,7 +2176,8 @@ if st.session_state.user is None:
                                 "role": user_rec.get("role", "Staff"),
                                 "email": user_rec.get("email") or f"{user_rec['username']}@sawasdeecarrental.com"
                             }
-                            _GLOBAL_STORE["user"] = st.session_state.user
+                            st.session_state["_logged_out_this_session"] = False
+                            _queue_session_cookie(_make_session_token(st.session_state.user))
                             if is_pending_login:
                                 # บัญชีรออนุมัติ: เข้าดูได้เฉพาะหน้าแดชบอร์ด
                                 st.session_state.selected_module = "Dashboard และรายงานผู้บริหาร"
@@ -2217,7 +2548,8 @@ else:
         if st.button("🚪 ออกจากระบบ", use_container_width=True):
             sb_auth_logout()
             st.session_state.user = None
-            _GLOBAL_STORE.pop("user", None)
+            st.session_state["_logged_out_this_session"] = True
+            _queue_session_cookie(None)
             st.session_state.auth_mode = "login"
             for qk in list(st.query_params.keys()):
                 del st.query_params[qk]
@@ -2442,69 +2774,192 @@ else:
 
         # --- TAB 2: FLEET SELECTION ---
         elif current_tab == "2. เลือกรถยนต์":
+            # --- 1) จัดการ State ของตัวกรอง Tab 2 เพื่อให้เซลเลือกรถและรีเซ็ตได้อย่างแม่นยำ ---
+            if "fleet_f_group" not in st.session_state: st.session_state.fleet_f_group = "ทั้งหมด"
+            if "fleet_f_brand" not in st.session_state: st.session_state.fleet_f_brand = "ทั้งหมด"
+            if "fleet_f_status" not in st.session_state: st.session_state.fleet_f_status = "ทั้งหมด"
+            if "fleet_f_company" not in st.session_state: st.session_state.fleet_f_company = "ทั้งหมด"
+            if "fleet_f_search" not in st.session_state: st.session_state.fleet_f_search = ""
+            if "fleet_f_start" not in st.session_state: st.session_state.fleet_f_start = None
+            if "fleet_f_end" not in st.session_state: st.session_state.fleet_f_end = None
+
+            # เชื่อมโยงคำค้นหาจาก Sidebar หรือตาราง Dashboard เข้าสู่ช่องค้นหา
+            _global_kw = st.session_state.get("global_search_kw", st.session_state.get("search_plate_filter", "")).strip()
+            if _global_kw and not st.session_state.fleet_f_search:
+                st.session_state.fleet_f_search = _global_kw
+
+            def reset_all_fleet_filters():
+                st.session_state.fleet_f_group = "ทั้งหมด"
+                st.session_state.fleet_f_brand = "ทั้งหมด"
+                st.session_state.fleet_f_status = "ทั้งหมด"
+                st.session_state.fleet_f_company = "ทั้งหมด"
+                st.session_state.fleet_f_search = ""
+                st.session_state.fleet_f_start = None
+                st.session_state.fleet_f_end = None
+                st.session_state.global_search_kw = ""
+                st.session_state.search_plate_filter = ""
+                st.session_state.search_avail_start = None
+                st.session_state.search_avail_end = None
+                st.session_state._fleet_auto_kw = ""
+                st.session_state.fleet_detail_plate = None
+
+            if hasattr(st, "html"):
+                st.html(fleet_cards_css)
+            else:
+                st.markdown(fleet_cards_css, unsafe_allow_html=True)
+
+            # --- SECTION 1: HERO SECTION & BANNER (Pastel Luxury Minimal) ---
+            st.markdown(
+                '<div class="fleet-hero-banner">'
+                '<div class="fleet-hero-pill">LUXURY CAR RENTAL THAILAND</div>'
+                '<h2 class="fleet-hero-title">EXPERIENCE THAILAND IN UNPARALLELED LUXURY. BOOK YOUR ELITE DRIVE.</h2>'
+                '<div class="fleet-palette-row">'
+                '<span class="fleet-palette-tag"><span class="color-dot" style="background:#E0B8B8;"></span> Soft Rose Gold (#E0B8B8)</span>'
+                '<span class="fleet-palette-tag"><span class="color-dot" style="background:#B4C6E7;"></span> Muted Pastel Blue (#B4C6E7)</span>'
+                '<span class="fleet-palette-tag"><span class="color-dot" style="background:#EAE2D8;"></span> Pastel Champagne/Beige (#F5ECE0)</span>'
+                '</div>'
+                '</div>',
+                unsafe_allow_html=True
+            )
+
+            # --- SECTION 2: INSTANT BOOKING FORM (THE BOOKING BAR) ---
+            _existing_groups = sorted(list(set(c.get("car_group", "").strip() for c in cars_db.values() if c.get("car_group"))))
+            _group_options = ["ทั้งหมด"] + _existing_groups
+
+            _existing_brands = sorted(list(set(c.get("brand", "").strip() for c in cars_db.values() if c.get("brand"))))
+            _brand_options = ["ทั้งหมด"] + _existing_brands
+
+            _company_options = ["ทั้งหมด"] + sorted(list(set(c.get("company", "").strip() for c in cars_db.values() if c.get("company"))))
+            _status_options = ["ทั้งหมด", "ว่างพร้อมใช้งาน", "กำลังเช่า", "ติดจอง", "ซ่อมบำรุง"]
+
             with st.container(border=True, key="fleet_filter_bar"):
-                st.markdown("<h3 style='font-size:16px; font-weight:700;'>🚘 ค้นหาและแมตช์รถ (Fleet Selection)</h3>", unsafe_allow_html=True)
+                st.markdown(
+                    '<div class="fleet-booking-title">✨ 2. INSTANT BOOKING FORM (THE BOOKING BAR) — ค้นหาและเลือกรถด่วนสำหรับเซล</div>',
+                    unsafe_allow_html=True
+                )
                 
-                # แสดงตัวกรอง 5 ช่องหลัก
-                fc1, fc2, fc3, fc4, fc5 = st.columns(5)
-                f_group = fc1.selectbox("กลุ่มรถ (Car Group)", ["ทั้งหมด", "รถเก๋ง (Sedan/Hatchback)", "รถตู้ (Van)", "SUV", "รถกระบะ"])
-                f_cc = fc2.selectbox("ขนาดเครื่องยนต์ (CC)", ["ทั้งหมด", "1200", "1500", "2000", "2500", "EV"])
-                f_fuel = fc3.selectbox("เชื้อเพลิง", ["ทั้งหมด", "เบนซิน", "ดีเซล", "เบนซิน/Hybrid", "ไฟฟ้า (EV)"])
-                f_status = fc4.selectbox("สถานะปัจจุบัน", ["ทั้งหมด", "ว่างพร้อมใช้งาน", "กำลังเช่า", "ติดจอง", "ซ่อมบำรุง"])
-                
-                company_list = ["ทั้งหมด"] + list(set(c["company"] for c in cars_db.values()))
-                f_company = fc5.selectbox("กรรมสิทธิ์/บริษัท", company_list)
-                
-                # เมื่อเลือกสถานะ "ว่างพร้อมใช้งาน" จึงขึ้นปฏิทินระบุทั้งวันส่งและวันรับ เพื่อป้องกันการจองซ้ำ
-                f_avail_start = None
-                f_avail_end = None
-                if f_status == "ว่างพร้อมใช้งาน":
-                    with st.container(border=True):
-                        st.markdown("<b style='font-size:13px; color:#1F2937;'>📅 ระบุช่วงวันส่งรถ - วันรับคืน (เพื่อตรวจสอบรถว่างและป้องกันการจองซ้ำ):</b>", unsafe_allow_html=True)
-                        cd_c1, cd_c2, cd_c3 = st.columns([1.5, 1.5, 3])
-                        with cd_c1:
-                            f_avail_start = st.date_input(
-                                "📅 วันที่ส่งรถ (เริ่มเช่า)",
-                                value=st.session_state.get("search_avail_start", None),
-                                format="DD/MM/YYYY",
-                                help="เลือกวันที่เริ่มส่งมอบรถให้ลูกค้า"
-                            )
-                            st.session_state.search_avail_start = f_avail_start
-                        with cd_c2:
-                            default_end = (f_avail_start + timedelta(days=1)) if f_avail_start else None
-                            cur_saved_end = st.session_state.get("search_avail_end", None)
-                            if f_avail_start and (not cur_saved_end or cur_saved_end < f_avail_start):
-                                cur_saved_end = default_end
-                            f_avail_end = st.date_input(
-                                "📅 วันที่รับคืน (สิ้นสุด)",
-                                value=cur_saved_end,
-                                format="DD/MM/YYYY",
-                                help="เลือกวันที่ลูกค้านัดคืนรถ"
-                            )
-                            st.session_state.search_avail_end = f_avail_end
-                        with cd_c3:
-                            st.markdown("<div style='height: 25px;'></div>", unsafe_allow_html=True)
-                            if f_avail_start and f_avail_end:
-                                if f_avail_end < f_avail_start:
-                                    st.error("⚠️ วันรับคืนต้องไม่น้อยกว่าวันส่งรถ")
-                                else:
-                                    days_diff = max(1, (f_avail_end - f_avail_start).days)
-                                    st.info(f"✨ คัดกรองรถว่างช่วง: **{format_date_dmy(f_avail_start)} ถึง {format_date_dmy(f_avail_end)}** ({days_diff} วัน) — ป้องกันการจองซ้ำซ้อน")
-                            elif f_avail_start:
-                                st.info(f"✨ คัดกรองรถว่าง ณ วันส่งมอบ: **{format_date_dmy(f_avail_start)}**")
-                            else:
-                                st.caption("💡 ระบุทั้งวันส่งและวันรับรถ เพื่อให้ระบบตรวจสอบคิวที่ทับซ้อนและแสดงเฉพาะรถที่ว่างจริง")
-                else:
-                    st.session_state.search_avail_start = None
-                    st.session_state.search_avail_end = None
-                
-                search_kw = st.session_state.get("global_search_kw", st.session_state.get("search_plate_filter", "")).strip()
+                # แถวที่ 1: หมวดหมู่, ยี่ห้อ, วันที่ส่งรถ, วันที่คืนรถ, สถานะ
+                b_c1, b_c2, b_c3, b_c4, b_c5 = st.columns(5)
+                with b_c1:
+                    cur_grp_idx = _group_options.index(st.session_state.fleet_f_group) if st.session_state.fleet_f_group in _group_options else 0
+                    f_group = st.selectbox("หมวดหมู่รถ (Category)", _group_options, index=cur_grp_idx, key="fleet_f_group")
+                with b_c2:
+                    cur_brd_idx = _brand_options.index(st.session_state.fleet_f_brand) if st.session_state.fleet_f_brand in _brand_options else 0
+                    f_brand = st.selectbox("ยี่ห้อ (Brand)", _brand_options, index=cur_brd_idx, key="fleet_f_brand")
+                with b_c3:
+                    f_avail_start = st.date_input(
+                        "📅 วันที่ส่งรถ (Pick-up)", 
+                        value=st.session_state.fleet_f_start, 
+                        format="DD/MM/YYYY", 
+                        key="fleet_f_start",
+                        help="เลือกระบุวันที่เริ่มส่งมอบรถ (ถ้าต้องการตรวจสอบรถว่าง)"
+                    )
+                with b_c4:
+                    f_avail_end = st.date_input(
+                        "📅 วันที่คืนรถ (Return)", 
+                        value=st.session_state.fleet_f_end, 
+                        format="DD/MM/YYYY", 
+                        key="fleet_f_end",
+                        help="เลือกระบุวันที่คืนรถ (ถ้าต้องการตรวจสอบรถว่าง)"
+                    )
+                with b_c5:
+                    cur_st_idx = _status_options.index(st.session_state.fleet_f_status) if st.session_state.fleet_f_status in _status_options else 0
+                    f_status = st.selectbox("สถานะรถ (Status)", _status_options, index=cur_st_idx, key="fleet_f_status")
+
+                # แถวที่ 2: คำค้นหาด่วน, กรรมสิทธิ์/บริษัท, ปุ่มล้างตัวกรอง
+                srch_c1, srch_c2, srch_c3 = st.columns([3, 1.8, 1.2])
+                with srch_c1:
+                    search_kw = st.text_input("🔎 ค้นหาด่วน (ยี่ห้อ, รุ่น, ทะเบียน, สี)", key="fleet_f_search", placeholder="พิมพ์เพื่อค้นหา เช่น Camry, BMW 7, 8กฐ 3303, ขาว, Alphard...").strip()
+                with srch_c2:
+                    cur_comp_idx = _company_options.index(st.session_state.fleet_f_company) if st.session_state.fleet_f_company in _company_options else 0
+                    f_company = st.selectbox("กรรมสิทธิ์/บริษัท", _company_options, index=cur_comp_idx, key="fleet_f_company")
+                with srch_c3:
+                    st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
+                    st.button("🔄 ล้างตัวกรอง", on_click=reset_all_fleet_filters, use_container_width=True, help="คืนค่าตัวกรองทั้งหมดและแสดงรถยนต์ทุกคันทันที")
+
+            # --- 2) ระบบคัดกรองรถยนต์ (Match Engine) ---
+            if f_avail_start and f_avail_end and f_avail_end < f_avail_start:
+                st.warning("⚠️ วันที่คืนรถต้องไม่น้อยกว่าวันที่ส่งรถ")
+
+            _fleet_matched = []
+            for plate, c in cars_db.items():
+                # กรองคำค้นหา
                 if search_kw:
-                    st.caption(f"🔎 กรองผลลัพธ์ตามคำค้นหาจากไซด์บาร์: **{search_kw}**")
-            
-            with st.container():
-                # --- ADD NEW VEHICLE TO FLEET DATABASE (เพิ่มรถใหม่) ---
-                with st.expander("🚗➕ เพิ่มรถยนต์ใหม่เข้าสู่ฐานข้อมูล (Add New Vehicle to Fleet)", expanded=False):
+                    target_txt = f"{plate} {c.get('brand','')} {c.get('model','')} {c.get('car_group','')} {c.get('company','')} {c.get('color','')}".lower()
+                    if search_kw.lower() not in target_txt:
+                        continue
+                
+                # กรองหมวดหมู่
+                if f_group != "ทั้งหมด":
+                    cg = c.get('car_group', '')
+                    if f_group != cg and f_group.lower() not in cg.lower() and cg.lower() not in f_group.lower():
+                        continue
+
+                # กรองยี่ห้อ
+                if f_brand != "ทั้งหมด":
+                    if c.get('brand', '').strip().lower() != f_brand.strip().lower():
+                        continue
+
+                # กรองบริษัทกรรมสิทธิ์
+                if f_company != "ทั้งหมด":
+                    if c.get('company', '').strip() != f_company.strip():
+                        continue
+
+                # กรองสถานะและปฏิทินวันที่ว่าง
+                if f_status == "ว่างพร้อมใช้งาน":
+                    if f_avail_start:
+                        date_chk = (f_avail_start, f_avail_end) if f_avail_end else f_avail_start
+                        if not is_car_available_on_date(plate, c, date_chk, st.session_state.bookings_db):
+                            continue
+                    else:
+                        if c.get('status') != "ว่างพร้อมใช้งาน":
+                            continue
+                elif f_status != "ทั้งหมด":
+                    if c.get('status') != f_status:
+                        continue
+                elif f_avail_start:
+                    date_chk = (f_avail_start, f_avail_end) if f_avail_end else f_avail_start
+                    if not is_car_available_on_date(plate, c, date_chk, st.session_state.bookings_db):
+                        continue
+
+                _fleet_matched.append((plate, c))
+
+            total_fleet_count = len(cars_db)
+            matched_count = len(_fleet_matched)
+
+            # แสดงแถบสรุปสถานะฟีลเตอร์ (Active Filter Ribbon)
+            _is_any_filter = (
+                f_group != "ทั้งหมด" or
+                f_brand != "ทั้งหมด" or
+                f_status != "ทั้งหมด" or
+                f_company != "ทั้งหมด" or
+                bool(search_kw) or
+                bool(f_avail_start)
+            )
+
+            if _is_any_filter:
+                chips_html = []
+                if f_group != "ทั้งหมด": chips_html.append(f'<span class="fleet-filter-chip">หมวดหมู่: {f_group}</span>')
+                if f_brand != "ทั้งหมด": chips_html.append(f'<span class="fleet-filter-chip">ยี่ห้อ: {f_brand}</span>')
+                if f_status != "ทั้งหมด": chips_html.append(f'<span class="fleet-filter-chip">สถานะ: {f_status}</span>')
+                if f_company != "ทั้งหมด": chips_html.append(f'<span class="fleet-filter-chip">บริษัท: {f_company}</span>')
+                if search_kw: chips_html.append(f'<span class="fleet-filter-chip">คำค้นหา: &ldquo;{search_kw}&rdquo;</span>')
+                if f_avail_start:
+                    d_txt = f"{format_date_dmy(f_avail_start)} - {format_date_dmy(f_avail_end)}" if f_avail_end else format_date_dmy(f_avail_start)
+                    chips_html.append(f'<span class="fleet-filter-chip">📅 {d_txt}</span>')
+                
+                chips_str = " ".join(chips_html)
+                st.markdown(
+                    f'<div class="fleet-active-filters-box">'
+                    f'<span style="font-size:12px; font-weight:700; color:#4B5563;">⚡ ฟีลเตอร์ที่กำลังทำงาน:</span>'
+                    f'{chips_str}'
+                    f'<span style="margin-left:auto; font-size:12px; color:#6B7280;">(แสดง <b>{matched_count}</b> จากทั้งหมด {total_fleet_count} คัน)</span>'
+                    f'</div>',
+                    unsafe_allow_html=True
+                )
+
+            # ฟอร์มเพิ่มรถยนต์ใหม่ (คงฟีเจอร์เดิมครบถ้วน 100%)
+            with st.expander("🚗➕ เพิ่มรถยนต์ใหม่เข้าสู่ฐานข้อมูล (Add New Vehicle to Fleet)", expanded=False):
                     st.markdown("<div style='font-size:13.5px; font-weight:700; color:#E85826; margin-bottom:12px;'>📋 แบบฟอร์มลงทะเบียนรถยนต์ใหม่เข้าสู่ฐานข้อมูล</div>", unsafe_allow_html=True)
                     
                     add_c1, add_c2, add_c3 = st.columns(3)
@@ -2582,38 +3037,83 @@ else:
                                 st.rerun()
                     with btn_c_tip:
                         st.caption("💡 รถยนต์ที่เพิ่มใหม่จะแสดงในการ์ดเลือกรถทันที และซิงค์ไปยังหน้า Dashboard กองยานพาหนะ และ Back Office อัตโนมัติ")
-                
-                matched_count = 0
-                for plate, c in cars_db.items():
-                    # กรองด้วยข้อความค้นหาจากไซด์บาร์ (ทะเบียน, ยี่ห้อ, รุ่น, บริษัท)
-                    if search_kw:
-                        search_target = f"{plate} {c['brand']} {c['model']} {c.get('car_group', '')} {c.get('company', '')}".lower()
-                        if search_kw.lower() not in search_target:
-                            continue
-                            
-                    # กรองตามสถานะและวันที่ว่าง (ปฏิทิน: วันส่งและวันรับ)
-                    if f_status == "ว่างพร้อมใช้งาน":
-                        if f_avail_start:
-                            date_check = (f_avail_start, f_avail_end) if f_avail_end else f_avail_start
-                            if not is_car_available_on_date(plate, c, date_check, st.session_state.bookings_db):
-                                continue
-                        else:
-                            if c.get('status') != "ว่างพร้อมใช้งาน":
-                                continue
-                    elif f_status != "ทั้งหมด":
-                        if c.get('status') != f_status:
-                            continue
+
+
+            # --- SECTION 3: PREMIUM FLEET SHOWCASE ("OUR ELITE FLEET") ---
+            # รูปรถเรียงกันเป็น Card (มีรูป ราคา ยี่ห้อ รุ่น) ตามภาพที่สอง เพื่อให้เซลเลือกรถได้สะดวกที่สุด
+            st.markdown(
+                f'<div style="text-align: center; margin: 20px 0 16px 0;">'
+                f'<div style="font-size: 11px; letter-spacing: 2.5px; text-transform: uppercase; color: #8C827A; font-weight: 700;">SAWASDEE RENTAL SHOWCASE</div>'
+                f'<h3 style="font-size: 22px; font-weight: 800; color: #1F2937; margin: 2px 0 0 0; letter-spacing: 0.5px;">OUR ELITE FLEET</h3>'
+                f'<div style="font-size: 13px; color: #6B7280; margin-top: 3px;">พบรถยนต์พร้อมใช้งาน <b>{matched_count}</b> คัน</div>'
+                f'</div>',
+                unsafe_allow_html=True
+            )
+
+            import html as _html_esc
+            _FLEET_COLS = 4
+            _FLEET_DEFAULT_IMG = "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?auto=format&fit=crop&q=80&w=500"
+
+            # จดจำและเปิดดูคันที่ถูกเลือก
+            _fleet_plates = [p for p, _ in _fleet_matched]
+            _fleet_sel = st.session_state.get("fleet_detail_plate")
+            if _fleet_sel not in _fleet_plates:
+                _fleet_sel = None
+            if search_kw:
+                if st.session_state.get("_fleet_auto_kw") != search_kw:
+                    st.session_state["_fleet_auto_kw"] = search_kw
+                    _fleet_targets = [p for p in _fleet_plates if (search_kw in p or p in search_kw)]
+                    if _fleet_targets:
+                        _fleet_sel = _fleet_targets[0]
+            else:
+                st.session_state["_fleet_auto_kw"] = ""
+            st.session_state.fleet_detail_plate = _fleet_sel
+
+            def _fleet_toggle_detail(p):
+                st.session_state.fleet_detail_plate = None if st.session_state.get("fleet_detail_plate") == p else p
+
+            # วาดการ์ดรูปรถเรียงกันเป็น Grid ทีละ 4 คอลัมน์ (ตามภาพที่สอง)
+            for _row_start in range(0, len(_fleet_matched), _FLEET_COLS):
+                _row_items = _fleet_matched[_row_start:_row_start + _FLEET_COLS]
+                _row_cols = st.columns(_FLEET_COLS)
+                for _i, (_p, _c) in enumerate(_row_items):
+                    _idx = _row_start + _i
+                    _is_sel = (_p == st.session_state.get("fleet_detail_plate"))
+                    _img = _html_esc.escape(str(_c.get("image") or _FLEET_DEFAULT_IMG), quote=True)
+                    _brand = _html_esc.escape(str(_c.get('brand', '')).strip())
+                    _model = _html_esc.escape(str(_c.get('model', '')).strip())
+                    _full_title = f"{_brand} {_model}".strip() or _html_esc.escape(_p)
+                    try:
+                        _p_val = f"{int(float(_c.get('price_day', 0) or 0)):,}"
+                    except Exception:
+                        _p_val = str(_c.get('price_day', '-'))
                     
-                    if f_group != "ทั้งหมด" and c.get('car_group') != f_group: continue
-                    if f_cc != "ทั้งหมด" and c.get('engine_cc') != f_cc: continue
-                    if f_fuel != "ทั้งหมด" and c.get('fuel_type') != f_fuel: continue
-                    if f_company != "ทั้งหมด" and c.get('company') != f_company: continue
-                    
-                    matched_count += 1
+                    with _row_cols[_i]:
+                        with st.container(key=f"fleet_card_{'sel_' if _is_sel else ''}{_idx}"):
+                            st.markdown(
+                                f'<div class="fleet-card-img-box">'
+                                f'<img src="{_img}" alt="{_full_title}" loading="lazy"/>'
+                                f'</div>'
+                                f'<div class="fleet-card-title" title="{_full_title}">{_full_title}</div>'
+                                f'<div class="fleet-card-price-tag">฿{_p_val} <span>/ DAY</span></div>',
+                                unsafe_allow_html=True,
+                            )
+                            st.button(
+                                "HIDE DETAILS ▲" if _is_sel else "VIEW DETAILS",
+                                key=f"fleet_view_{_idx}",
+                                use_container_width=True,
+                                on_click=_fleet_toggle_detail,
+                                args=(_p,),
+                                help=f"คลิกดูรายละเอียดรถ {_p}"
+                            )
+
+                # หากมีรถในแถวนี้ที่ถูกกด VIEW DETAILS ให้แสดงแผงรายละเอียดเต็มใต้แถวนี้ทันที
+                _sel_in_row = [(_p, _c) for _p, _c in _row_items if _p == st.session_state.get("fleet_detail_plate")]
+                for plate, c in _sel_in_row:
                     status_class = "status-available" if c['status'] == "ว่างพร้อมใช้งาน" else ("status-maintenance" if c['status'] == "ซ่อมบำรุง" else "status-rented")
                     
-                    # หากค้นหาเจาะจงทะเบียน ให้เปิด Expander อัตโนมัติ
-                    is_target_car = bool(search_kw and (search_kw in plate or plate in search_kw))
+                    # คันที่เปิดดูรายละเอียด ให้กาง Expander อัตโนมัติ
+                    is_target_car = True
 
                     
                     # ตรวจสอบการจองที่กำลังดำเนินอยู่ของรถคันนี้ (กรณี กำลังเช่า หรือ ติดจอง)
@@ -2906,9 +3406,37 @@ else:
                                                 time.sleep(0.8)
                                                 st.rerun()
 
-                if matched_count == 0:
-                    st.info("ℹ️ ไม่พบรถที่ตรงตามเงื่อนไขการค้นหา หรือไม่มีรถว่างในวันที่ท่านเลือก กรุณาลองปรับเปลี่ยนตัวกรอง")
 
+            if matched_count == 0:
+                st.info("ℹ️ ไม่พบรถยนต์ที่ตรงตามเงื่อนไขตัวกรอง กรุณากดปุ่มด้านล่างเพื่อล้างตัวกรองและแสดงรถทุกคันอีกครั้ง")
+                if st.button("🔄 ล้างตัวกรองทั้งหมด (แสดงรถทุกคัน)", key="btn_reset_zero_match", type="primary"):
+                    reset_all_fleet_filters()
+                    st.rerun()
+
+            # --- SECTION 4: PREMIUM SERVICES & BENEFITS (ตามภาพตัวอย่าง) ---
+            st.markdown(
+                '<div class="fleet-benefits-wrap">'
+                '<div class="fleet-benefits-title">PREMIUM SERVICES & BENEFITS</div>'
+                '<div class="fleet-benefits-grid">'
+                '<div class="fleet-benefit-item">'
+                '<div class="fleet-benefit-icon">👨‍✈️</div>'
+                '<div class="fleet-benefit-name">CHAUFFEUR SERVICES</div>'
+                '<div class="fleet-benefit-desc">บริการพนักงานขับรถ VIP มืออาชีพ อุ่นใจทุกเส้นทาง</div>'
+                '</div>'
+                '<div class="fleet-benefit-item">'
+                '<div class="fleet-benefit-icon">✈️</div>'
+                '<div class="fleet-benefit-name">AIRPORT VIP GREETING</div>'
+                '<div class="fleet-benefit-desc">ต้อนรับและส่งมอบรถสนามบิน VIP รวดเร็ว ไร้รอยต่อ</div>'
+                '</div>'
+                '<div class="fleet-benefit-item">'
+                '<div class="fleet-benefit-icon">🛡️</div>'
+                '<div class="fleet-benefit-name">FULL INSURANCE</div>'
+                '<div class="fleet-benefit-desc">ประกันภัยชั้น 1 ครบวงจร คุ้มครองเต็มรูปแบบ ไร้กังวล</div>'
+                '</div>'
+                '</div>'
+                '</div>',
+                unsafe_allow_html=True
+            )
 
         # --- TAB 3: CONTRACT ---
         elif current_tab == "3. จัดทำสัญญาเช่า":
