@@ -117,6 +117,101 @@ def is_car_available_on_date(car_plate, car_obj, check_date, bookings):
                 return False
     return True
 
+def get_car_fleet_status(car_plate, car_obj, bookings, filter_start_date=None, filter_end_date=None):
+    """
+    คำนวณสถานะรถยนต์สำหรับแสดงจุดสีบอกสถานะหลังชื่อรุ่นรถ:
+    - สีส้ม: สถานะซ่อมบำรุง
+    - สีแดง: ไม่ว่างในวันที่เลือก (หรือกำลังเช่าอยู่ ณ ปัจจุบันกรณีไม่ได้เลือกวันที่)
+    - สีเหลือง: มีการจองล่วงหน้าไว้ (ในวันที่เลือกยังว่าง แต่มีคิวจองล่วงหน้าช่วงอื่น)
+    - สีเขียว: ว่างไม่มีการจอง (ว่างพร้อมใช้งาน และไม่มีคิวจองใดๆ)
+    """
+    c_status = str((car_obj or {}).get('status') or '').strip()
+    
+    # 1. สีส้ม: สถานะซ่อมบำรุง
+    if c_status == 'ซ่อมบำรุง':
+        return {
+            "code": "maintenance",
+            "color": "#F97316",
+            "shadow": "rgba(249, 115, 22, 0.55)",
+            "label": "ซ่อมบำรุง",
+            "desc": "สถานะซ่อมบำรุง"
+        }
+    
+    # 2. วันที่เป้าหมายสำหรับตรวจสอบความพร้อมใช้งาน
+    today = date.today()
+    has_date_filter = bool(filter_start_date)
+    chk_s = to_date(filter_start_date) if has_date_filter else today
+    chk_e = to_date(filter_end_date) if filter_end_date else chk_s
+    if chk_s and chk_e and chk_e < chk_s:
+        chk_e = chk_s
+        
+    active_bks = []
+    if bookings:
+        for b in bookings:
+            if b.get('car_id') != car_plate:
+                continue
+            if b.get('status') in ['เสร็จสิ้น', 'ยกเลิก']:
+                continue
+            active_bks.append(b)
+            
+    is_booked_on_selected_date = False
+    if chk_s and chk_e:
+        for b in active_bks:
+            b_s = to_date(b.get('start_date'))
+            b_e = to_date(b.get('end_date'))
+            if b_s and b_e:
+                if not (b_e < chk_s or b_s > chk_e):
+                    is_booked_on_selected_date = True
+                    break
+                    
+    is_currently_rented = False
+    if not has_date_filter:
+        if c_status in ['กำลังเช่า', 'รอส่งมอบ', 'เตรียมส่งมอบ', 'เตรียมรับคืน']:
+            is_currently_rented = True
+        elif is_booked_on_selected_date:
+            is_currently_rented = True
+            
+    # 2. สีแดง: ไม่ว่างในวันที่เลือก
+    if (has_date_filter and is_booked_on_selected_date) or (not has_date_filter and (is_currently_rented or is_booked_on_selected_date)):
+        desc_txt = "ไม่ว่างในวันที่เลือก" if has_date_filter else "ไม่ว่างในวันที่เลือก (กำลังเช่า/มีคิวใช้งาน)"
+        return {
+            "code": "unavailable",
+            "color": "#EF4444",
+            "shadow": "rgba(239, 68, 68, 0.55)",
+            "label": "ไม่ว่างในวันที่เลือก",
+            "desc": desc_txt
+        }
+        
+    # 3. สีเหลือง: มีการจองล่วงหน้าไว้
+    has_advance_booking = False
+    if c_status == 'ติดจอง':
+        has_advance_booking = True
+    elif active_bks:
+        for b in active_bks:
+            b_e = to_date(b.get('end_date'))
+            b_s = to_date(b.get('start_date'))
+            if (b_e and b_e >= today) or (b_s and b_s >= today):
+                has_advance_booking = True
+                break
+                
+    if has_advance_booking:
+        return {
+            "code": "reserved",
+            "color": "#F59E0B",
+            "shadow": "rgba(245, 158, 11, 0.55)",
+            "label": "มีการจองล่วงหน้าไว้",
+            "desc": "มีการจองล่วงหน้าไว้"
+        }
+        
+    # 4. สีเขียว: ว่างไม่มีการจอง
+    return {
+        "code": "available",
+        "color": "#10B981",
+        "shadow": "rgba(16, 185, 129, 0.55)",
+        "label": "ว่างไม่มีการจอง",
+        "desc": "ว่างไม่มีการจอง"
+    }
+
 def parse_time_val(t_val, default_time=d_time(10, 0)):
     if not t_val:
         return default_time
@@ -1886,11 +1981,26 @@ div[class*="st-key-fleet_card_"]:hover .fleet-card-img-box img {
     font-weight: 700;
     color: #111827;
     margin: 4px 0 4px 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    letter-spacing: 0.2px;
+    line-height: 1.35;
+}
+.fleet-card-title-text {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    text-align: center;
-    letter-spacing: 0.2px;
+    max-width: calc(100% - 18px);
+    display: inline-block;
+}
+.car-status-dot {
+    display: inline-block;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.car-status-dot:hover {
+    transform: scale(1.35);
 }
 .fleet-card-price-tag {
     font-size: 15px;
@@ -2830,7 +2940,16 @@ else:
             _brand_options = ["ทั้งหมด"] + _existing_brands
 
             _company_options = ["ทั้งหมด"] + sorted(list(set(c.get("company", "").strip() for c in cars_db.values() if c.get("company"))))
-            _status_options = ["ทั้งหมด", "ว่างพร้อมใช้งาน", "กำลังเช่า", "ติดจอง", "ซ่อมบำรุง"]
+            _status_options = [
+                "ทั้งหมด",
+                "ว่างไม่มีการจอง (🟢)",
+                "มีการจองล่วงหน้าไว้ (🟡)",
+                "ไม่ว่างในวันที่เลือก (🔴)",
+                "สถานะซ่อมบำรุง (🟠)",
+                "ว่างพร้อมใช้งาน (🟢+🟡)",
+                "กำลังเช่า",
+                "ติดจอง"
+            ]
 
             with st.container(border=True, key="fleet_filter_bar"):
                 st.markdown(
@@ -2905,21 +3024,27 @@ else:
                     if c.get('company', '').strip() != f_company.strip():
                         continue
 
-                # กรองสถานะและปฏิทินวันที่ว่าง
-                if f_status == "ว่างพร้อมใช้งาน":
-                    if f_avail_start:
-                        date_chk = (f_avail_start, f_avail_end) if f_avail_end else f_avail_start
-                        if not is_car_available_on_date(plate, c, date_chk, st.session_state.bookings_db):
-                            continue
-                    else:
-                        if c.get('status') != "ว่างพร้อมใช้งาน":
-                            continue
+                # ตรวจสอบสถานะสีความพร้อมใช้งานของรถ
+                _car_st = get_car_fleet_status(plate, c, st.session_state.bookings_db, f_avail_start, f_avail_end)
+                
+                # กรองสถานะตามตัวเลือก
+                if f_status.startswith("ว่างไม่มีการจอง"):
+                    if _car_st['code'] != "available":
+                        continue
+                elif f_status.startswith("มีการจองล่วงหน้าไว้"):
+                    if _car_st['code'] != "reserved":
+                        continue
+                elif f_status.startswith("ไม่ว่างในวันที่เลือก"):
+                    if _car_st['code'] != "unavailable":
+                        continue
+                elif f_status.startswith("สถานะซ่อมบำรุง") or f_status == "ซ่อมบำรุง":
+                    if _car_st['code'] != "maintenance":
+                        continue
+                elif f_status.startswith("ว่างพร้อมใช้งาน"):
+                    if _car_st['code'] not in ["available", "reserved"]:
+                        continue
                 elif f_status != "ทั้งหมด":
                     if c.get('status') != f_status:
-                        continue
-                elif f_avail_start:
-                    date_chk = (f_avail_start, f_avail_end) if f_avail_end else f_avail_start
-                    if not is_car_available_on_date(plate, c, date_chk, st.session_state.bookings_db):
                         continue
 
                 _fleet_matched.append((plate, c))
@@ -3040,12 +3165,21 @@ else:
 
 
             # --- SECTION 3: PREMIUM FLEET SHOWCASE ("OUR ELITE FLEET") ---
-            # รูปรถเรียงกันเป็น Card (มีรูป ราคา ยี่ห้อ รุ่น) ตามภาพที่สอง เพื่อให้เซลเลือกรถได้สะดวกที่สุด
+            # รูปรถเรียงกันเป็น Card (มีรูป ราคา ยี่ห้อ รุ่น) พร้อมจุดสถานะบอกความพร้อมใช้งาน
+            _matched_avail_count = sum(1 for _p, _c in _fleet_matched if get_car_fleet_status(_p, _c, st.session_state.bookings_db, f_avail_start, f_avail_end)['code'] in ['available', 'reserved'])
+            _subtitle_str = f"พบรถยนต์ทั้งหมด <b>{matched_count}</b> คัน (พร้อมใช้งาน <b>{_matched_avail_count}</b> คัน)" if matched_count != _matched_avail_count else f"พบรถยนต์พร้อมใช้งาน <b>{matched_count}</b> คัน"
+
             st.markdown(
-                f'<div style="text-align: center; margin: 20px 0 16px 0;">'
+                f'<div style="text-align: center; margin: 20px 0 12px 0;">'
                 f'<div style="font-size: 11px; letter-spacing: 2.5px; text-transform: uppercase; color: #8C827A; font-weight: 700;">SAWASDEE RENTAL SHOWCASE</div>'
                 f'<h3 style="font-size: 22px; font-weight: 800; color: #1F2937; margin: 2px 0 0 0; letter-spacing: 0.5px;">OUR ELITE FLEET</h3>'
-                f'<div style="font-size: 13px; color: #6B7280; margin-top: 3px;">พบรถยนต์พร้อมใช้งาน <b>{matched_count}</b> คัน</div>'
+                f'<div style="font-size: 13px; color: #6B7280; margin-top: 3px;">{_subtitle_str}</div>'
+                f'<div style="display:flex; justify-content:center; align-items:center; gap:12px; margin: 10px 0 4px 0; font-size:12px; color:#4B5563; flex-wrap:wrap;">'
+                f'<span style="display:inline-flex; align-items:center; gap:5px; background:#F0FDF4; border:1px solid #BBF7D0; padding:2px 10px; border-radius:12px; font-weight:600; color:#15803D;"><span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#10B981; box-shadow:0 0 5px rgba(16,185,129,0.5);"></span> ว่างไม่มีการจอง</span>'
+                f'<span style="display:inline-flex; align-items:center; gap:5px; background:#FEFCE8; border:1px solid #FEF08A; padding:2px 10px; border-radius:12px; font-weight:600; color:#A16207;"><span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#F59E0B; box-shadow:0 0 5px rgba(245,158,11,0.5);"></span> มีการจองล่วงหน้าไว้</span>'
+                f'<span style="display:inline-flex; align-items:center; gap:5px; background:#FEF2F2; border:1px solid #FECACA; padding:2px 10px; border-radius:12px; font-weight:600; color:#B91C1C;"><span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#EF4444; box-shadow:0 0 5px rgba(239,68,68,0.5);"></span> ไม่ว่างในวันที่เลือก</span>'
+                f'<span style="display:inline-flex; align-items:center; gap:5px; background:#FFF7ED; border:1px solid #FED7AA; padding:2px 10px; border-radius:12px; font-weight:600; color:#C2410C;"><span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#F97316; box-shadow:0 0 5px rgba(249,115,22,0.5);"></span> สถานะซ่อมบำรุง</span>'
+                f'</div>'
                 f'</div>',
                 unsafe_allow_html=True
             )
@@ -3088,13 +3222,23 @@ else:
                     except Exception:
                         _p_val = str(_c.get('price_day', '-'))
                     
+                    # คำนวณสถานะสีของรถคันนี้ (เขียว=ว่างไม่มีการจอง, เหลือง=มีการจองล่วงหน้าไว้, แดง=ไม่ว่างในวันที่เลือก, ส้ม=ซ่อมบำรุง)
+                    _c_st = get_car_fleet_status(_p, _c, st.session_state.bookings_db, f_avail_start, f_avail_end)
+                    _dot_col = _c_st['color']
+                    _dot_shd = _c_st['shadow']
+                    _dot_desc = _html_esc.escape(_c_st['desc'])
+                    _dot_html = f'<span class="car-status-dot" style="display:inline-block; width:9px; height:9px; min-width:9px; min-height:9px; border-radius:50%; background-color:{_dot_col}; box-shadow:0 0 6px {_dot_shd}; flex-shrink:0; vertical-align:middle; cursor:help;" title="{_dot_desc}"></span>'
+                    
                     with _row_cols[_i]:
                         with st.container(key=f"fleet_card_{'sel_' if _is_sel else ''}{_idx}"):
                             st.markdown(
                                 f'<div class="fleet-card-img-box">'
                                 f'<img src="{_img}" alt="{_full_title}" loading="lazy"/>'
                                 f'</div>'
-                                f'<div class="fleet-card-title" title="{_full_title}">{_full_title}</div>'
+                                f'<div class="fleet-card-title" title="{_full_title} ({_dot_desc})">'
+                                f'<span class="fleet-card-title-text">{_full_title}</span>'
+                                f'{_dot_html}'
+                                f'</div>'
                                 f'<div class="fleet-card-price-tag">฿{_p_val} <span>/ DAY</span></div>',
                                 unsafe_allow_html=True,
                             )
@@ -3104,13 +3248,14 @@ else:
                                 use_container_width=True,
                                 on_click=_fleet_toggle_detail,
                                 args=(_p,),
-                                help=f"คลิกดูรายละเอียดรถ {_p}"
+                                help=f"คลิกดูรายละเอียดรถ {_p} ({_dot_desc})"
                             )
 
                 # หากมีรถในแถวนี้ที่ถูกกด VIEW DETAILS ให้แสดงแผงรายละเอียดเต็มใต้แถวนี้ทันที
                 _sel_in_row = [(_p, _c) for _p, _c in _row_items if _p == st.session_state.get("fleet_detail_plate")]
                 for plate, c in _sel_in_row:
-                    status_class = "status-available" if c['status'] == "ว่างพร้อมใช้งาน" else ("status-maintenance" if c['status'] == "ซ่อมบำรุง" else "status-rented")
+                    _det_st = get_car_fleet_status(plate, c, st.session_state.bookings_db, f_avail_start, f_avail_end)
+                    status_class = "status-available" if _det_st['code'] in ["available", "reserved"] else ("status-maintenance" if _det_st['code'] == "maintenance" else "status-rented")
                     
                     # คันที่เปิดดูรายละเอียด ให้กาง Expander อัตโนมัติ
                     is_target_car = True
@@ -3143,9 +3288,10 @@ else:
                     with st.container(border=True):
                         c_hdr_info, c_hdr_badge = st.columns([3.8, 1.2])
                         with c_hdr_info:
+                            _det_dot_html = f'<span style="display:inline-block; width:9px; height:9px; border-radius:50%; background:{_det_st["color"]}; box-shadow:0 0 6px {_det_st["shadow"]}; vertical-align:middle; margin:0 4px 0 2px;" title="{_det_st["desc"]}"></span>'
                             st.markdown(f"""
                             <div style="line-height: 1.45;">
-                                <b style="font-size:15px; color: #1F2937;">{plate}</b> — <span style="font-weight:600;">{c['brand']} {c['model']}</span> 
+                                <b style="font-size:15px; color: #1F2937;">{plate}</b> — <span style="font-weight:600;">{c['brand']} {c['model']}</span> {_det_dot_html}<span style="font-size:12px; font-weight:700; color:{_det_st['color']};">({_det_st['desc']})</span> 
                                 <span style="color:#666; font-size:12px;">({c['car_group']} | {c['engine_cc']}cc)</span><br/>
                                 <span style="font-size:12px; color:#8C827A;">รายวัน: ฿{c['price_day']:,} | รายสัปดาห์: ฿{c['price_week']:,} | รายเดือน: ฿{c['price_month']:,}</span>
                             </div>
@@ -3158,7 +3304,7 @@ else:
                                     st.markdown(f"""
                                         <div style="padding-bottom: 6px;">
                                             <div style="display:flex; justify-content:space-between; align-items:center;">
-                                                <span style="font-size:14px; font-weight:800; color:#9A3412;">📋 รายละเอียดการเช่ารถยนต์</span>
+                                                 <span style="font-size:14px; font-weight:800; color:#9A3412;">📋 รายละเอียดการเช่ารถยนต์</span>
                                                 <span style="background:#FFF7ED; color:#EA580C; border:1px solid #FDBA74; padding:2px 8px; border-radius:12px; font-size:11px; font-weight:700;">กำลังเช่า</span>
                                             </div>
                                             <div style="font-size:12px; color:#6B7280; margin-top:2px;">รหัสการจอง: <b>{active_rent_bk['booking_id']}</b></div>
@@ -3214,7 +3360,10 @@ else:
                                         - 📄 **เอกสารประจำรถ:** สำเนาทะเบียนรถ, พ.ร.บ., ประกันภัย ครบถ้วน
                                         """)
                             else:
-                                st.markdown(f'<div style="text-align:right;"><span class="status-pill {status_class}">{c["status"]}</span></div>', unsafe_allow_html=True)
+                                _st_badge_bg = {"available": "#F0FDF4", "reserved": "#FEFCE8", "unavailable": "#FEF2F2", "maintenance": "#FFF7ED"}.get(_det_st['code'], "#F3F4F6")
+                                _st_badge_bdr = {"available": "#BBF7D0", "reserved": "#FEF08A", "unavailable": "#FECACA", "maintenance": "#FED7AA"}.get(_det_st['code'], "#E5E7EB")
+                                _st_badge_clr = {"available": "#15803D", "reserved": "#A16207", "unavailable": "#B91C1C", "maintenance": "#C2410C"}.get(_det_st['code'], "#4B5563")
+                                st.markdown(f'<div style="text-align:right;"><span style="background:{_st_badge_bg}; border:1px solid {_st_badge_bdr}; color:{_st_badge_clr}; padding:4px 10px; border-radius:12px; font-size:11.5px; font-weight:700; display:inline-flex; align-items:center; gap:5px;"><span style="display:inline-block; width:7px; height:7px; border-radius:50%; background:{_det_st["color"]};"></span>{_det_st["label"]}</span></div>', unsafe_allow_html=True)
 
                         with st.expander("🔍 ดูรายละเอียดรถเพิ่มเติม / รูปภาพ", expanded=is_target_car):
                             if c['status'] == "กำลังเช่า" and active_rent_bk:
@@ -3272,6 +3421,25 @@ else:
                                         key=f"dl_job_exp_{plate}"
                                     )
                                 st.markdown("<hr style='margin:10px 0 16px; border:0.5px solid #F3EDE4;'>", unsafe_allow_html=True)
+                            
+                            # หากมีรายการจองล่วงหน้าของคันนี้ ให้แสดงตารางคิวจอง
+                            _car_upcoming_bks = [
+                                _ub for _ub in st.session_state.bookings_db
+                                if _ub.get('car_id') == plate and _ub.get('status') not in ['เสร็จสิ้น', 'ยกเลิก']
+                            ]
+                            if _car_upcoming_bks and c.get('status') != "กำลังเช่า":
+                                _bk_rows_html = "".join([
+                                    f"<div style='margin-bottom:4px;'>📌 รหัสการจอง: <b>{_ubk.get('booking_id')}</b> ({_ubk.get('customer', '-')}) | 📅 <b style='color:#059669;'>{format_date_dmy(_ubk.get('start_date'))}</b> ถึง <b style='color:#DC2626;'>{format_date_dmy(_ubk.get('end_date'))}</b> &nbsp;<span style='font-size:11px; background:#FEF3C7; color:#92400E; padding:1px 6px; border-radius:8px; font-weight:600;'>{_ubk.get('status')}</span></div>"
+                                    for _ubk in _car_upcoming_bks
+                                ])
+                                st.markdown(f"""
+                                    <div style="background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; font-size: 12.5px; color: #92400E;">
+                                        <div style="font-weight:700; margin-bottom:6px;">📅 คิวการจองของรถคันนี้ ({len(_car_upcoming_bks)} รายการ):</div>
+                                        {_bk_rows_html}
+                                    </div>
+                                """, unsafe_allow_html=True)
+                                st.markdown("<hr style='margin:10px 0 16px; border:0.5px solid #F3EDE4;'>", unsafe_allow_html=True)
+
                             det_c1, det_c2 = st.columns([1, 2])
                             with det_c1:
                                 st.image(c.get('image', 'https://via.placeholder.com/500x300.png?text=No+Image'), use_container_width=True)
