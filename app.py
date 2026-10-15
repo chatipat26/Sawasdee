@@ -1598,6 +1598,87 @@ def get_booking_from_completed(item):
         "status": "เสร็จสิ้น"
     }
 
+def _render_add_customer_form_contents():
+    st.markdown("""
+        <div style="background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%); border: 1.5px solid #93C5FD; border-radius: 10px; padding: 12px 18px; margin-bottom: 14px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                    <h4 style="margin:0; font-size:16px; font-weight:800; color:#1E40AF; display:flex; align-items:center; gap:8px;">
+                        <span>➕</span> เพิ่มข้อมูลลูกค้าใหม่เข้าสู่ฐานข้อมูล (Add New Customer)
+                    </h4>
+                    <div style="font-size:12px; color:#2563EB; margin-top:2px;">
+                        กรอกรายละเอียดเพื่อบันทึกลงฐานข้อมูลลูกค้า และระบบจะพร้อมนำไปใช้งานในการทำสัญญาเช่าทันที
+                    </div>
+                </div>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
+
+    with st.form("form_add_new_customer_dialog"):
+        ca1, ca2, ca3 = st.columns(3)
+        with ca1:
+            st.markdown("<b style='color:#1E3A8A; font-size:13px;'>1. ข้อมูลส่วนบุคคล</b>", unsafe_allow_html=True)
+            new_name = st.text_input("ชื่อ-นามสกุล (ต้องระบุ)*", placeholder="เช่น สมเกียรติ มั่นคง")
+            new_dob = st.date_input("📅 วันเกิด (DOB)", value=date(1990, 1, 1), min_value=date(1920, 1, 1), max_value=date.today(), format="DD/MM/YYYY")
+            new_pass = st.text_input("หมายเลข Passport / บัตร ปชช.*", placeholder="เช่น 1100400123456")
+            new_home = st.text_area("ที่อยู่ตามภูมิลำเนา (Home Address)", height=70, placeholder="ที่อยู่ตามบัตร/พาสปอร์ต")
+        with ca2:
+            st.markdown("<b style='color:#1E3A8A; font-size:13px;'>2. ใบขับขี่ & สัญชาติ</b>", unsafe_allow_html=True)
+            new_nat = st.text_input("สัญชาติ (Nationality)", value="THAI")
+            new_lic = st.text_input("หมายเลขใบขับขี่ (Licence No.)", placeholder="เช่น 65001234")
+            new_issue = st.text_input("สถานที่ออกใบขับขี่ (Place of Issue)", placeholder="เช่น กรมการขนส่งทางบก")
+            new_exp = st.date_input("📅 วันหมดอายุใบขับขี่", value=date.today() + timedelta(days=1825), min_value=date.today() - timedelta(days=3650), format="DD/MM/YYYY")
+        with ca3:
+            st.markdown("<b style='color:#1E3A8A; font-size:13px;'>3. การติดต่อ & ที่อยู่ในไทย</b>", unsafe_allow_html=True)
+            new_phone = st.text_input("เบอร์โทรศัพท์ (Contact No.)*", placeholder="เช่น 081-234-5678")
+            new_wa = st.text_input("WhatsApp (ถ้ามี)", placeholder="เช่น +66812345678")
+            new_email = st.text_input("อีเมล (Email)", placeholder="เช่น customer@example.com")
+            new_thai = st.text_area("ที่อยู่ในไทย (Address in Thailand)", height=70, placeholder="โรงแรม / คอนโด / ที่พักระหว่างเช่า")
+
+        sub_c1, sub_c2 = st.columns([2, 1])
+        with sub_c1:
+            btn_sub = st.form_submit_button("💾 บันทึกลงฐานข้อมูลลูกค้า", type="primary", use_container_width=True)
+        with sub_c2:
+            btn_close = st.form_submit_button("❌ ปิด", use_container_width=True)
+
+        if btn_sub:
+            if not new_name.strip():
+                st.error("⚠️ กรุณาระบุชื่อ-นามสกุลของลูกค้า")
+            else:
+                new_c_name = new_name.strip()
+                new_cust_obj = {
+                    "full_name": new_c_name,
+                    "nationality": new_nat.strip() or "THAI",
+                    "dob": new_dob.strftime("%d/%m/%Y"),
+                    "passport_id": new_pass.strip() or "-",
+                    "licence_no": new_lic.strip() or "-",
+                    "issue_place": new_issue.strip() or "-",
+                    "licence_expiry": new_exp.strftime("%d/%m/%Y"),
+                    "home_address": new_home.strip() or "-",
+                    "thai_address": new_thai.strip() or "-",
+                    "contact_no": new_phone.strip() or "-",
+                    "whatsapp": new_wa.strip() or "-",
+                    "email": new_email.strip() or "-"
+                }
+                st.session_state.customers_db[new_c_name] = new_cust_obj
+                _GLOBAL_STORE["customers_db"] = st.session_state.customers_db
+                sb_sync_customer(new_c_name, new_cust_obj)
+                st.session_state.selected_customer_name = new_c_name
+                st.session_state._open_add_customer_dialog = False
+                st.toast(f"🎉 บันทึกข้อมูลลูกค้า '{new_c_name}' สำเร็จ!", icon="✅")
+                time.sleep(0.5)
+                st.rerun()
+        elif btn_close:
+            st.session_state._open_add_customer_dialog = False
+            st.rerun()
+
+if hasattr(st, "dialog"):
+    @st.dialog("➕ เพิ่มข้อมูลลูกค้าใหม่เข้าสู่ฐานข้อมูล (Add New Customer)", width="large")
+    def dialog_add_new_customer():
+        _render_add_customer_form_contents()
+else:
+    def dialog_add_new_customer():
+        _render_add_customer_form_contents()
 
 # =========================================================================
 # 4. CLEAN STYLING & WATERMARK
@@ -2084,6 +2165,80 @@ div[class*="st-key-fleet_card_"] div[class*="st-key-fleet_view_"] button p {
 .fleet-benefit-desc {
     font-size: 11px;
     color: #6B7280;
+}
+
+/* 5. FLOATING ACTION BUTTON (+) FOR ADD CUSTOMER (มุมขวาล่าง ล็อกตำแหน่งเสมอ) */
+div[class*="st-key-fab_add_customer"],
+.st-key-fab_add_customer {
+    position: fixed !important;
+    bottom: 80px !important;
+    right: 28px !important;
+    z-index: 999999 !important;
+    width: 60px !important;
+    height: 60px !important;
+}
+div[class*="st-key-fab_add_customer"] button,
+.st-key-fab_add_customer button {
+    width: 60px !important;
+    height: 60px !important;
+    min-width: 60px !important;
+    min-height: 60px !important;
+    max-width: 60px !important;
+    max-height: 60px !important;
+    border-radius: 50% !important;
+    background: linear-gradient(135deg, #FF6B35 0%, #E85826 100%) !important;
+    color: #FFFFFF !important;
+    box-shadow: 0 8px 24px rgba(232, 88, 38, 0.5) !important;
+    border: 2.5px solid #FFFFFF !important;
+    transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0 !important;
+    cursor: pointer !important;
+}
+div[class*="st-key-fab_add_customer"] button:hover,
+.st-key-fab_add_customer button:hover {
+    transform: scale(1.12) !important;
+    box-shadow: 0 12px 30px rgba(232, 88, 38, 0.7) !important;
+    background: linear-gradient(135deg, #EA580C 0%, #C2410C 100%) !important;
+}
+div[class*="st-key-fab_add_customer"] button:active,
+.st-key-fab_add_customer button:active {
+    transform: scale(0.95) !important;
+}
+div[class*="st-key-fab_add_customer"] button,
+div[class*="st-key-fab_add_customer"] button *,
+.st-key-fab_add_customer button,
+.st-key-fab_add_customer button * {
+    font-size: 34px !important;
+    font-weight: 700 !important;
+    color: #FFFFFF !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    line-height: 1 !important;
+}
+@media (max-width: 768px) {
+    div[class*="st-key-fab_add_customer"],
+    .st-key-fab_add_customer {
+        bottom: 70px !important;
+        right: 18px !important;
+        width: 52px !important;
+        height: 52px !important;
+    }
+    div[class*="st-key-fab_add_customer"] button,
+    .st-key-fab_add_customer button {
+        width: 52px !important;
+        height: 52px !important;
+        min-width: 52px !important;
+        min-height: 52px !important;
+    }
+    div[class*="st-key-fab_add_customer"] button,
+    div[class*="st-key-fab_add_customer"] button *,
+    .st-key-fab_add_customer button,
+    .st-key-fab_add_customer button * {
+        font-size: 28px !important;
+    }
 }
 </style>
 """
@@ -3606,6 +3761,10 @@ else:
                 unsafe_allow_html=True
             )
 
+            # --- FLOATING ACTION BUTTON (FAB): เครื่องหมาย + ล็อกมุมขวาล่างสำหรับเพิ่มลูกค้าใหม่ ---
+            if st.button("＋", key="fab_add_customer", help="➕ เพิ่มข้อมูลลูกค้าใหม่เข้าสู่ฐานข้อมูล (Add New Customer)"):
+                dialog_add_new_customer()
+
         # --- TAB 3: CONTRACT ---
         elif current_tab == "3. จัดทำสัญญาเช่า":
             if not st.session_state.draft_car:
@@ -3655,7 +3814,7 @@ else:
                     </div>
                 """, unsafe_allow_html=True)
 
-                c_c_sel, c_c_add, c_c_edit = st.columns([3.2, 1.3, 1.7])
+                c_c_sel, c_c_edit = st.columns([3.8, 1.2])
                 with c_c_sel:
                     cust = st.selectbox(
                         "เลือกลูกค้า:",
@@ -3668,91 +3827,15 @@ else:
                         st.session_state.selected_customer_name = cust
                         st.rerun()
 
-                is_adding = st.session_state.get("show_add_customer", False)
                 is_editing = st.session_state.get("show_edit_customer", False)
-
-                with c_c_add:
-                    btn_add_label = "❌ ปิดฟอร์ม" if is_adding else "➕ เพิ่มลูกค้าใหม่"
-                    if st.button(btn_add_label, use_container_width=True, key="btn_add_c_tab3"):
-                        st.session_state.show_add_customer = not is_adding
-                        st.session_state.show_edit_customer = False
-                        st.rerun()
-
                 with c_c_edit:
                     btn_edit_label = "❌ ปิดการทบทวน" if is_editing else "✏️ ทบทวน & แก้ไข"
                     if st.button(btn_edit_label, use_container_width=True, key="btn_edit_c_tab3"):
                         st.session_state.show_edit_customer = not is_editing
-                        st.session_state.show_add_customer = False
                         st.rerun()
 
-                # ถ้ากด "เพิ่มลูกค้าใหม่" -> แสดงฟอร์มเพิ่มลูกค้า
-                if st.session_state.get("show_add_customer"):
-                    with st.container(border=True):
-                        st.markdown("""
-                            <div style="background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%); border: 1.5px solid #93C5FD; border-radius: 10px; padding: 12px 18px; margin-bottom: 14px;">
-                                <div style="display:flex; justify-content:space-between; align-items:center;">
-                                    <div>
-                                        <h4 style="margin:0; font-size:16px; font-weight:800; color:#1E40AF; display:flex; align-items:center; gap:8px;">
-                                            <span>➕</span> เพิ่มข้อมูลลูกค้าใหม่เข้าสู่ฐานข้อมูล (Add New Customer)
-                                        </h4>
-                                        <div style="font-size:12px; color:#2563EB; margin-top:2px;">
-                                            กรอกรายละเอียดเพื่อบันทึกลงฐานข้อมูลลูกค้า และระบบจะเลือกใช้งานในการทำสัญญานี้ทันที
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        """, unsafe_allow_html=True)
-
-                        with st.form("form_add_new_customer_tab3"):
-                            ca1, ca2, ca3 = st.columns(3)
-                            with ca1:
-                                st.markdown("<b style='color:#1E3A8A; font-size:13px;'>1. ข้อมูลส่วนบุคคล</b>", unsafe_allow_html=True)
-                                new_name = st.text_input("ชื่อ-นามสกุล (ต้องระบุ)*", placeholder="เช่น สมเกียรติ มั่นคง")
-                                new_dob = st.date_input("📅 วันเกิด (DOB)", value=date(1990, 1, 1), min_value=date(1920, 1, 1), max_value=date.today(), format="DD/MM/YYYY")
-                                new_pass = st.text_input("หมายเลข Passport / บัตร ปชช.*", placeholder="เช่น 1100400123456")
-                                new_home = st.text_area("ที่อยู่ตามภูมิลำเนา (Home Address)", height=70, placeholder="ที่อยู่ตามบัตร/พาสปอร์ต")
-                            with ca2:
-                                st.markdown("<b style='color:#1E3A8A; font-size:13px;'>2. ใบขับขี่ & สัญชาติ</b>", unsafe_allow_html=True)
-                                new_nat = st.text_input("สัญชาติ (Nationality)", value="THAI")
-                                new_lic = st.text_input("หมายเลขใบขับขี่ (Licence No.)", placeholder="เช่น 65001234")
-                                new_issue = st.text_input("สถานที่ออกใบขับขี่ (Place of Issue)", placeholder="เช่น กรมการขนส่งทางบก")
-                                new_exp = st.date_input("📅 วันหมดอายุใบขับขี่", value=date.today() + timedelta(days=1825), min_value=date.today() - timedelta(days=3650), format="DD/MM/YYYY")
-                            with ca3:
-                                st.markdown("<b style='color:#1E3A8A; font-size:13px;'>3. การติดต่อ & ที่อยู่ในไทย</b>", unsafe_allow_html=True)
-                                new_phone = st.text_input("เบอร์โทรศัพท์ (Contact No.)*", placeholder="เช่น 081-234-5678")
-                                new_wa = st.text_input("WhatsApp (ถ้ามี)", placeholder="เช่น +66812345678")
-                                new_email = st.text_input("อีเมล (Email)", placeholder="เช่น customer@example.com")
-                                new_thai = st.text_area("ที่อยู่ในไทย (Address in Thailand)", height=70, placeholder="โรงแรม / คอนโด / ที่พักระหว่างเช่า")
-
-                            if st.form_submit_button("💾 บันทึกลงฐานข้อมูลและเลือกใช้งานทันที", type="primary", use_container_width=True):
-                                if not new_name.strip():
-                                    st.error("กรุณาระบุชื่อ-นามสกุลของลูกค้า")
-                                else:
-                                    new_c_name = new_name.strip()
-                                    st.session_state.customers_db[new_c_name] = {
-                                        "full_name": new_c_name,
-                                        "nationality": new_nat.strip() or "THAI",
-                                        "dob": new_dob.strftime("%d/%m/%Y"),
-                                        "passport_id": new_pass.strip() or "-",
-                                        "licence_no": new_lic.strip() or "-",
-                                        "issue_place": new_issue.strip() or "-",
-                                        "licence_expiry": new_exp.strftime("%d/%m/%Y"),
-                                        "home_address": new_home.strip() or "-",
-                                        "thai_address": new_thai.strip() or "-",
-                                        "contact_no": new_phone.strip() or "-",
-                                        "whatsapp": new_wa.strip() or "-",
-                                        "email": new_email.strip() or "-"
-                                    }
-                                    _GLOBAL_STORE["customers_db"] = st.session_state.customers_db
-                                    sb_sync_customer(new_c_name, st.session_state.customers_db[new_c_name])
-                                    st.session_state.selected_customer_name = new_c_name
-                                    st.session_state.show_add_customer = False
-                                    st.success(f"🎉 เพิ่มลูกค้า '{new_c_name}' สำเร็จ และเลือกใช้งานในสัญญานี้แล้ว")
-                                    time.sleep(0.8)
-                                    st.rerun()
-
                 # ถ้ากด "ทบทวน & แก้ไข" -> แสดงฟอร์มทบทวนและแก้ไขข้อมูลลูกค้า
-                elif st.session_state.get("show_edit_customer"):
+                if st.session_state.get("show_edit_customer"):
                     cur_cust_data = st.session_state.customers_db.get(cust, {})
                     with st.container(border=True):
                         st.markdown(f"""
