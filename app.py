@@ -594,6 +594,7 @@ def generate_job_pdf(booking_info, customer_info, car_info, job_type="Dispatch",
 # 2.1 LINE MESSAGING API NOTIFICATIONS
 # =========================================================================
 LINE_PUSH_URL = "https://api.line.me/v2/bot/message/push"
+LINE_BROADCAST_URL = "https://api.line.me/v2/bot/message/broadcast"
 LINE_DEFAULT_CHANNEL_ACCESS_TOKEN = (
     "V9Sc5Zmu4av4UzX+NbGNmkNCWM21aKchTJQw8ueOsGwilCWGv9c+AEqFtrKC4OG0fVwFy7l+"
     "wa5FVw0nrBGx8mz6zAHcdBY5hn4eBJApNwQ7oXOhSfgvzKHjxh6UGkqytCrLndQQAcVxcI+FFcGxMwdB04t89/1O/w1cDnyilFU="
@@ -613,6 +614,38 @@ def get_line_credentials():
     if not user_id:
         user_id = os.environ.get("LINE_TARGET_USER_ID", LINE_DEFAULT_TARGET_USER_ID)
     return token, user_id
+
+def send_line_broadcast_message(message: str, channel_access_token: str = None) -> bool:
+    """
+    ส่งข้อความแจ้งเตือนแบบ Broadcast ไปยังทุกคนที่เป็นเพื่อนกับบอท (ไม่ต้องระบุ User ID)
+    """
+    try:
+        def_token, _ = get_line_credentials()
+        token = channel_access_token or def_token
+        if not token:
+            return False
+            
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {token}"
+        }
+        payload = {
+            "messages": [
+                {
+                    "type": "text",
+                    "text": message
+                }
+            ]
+        }
+        res = requests.post(LINE_BROADCAST_URL, headers=headers, json=payload, timeout=8)
+        if res.status_code == 200:
+            return True
+        else:
+            print(f"LINE Broadcast Error: HTTP {res.status_code} - {res.text}")
+            return False
+    except Exception as e:
+        print(f"LINE Broadcast Error: {e}")
+        return False
 
 def send_line_push_message(message: str, to_user_id: str = None, channel_access_token: str = None) -> bool:
     try:
@@ -641,13 +674,24 @@ def send_line_push_message(message: str, to_user_id: str = None, channel_access_
         print(f"LINE Notification Error: {e}")
         return False
 
-def send_line_push_async(message: str):
+def send_line_push_async(message: str, to_user_id: str = None):
+    """
+    ส่งข้อความแบบ asynchronous เบื้องหลัง
+    - หากไม่ระบุ to_user_id จะส่งแบบ Broadcast ไปหาทุกคนที่เป็นเพื่อนกับบอท
+    - หากระบุ to_user_id จะส่งตรงไปยัง user/group นั้น
+    """
+    def _worker():
+        if to_user_id:
+            send_line_push_message(message, to_user_id=to_user_id)
+        else:
+            send_line_broadcast_message(message)
+
     try:
-        t = threading.Thread(target=send_line_push_message, args=(message,), daemon=True)
+        t = threading.Thread(target=_worker, daemon=True)
         t.start()
     except Exception:
         try:
-            send_line_push_message(message)
+            _worker()
         except Exception:
             pass
 

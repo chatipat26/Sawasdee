@@ -14,6 +14,47 @@ LINE_CHANNEL_ACCESS_TOKEN = (
 )
 LINE_TARGET_USER_ID = "Ub7b6353ba826c0ba5c3d9fac3531ef77"
 LINE_PUSH_URL = "https://api.line.me/v2/bot/message/push"
+LINE_BROADCAST_URL = "https://api.line.me/v2/bot/message/broadcast"
+
+
+def send_line_broadcast_message(
+    message: str,
+    channel_access_token: str = LINE_CHANNEL_ACCESS_TOKEN
+) -> bool:
+    """
+    ฟังก์ชันส่งข้อความบรอดแคสต์ไปยังทุกคนที่เป็นเพื่อนกับบอท (ไม่ต้องใช้ User ID)
+    """
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {channel_access_token}"
+    }
+
+    payload = {
+        "messages": [
+            {
+                "type": "text",
+                "text": message
+            }
+        ]
+    }
+
+    try:
+        response = requests.post(
+            LINE_BROADCAST_URL,
+            headers=headers,
+            json=payload,
+            timeout=10
+        )
+        if response.status_code == 200:
+            print("✅ ส่งข้อความ Broadcast ผ่าน LINE สำเร็จเรียบร้อย! (Status: 200 OK)")
+            return True
+        else:
+            print(f"⚠️ ไม่สามารถส่ง Broadcast ได้ (HTTP Status: {response.status_code})")
+            print(f"รายละเอียด Response: {response.text}")
+            return False
+    except Exception as e:
+        print(f"❌ เกิดข้อผิดพลาดขณะส่ง Broadcast: {e}")
+        return False
 
 
 def send_line_push_message(
@@ -76,22 +117,21 @@ def send_line_push_message(
 
 
 if __name__ == "__main__":
-    # ข้อความทดสอบแจ้งเตือน
-    test_message = "🚗 ทดสอบระบบแจ้งเตือน พ.ร.บ. จาก Svv ทำงานสำเร็จ!"
+    # ข้อความทดสอบแจ้งเตือนแบบ Broadcast (ส่งหาเพื่อนทุกคน)
+    test_message = "🚗 [Broadcast] ทดสอบระบบแจ้งเตือนงาน SawasdeeRental ส่งหาพนักงานทุกคน!"
     
     print("=" * 60)
-    print("กำลังเริ่มทดสอบส่งข้อความแจ้งเตือนผ่าน LINE Messaging API...")
-    print(f"ผู้รับ (User ID): {LINE_TARGET_USER_ID}")
+    print("กำลังเริ่มทดสอบส่งข้อความแจ้งเตือนผ่าน LINE Broadcast API...")
+    print("ผู้รับ: พนักงานทุกคนที่เป็นเพื่อนกับบอท")
     print(f"ข้อความ: {test_message}")
     print("=" * 60)
 
-    # เรียกใช้งานฟังก์ชัน
-    success = send_line_push_message(
-        to_user_id=LINE_TARGET_USER_ID,
+    # เรียกใช้งานฟังก์ชัน Broadcast
+    success = send_line_broadcast_message(
         message=test_message
     )
 
     if success:
-        print("🎉 ผลการทดสอบ: การทำงานสำเร็จ 100%")
+        print("🎉 ผลการทดสอบ: ส่งข้อความ Broadcast สำเร็จ 100% (ทุกคนที่เป็นเพื่อนได้รับข้อความ)")
     else:
-        print("❌ ผลการทดสอบ: การทำงานไม่สำเร็จ กรุณาตรวจสอบ Token หรือ User ID")
+        print("❌ ผลการทดสอบ: การทำงานไม่สำเร็จ กรุณาตรวจสอบ Token")
