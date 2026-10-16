@@ -1304,7 +1304,7 @@ if "auth_mode" not in st.session_state:
     else:
         st.session_state.auth_mode = "login"
 if "selected_module" not in st.session_state: st.session_state.selected_module = "Front Office"
-if "workflow_tab" not in st.session_state: st.session_state.workflow_tab = "1. แผงควบคุมการจอง"
+if "workflow_tab" not in st.session_state: st.session_state.workflow_tab = "1. เลือกรถยนต์"
 if "draft_car" not in st.session_state: st.session_state.draft_car = None
 if "search_plate_filter" not in st.session_state: st.session_state.search_plate_filter = ""
 if "search_avail_date" not in st.session_state: st.session_state.search_avail_date = None
@@ -1323,30 +1323,30 @@ if "active_contract_bk_id" not in st.session_state: st.session_state.active_cont
 
 if st.query_params.get("deposit_job"):
     st.session_state.selected_module = "Front Office"
-    st.session_state.workflow_tab = "3. ชำระเงินจอง & การเงิน"
+    st.session_state.workflow_tab = "2. ชำระเงินจอง & การเงิน"
     st.session_state.active_deposit_bk_id = st.query_params.get("deposit_job")
     st.session_state.payment_focus = True
 
 if st.query_params.get("settle_job"):
     st.session_state.selected_module = "Front Office"
-    st.session_state.workflow_tab = "3. ชำระเงินจอง & การเงิน"
+    st.session_state.workflow_tab = "2. ชำระเงินจอง & การเงิน"
     st.session_state.active_settle_bk_id = st.query_params.get("settle_job")
     st.session_state.payment_focus = True
 
 if st.query_params.get("extend_job"):
     st.session_state.selected_module = "Front Office"
-    st.session_state.workflow_tab = "3. ชำระเงินจอง & การเงิน"
+    st.session_state.workflow_tab = "2. ชำระเงินจอง & การเงิน"
     st.session_state.active_extend_bk_id = st.query_params.get("extend_job")
     st.session_state.payment_focus = True
 
 if st.query_params.get("assign_job"):
     st.session_state.selected_module = "Front Office"
-    st.session_state.workflow_tab = "4. ใบงานส่ง/รับรถ"
+    st.session_state.workflow_tab = "3. ใบงานส่ง/รับรถ"
     st.session_state.active_assign_bk_id = st.query_params.get("assign_job")
 
 if st.query_params.get("contract_job"):
     st.session_state.selected_module = "Front Office"
-    st.session_state.workflow_tab = "5. จัดทำสัญญาเช่า"
+    st.session_state.workflow_tab = "4. จัดทำสัญญาเช่า"
     st.session_state.active_contract_bk_id = st.query_params.get("contract_job")
 
 if st.query_params.get("close_job"):
@@ -2458,7 +2458,7 @@ if st.session_state.user is None:
                                 st.warning(f"⏳ บัญชี '{user_rec['username']}' อยู่ระหว่างรอผู้ดูแลระบบ (Admin) อนุมัติ — เข้าดูได้เฉพาะหน้าแดชบอร์ด")
                             else:
                                 st.session_state.selected_module = "Front Office"
-                                st.session_state.workflow_tab = "1. แผงควบคุมการจอง"
+                                st.session_state.workflow_tab = "1. เลือกรถยนต์"
                                 st.success(f"เข้าสู่ระบบสำเร็จในฐานะ: {st.session_state.user['name']} ☁️")
                             time.sleep(0.5)
                             st.rerun()
@@ -2717,7 +2717,7 @@ else:
                 st.session_state.prev_sb_search_kw = sb_search_input.strip()
                 if matched_c:
                     st.session_state.selected_module = "Front Office"
-                    st.session_state.workflow_tab = "2. เลือกรถยนต์"
+                    st.session_state.workflow_tab = "1. เลือกรถยนต์"
         
             sc1, sc2 = st.columns([2, 1])
             if is_pending_user:
@@ -2761,9 +2761,9 @@ else:
                                 else:
                                     st.session_state.selected_module = "Front Office"
                                     if is_pending_dep:
-                                        st.session_state.workflow_tab = "1. แผงควบคุมการจอง"
+                                        st.session_state.workflow_tab = "5. แผงควบคุมการจอง"
                                     elif not has_delivery:
-                                        st.session_state.workflow_tab = "4. ใบงานส่ง/รับรถ"
+                                        st.session_state.workflow_tab = "3. ใบงานส่ง/รับรถ"
                                         st.session_state.active_assign_bk_id = b_id
                                     else:
                                         st.session_state.selected_module = "Back Office"
@@ -2776,7 +2776,7 @@ else:
                                 st.session_state.search_plate_filter = p
                                 st.session_state.search_box_version = st.session_state.get("search_box_version", 0) + 1
                                 st.session_state.selected_module = "Front Office"
-                                st.session_state.workflow_tab = "2. เลือกรถยนต์"
+                                st.session_state.workflow_tab = "1. เลือกรถยนต์"
                                 st.rerun()
                     if matched_cu:
                         st.markdown("<b style='font-size:11px; color:#3B82F6;'>👤 ข้อมูลลูกค้าที่พบ:</b>", unsafe_allow_html=True)
@@ -2786,7 +2786,7 @@ else:
                                 st.session_state.search_plate_filter = cu_name
                                 st.session_state.search_box_version = st.session_state.get("search_box_version", 0) + 1
                                 st.session_state.selected_module = "Front Office"
-                                st.session_state.workflow_tab = "3. ชำระเงินจอง & การเงิน"
+                                st.session_state.workflow_tab = "2. ชำระเงินจอง & การเงิน"
                                 st.session_state.selected_customer_name = cu_name
                                 st.session_state.show_edit_customer = True
                                 st.session_state.show_add_customer = False
@@ -2850,7 +2850,7 @@ else:
 
     if st.session_state.selected_module == "โมดูลจัดการลูกค้า":
         st.session_state.selected_module = "Front Office"
-        st.session_state.workflow_tab = "3. ชำระเงินจอง & การเงิน"
+        st.session_state.workflow_tab = "2. ชำระเงินจอง & การเงิน"
 
     module = st.session_state.selected_module
 
@@ -2873,27 +2873,39 @@ else:
         
         # ปรับความเข้ากันได้ย้อนหลัง (Tab Normalization)
         tab_aliases = {
-            "3. จัดทำสัญญา & ชำระเงิน": "3. ชำระเงินจอง & การเงิน",
-            "4. รับมัดจำ (ล็อกคิว/ใบเสร็จ)": "3. ชำระเงินจอง & การเงิน",
-            "3. จัดทำสัญญาเช่า": "5. จัดทำสัญญาเช่า",
-            "5. ใบงานส่ง/รับรถ": "4. ใบงานส่ง/รับรถ"
+            # รองรับชื่อแท็บเดิมและแบบย่อทั้งหมด
+            "1. แผงควบคุมการจอง": "5. แผงควบคุมการจอง",
+            "แผงควบคุมการจอง": "5. แผงควบคุมการจอง",
+            "2. เลือกรถยนต์": "1. เลือกรถยนต์",
+            "เลือกรถยนต์": "1. เลือกรถยนต์",
+            "3. ชำระเงินจอง & การเงิน": "2. ชำระเงินจอง & การเงิน",
+            "3. ชำระเงินจอง": "2. ชำระเงินจอง & การเงิน",
+            "3. จัดทำสัญญา & ชำระเงิน": "2. ชำระเงินจอง & การเงิน",
+            "4. รับมัดจำ (ล็อกคิว/ใบเสร็จ)": "2. ชำระเงินจอง & การเงิน",
+            "ชำระเงินจอง & การเงิน": "2. ชำระเงินจอง & การเงิน",
+            "4. ใบงานส่ง/รับรถ": "3. ใบงานส่ง/รับรถ",
+            "5. ใบงานส่ง/รับรถ": "3. ใบงานส่ง/รับรถ",
+            "ใบงานส่ง/รับรถ": "3. ใบงานส่ง/รับรถ",
+            "5. จัดทำสัญญาเช่า": "4. จัดทำสัญญาเช่า",
+            "3. จัดทำสัญญาเช่า": "4. จัดทำสัญญาเช่า",
+            "จัดทำสัญญาเช่า": "4. จัดทำสัญญาเช่า"
         }
         if st.session_state.workflow_tab in tab_aliases:
             st.session_state.workflow_tab = tab_aliases[st.session_state.workflow_tab]
 
         tabs = [
-            "1. แผงควบคุมการจอง",
-            "2. เลือกรถยนต์",
-            "3. ชำระเงินจอง & การเงิน",
-            "4. ใบงานส่ง/รับรถ",
-            "5. จัดทำสัญญาเช่า"
+            "1. เลือกรถยนต์",
+            "2. ชำระเงินจอง & การเงิน",
+            "3. ใบงานส่ง/รับรถ",
+            "4. จัดทำสัญญาเช่า",
+            "5. แผงควบคุมการจอง"
         ]
         tab_display_map = {
-            "1. แผงควบคุมการจอง": "📂 1. แผงควบคุมการจอง",
-            "2. เลือกรถยนต์": "🚘 2. เลือกรถยนต์",
-            "3. ชำระเงินจอง & การเงิน": "💳 3. ชำระเงินจอง",
-            "4. ใบงานส่ง/รับรถ": "🚚 4. ออกใบงาน",
-            "5. จัดทำสัญญาเช่า": "📝 5. จัดทำสัญญา"
+            "1. เลือกรถยนต์": "🚘 1. เลือกรถยนต์",
+            "2. ชำระเงินจอง & การเงิน": "💳 2. ชำระเงินจอง",
+            "3. ใบงานส่ง/รับรถ": "🚚 3. ออกใบงาน",
+            "4. จัดทำสัญญาเช่า": "📝 4. จัดทำสัญญา",
+            "5. แผงควบคุมการจอง": "📂 5. แผงควบคุมการจอง"
         }
         
         with st.container(key="folder_tabs_bar"):
@@ -2909,175 +2921,8 @@ else:
 
         current_tab = st.session_state.workflow_tab
         
-        # --- TAB 1: BOOKING DASHBOARD (แสดงเฉพาะงานที่ยังไม่ได้ลงใบงาน) ---
-        if current_tab == "1. แผงควบคุมการจอง":
-            with st.container(border=True):
-                # รวบรวมงานจองทั้งหมดที่ยังไม่เสร็จสิ้น/ยกเลิก
-                all_active_bks = [b for b in st.session_state.bookings_db if b.get('status') not in ["เสร็จสิ้น", "ยกเลิก"]]
-                all_active_bks.sort(key=lambda x: str(x.get("booking_id", "")), reverse=True)
-                
-                # กรองเฉพาะงานที่ "รอชำระมัดจำ หรือ ยังไม่ได้มอบหมายคนขับ"
-                unassigned_jobs = []
-                for b in all_active_bks:
-                    w_d = b.get("worker_delivery")
-                    has_delivery_job = bool(w_d and str(w_d).strip() and str(w_d).strip() != "Wait")
-                    is_pending_dep = (not b.get("deposit_paid")) or (b.get("status") == "รอชำระมัดจำ")
-                    if is_pending_dep or not has_delivery_job:
-                        unassigned_jobs.append(b)
-                
-                c_q_head, c_q_filter = st.columns([1.4, 1.6])
-                with c_q_head:
-                    st.markdown("<h3 style='font-size:16px; font-weight:700;'>📋 แผงควบคุมคิวการจอง (Booking Operations)</h3>", unsafe_allow_html=True)
-                with c_q_filter:
-                    q_view_mode = st.radio(
-                        "ตัวกรองคิว:",
-                        [f"📌 คิวรอลงใบงาน / รอมัดจำ ({len(unassigned_jobs)})", f"📋 งานจองทั้งหมด ({len(all_active_bks)})"],
-                        horizontal=True,
-                        label_visibility="collapsed",
-                        key="rad_q_filter_mode"
-                    )
-
-                display_jobs = unassigned_jobs if "คิวรอลงใบงาน" in q_view_mode else all_active_bks
-                
-                # กรองตามคำค้นหาจากไซด์บาร์ถ้ามี
-                sb_kw = st.session_state.get("global_search_kw", "").strip().lower()
-                if sb_kw:
-                    sb_kw_clean = sb_kw.replace("-", "").replace(" ", "")
-                    display_jobs = [
-                        b for b in display_jobs
-                        if sb_kw in f"{b.get('booking_id','')} {b.get('customer','')} {b.get('car_id','')}".lower()
-                        or sb_kw_clean in str(b.get('booking_id','')).lower().replace("-", "").replace(" ", "")
-                        or sb_kw_clean in str(b.get('car_id','')).lower().replace("-", "").replace(" ", "")
-                    ]
-                    st.caption(f"🔎 กรองผลลัพธ์ตามคำค้นหาจากไซด์บาร์: **{sb_kw}**")
-                
-                if not display_jobs:
-                    if sb_kw:
-                        sb_kw_clean = sb_kw.replace("-", "").replace(" ", "")
-                        matched_in_all = [
-                            b for b in st.session_state.bookings_db 
-                            if sb_kw in f"{b.get('booking_id','')} {b.get('customer','')} {b.get('car_id','')}".lower()
-                            or sb_kw_clean in str(b.get('booking_id','')).lower().replace("-", "").replace(" ", "")
-                            or sb_kw_clean in str(b.get('car_id','')).lower().replace("-", "").replace(" ", "")
-                        ]
-                        if matched_in_all:
-                            target_matched = matched_in_all[0]
-                            st.info(f"📌 พบรหัสการจอง **{target_matched['booking_id']}** (รถ {target_matched['car_id']}) — สามารถดูรายละเอียดได้ที่ Back Office")
-                            if st.button(f"📋 ไปที่ Back Office เพื่อดูใบงาน {target_matched['booking_id']}", type="primary"):
-                                st.session_state.selected_module = "Back Office"
-                                st.rerun()
-                        else:
-                            st.info(f"🔍 ไม่พบรายการจองตามคำค้นหา '{sb_kw}'")
-                    else:
-                        if "คิวรอลงใบงาน" in q_view_mode and all_active_bks:
-                            st.success(f"✅ **ไม่มีงานค้างในคิวรอลงใบงาน** (มีงานจองที่ลงใบงานแล้ว {len(all_active_bks)} รายการ แสดงอยู่ใน 'Back Office (ตารางใบงาน)' หรือสลับดูที่แท็บ 'งานจองทั้งหมด' ด้านบน)")
-                            c_no_j1, c_no_j2 = st.columns([1.5, 1.5])
-                            with c_no_j1:
-                                if st.button("➕ สร้างรายการจองใหม่ (ไปที่หน้าเลือกรถ)", type="primary", use_container_width=True):
-                                    st.session_state.workflow_tab = "2. เลือกรถยนต์"
-                                    st.rerun()
-                            with c_no_j2:
-                                if st.button("📋 ไปที่ Back Office (ตารางใบงาน)", type="secondary", use_container_width=True):
-                                    st.session_state.selected_module = "Back Office"
-                                    st.rerun()
-                        else:
-                            st.info("📋 **ยังไม่มีรายการจองในระบบ** กดปุ่มด้านล่างเพื่อเริ่มเลือกรถและจัดทำสัญญาได้ทันที")
-                            c_no_j1, c_no_j2 = st.columns([1.5, 1.5])
-                            with c_no_j1:
-                                if st.button("➕ สร้างรายการจองใหม่ (ไปที่หน้าเลือกรถ)", type="primary", use_container_width=True):
-                                    st.session_state.workflow_tab = "2. เลือกรถยนต์"
-                                    st.rerun()
-                            with c_no_j2:
-                                if st.button("📋 ไปที่ Back Office (ตารางใบงาน)", type="secondary", use_container_width=True):
-                                    st.session_state.selected_module = "Back Office"
-                                    st.rerun()
-                else:
-                    st.caption("📌 แสดงรายการจอง (สามารถกดรับมัดจำเพื่อออกสัญญา หรือกดออกใบงานเพื่อมอบหมายคนขับได้ทันที)")
-                    for b in display_jobs:
-                        b_id = b['booking_id']
-                        c_info = cars_db.get(b['car_id'], {})
-                        is_dep_paid = b.get('deposit_paid', False)
-                        is_rent_paid = b.get('rental_paid', False)
-                        w_d_val = b.get("worker_delivery")
-                        has_worker = bool(w_d_val and str(w_d_val).strip() not in ["Wait", "-", ""])
-                        
-                        # สร้างลิงก์ดาวน์โหลดสัญญาเช่าล่วงหน้าถ้ามัดจำแล้ว
-                        contract_link_html = ""
-                        if is_dep_paid:
-                            try:
-                                pdf_c_t1 = generate_filled_pdf("rental_template_blank_v2.pdf", b, st.session_state.customers_db.get(b['customer']), c_info)
-                                b64_c_t1 = base64.b64encode(pdf_c_t1).decode()
-                                contract_link_html = f'<br/><a href="data:application/pdf;base64,{b64_c_t1}" download="Agreement_{b_id}.pdf" style="font-size:11px; font-weight:700; color:#2563EB; text-decoration:none;" title="ดาวน์โหลดสัญญาเช่า (มัดจำแล้ว)">📝 สัญญาเช่า (PDF)</a>'
-                            except Exception:
-                                pass
-                        
-                        # ดึงข้อมูลเบอร์โทรลูกค้า
-                        c_cust_obj = st.session_state.customers_db.get(b['customer'], {})
-                        c_phone_no = c_cust_obj.get("contact_no", "")
-                        c_phone_tag = f"<br/><span style='font-size:11px; color:#6B7280;'>📞 {c_phone_no}</span>" if c_phone_no and c_phone_no != "-" else ""
-                        
-                        with st.container(border=True):
-                            c_id, c_car, c_date, c_price, c_act1, c_act2, c_act3 = st.columns([1.5, 1.8, 1.8, 1.5, 1.4, 1.3, 0.7])
-                            with c_id:
-                                st.markdown(f"<div style='line-height:1.35;'><b style='color: #E85826; font-size: 14px;'>{b['booking_id']}</b><br/><b style='font-size: 12.5px; color: #1F2937;'>👤 {b['customer']}</b>{c_phone_tag}</div>", unsafe_allow_html=True)
-                            with c_car:
-                                st.markdown(f"<div style='line-height:1.35;'><b style='font-size: 14px;'>🚘 {b['car_id']}</b><br/><span style='font-size: 12px; color: #666;'>{c_info.get('brand','')} {c_info.get('model','')}</span></div>", unsafe_allow_html=True)
-                            with c_date:
-                                st.markdown(f"<div style='font-size: 12px; line-height: 1.45;'>📅 {format_date_dmy(b['start_date'])} ({b.get('start_time', '10:00')})<br/>ถึง {format_date_dmy(b['end_date'])} ({b.get('end_time', '10:00')})</div>", unsafe_allow_html=True)
-                            with c_price:
-                                dep_txt = '<span style="color:#EA580C; font-size:11.5px; font-weight:700;">🟡 รอชำระมัดจำ ฿5,000</span>' if not is_dep_paid else ('<span style="color:#10B981; font-size:11.5px; font-weight:700;">🟢 มัดจำแล้ว</span>' + (' | <span style="color:#C2410C; font-size:11.5px;">รอจ่ายค่าเช่า</span>' if not is_rent_paid else ' | <span style="color:#10B981; font-size:11.5px;">ครบแล้ว</span>'))
-                                st.markdown(f"<div style='font-size: 12.5px; line-height:1.35;'><span style='color:#6B7280;'>ค่าเช่า:</span> <b>฿{float(b.get('net_price', 0)):,.2f}</b><br/>{dep_txt}{contract_link_html}</div>", unsafe_allow_html=True)
-                            with c_act1:
-                                if not is_dep_paid or b.get('status') == "รอชำระมัดจำ":
-                                    if st.button("● รอมัดจำ\n฿5,000", key=f"btn_q_dep_{b_id}", use_container_width=True, help="💳 คลิกเพื่อรับชำระมัดจำ ฿5,000 (ล็อกคิว/ออกสัญญา)"):
-                                        st.session_state.active_deposit_bk_id = b_id
-                                        st.session_state.payment_focus = True
-                                        st.session_state.workflow_tab = "3. ชำระเงินจอง & การเงิน"
-                                        st.rerun()
-                                else:
-                                    st.button("🟢 มัดจำแล้ว", key=f"btn_q_depdone_{b_id}", disabled=True, use_container_width=True)
-                            with c_act2:
-                                if has_worker:
-                                    if st.button(f"📋 ดูใน Back Office\n({w_d_val})", key=f"btn_q_bo_{b_id}", type="secondary", use_container_width=True, help=f"มอบหมาย {w_d_val} แล้ว — คลิกเพื่อจัดการใน Back Office"):
-                                        st.session_state.selected_module = "Back Office"
-                                        st.rerun()
-                                else:
-                                    if st.button("🚚 ออกใบงาน", key=f"btn_q_assign_{b_id}", type="primary", use_container_width=True, help="🚚 คลิกเพื่อออกใบงานจัดส่ง & มอบหมายคนขับ"):
-                                        st.session_state.active_assign_bk_id = b_id
-                                        st.session_state.workflow_tab = "4. ใบงานส่ง/รับรถ"
-                                        st.rerun()
-                            with c_act3:
-                                del_key = f"del_confirm_{b_id}"
-                                if not st.session_state.get(del_key, False):
-                                    if st.button("🗑️", key=f"btn_q_del_{b_id}", use_container_width=True, help="ลบรายการจองนี้ออกจากระบบ"):
-                                        st.session_state[del_key] = True
-                                        st.rerun()
-                                else:
-                                    cd_y, cd_n = st.columns(2)
-                                    with cd_y:
-                                        if st.button("ลบ", key=f"btn_del_y_{b_id}", type="primary", use_container_width=True):
-                                            st.session_state.bookings_db = [x for x in st.session_state.bookings_db if x.get("booking_id") != b_id]
-                                            _GLOBAL_STORE["bookings_db"] = st.session_state.bookings_db
-                                            sb_delete_booking(b_id)
-                                            if b.get('car_id') in cars_db:
-                                                cars_db[b['car_id']]['status'] = "ว่างพร้อมใช้งาน"
-                                                sb_sync_car(b['car_id'], cars_db[b['car_id']])
-                                            st.session_state.pop(del_key, None)
-                                            st.success(f"ลบรายการจอง {b_id} เรียบร้อย")
-                                            time.sleep(0.5)
-                                            st.rerun()
-                                    with cd_n:
-                                        if st.button("ไม่", key=f"btn_del_n_{b_id}", use_container_width=True):
-                                            st.session_state.pop(del_key, None)
-                                            st.rerun()
-
-                st.markdown("---")
-                if st.button("➕ สร้างรายการจองใหม่ (ไปยังหน้าเลือกรถ)", type="primary"):
-                    st.session_state.workflow_tab = "2. เลือกรถยนต์"
-                    st.rerun()
-
-        # --- TAB 2: FLEET SELECTION ---
-        elif current_tab == "2. เลือกรถยนต์":
+        # --- TAB 1: FLEET SELECTION ---
+        if current_tab in ["1. เลือกรถยนต์", "2. เลือกรถยนต์"]:
             # --- 1) จัดการ State ของตัวกรอง Tab 2 เพื่อให้เซลเลือกรถและรีเซ็ตได้อย่างแม่นยำ ---
             if "fleet_f_group" not in st.session_state: st.session_state.fleet_f_group = "ทั้งหมด"
             if "fleet_f_brand" not in st.session_state: st.session_state.fleet_f_brand = "ทั้งหมด"
@@ -3694,7 +3539,7 @@ else:
                                             st.session_state["_last_synced_draft_start"] = st.session_state.draft_start_date
                                             st.session_state["_last_synced_draft_end"] = st.session_state.draft_end_date
                                             st.session_state.active_deposit_bk_id = None
-                                            st.session_state.workflow_tab = "3. ชำระเงินจอง & การเงิน"
+                                            st.session_state.workflow_tab = "2. ชำระเงินจอง & การเงิน"
                                             st.rerun()
                                     else:
                                         st.button(f"⚠️ อยู่ระหว่างซ่อมบำรุง ({plate})", disabled=True, use_container_width=True, key=f"dis_rep_{plate}")
@@ -3820,8 +3665,8 @@ else:
             if st.button("＋", key="fab_add_customer", help="➕ เพิ่มข้อมูลลูกค้าใหม่เข้าสู่ฐานข้อมูล (Add New Customer)"):
                 dialog_add_new_customer()
 
-        # --- TAB 3: BOOKING DEPOSIT & PAYMENT (หน้าชำระเงินจอง & การเงิน) ---
-        elif current_tab in ["3. ชำระเงินจอง & การเงิน", "3. จัดทำสัญญา & ชำระเงิน", "4. รับมัดจำ (ล็อกคิว/ใบเสร็จ)"]:
+        # --- TAB 2: BOOKING DEPOSIT & PAYMENT (หน้าชำระเงินจอง & การเงิน) ---
+        elif current_tab in ["2. ชำระเงินจอง & การเงิน", "3. ชำระเงินจอง & การเงิน", "3. จัดทำสัญญา & ชำระเงิน", "4. รับมัดจำ (ล็อกคิว/ใบเสร็จ)"]:
             curr_u = st.session_state.user or {}
             curr_username = curr_u.get("username", "admin")
             curr_role = curr_u.get("role", "Staff")
@@ -3835,7 +3680,7 @@ else:
             b_nav1, b_nav2 = st.columns([1.6, 3.4])
             with b_nav1:
                 if st.button("⬅️ ย้อนกลับไปเลือกรถยนต์", key="btn_back_to_tab2_top", use_container_width=True):
-                    st.session_state.workflow_tab = "2. เลือกรถยนต์"
+                    st.session_state.workflow_tab = "1. เลือกรถยนต์"
                     st.rerun()
             with b_nav2:
                 st.markdown("""
@@ -4007,7 +3852,7 @@ else:
 
                                     # ส่งต่อไปยังหน้าออกใบงานทันทีตามโฟลงานที่กำหนด
                                     st.session_state.active_assign_bk_id = sel_bk['booking_id']
-                                    st.session_state.workflow_tab = "4. ใบงานส่ง/รับรถ"
+                                    st.session_state.workflow_tab = "3. ใบงานส่ง/รับรถ"
                                     st.success(f"🎉 บันทึกรับมัดจำ ฿{dep_amount:,.2f} เรียบร้อย! ระบบกำลังนำท่านไปยังหน้าออกใบงาน...")
                                     time.sleep(0.8)
                                     st.rerun()
@@ -4444,7 +4289,7 @@ else:
                                 
                                 # ส่งต่อไปยังหน้าออกใบงานทันทีตามข้อกำหนด
                                 st.session_state.active_assign_bk_id = new_bk_id
-                                st.session_state.workflow_tab = "4. ใบงานส่ง/รับรถ"
+                                st.session_state.workflow_tab = "3. ใบงานส่ง/รับรถ"
                                 
                                 st.success(f"🎉 บันทึกการจองและชำระเงินมัดจำรหัส {new_bk_id} สำเร็จ! ระบบกำลังนำท่านไปยังหน้าออกใบงาน...")
                                 time.sleep(1)
@@ -4878,8 +4723,8 @@ else:
                     st.markdown(table_html, unsafe_allow_html=True)
 
 
-        # --- TAB 4: DISPATCH & RETURN (ออกใบงานส่ง/รับรถ) ---
-        elif current_tab in ["4. ใบงานส่ง/รับรถ", "5. ใบงานส่ง/รับรถ"]:
+        # --- TAB 3: DISPATCH & RETURN (ออกใบงานส่ง/รับรถ) ---
+        elif current_tab in ["3. ใบงานส่ง/รับรถ", "4. ใบงานส่ง/รับรถ", "5. ใบงานส่ง/รับรถ"]:
             curr_u = st.session_state.user or {}
             curr_username = curr_u.get("username", "admin")
             curr_role = curr_u.get("role", "Staff")
@@ -4889,7 +4734,7 @@ else:
             b_nav1, b_nav2 = st.columns([1.6, 3.4])
             with b_nav1:
                 if st.button("⬅️ ย้อนกลับไปหน้าชำระเงินจอง", key="btn_back_to_tab3_top", use_container_width=True):
-                    st.session_state.workflow_tab = "3. ชำระเงินจอง & การเงิน"
+                    st.session_state.workflow_tab = "2. ชำระเงินจอง & การเงิน"
                     st.rerun()
             with b_nav2:
                 st.markdown("""
@@ -4950,10 +4795,10 @@ else:
                             """, unsafe_allow_html=True)
                             c_dep_go1, c_dep_go2 = st.columns([1.5, 1.5])
                             with c_dep_go2:
-                                if st.button(f"💳 ไปรับมัดจำ ฿{d_dep_amt:,.2f} (แท็บ 3)", key=f"btn_tab5_go_dep_{target_bk_d['booking_id']}", type="secondary", use_container_width=True):
+                                if st.button(f"💳 ไปรับมัดจำ ฿{d_dep_amt:,.2f} (แท็บ 2)", key=f"btn_tab5_go_dep_{target_bk_d['booking_id']}", type="secondary", use_container_width=True):
                                     st.session_state.active_deposit_bk_id = target_bk_d['booking_id']
                                     st.session_state.payment_focus = True
-                                    st.session_state.workflow_tab = "3. ชำระเงินจอง & การเงิน"
+                                    st.session_state.workflow_tab = "2. ชำระเงินจอง & การเงิน"
                                     st.rerun()
                         
                         col_pay_info, col_pay_btn = st.columns([2.3, 1.7])
@@ -4967,7 +4812,7 @@ else:
                                 if st.button(f"💳 กดจ่ายเงินค่าเช่า (฿{d_net_price:,.2f})", key=f"btn_pay_d_step_{target_bk_d['booking_id']}", type="primary", use_container_width=True):
                                     st.session_state.active_settle_bk_id = target_bk_d['booking_id']
                                     st.session_state.payment_focus = True
-                                    st.session_state.workflow_tab = "3. ชำระเงินจอง & การเงิน"
+                                    st.session_state.workflow_tab = "2. ชำระเงินจอง & การเงิน"
                                     st.rerun()
                             else:
                                 st.button("🧾 ใบเสร็จพร้อมแล้ว", disabled=True, use_container_width=True, key=f"btn_rec_done_{target_bk_d['booking_id']}")
@@ -4988,7 +4833,7 @@ else:
                             with c_next_c:
                                 if st.button("📝 ไปหน้าทำสัญญา ➔", key=f"btn_go_contract_from_d_{target_bk_d['booking_id']}", type="primary", use_container_width=True):
                                     st.session_state.active_contract_bk_id = target_bk_d['booking_id']
-                                    st.session_state.workflow_tab = "5. จัดทำสัญญาเช่า"
+                                    st.session_state.workflow_tab = "4. จัดทำสัญญาเช่า"
                                     st.rerun()
                             with c_fin:
                                 if not is_d_dep_paid:
@@ -5046,7 +4891,7 @@ else:
                                     
                                     # ระบบจะส่งกลับมาที่หน้าทำสัญญาเช่าตามโฟลงาน
                                     st.session_state.active_contract_bk_id = target_bk_d['booking_id']
-                                    st.session_state.workflow_tab = "5. จัดทำสัญญาเช่า"
+                                    st.session_state.workflow_tab = "4. จัดทำสัญญาเช่า"
                                     st.success("✅ บันทึกการมอบหมายงานเรียบร้อย! กำลังนำท่านไปยังหน้าจัดทำสัญญาเช่า...")
                                     time.sleep(0.8)
                                     st.rerun()
@@ -5105,7 +4950,7 @@ else:
                                 if st.button("🔄 ต่อสัญญา", use_container_width=True, key=f"btn_ext_{target_r_bk['booking_id']}"):
                                     st.session_state.active_extend_bk_id = target_r_bk['booking_id']
                                     st.session_state.payment_focus = True
-                                    st.session_state.workflow_tab = "3. ชำระเงินจอง & การเงิน"
+                                    st.session_state.workflow_tab = "2. ชำระเงินจอง & การเงิน"
                                     st.rerun()
                         else:
                             with st.form(f"return_job_form_{target_r_bk['booking_id']}"):
@@ -5152,7 +4997,8 @@ else:
 
 
         # --- TAB 5: CONTRACT FORMULATION & REVIEW (จัดทำและตรวจสอบสัญญาเช่า) ---
-        elif current_tab in ["5. จัดทำสัญญาเช่า", "3. จัดทำสัญญาเช่า"]:
+        # --- TAB 4: RENTAL CONTRACT CREATION (ศูนย์จัดทำและตรวจสอบสัญญาเช่า) ---
+        elif current_tab in ["4. จัดทำสัญญาเช่า", "5. จัดทำสัญญาเช่า", "3. จัดทำสัญญาเช่า"]:
             curr_u = st.session_state.user or {}
             curr_username = curr_u.get("username", "admin")
             curr_role = curr_u.get("role", "Staff")
@@ -5162,7 +5008,7 @@ else:
             b_nav1, b_nav2 = st.columns([1.6, 3.4])
             with b_nav1:
                 if st.button("⬅️ ย้อนกลับไปหน้าออกใบงาน", key="btn_back_to_tab4_top", use_container_width=True):
-                    st.session_state.workflow_tab = "4. ใบงานส่ง/รับรถ"
+                    st.session_state.workflow_tab = "3. ใบงานส่ง/รับรถ"
                     st.rerun()
             with b_nav2:
                 st.markdown("""
@@ -5196,7 +5042,7 @@ else:
                 if not all_active_contracts:
                     st.info("ℹ️ ยังไม่มีรายการสัญญาเช่าที่เปิดใช้งานอยู่ในระบบ กดปุ่มด้านล่างเพื่อเริ่มกระบวนการเช่ารถใหม่")
                     if st.button("➕ ไปที่หน้าเลือกรถยนต์เพื่อเริ่มจอง", type="primary"):
-                        st.session_state.workflow_tab = "2. เลือกรถยนต์"
+                        st.session_state.workflow_tab = "1. เลือกรถยนต์"
                         st.rerun()
                 else:
                     c_options_map = {}
@@ -5384,7 +5230,7 @@ else:
                         st.session_state.active_assign_bk_id = None
                         st.session_state.active_deposit_bk_id = None
                         st.session_state.draft_car = None
-                        st.session_state.workflow_tab = "1. แผงควบคุมการจอง"
+                        st.session_state.workflow_tab = "5. แผงควบคุมการจอง"
                         st.rerun()
 
             # ส่วนเพิ่มเติม: สำหรับกรณีต้องการจัดทำสัญญาเช่าลูกค้า Walk-in แบบเปิดฟอร์มทำโดยตรง
@@ -5442,9 +5288,176 @@ else:
                     sb_sync_car(sel_plate_walkin, cars_db[sel_plate_walkin])
                     sb_sync_booking(w_bk_obj)
                     st.session_state.active_deposit_bk_id = w_new_id
-                    st.session_state.workflow_tab = "3. ชำระเงินจอง & การเงิน"
+                    st.session_state.workflow_tab = "2. ชำระเงินจอง & การเงิน"
                     st.success(f"สร้างสัญญา Walk-in {w_new_id} สำเร็จ! นำท่านไปหน้าชำระเงินจอง...")
                     time.sleep(1)
+                    st.rerun()
+
+        # --- TAB 5: BOOKING DASHBOARD (แผงควบคุมคิวการจอง & งานทั้งหมด) ---
+        elif current_tab in ["5. แผงควบคุมการจอง", "1. แผงควบคุมการจอง"]:
+            with st.container(border=True):
+                # รวบรวมงานจองทั้งหมดที่ยังไม่เสร็จสิ้น/ยกเลิก
+                all_active_bks = [b for b in st.session_state.bookings_db if b.get('status') not in ["เสร็จสิ้น", "ยกเลิก"]]
+                all_active_bks.sort(key=lambda x: str(x.get("booking_id", "")), reverse=True)
+                
+                # กรองเฉพาะงานที่ "รอชำระมัดจำ หรือ ยังไม่ได้มอบหมายคนขับ"
+                unassigned_jobs = []
+                for b in all_active_bks:
+                    w_d = b.get("worker_delivery")
+                    has_delivery_job = bool(w_d and str(w_d).strip() and str(w_d).strip() != "Wait")
+                    is_pending_dep = (not b.get("deposit_paid")) or (b.get("status") == "รอชำระมัดจำ")
+                    if is_pending_dep or not has_delivery_job:
+                        unassigned_jobs.append(b)
+                
+                c_q_head, c_q_filter = st.columns([1.4, 1.6])
+                with c_q_head:
+                    st.markdown("<h3 style='font-size:16px; font-weight:700;'>📋 แผงควบคุมคิวการจอง (Booking Operations)</h3>", unsafe_allow_html=True)
+                with c_q_filter:
+                    q_view_mode = st.radio(
+                        "ตัวกรองคิว:",
+                        [f"📌 คิวรอลงใบงาน / รอมัดจำ ({len(unassigned_jobs)})", f"📋 งานจองทั้งหมด ({len(all_active_bks)})"],
+                        horizontal=True,
+                        label_visibility="collapsed",
+                        key="rad_q_filter_mode"
+                    )
+
+                display_jobs = unassigned_jobs if "คิวรอลงใบงาน" in q_view_mode else all_active_bks
+                
+                # กรองตามคำค้นหาจากไซด์บาร์ถ้ามี
+                sb_kw = st.session_state.get("global_search_kw", "").strip().lower()
+                if sb_kw:
+                    sb_kw_clean = sb_kw.replace("-", "").replace(" ", "")
+                    display_jobs = [
+                        b for b in display_jobs
+                        if sb_kw in f"{b.get('booking_id','')} {b.get('customer','')} {b.get('car_id','')}".lower()
+                        or sb_kw_clean in str(b.get('booking_id','')).lower().replace("-", "").replace(" ", "")
+                        or sb_kw_clean in str(b.get('car_id','')).lower().replace("-", "").replace(" ", "")
+                    ]
+                    st.caption(f"🔎 กรองผลลัพธ์ตามคำค้นหาจากไซด์บาร์: **{sb_kw}**")
+                
+                if not display_jobs:
+                    if sb_kw:
+                        sb_kw_clean = sb_kw.replace("-", "").replace(" ", "")
+                        matched_in_all = [
+                            b for b in st.session_state.bookings_db 
+                            if sb_kw in f"{b.get('booking_id','')} {b.get('customer','')} {b.get('car_id','')}".lower()
+                            or sb_kw_clean in str(b.get('booking_id','')).lower().replace("-", "").replace(" ", "")
+                            or sb_kw_clean in str(b.get('car_id','')).lower().replace("-", "").replace(" ", "")
+                        ]
+                        if matched_in_all:
+                            target_matched = matched_in_all[0]
+                            st.info(f"📌 พบรหัสการจอง **{target_matched['booking_id']}** (รถ {target_matched['car_id']}) — สามารถดูรายละเอียดได้ที่ Back Office")
+                            if st.button(f"📋 ไปที่ Back Office เพื่อดูใบงาน {target_matched['booking_id']}", type="primary"):
+                                st.session_state.selected_module = "Back Office"
+                                st.rerun()
+                        else:
+                            st.info(f"🔍 ไม่พบรายการจองตามคำค้นหา '{sb_kw}'")
+                    else:
+                        if "คิวรอลงใบงาน" in q_view_mode and all_active_bks:
+                            st.success(f"✅ **ไม่มีงานค้างในคิวรอลงใบงาน** (มีงานจองที่ลงใบงานแล้ว {len(all_active_bks)} รายการ แสดงอยู่ใน 'Back Office (ตารางใบงาน)' หรือสลับดูที่แท็บ 'งานจองทั้งหมด' ด้านบน)")
+                            c_no_j1, c_no_j2 = st.columns([1.5, 1.5])
+                            with c_no_j1:
+                                if st.button("➕ สร้างรายการจองใหม่ (ไปที่หน้าเลือกรถ)", type="primary", use_container_width=True):
+                                    st.session_state.workflow_tab = "1. เลือกรถยนต์"
+                                    st.rerun()
+                            with c_no_j2:
+                                if st.button("📋 ไปที่ Back Office (ตารางใบงาน)", type="secondary", use_container_width=True):
+                                    st.session_state.selected_module = "Back Office"
+                                    st.rerun()
+                        else:
+                            st.info("📋 **ยังไม่มีรายการจองในระบบ** กดปุ่มด้านล่างเพื่อเริ่มเลือกรถและจัดทำสัญญาได้ทันที")
+                            c_no_j1, c_no_j2 = st.columns([1.5, 1.5])
+                            with c_no_j1:
+                                if st.button("➕ สร้างรายการจองใหม่ (ไปที่หน้าเลือกรถ)", type="primary", use_container_width=True):
+                                    st.session_state.workflow_tab = "1. เลือกรถยนต์"
+                                    st.rerun()
+                            with c_no_j2:
+                                if st.button("📋 ไปที่ Back Office (ตารางใบงาน)", type="secondary", use_container_width=True):
+                                    st.session_state.selected_module = "Back Office"
+                                    st.rerun()
+                else:
+                    st.caption("📌 แสดงรายการจอง (สามารถกดรับมัดจำเพื่อออกสัญญา หรือกดออกใบงานเพื่อมอบหมายคนขับได้ทันที)")
+                    for b in display_jobs:
+                        b_id = b['booking_id']
+                        c_info = cars_db.get(b['car_id'], {})
+                        is_dep_paid = b.get('deposit_paid', False)
+                        is_rent_paid = b.get('rental_paid', False)
+                        w_d_val = b.get("worker_delivery")
+                        has_worker = bool(w_d_val and str(w_d_val).strip() not in ["Wait", "-", ""])
+                        
+                        # สร้างลิงก์ดาวน์โหลดสัญญาเช่าล่วงหน้าถ้ามัดจำแล้ว
+                        contract_link_html = ""
+                        if is_dep_paid:
+                            try:
+                                pdf_c_t1 = generate_filled_pdf("rental_template_blank_v2.pdf", b, st.session_state.customers_db.get(b['customer']), c_info)
+                                b64_c_t1 = base64.b64encode(pdf_c_t1).decode()
+                                contract_link_html = f'<br/><a href="data:application/pdf;base64,{b64_c_t1}" download="Agreement_{b_id}.pdf" style="font-size:11px; font-weight:700; color:#2563EB; text-decoration:none;" title="ดาวน์โหลดสัญญาเช่า (มัดจำแล้ว)">📝 สัญญาเช่า (PDF)</a>'
+                            except Exception:
+                                pass
+                        
+                        # ดึงข้อมูลเบอร์โทรลูกค้า
+                        c_cust_obj = st.session_state.customers_db.get(b['customer'], {})
+                        c_phone_no = c_cust_obj.get("contact_no", "")
+                        c_phone_tag = f"<br/><span style='font-size:11px; color:#6B7280;'>📞 {c_phone_no}</span>" if c_phone_no and c_phone_no != "-" else ""
+                        
+                        with st.container(border=True):
+                            c_id, c_car, c_date, c_price, c_act1, c_act2, c_act3 = st.columns([1.5, 1.8, 1.8, 1.5, 1.4, 1.3, 0.7])
+                            with c_id:
+                                st.markdown(f"<div style='line-height:1.35;'><b style='color: #E85826; font-size: 14px;'>{b['booking_id']}</b><br/><b style='font-size: 12.5px; color: #1F2937;'>👤 {b['customer']}</b>{c_phone_tag}</div>", unsafe_allow_html=True)
+                            with c_car:
+                                st.markdown(f"<div style='line-height:1.35;'><b style='font-size: 14px;'>🚘 {b['car_id']}</b><br/><span style='font-size: 12px; color: #666;'>{c_info.get('brand','')} {c_info.get('model','')}</span></div>", unsafe_allow_html=True)
+                            with c_date:
+                                st.markdown(f"<div style='font-size: 12px; line-height: 1.45;'>📅 {format_date_dmy(b['start_date'])} ({b.get('start_time', '10:00')})<br/>ถึง {format_date_dmy(b['end_date'])} ({b.get('end_time', '10:00')})</div>", unsafe_allow_html=True)
+                            with c_price:
+                                dep_txt = '<span style="color:#EA580C; font-size:11.5px; font-weight:700;">🟡 รอชำระมัดจำ ฿5,000</span>' if not is_dep_paid else ('<span style="color:#10B981; font-size:11.5px; font-weight:700;">🟢 มัดจำแล้ว</span>' + (' | <span style="color:#C2410C; font-size:11.5px;">รอจ่ายค่าเช่า</span>' if not is_rent_paid else ' | <span style="color:#10B981; font-size:11.5px;">ครบแล้ว</span>'))
+                                st.markdown(f"<div style='font-size: 12.5px; line-height:1.35;'><span style='color:#6B7280;'>ค่าเช่า:</span> <b>฿{float(b.get('net_price', 0)):,.2f}</b><br/>{dep_txt}{contract_link_html}</div>", unsafe_allow_html=True)
+                            with c_act1:
+                                if not is_dep_paid or b.get('status') == "รอชำระมัดจำ":
+                                    if st.button("● รอมัดจำ\n฿5,000", key=f"btn_q_dep_{b_id}", use_container_width=True, help="💳 คลิกเพื่อรับชำระมัดจำ ฿5,000 (ล็อกคิว/ออกสัญญา)"):
+                                        st.session_state.active_deposit_bk_id = b_id
+                                        st.session_state.payment_focus = True
+                                        st.session_state.workflow_tab = "2. ชำระเงินจอง & การเงิน"
+                                        st.rerun()
+                                else:
+                                    st.button("🟢 มัดจำแล้ว", key=f"btn_q_depdone_{b_id}", disabled=True, use_container_width=True)
+                            with c_act2:
+                                if has_worker:
+                                    if st.button(f"📋 ดูใน Back Office\n({w_d_val})", key=f"btn_q_bo_{b_id}", type="secondary", use_container_width=True, help=f"มอบหมาย {w_d_val} แล้ว — คลิกเพื่อจัดการใน Back Office"):
+                                        st.session_state.selected_module = "Back Office"
+                                        st.rerun()
+                                else:
+                                    if st.button("🚚 ออกใบงาน", key=f"btn_q_assign_{b_id}", type="primary", use_container_width=True, help="🚚 คลิกเพื่อออกใบงานจัดส่ง & มอบหมายคนขับ"):
+                                        st.session_state.active_assign_bk_id = b_id
+                                        st.session_state.workflow_tab = "3. ใบงานส่ง/รับรถ"
+                                        st.rerun()
+                            with c_act3:
+                                del_key = f"del_confirm_{b_id}"
+                                if not st.session_state.get(del_key, False):
+                                    if st.button("🗑️", key=f"btn_q_del_{b_id}", use_container_width=True, help="ลบรายการจองนี้ออกจากระบบ"):
+                                        st.session_state[del_key] = True
+                                        st.rerun()
+                                else:
+                                    cd_y, cd_n = st.columns(2)
+                                    with cd_y:
+                                        if st.button("ลบ", key=f"btn_del_y_{b_id}", type="primary", use_container_width=True):
+                                            st.session_state.bookings_db = [x for x in st.session_state.bookings_db if x.get("booking_id") != b_id]
+                                            _GLOBAL_STORE["bookings_db"] = st.session_state.bookings_db
+                                            sb_delete_booking(b_id)
+                                            if b.get('car_id') in cars_db:
+                                                cars_db[b['car_id']]['status'] = "ว่างพร้อมใช้งาน"
+                                                sb_sync_car(b['car_id'], cars_db[b['car_id']])
+                                            st.session_state.pop(del_key, None)
+                                            st.success(f"ลบรายการจอง {b_id} เรียบร้อย")
+                                            time.sleep(0.5)
+                                            st.rerun()
+                                    with cd_n:
+                                        if st.button("ไม่", key=f"btn_del_n_{b_id}", use_container_width=True):
+                                            st.session_state.pop(del_key, None)
+                                            st.rerun()
+
+                st.markdown("---")
+                if st.button("➕ สร้างรายการจองใหม่ (ไปยังหน้าเลือกรถ)", type="primary"):
+                    st.session_state.workflow_tab = "1. เลือกรถยนต์"
                     st.rerun()
 
     # =========================================================================
@@ -5974,7 +5987,7 @@ else:
                         st.info(f"📌 พบรหัสการจอง **{target_unassigned['booking_id']}** (รถ {target_unassigned['car_id']}) อยู่ในคิวรอลงใบงาน (หน้า 'Front Office')")
                         if st.button(f"🔄 ไปที่ Front Office เพื่อดูรายการจอง {target_unassigned['booking_id']}", type="primary"):
                             st.session_state.selected_module = "Front Office"
-                            st.session_state.workflow_tab = "1. แผงควบคุมการจอง"
+                            st.session_state.workflow_tab = "5. แผงควบคุมการจอง"
                             st.rerun()
                     else:
                         st.info(f"🔍 ไม่พบรายการใบงานตามคำค้นหา '{bo_kw}'")
@@ -5982,7 +5995,7 @@ else:
                     st.info("📋 ยังไม่มีรายการใบงานในระบบ (เมื่อจัดทำสัญญาหรือจองรถแล้ว รายการจะปรากฏบนตารางงานนี้ทันที)")
                     if st.button("➕ ไปจัดทำสัญญา / จองรถใหม่ (Front Office)", type="primary"):
                         st.session_state.selected_module = "Front Office"
-                        st.session_state.workflow_tab = "2. เลือกรถยนต์"
+                        st.session_state.workflow_tab = "1. เลือกรถยนต์"
                         st.rerun()
             else:
                 table_html = (
@@ -6108,7 +6121,7 @@ else:
 
     elif module == "โมดูลจัดการลูกค้า":
         st.session_state.selected_module = "Front Office"
-        st.session_state.workflow_tab = "3. ชำระเงินจอง & การเงิน"
+        st.session_state.workflow_tab = "2. ชำระเงินจอง & การเงิน"
         st.rerun()
 
     # =========================================================================
@@ -6622,7 +6635,7 @@ else:
                         st.session_state.search_plate_filter = selected_plate
                         st.session_state.global_search_kw = selected_plate
                         st.session_state.selected_module = "Front Office"
-                        st.session_state.workflow_tab = "2. เลือกรถยนต์"
+                        st.session_state.workflow_tab = "1. เลือกรถยนต์"
                         st.rerun()
                     
                     st.caption("💡 ท่านสามารถคลิกเลือกแถวในตารางเพื่อข้ามไปดูรายละเอียดรถแบบเต็มในหน้า 'เลือกรถยนต์' ได้ทันที (หรือคลิกที่หัวข้อเพื่อพับเก็บตาราง)")
