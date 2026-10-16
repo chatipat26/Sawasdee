@@ -839,14 +839,14 @@ def init_expiry_scheduler_thread():
             try:
                 # คำนวณเวลาประเทศไทย (UTC+7)
                 now_bkk = datetime.utcnow() + timedelta(hours=7)
-                # เมื่อถึงเวลา 20:00 น.
-                if now_bkk.hour == 20 and now_bkk.minute == 0:
+                # เมื่อถึงเวลาตั้งแต่ 20:00 น. เป็นต้นไป และวันนี้ยังไม่ได้ส่ง
+                if now_bkk.hour >= 20:
                     today_tag = now_bkk.strftime("%Y-%m-%d")
                     last_run = _GLOBAL_STORE.get("last_expiry_run_date") if "_GLOBAL_STORE" in globals() else None
                     if last_run != today_tag:
                         if "_GLOBAL_STORE" in globals():
                             _GLOBAL_STORE["last_expiry_run_date"] = today_tag
-                        print(f"⏰ [20:00 ICT] ตรวจสอบและส่งแจ้งเตือน พ.ร.บ./ประกันภัย ประจำวัน...")
+                        print(f"⏰ [{now_bkk.strftime('%H:%M')} ICT] ตรวจสอบและส่งแจ้งเตือน พ.ร.บ./ประกันภัย ประจำวัน...")
                         check_and_send_expiry_alerts(target_days=(30, 31, 7, 0))
                 time.sleep(30)
             except Exception as e:
@@ -957,15 +957,21 @@ def sb_delete_booking(del_bkid):
     except Exception:
         pass
 
+VALID_CAR_COLS = {
+    'plate', 'brand', 'model', 'color', 'car_group', 'engine_cc', 'fuel_type',
+    'company', 'price_day', 'price_week', 'price_month', 'status', 'chassis_no',
+    'act_expiry', 'ins_expiry', 'mileage', 'image', 'created_at'
+}
+
 def sb_sync_car(plate, car_dict):
     sb = get_supabase_client()
     if not sb or not car_dict: return
     try:
-        row = dict(car_dict)
-        row["plate"] = plate
-        sb.table("cars").upsert(row).execute()
-    except Exception:
-        pass
+        clean_row = {k: v for k, v in car_dict.items() if k in VALID_CAR_COLS}
+        clean_row["plate"] = plate
+        sb.table("cars").upsert(clean_row).execute()
+    except Exception as e:
+        print(f"sb_sync_car error for {plate}: {e}")
 
 def sb_sync_customer(name, cust_dict):
     sb = get_supabase_client()
