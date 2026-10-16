@@ -69,11 +69,11 @@ def fetch_cars_from_supabase(sb_url, sb_key):
         return []
 
 
-def check_expiring_cars(cars_list, target_days=(30, 7, 0), check_date=None):
+def check_expiring_cars(cars_list, target_days=(30, 31, 7, 0), check_date=None):
     """
     ตรวจสอบรายการรถยนต์ที่ พ.ร.บ. หรือ ประกันภัย ครบกำหนดแจ้งเตือน
     :param cars_list: รายชื่อรถยนต์
-    :param target_days: จำนวนวันที่เหลือก่อนหมดอายุที่ต้องการแจ้งเตือน เช่น (30, 7, 0)
+    :param target_days: จำนวนวันที่เหลือก่อนหมดอายุที่ต้องการแจ้งเตือน เช่น (30, 31, 7, 0)
     :param check_date: วันที่ใช้อ้างอิง (ค่าเริ่มต้นคือวันนี้)
     :return: รายการที่เข้าเงื่อนไข
     """
@@ -100,10 +100,10 @@ def check_expiring_cars(cars_list, target_days=(30, 7, 0), check_date=None):
 
             diff_days = (exp_date - today).days
 
-            # เงื่อนไข: ตรงกับ 30 วัน, 7 วัน, หรือวันหมดอายุ (0 วัน)
+            # เงื่อนไข: ตรงกับ 30-31 วัน (1 เดือน), 7 วัน, หรือวันหมดอายุ (0 วัน)
             if diff_days in target_days:
-                if diff_days == 30:
-                    status_desc = "🟡 ล่วงหน้า 30 วัน (อีก 1 เดือน)"
+                if diff_days in (30, 31):
+                    status_desc = f"🟡 ล่วงหน้า 30 วัน (อีก {diff_days} วัน)"
                 elif diff_days == 7:
                     status_desc = "🟠 ล่วงหน้า 7 วัน (อีก 1 สัปดาห์)"
                 elif diff_days == 0:
@@ -201,7 +201,7 @@ def run_daily_check(force_send=False):
     cars = fetch_cars_from_supabase(sb_url, sb_key)
     print(f"📊 โหลดข้อมูลรถยนต์จาก Supabase ทั้งหมด: {len(cars)} คัน")
 
-    target_days = (30, 7, 0)
+    target_days = (30, 31, 7, 0)
     expiring_items = check_expiring_cars(cars, target_days=target_days, check_date=today)
 
     if not expiring_items:

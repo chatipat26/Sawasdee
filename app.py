@@ -786,11 +786,11 @@ def notify_line_work_order(booking_obj, job_type="Dispatch", worker_name="", loc
 # -------------------------------------------------------------------------
 # LINE DAILY EXPIRY NOTIFICATION (พ.ร.บ. & ประกันภัย ล่วงหน้า 30 วัน, 7 วัน, วันหมดอายุ เวลา 20:00 น.)
 # -------------------------------------------------------------------------
-def check_and_send_expiry_alerts(cars_dict=None, target_days=(30, 7, 0)):
+def check_and_send_expiry_alerts(cars_dict=None, target_days=(30, 31, 7, 0)):
     """
     ตรวจสอบวันหมดอายุ พ.ร.บ. และ ประกันภัย
     เงื่อนไข:
-    - ล่วงหน้า 30 วัน (days_left == 30)
+    - ล่วงหน้า 30-31 วัน (1 เดือน)
     - ล่วงหน้า 7 วัน (days_left == 7)
     - วันที่หมดอายุ (days_left == 0)
     หากไม่มีรายการเข้าเงื่อนไข จะไม่ส่งข้อความทาง LINE (เพื่อประหยัดโควต้า 300 ข้อความ/เดือน)
@@ -847,7 +847,7 @@ def init_expiry_scheduler_thread():
                         if "_GLOBAL_STORE" in globals():
                             _GLOBAL_STORE["last_expiry_run_date"] = today_tag
                         print(f"⏰ [20:00 ICT] ตรวจสอบและส่งแจ้งเตือน พ.ร.บ./ประกันภัย ประจำวัน...")
-                        check_and_send_expiry_alerts(target_days=(30, 7, 0))
+                        check_and_send_expiry_alerts(target_days=(30, 31, 7, 0))
                 time.sleep(30)
             except Exception as e:
                 print(f"Expiry scheduler loop error: {e}")
