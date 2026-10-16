@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime, timedelta, date, time as d_time
 import os
+import tempfile
 import re
 import base64
 import io
@@ -825,41 +826,58 @@ def check_and_send_expiry_alerts(cars_dict=None, target_days=(30, 31, 7, 0)):
         print(f"Error in check_and_send_expiry_alerts: {e}")
         return {"sent": False, "count": 0, "error": str(e)}
 
-_EXPIRY_SCHEDULER_THREAD_STARTED = False
+def _get_last_expiry_run_date():
+    try:
+        lock_file = os.path.join(tempfile.gettempdir(), "sawasdee_line_expiry_last_run.txt")
+        if os.path.exists(lock_file):
+            with open(lock_file, "r", encoding="utf-8") as f:
+                return f.read().strip()
+    except Exception:
+        pass
+    return None
 
+def _set_last_expiry_run_date(tag):
+    try:
+        lock_file = os.path.join(tempfile.gettempdir(), "sawasdee_line_expiry_last_run.txt")
+        with open(lock_file, "w", encoding="utf-8") as f:
+            f.write(tag)
+    except Exception:
+        pass
+
+@st.cache_resource
 def init_expiry_scheduler_thread():
-    """เธรดทำงานเบื้องหลัง คอยตรวจเช็คเวลา 20:00 น. ประเทศไทย (UTC+7) ทุกวัน"""
-    global _EXPIRY_SCHEDULER_THREAD_STARTED
-    if _EXPIRY_SCHEDULER_THREAD_STARTED:
-        return
-    _EXPIRY_SCHEDULER_THREAD_STARTED = True
-
+    """
+    เธรดทำงานเบื้องหลัง คอยตรวจเช็คเวลา 20:00 น. ประเทศไทย (UTC+7) ทุกวัน
+    ใช้ @st.cache_resource เพื่อให้รันเพียงครั้งเดียวตลอดอายุเซิร์ฟเวอร์
+    ไม่ถูกสร้างซ้ำเมื่อผู้ใช้กดแก้ไขข้อมูลหรือมี script rerun
+    """
     def _scheduler_loop():
         while True:
             try:
-                # คำนวณเวลาประเทศไทย (UTC+7)
                 now_bkk = datetime.utcnow() + timedelta(hours=7)
+                today_tag = now_bkk.strftime("%Y-%m-%d")
                 # เมื่อถึงเวลาตั้งแต่ 20:00 น. เป็นต้นไป และวันนี้ยังไม่ได้ส่ง
                 if now_bkk.hour >= 20:
-                    today_tag = now_bkk.strftime("%Y-%m-%d")
-                    last_run = _GLOBAL_STORE.get("last_expiry_run_date") if "_GLOBAL_STORE" in globals() else None
+                    last_run = _get_last_expiry_run_date()
                     if last_run != today_tag:
-                        if "_GLOBAL_STORE" in globals():
-                            _GLOBAL_STORE["last_expiry_run_date"] = today_tag
-                        print(f"⏰ [{now_bkk.strftime('%H:%M')} ICT] ตรวจสอบและส่งแจ้งเตือน พ.ร.บ./ประกันภัย ประจำวัน...")
+                        # ล็อควันที่ทันทีก่อนส่ง เพื่อป้องกันการส่งซ้ำ
+                        _set_last_expiry_run_date(today_tag)
+                        print(f"⏰ [{now_bkk.strftime('%H:%M')} ICT] ตรวจสอบและส่งแจ้งเตือน พ.ร.บ./ประกันภัย ประจำวัน {today_tag}...")
                         check_and_send_expiry_alerts(target_days=(30, 31, 7, 0))
-                time.sleep(30)
+                time.sleep(60)
             except Exception as e:
                 print(f"Expiry scheduler loop error: {e}")
                 time.sleep(60)
 
     try:
-        t = threading.Thread(target=_scheduler_loop, daemon=True)
+        t = threading.Thread(target=_scheduler_loop, daemon=True, name="SawasdeeExpiryScheduler")
         t.start()
-    except Exception:
-        pass
+        return True
+    except Exception as e:
+        print(f"Failed to start expiry scheduler: {e}")
+        return False
 
-# เริ่มต้นเธรดตรวจสอบเวลา 20:00 น.
+# เริ่มต้นเธรดตรวจสอบเวลา 20:00 น. (cached singleton ผ่าน @st.cache_resource)
 init_expiry_scheduler_thread()
 
 # =========================================================================
