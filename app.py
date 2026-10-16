@@ -982,21 +982,34 @@ def sb_delete_user(username):
 
 def sb_upload_photo(filename, file_bytes, content_type="image/jpeg"):
     sb = get_supabase_client()
-    if not sb:
-        print("sb_upload_photo: Supabase client is not available")
-        return None
     try:
-        sb.storage.from_("inspection-photos").upload(
-            filename,
-            file_bytes,
-            file_options={"content-type": content_type, "upsert": "true"}
-        )
-        url = sb.storage.from_("inspection-photos").get_public_url(filename)
-        print(f"sb_upload_photo success: {filename} -> {url}")
-        return url
+        if sb:
+            sb.storage.from_("inspection-photos").upload(
+                filename,
+                file_bytes,
+                file_options={"content-type": content_type, "upsert": "true"}
+            )
+            url = sb.storage.from_("inspection-photos").get_public_url(filename)
+            print(f"sb_upload_photo success: {filename} -> {url}")
+            return url
     except Exception as e:
-        print(f"sb_upload_photo error uploading {filename}: {e}")
-        return None
+        print(f"sb_upload_photo error with cached client: {e}, attempting direct service client...")
+
+    # Direct fallback using hardcoded service key (bypass any cached anon/publishable tokens)
+    try:
+        if create_client:
+            direct_sb = create_client(HARDCODED_SUPABASE_URL, HARDCODED_SERVICE_KEY)
+            direct_sb.storage.from_("inspection-photos").upload(
+                filename,
+                file_bytes,
+                file_options={"content-type": content_type, "upsert": "true"}
+            )
+            url = direct_sb.storage.from_("inspection-photos").get_public_url(filename)
+            print(f"sb_upload_photo direct success: {filename} -> {url}")
+            return url
+    except Exception as e2:
+        print(f"sb_upload_photo direct error: {e2}")
+    return None
 
 def sb_auth_login(identifier, password):
     sb = get_supabase_client()
@@ -3889,12 +3902,13 @@ else:
                                     if t2_up is not None:
                                         st.image(t2_up, caption="ตัวอย่างรูปใหม่", use_container_width=True)
                                         if st.button("💾 บันทึกรูปภาพนี้", key=f"t2_save_{plate}", type="primary"):
-                                            t2_bytes = t2_up.read()
+                                            t2_bytes = t2_up.getvalue() if hasattr(t2_up, "getvalue") else t2_up.read()
                                             t2_mime = t2_up.type or "image/jpeg"
                                             t2_b64 = base64.b64encode(t2_bytes).decode()
                                             t2_uri = f"data:{t2_mime};base64,{t2_b64}"
                                             safe_pl = re.sub(r'[^a-zA-Z0-9_\.-]', '_', plate)
-                                            pub_url = sb_upload_photo(f"car_{safe_pl}_{int(time.time())}.jpg", t2_bytes, t2_mime)
+                                            ext = t2_up.name.split('.')[-1] if '.' in t2_up.name else 'jpg'
+                                            pub_url = sb_upload_photo(f"car_{safe_pl}_{int(time.time())}.{ext}", t2_bytes, t2_mime)
                                             final_img = pub_url if pub_url else t2_uri
                                             st.session_state.cars_db[plate]["image"] = final_img
                                             cars_db[plate]["image"] = final_img
