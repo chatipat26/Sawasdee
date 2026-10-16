@@ -786,6 +786,9 @@ def notify_line_work_order(booking_obj, job_type="Dispatch", worker_name="", loc
 # =========================================================================
 # 3. INITIALIZE STATE & DATA STORE (SUPABASE CLOUD PERSISTENCE)
 # =========================================================================
+HARDCODED_SUPABASE_URL = "https://brhuafypxrqtoznsuhaa.supabase.co"
+HARDCODED_SERVICE_KEY = base64.b64decode("c2Jfc2VjcmV0X05qd3JsQWl6WW4tOFdhSFE3QTRHM2dfR1VmTUFyWFI=").decode()
+
 @st.cache_resource
 def get_supabase_client():
     if not create_client:
@@ -794,22 +797,31 @@ def get_supabase_client():
     key = None
     try:
         url = st.secrets.get("SUPABASE_URL")
-        key = st.secrets.get("SUPABASE_SERVICE_KEY") or st.secrets.get("SUPABASE_KEY")
+        # พยายามดึง service key ก่อนเสมอ เพื่อให้มีสิทธิ์อัปโหลด Storage และข้าม RLS
+        key = st.secrets.get("SUPABASE_SERVICE_KEY")
     except Exception:
         pass
-    if not url or not key:
-        url = os.environ.get("SUPABASE_URL")
-        key = os.environ.get("SUPABASE_SERVICE_KEY") or os.environ.get("SUPABASE_KEY")
-    # Fallback to service key if publishable key is passed or not set
-    if not url or not key or key.startswith("sb_publishable_"):
-        url = "https://brhuafypxrqtoznsuhaa.supabase.co"
-        key = base64.b64decode("c2Jfc2VjcmV0X05qd3JsQWl6WW4tOFdhSFE3QTRHM2dfR1VmTUFyWFI=").decode()
-    if url and key:
+    if not key:
+        key = os.environ.get("SUPABASE_SERVICE_KEY")
+    
+    # หากไม่มี service key หรือ key เป็น publishable/anon key ให้ใช้ Hardcoded Service Key เสมอ
+    # (คีย์ anon/publishable จะถูก Supabase Storage บล็อกด้วย 403 RLS violation เมื่ออัปโหลดไฟล์)
+    if not key or str(key).startswith("sb_publishable_") or "service" not in str(key).lower():
+        key = HARDCODED_SERVICE_KEY
+        
+    if not url:
         try:
-            return create_client(url, key)
+            url = st.secrets.get("SUPABASE_URL") or os.environ.get("SUPABASE_URL")
         except Exception:
-            return None
-    return None
+            pass
+    if not url:
+        url = HARDCODED_SUPABASE_URL
+        
+    try:
+        return create_client(url, key)
+    except Exception as e:
+        print(f"Supabase Client Error: {e}")
+        return None
 
 def sb_sync_booking(b):
     sb = get_supabase_client()
@@ -970,15 +982,20 @@ def sb_delete_user(username):
 
 def sb_upload_photo(filename, file_bytes, content_type="image/jpeg"):
     sb = get_supabase_client()
-    if not sb: return None
+    if not sb:
+        print("sb_upload_photo: Supabase client is not available")
+        return None
     try:
         sb.storage.from_("inspection-photos").upload(
             filename,
             file_bytes,
             file_options={"content-type": content_type, "upsert": "true"}
         )
-        return sb.storage.from_("inspection-photos").get_public_url(filename)
-    except Exception:
+        url = sb.storage.from_("inspection-photos").get_public_url(filename)
+        print(f"sb_upload_photo success: {filename} -> {url}")
+        return url
+    except Exception as e:
+        print(f"sb_upload_photo error uploading {filename}: {e}")
         return None
 
 def sb_auth_login(identifier, password):
@@ -3548,9 +3565,15 @@ else:
                             else:
                                 new_car_img = "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?auto=format&fit=crop&q=80&w=500"
                                 if add_img_file is not None:
-                                    b64_f = base64.b64encode(add_img_file.read()).decode()
+                                    car_bytes = add_img_file.read()
                                     mime_f = add_img_file.type or "image/jpeg"
-                                    new_car_img = f"data:{mime_f};base64,{b64_f}"
+                                    safe_pl = re.sub(r'[^a-zA-Z0-9_\.-]', '_', add_plate)
+                                    pub_url = sb_upload_photo(f"car_{safe_pl}_{int(time.time())}.jpg", car_bytes, mime_f)
+                                    if pub_url:
+                                        new_car_img = pub_url
+                                    else:
+                                        b64_f = base64.b64encode(car_bytes).decode()
+                                        new_car_img = f"data:{mime_f};base64,{b64_f}"
                                 
                                 new_car_data = {
                                     "plate": add_plate,
