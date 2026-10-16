@@ -7,6 +7,8 @@ import base64
 import io
 import time
 import urllib.request
+import threading
+import requests
 import altair as alt
 from pypdf import PdfReader, PdfWriter
 from reportlab.pdfgen import canvas
@@ -587,6 +589,155 @@ def generate_job_pdf(booking_info, customer_info, car_info, job_type="Dispatch",
     
     doc.build(elements)
     return pdf_buffer.getvalue()
+
+# =========================================================================
+# 2.1 LINE MESSAGING API NOTIFICATIONS
+# =========================================================================
+LINE_PUSH_URL = "https://api.line.me/v2/bot/message/push"
+LINE_DEFAULT_CHANNEL_ACCESS_TOKEN = (
+    "V9Sc5Zmu4av4UzX+NbGNmkNCWM21aKchTJQw8ueOsGwilCWGv9c+AEqFtrKC4OG0fVwFy7l+"
+    "wa5FVw0nrBGx8mz6zAHcdBY5hn4eBJApNwQ7oXOhSfgvzKHjxh6UGkqytCrLndQQAcVxcI+FFcGxMwdB04t89/1O/w1cDnyilFU="
+)
+LINE_DEFAULT_TARGET_USER_ID = "Ub7b6353ba826c0ba5c3d9fac3531ef77"
+
+def get_line_credentials():
+    token = None
+    user_id = None
+    try:
+        token = st.secrets.get("LINE_CHANNEL_ACCESS_TOKEN")
+        user_id = st.secrets.get("LINE_TARGET_USER_ID") or st.secrets.get("LINE_USER_ID")
+    except Exception:
+        pass
+    if not token:
+        token = os.environ.get("LINE_CHANNEL_ACCESS_TOKEN", LINE_DEFAULT_CHANNEL_ACCESS_TOKEN)
+    if not user_id:
+        user_id = os.environ.get("LINE_TARGET_USER_ID", LINE_DEFAULT_TARGET_USER_ID)
+    return token, user_id
+
+def send_line_push_message(message: str, to_user_id: str = None, channel_access_token: str = None) -> bool:
+    try:
+        def_token, def_user = get_line_credentials()
+        token = channel_access_token or def_token
+        target = to_user_id or def_user
+        if not token or not target:
+            return False
+            
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {token}"
+        }
+        payload = {
+            "to": target,
+            "messages": [
+                {
+                    "type": "text",
+                    "text": message
+                }
+            ]
+        }
+        res = requests.post(LINE_PUSH_URL, headers=headers, json=payload, timeout=8)
+        return res.status_code == 200
+    except Exception as e:
+        print(f"LINE Notification Error: {e}")
+        return False
+
+def send_line_push_async(message: str):
+    try:
+        t = threading.Thread(target=send_line_push_message, args=(message,), daemon=True)
+        t.start()
+    except Exception:
+        try:
+            send_line_push_message(message)
+        except Exception:
+            pass
+
+def notify_line_work_order(booking_obj, job_type="Dispatch", worker_name="", location="", appointment_time=""):
+    """
+    ส่งข้อความแจ้งเตือนผ่าน LINE Messaging API เมื่อมีการออกใบงานส่งมอบรถ หรือใบงานรับรถคืน
+    ข้อมูลที่ส่ง:
+    1. ชื่อผู้รับผิดชอบ (พนักงาน/คนขับรถ)
+    2. เลขทะเบียนรถ (พร้อมยี่ห้อ/รุ่น)
+    3. วันที่ส่งรถ หรือ วันที่รับรถ (พร้อมเวลานัดหมาย)
+    4. สถานที่ที่ลงในใบงาน
+    5. ชื่อและเบอร์โทรลูกค้า
+    """
+    if not booking_obj:
+        return
+    try:
+        bk_id = booking_obj.get("booking_id", "-")
+        plate = booking_obj.get("car_id", "-")
+        cust_name = booking_obj.get("customer", "-")
+
+        # 1. ข้อมูลรถยนต์ (ยี่ห้อ/รุ่น)
+        cars_db = {}
+        if hasattr(st, "session_state") and "cars_db" in st.session_state:
+            cars_db = st.session_state.cars_db
+        elif "_GLOBAL_STORE" in globals() and _GLOBAL_STORE.get("cars_db"):
+            cars_db = _GLOBAL_STORE["cars_db"]
+        
+        car_info = cars_db.get(plate, {}) if isinstance(cars_db, dict) else {}
+        brand = car_info.get("brand", "").strip()
+        model = car_info.get("model", "").strip()
+        car_desc = f"{brand} {model}".strip()
+        car_display = f"{car_desc} (ทะเบียน {plate})" if car_desc else f"ทะเบียน {plate}"
+
+        # 2. ข้อมูลเบอร์โทรลูกค้า
+        cust_db = {}
+        if hasattr(st, "session_state") and "customers_db" in st.session_state:
+            cust_db = st.session_state.customers_db
+        elif "_GLOBAL_STORE" in globals() and _GLOBAL_STORE.get("customers_db"):
+            cust_db = _GLOBAL_STORE["customers_db"]
+            
+        cust_info = cust_db.get(cust_name, {}) if isinstance(cust_db, dict) else {}
+        cust_phone = (
+            cust_info.get("contact_no")
+            or booking_obj.get("contact_no")
+            or booking_obj.get("phone")
+            or booking_obj.get("customer_phone")
+            or "-"
+        )
+        if not cust_phone or str(cust_phone).strip() in ["", "-", "None"]:
+            cust_phone = "ไม่ระบุเบอร์โทร"
+
+        # 3. ข้อมูลตามประเภทใบงาน
+        is_dispatch = str(job_type).lower() in ["dispatch", "delivery", "ส่งรถ", "ส่งมอบรถ"]
+        if is_dispatch:
+            title = "🚚 แจ้งเตือน: ออกใบงานส่งมอบรถ (Dispatch)"
+            action_label = "วันที่ส่งมอบ"
+            date_val = format_date_dmy(booking_obj.get("start_date"))
+            time_val = appointment_time or booking_obj.get("start_time", "10:00")
+            loc_val = location or booking_obj.get("loc_delivery") or "-"
+            worker_val = worker_name or booking_obj.get("worker_delivery") or "-"
+        else:
+            title = "🔙 แจ้งเตือน: ออกใบงานรับรถคืน (Return)"
+            action_label = "วันที่รับคืน"
+            date_val = format_date_dmy(booking_obj.get("end_date"))
+            time_val = appointment_time or booking_obj.get("end_time", "10:00")
+            loc_val = location or booking_obj.get("loc_return") or "-"
+            worker_val = worker_name or booking_obj.get("worker_return") or "-"
+
+        if not loc_val or str(loc_val).strip() in ["", "-"]:
+            loc_val = "ไม่ได้ระบุสถานที่"
+        if not worker_val or str(worker_val).strip() in ["", "-", "Wait"]:
+            worker_val = "รอมอบหมายพนักงาน"
+
+        lines = [
+            f"🔔 {title}",
+            "────────────────────",
+            f"📋 เลขที่การจอง: {bk_id}",
+            f"👤 ผู้รับผิดชอบ: {worker_val}",
+            f"🚗 ทะเบียนรถ: {car_display}",
+            f"📅 {action_label}: {date_val} (เวลา {time_val} น.)",
+            f"📍 สถานที่: {loc_val}",
+            f"🙋‍♂️ ลูกค้า: {cust_name}",
+            f"📞 เบอร์โทรศัพท์: {cust_phone}",
+            "────────────────────",
+            "ระบบบริหารจัดการ SawasdeeRental"
+        ]
+        message = "\n".join(lines)
+        send_line_push_async(message)
+    except Exception as e:
+        print(f"Error in notify_line_work_order: {e}")
 
 # =========================================================================
 # 3. INITIALIZE STATE & DATA STORE (SUPABASE CLOUD PERSISTENCE)
@@ -5070,7 +5221,20 @@ else:
                                             elif b['status'] == "รอชำระมัดจำ" and b.get("deposit_paid"):
                                                 b['status'] = "เตรียมส่งมอบ"
                                     _GLOBAL_STORE["bookings_db"] = st.session_state.bookings_db
+                                    target_bk_d['worker_delivery'] = worker
+                                    target_bk_d['loc_delivery'] = loc
+                                    target_bk_d['start_time'] = time_d.strftime("%H:%M")
                                     sb_sync_booking(target_bk_d)
+                                    
+                                    # แจ้งเตือนผ่าน LINE Messaging API
+                                    notify_line_work_order(
+                                        booking_obj=target_bk_d,
+                                        job_type="Dispatch",
+                                        worker_name=worker,
+                                        location=loc,
+                                        appointment_time=time_d.strftime("%H:%M")
+                                    )
+                                    
                                     st.session_state[edit_key_d] = False
                                     
                                     # ระบบจะส่งกลับมาที่หน้าทำสัญญาเช่าตามโฟลงาน
@@ -5182,7 +5346,20 @@ else:
                                                 b['status'] = "เตรียมรับคืน"
                                             break
                                     _GLOBAL_STORE["bookings_db"] = st.session_state.bookings_db
+                                    target_r_bk['worker_return'] = worker_r
+                                    target_r_bk['loc_return'] = loc_r
+                                    target_r_bk['end_time'] = time_r.strftime("%H:%M")
                                     sb_sync_booking(target_r_bk)
+                                    
+                                    # แจ้งเตือนผ่าน LINE Messaging API
+                                    notify_line_work_order(
+                                        booking_obj=target_r_bk,
+                                        job_type="Return",
+                                        worker_name=worker_r,
+                                        location=loc_r,
+                                        appointment_time=time_r.strftime("%H:%M")
+                                    )
+                                    
                                     st.session_state[edit_key_r] = False
                                     st.success("มอบหมายงานรับรถคืนสำเร็จ! ตรวจสอบใบงานได้ที่ Back Office")
                                     time.sleep(1)
