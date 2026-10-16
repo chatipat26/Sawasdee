@@ -3149,8 +3149,8 @@ else:
                     unsafe_allow_html=True
                 )
                 
-                # แถวที่ 1: หมวดหมู่, ยี่ห้อ, วันที่ส่งรถ, วันที่คืนรถ, สถานะ
-                b_c1, b_c2, b_c3, b_c4, b_c5 = st.columns(5)
+                # แถวที่ 1: ดรอปดาวน์ตัวกรองทั้งหมด (หมวดหมู่รถ, ยี่ห้อ, กรรมสิทธิ์/บริษัท, สถานะรถ)
+                b_c1, b_c2, b_c3, b_c4 = st.columns(4)
                 with b_c1:
                     cur_grp_idx = _group_options.index(st.session_state.fleet_f_group) if st.session_state.fleet_f_group in _group_options else 0
                     f_group = st.selectbox("หมวดหมู่รถ (Category)", _group_options, index=cur_grp_idx, key="fleet_f_group")
@@ -3158,6 +3158,15 @@ else:
                     cur_brd_idx = _brand_options.index(st.session_state.fleet_f_brand) if st.session_state.fleet_f_brand in _brand_options else 0
                     f_brand = st.selectbox("ยี่ห้อ (Brand)", _brand_options, index=cur_brd_idx, key="fleet_f_brand")
                 with b_c3:
+                    cur_comp_idx = _company_options.index(st.session_state.fleet_f_company) if st.session_state.fleet_f_company in _company_options else 0
+                    f_company = st.selectbox("กรรมสิทธิ์/บริษัท", _company_options, index=cur_comp_idx, key="fleet_f_company")
+                with b_c4:
+                    cur_st_idx = _status_options.index(st.session_state.fleet_f_status) if st.session_state.fleet_f_status in _status_options else 0
+                    f_status = st.selectbox("สถานะรถ (Status)", _status_options, index=cur_st_idx, key="fleet_f_status")
+
+                # แถวที่ 2: ระบุวันที่ (วันที่ส่งรถ, วันที่คืนรถ) และปุ่มล้างตัวกรอง
+                d_c1, d_c2, d_c3 = st.columns([1.5, 1.5, 1.0])
+                with d_c1:
                     f_avail_start = st.date_input(
                         "📅 วันที่ส่งรถ (Pick-up)", 
                         value=st.session_state.fleet_f_start, 
@@ -3165,7 +3174,7 @@ else:
                         key="fleet_f_start",
                         help="เลือกระบุวันที่เริ่มส่งมอบรถ (ถ้าต้องการตรวจสอบรถว่าง)"
                     )
-                with b_c4:
+                with d_c2:
                     f_avail_end = st.date_input(
                         "📅 วันที่คืนรถ (Return)", 
                         value=st.session_state.fleet_f_end, 
@@ -3173,16 +3182,7 @@ else:
                         key="fleet_f_end",
                         help="เลือกระบุวันที่คืนรถ (ถ้าต้องการตรวจสอบรถว่าง)"
                     )
-                with b_c5:
-                    cur_st_idx = _status_options.index(st.session_state.fleet_f_status) if st.session_state.fleet_f_status in _status_options else 0
-                    f_status = st.selectbox("สถานะรถ (Status)", _status_options, index=cur_st_idx, key="fleet_f_status")
-
-                # แถวที่ 2: กรรมสิทธิ์/บริษัท, ปุ่มล้างตัวกรอง (นำช่องค้นหาด่วนออกตามคำขอเพราะมีช่องค้นหาที่ไซด์บาร์แล้ว)
-                srch_c2, srch_c3 = st.columns([3.8, 1.2])
-                with srch_c2:
-                    cur_comp_idx = _company_options.index(st.session_state.fleet_f_company) if st.session_state.fleet_f_company in _company_options else 0
-                    f_company = st.selectbox("กรรมสิทธิ์/บริษัท", _company_options, index=cur_comp_idx, key="fleet_f_company")
-                with srch_c3:
+                with d_c3:
                     st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
                     st.button("🔄 ล้างตัวกรอง", on_click=reset_all_fleet_filters, use_container_width=True, help="คืนค่าตัวกรองทั้งหมดและแสดงรถยนต์ทุกคันทันที")
 
