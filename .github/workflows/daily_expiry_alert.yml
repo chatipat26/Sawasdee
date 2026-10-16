@@ -1,0 +1,33 @@
+name: Daily ACT & Insurance Expiry Alert (20:00 ICT)
+
+on:
+  schedule:
+    # 13:00 UTC = 20:00 น. ประเทศไทย (UTC+7) ทุกวัน
+    - cron: '0 13 * * *'
+  workflow_dispatch: # อนุญาตให้กดสั่งรันตรวจสอบได้เองจากหน้า GitHub Actions ทุกเมื่อ
+
+jobs:
+  check-and-alert:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Dependencies
+        run: |
+          pip install requests supabase
+
+      - name: Run Expiry Alert Check
+        env:
+          LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: |
+          python check_expiry_alert.py

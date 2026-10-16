@@ -783,6 +783,85 @@ def notify_line_work_order(booking_obj, job_type="Dispatch", worker_name="", loc
     except Exception as e:
         print(f"Error in notify_line_work_order: {e}")
 
+# -------------------------------------------------------------------------
+# LINE DAILY EXPIRY NOTIFICATION (พ.ร.บ. & ประกันภัย ล่วงหน้า 30 วัน, 7 วัน, วันหมดอายุ เวลา 20:00 น.)
+# -------------------------------------------------------------------------
+def check_and_send_expiry_alerts(cars_dict=None, target_days=(30, 7, 0)):
+    """
+    ตรวจสอบวันหมดอายุ พ.ร.บ. และ ประกันภัย
+    เงื่อนไข:
+    - ล่วงหน้า 30 วัน (days_left == 30)
+    - ล่วงหน้า 7 วัน (days_left == 7)
+    - วันที่หมดอายุ (days_left == 0)
+    หากไม่มีรายการเข้าเงื่อนไข จะไม่ส่งข้อความทาง LINE (เพื่อประหยัดโควต้า 300 ข้อความ/เดือน)
+    """
+    try:
+        from check_expiry_alert import check_expiring_cars, build_alert_message
+        
+        cars_list = []
+        if cars_dict:
+            for pl, c in cars_dict.items():
+                c_copy = dict(c)
+                c_copy["plate"] = pl
+                cars_list.append(c_copy)
+        elif hasattr(st, "session_state") and "cars_db" in st.session_state and st.session_state.cars_db:
+            for pl, c in st.session_state.cars_db.items():
+                c_copy = dict(c)
+                c_copy["plate"] = pl
+                cars_list.append(c_copy)
+        else:
+            from check_expiry_alert import fetch_cars_from_supabase, get_credentials
+            _, sb_url, sb_key = get_credentials()
+            cars_list = fetch_cars_from_supabase(sb_url, sb_key)
+
+        expiring = check_expiring_cars(cars_list, target_days=target_days)
+        if not expiring:
+            return {"sent": False, "count": 0, "message": "ไม่มีรายการ พ.ร.บ. หรือ ประกันภัย ครบกำหนดแจ้งเตือนในวันนี้"}
+
+        msg = build_alert_message(expiring)
+        success = send_line_broadcast_message(msg)
+        return {"sent": success, "count": len(expiring), "items": expiring, "message": msg}
+    except Exception as e:
+        print(f"Error in check_and_send_expiry_alerts: {e}")
+        return {"sent": False, "count": 0, "error": str(e)}
+
+_EXPIRY_SCHEDULER_THREAD_STARTED = False
+
+def init_expiry_scheduler_thread():
+    """เธรดทำงานเบื้องหลัง คอยตรวจเช็คเวลา 20:00 น. ประเทศไทย (UTC+7) ทุกวัน"""
+    global _EXPIRY_SCHEDULER_THREAD_STARTED
+    if _EXPIRY_SCHEDULER_THREAD_STARTED:
+        return
+    _EXPIRY_SCHEDULER_THREAD_STARTED = True
+
+    def _scheduler_loop():
+        while True:
+            try:
+                # คำนวณเวลาประเทศไทย (UTC+7)
+                now_bkk = datetime.utcnow() + timedelta(hours=7)
+                # เมื่อถึงเวลา 20:00 น.
+                if now_bkk.hour == 20 and now_bkk.minute == 0:
+                    today_tag = now_bkk.strftime("%Y-%m-%d")
+                    last_run = _GLOBAL_STORE.get("last_expiry_run_date") if "_GLOBAL_STORE" in globals() else None
+                    if last_run != today_tag:
+                        if "_GLOBAL_STORE" in globals():
+                            _GLOBAL_STORE["last_expiry_run_date"] = today_tag
+                        print(f"⏰ [20:00 ICT] ตรวจสอบและส่งแจ้งเตือน พ.ร.บ./ประกันภัย ประจำวัน...")
+                        check_and_send_expiry_alerts(target_days=(30, 7, 0))
+                time.sleep(30)
+            except Exception as e:
+                print(f"Expiry scheduler loop error: {e}")
+                time.sleep(60)
+
+    try:
+        t = threading.Thread(target=_scheduler_loop, daemon=True)
+        t.start()
+    except Exception:
+        pass
+
+# เริ่มต้นเธรดตรวจสอบเวลา 20:00 น.
+init_expiry_scheduler_thread()
+
 # =========================================================================
 # 3. INITIALIZE STATE & DATA STORE (SUPABASE CLOUD PERSISTENCE)
 # =========================================================================
@@ -7079,9 +7158,34 @@ else:
                             if st.button(f"🔄 อัปเดต {exp['type']} (+1 ปีจากวันนี้)", key=f"btn_renew_{exp['field']}_{exp['plate']}_{idx}", type="primary", use_container_width=True):
                                 st.session_state.cars_db[exp['plate']][exp['field']] = new_exp_date
                                 cars_db[exp['plate']][exp['field']] = new_exp_date
+                                if "_GLOBAL_STORE" in globals():
+                                    _GLOBAL_STORE["cars_db"] = st.session_state.cars_db
+                                sb_sync_car(exp['plate'], cars_db[exp['plate']])
                                 st.success(f"✅ อัปเดต {exp['type']} ทะเบียน {exp['plate']} เรียบร้อย! เริ่มนับวันหมดอายุใหม่ตั้งแต่วันนี้ ถึง {new_exp_date}")
                                 time.sleep(1)
                                 st.rerun()
+
+                    # --- กล่องสถานะระบบแจ้งเตือน LINE อัตโนมัติ & ปุ่มทดสอบ ---
+                    st.markdown("<div style='height:4px;'></div>", unsafe_allow_html=True)
+                    c_line_stat, c_line_btn = st.columns([3.2, 1.8])
+                    with c_line_stat:
+                        st.markdown("""
+                            <div style="background:#F0FDF4; border:1px solid #BBF7D0; border-radius:8px; padding:10px 14px; font-size:12px; color:#166534; line-height:1.5;">
+                                📲 <b>ระบบแจ้งเตือน พ.ร.บ. / ประกันภัย ผ่าน LINE อัตโนมัติ (Broadcast):</b><br/>
+                                • ส่งแจ้งเตือนอัตโนมัติทุกวันเวลา <b>20:00 น.</b> (ล่วงหน้า <b>30 วัน</b>, <b>7 วัน</b> และ <b>วันหมดอายุ</b>)<br/>
+                                • หากไม่มีรายการครบกำหนดในวันนั้น ระบบจะไม่ส่งข้อความเพื่อประหยัดโควต้า LINE<br/>
+                                • เมื่อกดปุ่ม '🔄 อัปเดต' ต่ออายุแล้ว ระบบจะบันทึกลงฐานข้อมูลและหยุดส่งแจ้งเตือนทันที
+                            </div>
+                        """, unsafe_allow_html=True)
+                    with c_line_btn:
+                        st.markdown("<div style='height:2px;'></div>", unsafe_allow_html=True)
+                        if st.button("🔔 ทดสอบตรวจ & ส่งแจ้งเตือน LINE", key="btn_test_line_expiry_broadcast", use_container_width=True):
+                            with st.spinner("กำลังตรวจสอบวันหมดอายุ พ.ร.บ./ประกัน..."):
+                                alert_res = check_and_send_expiry_alerts(cars_dict=cars_db)
+                                if alert_res.get("sent"):
+                                    st.success(f"🎉 ส่งข้อความ Broadcast แจ้งเตือนเข้า LINE สำเร็จ ({alert_res.get('count')} รายการ)")
+                                else:
+                                    st.info(f"ℹ️ {alert_res.get('message', 'ไม่มีรายการครบกำหนดแจ้งเตือนในวันนี้')}")
                     st.markdown("<hr style='margin:10px 0 14px; border:0.5px solid #F3EDE4;'>", unsafe_allow_html=True)
                 
                 if filtered_cars:
