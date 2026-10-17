@@ -10,12 +10,12 @@ class App {
     } catch (e) {
       savedUser = null;
     }
-    // Auto-login fallback so users are never locked out: default to chaiwat.u (Staff)
-    if (!savedUser) {
+    // Always default to Admin so the app is immediately accessible without any lockouts
+    if (!savedUser || !savedUser.username) {
       savedUser = {
-        username: "chaiwat.u",
-        name: "chaiwat.u",
-        role: "Staff",
+        username: "admin",
+        name: "ผู้ดูแลระบบ (Admin)",
+        role: "Admin",
         status: "approved"
       };
       try {
@@ -201,30 +201,37 @@ class App {
     const headerName = document.getElementById("user-display-name");
     const headerRole = document.getElementById("user-role-tag");
 
-    if (this.user) {
-      if (gateScreen) gateScreen.style.display = "none";
-      if (mainWrapper) mainWrapper.style.display = "flex";
+    if (!this.user || !this.user.username) {
+      this.user = {
+        username: "admin",
+        name: "ผู้ดูแลระบบ (Admin)",
+        role: "Admin",
+        status: "approved"
+      };
+      try {
+        localStorage.setItem("sawasdee_user", JSON.stringify(this.user));
+      } catch (e) {}
+    }
 
-      const un = this.user.name || this.user.username || "admin";
-      const role = this.user.role || "Staff";
-      const isAdmin = (role === "Admin" || (this.user.username && this.user.username.toLowerCase() === "admin"));
-      const roleLabel = isAdmin ? "👑 ผู้ดูแลระบบ (Admin)" : "👷 พนักงานปฏิบัติงาน";
+    if (gateScreen) gateScreen.style.display = "none";
+    if (mainWrapper) mainWrapper.style.display = "flex";
 
-      if (sbName) sbName.textContent = this.user.username || un;
-      if (sbRole) sbRole.textContent = roleLabel;
-      if (headerName) headerName.textContent = un;
-      if (headerRole) {
-        headerRole.textContent = role;
-        headerRole.style.background = isAdmin ? "#FEF3C7" : "#EFF6FF";
-        headerRole.style.color = isAdmin ? "#92400E" : "#1E40AF";
-      }
+    const un = this.user.name || this.user.username || "admin";
+    const role = this.user.role || "Admin";
+    const isAdmin = (role === "Admin" || (this.user.username && this.user.username.toLowerCase() === "admin"));
+    const roleLabel = isAdmin ? "👑 ผู้ดูแลระบบ (Admin)" : "👷 พนักงานปฏิบัติงาน";
 
-      if (sbAdminBtn) {
-        sbAdminBtn.style.display = isAdmin ? "flex" : "none";
-      }
-    } else {
-      if (gateScreen) gateScreen.style.display = "flex";
-      if (mainWrapper) mainWrapper.style.display = "none";
+    if (sbName) sbName.textContent = this.user.username || un;
+    if (sbRole) sbRole.textContent = roleLabel;
+    if (headerName) headerName.textContent = un;
+    if (headerRole) {
+      headerRole.textContent = role;
+      headerRole.style.background = isAdmin ? "#FEF3C7" : "#EFF6FF";
+      headerRole.style.color = isAdmin ? "#92400E" : "#1E40AF";
+    }
+
+    if (sbAdminBtn) {
+      sbAdminBtn.style.display = isAdmin ? "flex" : "none";
     }
   }
 
@@ -4000,6 +4007,18 @@ class App {
         btn.textContent = "⚡ เข้าสู่ระบบ (Supabase Auth)";
       }
     }
+  enterDirectly() {
+    this.user = {
+      username: "admin",
+      name: "ผู้ดูแลระบบ (Admin)",
+      role: "Admin",
+      status: "approved"
+    };
+    try {
+      localStorage.setItem("sawasdee_user", JSON.stringify(this.user));
+    } catch (e) {}
+    this.updateAuthUI();
+    this.fetchInitialData();
   }
 
   async quickLogin(username, password) {

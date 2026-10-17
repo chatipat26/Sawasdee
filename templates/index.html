@@ -13,7 +13,7 @@
   <!-- ========================================================================= -->
   <!-- 0. AUTHENTICATION GATE SCREEN (EXCLUSIVE LOGIN SCREEN MATCHING STREAMLIT) -->
   <!-- ========================================================================= -->
-  <div id="auth-gate-screen" class="auth-gate-wrapper" style="display:flex;">
+  <div id="auth-gate-screen" class="auth-gate-wrapper" style="display:none;">
     <div class="auth-gate-card">
       <!-- Circular Logo -->
       <div class="auth-gate-logo-circle">
@@ -22,6 +22,11 @@
 
       <!-- Mode 1: Login -->
       <div id="gate-mode-login" class="auth-gate-box">
+        <!-- Direct 1-Click Access Button (Zero Block) -->
+        <button type="button" onclick="app.enterDirectly()" class="gate-btn-submit" style="background:#16a34a; font-size:15px; padding:12px; margin-bottom:14px; box-shadow:0 4px 14px rgba(22,163,74,0.35); border-radius:8px; cursor:pointer; font-weight:700;">
+          🚀 คลิกเข้าใช้งานระบบทันที (สำหรับเจ้าหน้าที่)
+        </button>
+
         <div class="gate-form-group">
           <label class="gate-label">ชื่อผู้ใช้งาน หรือ อีเมล (Username / Email)</label>
           <input type="text" id="gate-login-username" class="gate-input" placeholder="เช่น admin หรือ user@email.com" autocomplete="username" onkeydown="if(event.key==='Enter') app.submitGateLogin()">
@@ -41,12 +46,15 @@
         <!-- Quick 1-Click Login Shortcuts for Staff & Admin -->
         <div style="margin-top:14px; padding-top:12px; border-top:1px dashed #cbd5e1; text-align:center;">
           <div style="font-size:12px; color:#64748b; margin-bottom:8px; font-weight:500;">🚀 เข้าสู่ระบบด่วน 1-คลิก (สำหรับเจ้าหน้าที่):</div>
-          <div style="display:flex; gap:8px; justify-content:center;">
+          <div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
+            <button type="button" onclick="app.quickLogin('admin', 'admin123')" class="gate-btn-sub" style="flex:1; background:#eff6ff; border:1px solid #93c5fd; color:#1e40af; font-weight:600; padding:8px 6px;">
+              👑 Admin
+            </button>
             <button type="button" onclick="app.quickLogin('chaiwat.u', 'A248624')" class="gate-btn-sub" style="flex:1; background:#f0fdf4; border:1px solid #86efac; color:#166534; font-weight:600; padding:8px 6px;">
               👷 chaiwat.u
             </button>
-            <button type="button" onclick="app.quickLogin('admin', 'admin123')" class="gate-btn-sub" style="flex:1; background:#eff6ff; border:1px solid #93c5fd; color:#1e40af; font-weight:600; padding:8px 6px;">
-              👑 ผู้ดูแลระบบ (Admin)
+            <button type="button" onclick="app.quickLogin('Chatipat', '')" class="gate-btn-sub" style="flex:1; background:#fdf4ff; border:1px solid #f0abfc; color:#86198f; font-weight:600; padding:8px 6px;">
+              👤 Chatipat
             </button>
           </div>
         </div>
@@ -129,7 +137,7 @@
   <!-- ========================================================================= -->
   <!-- MAIN APPLICATION WRAPPER (SHOWN ONLY AFTER SUCCESSFUL LOGIN)              -->
   <!-- ========================================================================= -->
-  <div id="main-app-wrapper" style="display:none; flex-direction:column; min-height:100vh;">
+  <div id="main-app-wrapper" style="display:flex; flex-direction:column; min-height:100vh;">
 
     <!-- Top Navigation Header -->
     <header class="app-header">
@@ -1582,6 +1590,6 @@
   <div class="toast-container" id="toast-container"></div>
 
   <!-- Scripts with cache busting -->
-  <script src="/static/js/app.js?v=4.3"></script>
+  <script src="/static/js/app.js?v=4.4"></script>
 </body>
 </html>
