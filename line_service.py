@@ -29,8 +29,13 @@ def get_line_credentials():
     return token, user_id
 
 def send_line_broadcast_message(message: str, channel_access_token: str = None) -> bool:
+    """
+    ส่งข้อความแจ้งเตือนแบบ Broadcast ไปยังทุกคนที่เป็นเพื่อนกับบอท LINE Official Account
+    """
     token, _ = get_line_credentials()
     act = channel_access_token or token
+    if not act:
+        return False
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {act}"
@@ -40,7 +45,10 @@ def send_line_broadcast_message(message: str, channel_access_token: str = None) 
     }
     try:
         resp = requests.post(LINE_BROADCAST_URL, headers=headers, json=payload, timeout=10)
-        return resp.status_code == 200
+        if resp.status_code == 200:
+            return True
+        print(f"LINE Broadcast Error: HTTP {resp.status_code} - {resp.text}")
+        return False
     except Exception as e:
         print(f"Error sending LINE broadcast: {e}")
         return False
@@ -71,41 +79,87 @@ def send_line_push_message(message: str, to_user_id: str = None, channel_access_
         return False
 
 def send_line_push_async(message: str, to_user_id: str = None):
-    t = threading.Thread(target=send_line_push_message, args=(message, to_user_id), daemon=True)
-    t.start()
+    """
+    ส่งข้อความแบบ asynchronous เบื้องหลัง:
+    - หากไม่ระบุ to_user_id จะส่งแบบ Broadcast ไปหาทุกคนที่เป็นเพื่อนกับบอท LINE OA
+    - หากระบุ to_user_id จะส่งตรงไปยัง user/group นั้น
+    """
+    def _worker():
+        if to_user_id:
+            send_line_push_message(message, to_user_id=to_user_id)
+        else:
+            ok = send_line_broadcast_message(message)
+            if not ok:
+                send_line_push_message(message)
+
+    try:
+        t = threading.Thread(target=_worker, daemon=True)
+        t.start()
+    except Exception:
+        _worker()
+
+def _fmt_dmy(d_val) -> str:
+    if not d_val:
+        return "-"
+    s = str(d_val).strip()[:10]
+    try:
+        dt = datetime.strptime(s, "%Y-%m-%d")
+        return dt.strftime("%d/%m/%Y")
+    except Exception:
+        return s
 
 def notify_line_work_order(booking_obj, job_type="Dispatch", worker_name="", location="", appointment_time=""):
+    if not booking_obj:
+        return
     try:
         bk_id = booking_obj.get("booking_id", "-")
         car_plate = booking_obj.get("car_id", "-")
+        car_brand = str(booking_obj.get("car_brand", "")).strip()
+        car_model = str(booking_obj.get("car_model", "")).strip()
+        car_desc = f"{car_brand} {car_model}".strip()
+        car_display = f"{car_desc} (ทะเบียน {car_plate})" if car_desc else f"ทะเบียน {car_plate}"
+
         cust_name = booking_obj.get("customer", "-")
-        cust_phone = booking_obj.get("customer_phone", "-")
-        
-        if job_type == "Dispatch":
-            title = "ใบงานส่งมอบรถยนต์ (Vehicle Dispatch)"
+        cust_phone = (
+            booking_obj.get("customer_phone")
+            or booking_obj.get("contact_no")
+            or booking_obj.get("phone")
+            or "-"
+        )
+        if not cust_phone or str(cust_phone).strip() in ["", "-", "None"]:
+            cust_phone = "ไม่ระบุเบอร์โทร"
+
+        is_dispatch = str(job_type).lower() in ["dispatch", "delivery", "ส่งรถ", "ส่งมอบรถ"]
+        if is_dispatch:
+            title = "🚚 แจ้งเตือน: ออกใบงานส่งมอบรถ (Dispatch)"
             action_label = "วันที่ส่งมอบ"
-            date_val = str(booking_obj.get("start_date", "-"))
+            date_val = _fmt_dmy(booking_obj.get("start_date"))
             time_val = appointment_time or booking_obj.get("start_time", "10:00")
             loc_val = location or booking_obj.get("loc_delivery") or "-"
             worker_val = worker_name or booking_obj.get("worker_delivery") or "-"
         else:
-            title = "ใบงานรับรถยนต์คืน (Vehicle Return)"
+            title = "🔙 แจ้งเตือน: ออกใบงานรับรถคืน (Return)"
             action_label = "วันที่รับคืน"
-            date_val = str(booking_obj.get("end_date", "-"))
+            date_val = _fmt_dmy(booking_obj.get("end_date"))
             time_val = appointment_time or booking_obj.get("end_time", "10:00")
             loc_val = location or booking_obj.get("loc_return") or "-"
             worker_val = worker_name or booking_obj.get("worker_return") or "-"
+
+        if not loc_val or str(loc_val).strip() in ["", "-"]:
+            loc_val = "ไม่ได้ระบุสถานที่"
+        if not worker_val or str(worker_val).strip() in ["", "-", "Wait"]:
+            worker_val = "รอมอบหมายพนักงาน"
 
         lines = [
             f"🔔 {title}",
             "────────────────────",
             f"📋 เลขที่การจอง: {bk_id}",
             f"👤 ผู้รับผิดชอบ: {worker_val}",
-            f"🚗 ทะเบียนรถ: {car_plate}",
+            f"🚗 ทะเบียนรถ: {car_display}",
             f"📅 {action_label}: {date_val} (เวลา {time_val} น.)",
             f"📍 สถานที่: {loc_val}",
             f"🙋‍♂️ ลูกค้า: {cust_name}",
-            f"📞 เบอร์โทร: {cust_phone}",
+            f"📞 เบอร์โทรศัพท์: {cust_phone}",
             "────────────────────",
             "ระบบบริหารจัดการ SawasdeeRental"
         ]

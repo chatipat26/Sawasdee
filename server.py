@@ -375,6 +375,20 @@ async def create_booking(payload: Dict[str, Any]):
             store.async_sync_car(car_id, store.cars[car_id])
             
     store.async_sync_booking(booking)
+    w_del = str(booking.get("worker_delivery", "")).strip()
+    if w_del and w_del not in ["Wait", "-"]:
+        cust_obj = store.customers.get(booking.get("customer"), {})
+        b_with_cust = dict(booking)
+        b_with_cust["customer_phone"] = cust_obj.get("contact_no", "-")
+        b_with_cust["car_brand"] = car_obj.get("brand", "")
+        b_with_cust["car_model"] = car_obj.get("model", "")
+        notify_line_work_order(
+            booking_obj=b_with_cust,
+            job_type="Dispatch",
+            worker_name=w_del,
+            location=booking.get("loc_delivery", ""),
+            appointment_time=start_t
+        )
     return {"success": True, "booking_id": bk_id, "booking": booking}
 
 @app.put("/api/bookings/{bk_id}")
@@ -538,10 +552,13 @@ async def assign_worker(bk_id: str, payload: Dict[str, Any]):
 
     store.async_sync_booking(target)
 
-    # Trigger LINE alert
+    # Trigger LINE alert (Broadcast to all staff on LINE OA)
     cust_obj = store.customers.get(target.get("customer"), {})
+    car_obj = store.cars.get(target.get("car_id"), {})
     b_with_cust = dict(target)
     b_with_cust["customer_phone"] = cust_obj.get("contact_no", "-")
+    b_with_cust["car_brand"] = car_obj.get("brand", "")
+    b_with_cust["car_model"] = car_obj.get("model", "")
     notify_line_work_order(
         booking_obj=b_with_cust,
         job_type=job_type,
