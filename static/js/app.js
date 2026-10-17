@@ -821,7 +821,7 @@ class App {
     document.getElementById("book-discount-input").value = 0;
     this.recalcBookingModalFromDates();
 
-    this.populateCustomerDropdowns();
+    this.populateCustomerDropdowns(this.lastAddedCustomerName || null);
     this.openModal("modal-book-car");
   }
 
@@ -2055,17 +2055,26 @@ class App {
     `).join("");
   }
 
-  populateCustomerDropdowns() {
+  populateCustomerDropdowns(preferredName = null) {
+    if (preferredName) {
+      this.lastAddedCustomerName = preferredName;
+    }
     const sel = document.getElementById("book-cust-select");
     if (sel) {
+      const curVal = preferredName || this.lastAddedCustomerName || sel.value || "";
       sel.innerHTML = this.customers.map(c => `<option value="${c.full_name}">${c.full_name} (📞 ${c.contact_no || '-'})</option>`).join("");
+      if (curVal && Array.from(sel.options).some(o => o.value === curVal)) {
+        sel.value = curVal;
+      }
     }
     const walkinSel = document.getElementById("walkin-cust-select");
     if (walkinSel) {
-      const curVal = walkinSel.value;
+      const curVal = preferredName || this.lastAddedCustomerName || walkinSel.value || "";
       walkinSel.innerHTML = '<option value="">-- เลือกลูกค้าผู้เช่า --</option>' +
         this.customers.map(c => `<option value="${c.full_name}">${c.full_name} (📞 ${c.contact_no || '-'})</option>`).join("");
-      if (curVal) walkinSel.value = curVal;
+      if (curVal && Array.from(walkinSel.options).some(o => o.value === curVal)) {
+        walkinSel.value = curVal;
+      }
     }
   }
 
@@ -2113,13 +2122,18 @@ class App {
       });
       const data = await res.json();
       if (data.success) {
+        this.lastAddedCustomerName = name;
+        const existIdx = this.customers.findIndex(c => c.full_name === name);
+        if (existIdx >= 0) {
+          this.customers[existIdx] = payload;
+        } else {
+          this.customers.unshift(payload);
+        }
+        this.populateCustomerDropdowns(name);
         this.closeModal("modal-add-customer");
-        this.showToast(`🎉 บันทึกข้อมูลลูกค้า '${name}' เรียบร้อย!`, "success");
+        this.showToast(`🎉 บันทึกข้อมูลลูกค้า '${name}' และล็อกเลือกในฟอร์มเรียบร้อย!`, "success");
         await this.loadCustomers();
-        const bookSel = document.getElementById("book-cust-select");
-        if (bookSel) bookSel.value = name;
-        const walkinSel = document.getElementById("walkin-cust-select");
-        if (walkinSel) walkinSel.value = name;
+        this.populateCustomerDropdowns(name);
       }
     } catch (e) {
       this.showToast("บันทึกไม่สำเร็จ: " + e.message, "danger");
