@@ -835,6 +835,24 @@ class App {
     });
   }
 
+  async goToTabWithBooking(tabName, bkId) {
+    await this.switchTab(tabName);
+    if (!bkId) return;
+    if (tabName === "deposit") {
+      const sel = document.getElementById("deposit-sel-booking");
+      if (sel) {
+        sel.value = bkId;
+        this.onSelectDepositBooking();
+      }
+    } else if (tabName === "contract") {
+      const sel = document.getElementById("contract-sel-bk");
+      if (sel) {
+        sel.value = bkId;
+        this.onSelectContractBooking();
+      }
+    }
+  }
+
   onSelectAssignDispBooking() {
     const bkId = document.getElementById("assign-disp-bk")?.value;
     const form = document.getElementById("assign-disp-form");
@@ -846,11 +864,18 @@ class App {
     this.populateStaffDropdowns();
     const b = this.bookings.find(x => x.booking_id === bkId);
     if (b) {
+      const sDateEl = document.getElementById("assign-disp-start-date");
+      const eDateEl = document.getElementById("assign-disp-end-date");
       const locEl = document.getElementById("assign-disp-loc");
       const timeEl = document.getElementById("assign-disp-time");
       const workerEl = document.getElementById("assign-disp-worker");
+      const bannerEl = document.getElementById("assign-disp-status-banner");
+
+      const thNow = this.getThaiDateTime(0);
+      if (sDateEl) sDateEl.value = b.start_date || thNow.date;
+      if (eDateEl) eDateEl.value = b.end_date || thNow.date;
       if (locEl) locEl.value = b.loc_delivery || "";
-      if (timeEl) timeEl.value = b.start_time || this.getThaiDateTime(0).time;
+      if (timeEl) timeEl.value = b.start_time || thNow.time;
       if (workerEl) {
         const w = String(b.worker_delivery || "").trim();
         if (w && w !== "Wait" && w !== "-" && Array.from(workerEl.options).some(o => o.value === w)) {
@@ -858,6 +883,46 @@ class App {
         } else if (workerEl.options.length > 0) {
           workerEl.selectedIndex = 0;
         }
+      }
+
+      if (bannerEl) {
+        const isDep = Boolean(b.deposit_paid);
+        const isRent = Boolean(b.rental_paid);
+        const netP = parseFloat(b.net_price || 0);
+        const wDel = String(b.worker_delivery || "").trim();
+        const hasDriver = wDel && wDel !== "Wait" && wDel !== "-";
+
+        let html = "";
+        if (!isDep) {
+          html += `
+            <div style="background:#FFFBEB; border:1px solid #F59E0B; border-radius:8px; padding:10px 12px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
+              <div style="font-size:12.5px; color:#92400E;"><b>🟡 สถานะการจอง: รอชำระเงินมัดจำ</b> (สามารถมอบหมายคนขับล่วงหน้าได้)</div>
+              <button type="button" onclick="app.goToTabWithBooking('deposit', '${b.booking_id}')" class="btn btn-secondary" style="padding:4px 10px; font-size:12px; font-weight:700;">💳 ไปรับมัดจำ</button>
+            </div>
+          `;
+        }
+        if (isRent) {
+          html += `
+            <div style="background:#ECFDF5; border:1px solid #10B981; border-radius:8px; padding:8px 12px; margin-bottom:8px; font-size:12.5px; color:#065F46; font-weight:700;">
+              ✅ ชำระค่าเช่ารถครบถ้วนแล้ว (฿${netP.toLocaleString('th-TH', {minimumFractionDigits: 2})})
+            </div>
+          `;
+        } else {
+          html += `
+            <div style="background:#EFF6FF; border:1px solid #93C5FD; border-radius:8px; padding:8px 12px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
+              <div style="font-size:12.5px; color:#1E40AF;">⏳ <b>รอชำระค่าเช่าวันรับรถ:</b> ฿${netP.toLocaleString('th-TH', {minimumFractionDigits: 2})}</div>
+              <button type="button" onclick="app.goToTabWithBooking('deposit', '${b.booking_id}')" class="btn btn-secondary" style="padding:4px 10px; font-size:12px; font-weight:700;">💳 กดจ่ายเงินค่าเช่า</button>
+            </div>
+          `;
+        }
+        if (hasDriver) {
+          html += `
+            <div style="background:#F0FDF4; border:1px solid #86EFAC; border-radius:8px; padding:8px 12px; font-size:12.5px; color:#166534;">
+              🚚 <b>มอบหมายพนักงานจัดส่งแล้ว:</b> ${wDel} (เวลา ${b.start_time || '10:00'} น.)
+            </div>
+          `;
+        }
+        bannerEl.innerHTML = html;
       }
     }
   }
@@ -873,11 +938,18 @@ class App {
     this.populateStaffDropdowns();
     const b = this.bookings.find(x => x.booking_id === bkId);
     if (b) {
+      const sDateEl = document.getElementById("assign-ret-start-date");
+      const eDateEl = document.getElementById("assign-ret-end-date");
       const locEl = document.getElementById("assign-ret-loc");
       const timeEl = document.getElementById("assign-ret-time");
       const workerEl = document.getElementById("assign-ret-worker");
+      const bannerEl = document.getElementById("assign-ret-status-banner");
+
+      const thNow = this.getThaiDateTime(0);
+      if (sDateEl) sDateEl.value = b.start_date || thNow.date;
+      if (eDateEl) eDateEl.value = b.end_date || thNow.date;
       if (locEl) locEl.value = b.loc_return || b.loc_delivery || "";
-      if (timeEl) timeEl.value = b.end_time || this.getThaiDateTime(0).time;
+      if (timeEl) timeEl.value = b.end_time || thNow.time;
       if (workerEl) {
         const w = String(b.worker_return || "").trim();
         if (w && w !== "Wait" && w !== "-" && Array.from(workerEl.options).some(o => o.value === w)) {
@@ -886,14 +958,27 @@ class App {
           workerEl.selectedIndex = 0;
         }
       }
+
+      if (bannerEl) {
+        const wRet = String(b.worker_return || "").trim();
+        const hasDriver = wRet && wRet !== "Wait" && wRet !== "-";
+        bannerEl.innerHTML = hasDriver ? `
+          <div style="background:#F0FDF4; border:1px solid #86EFAC; border-radius:8px; padding:8px 12px; font-size:12.5px; color:#166534;">
+            🔙 <b>มอบหมายพนักงานรับรถคืนแล้ว:</b> ${wRet} (เวลา ${b.end_time || '10:00'} น.)
+          </div>
+        ` : "";
+      }
     }
   }
 
   async submitAssign(jobType) {
-    const bkId = document.getElementById(jobType === "Dispatch" ? "assign-disp-bk" : "assign-ret-bk").value;
-    const worker = document.getElementById(jobType === "Dispatch" ? "assign-disp-worker" : "assign-ret-worker").value;
-    const loc = document.getElementById(jobType === "Dispatch" ? "assign-disp-loc" : "assign-ret-loc").value;
-    const tVal = document.getElementById(jobType === "Dispatch" ? "assign-disp-time" : "assign-ret-time").value;
+    const isDisp = jobType === "Dispatch";
+    const bkId = document.getElementById(isDisp ? "assign-disp-bk" : "assign-ret-bk").value;
+    const worker = document.getElementById(isDisp ? "assign-disp-worker" : "assign-ret-worker").value;
+    const loc = document.getElementById(isDisp ? "assign-disp-loc" : "assign-ret-loc").value;
+    const tVal = document.getElementById(isDisp ? "assign-disp-time" : "assign-ret-time").value;
+    const sDate = document.getElementById(isDisp ? "assign-disp-start-date" : "assign-ret-start-date")?.value || "";
+    const eDate = document.getElementById(isDisp ? "assign-disp-end-date" : "assign-ret-end-date")?.value || "";
 
     try {
       const res = await fetch(`/api/bookings/${bkId}/assign`, {
@@ -903,7 +988,9 @@ class App {
           job_type: jobType,
           worker: worker,
           location: loc,
-          time: tVal
+          time: tVal,
+          start_date: sDate,
+          end_date: eDate
         })
       });
       const data = await res.json();
@@ -911,6 +998,8 @@ class App {
         this.showToast(`✅ บันทึกมอบหมายงาน ${jobType} และแจ้งเตือน LINE เรียบร้อย!`, "success");
         await this.loadBookings();
         await this.loadBackOfficeJobs();
+        if (isDisp) this.onSelectAssignDispBooking();
+        else this.onSelectAssignRetBooking();
       }
     } catch (e) {
       this.showToast("เกิดข้อผิดพลาด: " + e.message, "danger");

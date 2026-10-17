@@ -407,6 +407,17 @@
                 </select>
               </div>
               <div id="assign-disp-form" style="display:none;">
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:12px;">
+                  <div class="form-group">
+                    <label>📅 วันที่เริ่มเช่า:</label>
+                    <input type="date" id="assign-disp-start-date" class="form-control">
+                  </div>
+                  <div class="form-group">
+                    <label>📅 กำหนดคืนรถ:</label>
+                    <input type="date" id="assign-disp-end-date" class="form-control">
+                  </div>
+                </div>
+                <div id="assign-disp-status-banner" style="margin-bottom:12px;"></div>
                 <div class="form-group" style="margin-bottom:12px;">
                   <label>👤 เลือกพนักงานจัดส่ง / คนขับรถ:</label>
                   <select id="assign-disp-worker" class="form-control">
@@ -425,9 +436,14 @@
                   <label>⏰ เวลานัดส่งมอบรถ:</label>
                   <input type="time" id="assign-disp-time" class="form-control">
                 </div>
-                <button onclick="app.submitAssign('Dispatch')" class="btn btn-primary" style="width:100%;">
-                  🚚 บันทึกมอบหมาย & แจ้งเตือน LINE
-                </button>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                  <button onclick="app.submitAssign('Dispatch')" class="btn btn-primary" style="width:100%;">
+                    🚚 บันทึกมอบหมาย & แจ้งเตือน LINE
+                  </button>
+                  <button onclick="app.goToTabWithBooking('contract', document.getElementById('assign-disp-bk').value)" class="btn btn-secondary" style="width:100%; background:#FAF7F2; border:1px solid #CBD5E1; color:#374151; font-weight:700;">
+                    📝 ไปหน้าทำสัญญา ➔
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -443,6 +459,17 @@
                 </select>
               </div>
               <div id="assign-ret-form" style="display:none;">
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:12px;">
+                  <div class="form-group">
+                    <label>📅 วันที่เริ่มเช่า:</label>
+                    <input type="date" id="assign-ret-start-date" class="form-control">
+                  </div>
+                  <div class="form-group">
+                    <label>📅 กำหนดคืนรถ:</label>
+                    <input type="date" id="assign-ret-end-date" class="form-control">
+                  </div>
+                </div>
+                <div id="assign-ret-status-banner" style="margin-bottom:12px;"></div>
                 <div class="form-group" style="margin-bottom:12px;">
                   <label>👤 เลือกพนักงานรับรถคืน / คนขับรถ:</label>
                   <select id="assign-ret-worker" class="form-control">
@@ -1213,6 +1240,6 @@
   <div class="toast-container" id="toast-container"></div>
 
   <!-- Scripts with cache busting -->
-  <script src="/static/js/app.js?v=2.7"></script>
+  <script src="/static/js/app.js?v=2.8"></script>
 </body>
 </html>

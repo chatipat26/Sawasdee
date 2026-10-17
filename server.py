@@ -515,6 +515,13 @@ async def assign_worker(bk_id: str, payload: Dict[str, Any]):
     worker = payload.get("worker", "")
     location = payload.get("location", "")
     time_val = payload.get("time", "10:00")
+    s_date_val = payload.get("start_date")
+    e_date_val = payload.get("end_date")
+
+    if s_date_val:
+        target["start_date"] = to_date(s_date_val)
+    if e_date_val:
+        target["end_date"] = to_date(e_date_val)
 
     if job_type == "Dispatch":
         target["worker_delivery"] = worker
