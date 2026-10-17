@@ -2003,25 +2003,395 @@ class App {
   }
 
   // --- Executive Dashboard Rendering ---
+  parseExpiryDateInfo(rawStr) {
+    const str = String(rawStr || "").trim();
+    if (!str || str === "-" || str.toLowerCase() === "none") {
+      return { valid: false, dateObj: null, daysLeft: 999999, raw: "-", formatted: "-" };
+    }
+
+    let d = null;
+    if (str.includes("/")) {
+      const parts = str.split("/");
+      if (parts.length === 3) {
+        let day = parseInt(parts[0], 10);
+        let month = parseInt(parts[1], 10) - 1;
+        let year = parseInt(parts[2], 10);
+        if (year > 2400) year -= 543;
+        if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
+          d = new Date(year, month, day);
+        }
+      }
+    } else if (str.includes("-")) {
+      const parts = str.split("-");
+      if (parts.length === 3) {
+        let year = parseInt(parts[0], 10);
+        let month = parseInt(parts[1], 10) - 1;
+        let day = parseInt(parts[2], 10);
+        if (year > 2400) year -= 543;
+        if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
+          d = new Date(year, month, day);
+        }
+      }
+    }
+
+    if (!d || isNaN(d.getTime())) {
+      return { valid: false, dateObj: null, daysLeft: 999999, raw: str, formatted: str };
+    }
+
+    const now = new Date();
+    const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const targetMidnight = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const diffDays = Math.round((targetMidnight.getTime() - todayMidnight.getTime()) / 86400000);
+
+    const dd = String(d.getDate()).padStart(2, "0");
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const yyyy = d.getFullYear();
+
+    return {
+      valid: true,
+      dateObj: d,
+      daysLeft: diffDays,
+      raw: str,
+      formatted: `${dd}/${mm}/${yyyy}`
+    };
+  }
+
+  formatExpiryStatusCell(plate, field, rawStr) {
+    const info = this.parseExpiryDateInfo(rawStr);
+    const safePlate = String(plate || "").replace(/'/g, "\\'");
+    const labelType = field === "act_expiry" ? "พ.ร.บ." : "ประกันภัย";
+
+    let badgeHtml = `<span style="color:#64748B;">${info.formatted}</span>`;
+    if (info.valid) {
+      if (info.daysLeft < 0) {
+        badgeHtml = `
+          <span style="display:inline-flex; align-items:center; gap:4px; font-weight:700; color:#991B1B; background:#FEE2E2; border:1px solid #FECACA; padding:2px 8px; border-radius:12px; font-size:11.5px;">
+            🔴 ${info.formatted} (หมดอายุ ${Math.abs(info.daysLeft)} วัน)
+          </span>`;
+      } else if (info.daysLeft === 0) {
+        badgeHtml = `
+          <span style="display:inline-flex; align-items:center; gap:4px; font-weight:700; color:#991B1B; background:#FEE2E2; border:1px solid #FECACA; padding:2px 8px; border-radius:12px; font-size:11.5px;">
+            🔴 ${info.formatted} (หมดอายุวันนี้!)
+          </span>`;
+      } else if (info.daysLeft <= 30) {
+        badgeHtml = `
+          <span style="display:inline-flex; align-items:center; gap:4px; font-weight:700; color:#B45309; background:#FEF3C7; border:1px solid #FDE68A; padding:2px 8px; border-radius:12px; font-size:11.5px;">
+            🟡 ${info.formatted} (เหลือ ${info.daysLeft} วัน)
+          </span>`;
+      } else {
+        badgeHtml = `
+          <span style="display:inline-flex; align-items:center; gap:4px; font-weight:600; color:#065F46; background:#ECFDF5; border:1px solid #A7F3D0; padding:2px 8px; border-radius:12px; font-size:11.5px;">
+            🟢 ${info.formatted}
+          </span>`;
+      }
+    }
+
+    return `
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:6px; flex-wrap:nowrap;">
+        <div>${badgeHtml}</div>
+        <div style="display:inline-flex; align-items:center; gap:4px; flex-shrink:0;">
+          <button type="button" onclick="app.quickRenewCarExpiry('${safePlate}', '${field}')" title="ต่ออายุ ${labelType} ทันที (+1 ปี)" style="background:#FFF7ED; color:#C2410C; border:1px solid #FDBA74; border-radius:6px; padding:2px 6px; font-size:11px; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:2px;">
+            🔄 +1ปี
+          </button>
+          <button type="button" onclick="app.openExpiryModal('${safePlate}', '${field}')" title="ระบุ/แก้ไขวันหมดอายุ ${labelType}" style="background:#F8FAFC; color:#334155; border:1px solid #CBD5E1; border-radius:6px; padding:2px 6px; font-size:11px; cursor:pointer;">
+            📅
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
   renderFleetOverviewTable() {
     const tbody = document.getElementById("fleet-overview-tbody");
     if (!tbody) return;
 
-    tbody.innerHTML = this.cars.map(c => `
-      <tr>
-        <td><b>🚘 ${c.plate}</b></td>
-        <td>${c.brand} ${c.model}</td>
-        <td>${c.company || 'Sawasdee'}</td>
-        <td>
-          <span class="badge" style="background:${c.status_bg}; color:${c.status_color}; border:1px solid ${c.status_border};">
-            ${c.fleet_status_desc}
-          </span>
-        </td>
-        <td>${c.act_expiry || '-'}</td>
-        <td>${c.ins_expiry || '-'}</td>
-        <td>${c.mileage || '15,000'} km</td>
-      </tr>
-    `).join("");
+    const alertsContainer = document.getElementById("fleet-expiry-alerts-container");
+    const sortMode = document.getElementById("dash-fleet-sort-select")?.value || "expiry_asc";
+    const kw = (document.getElementById("dash-fleet-search-input")?.value || "").toLowerCase().trim();
+
+    // 1. Collect all expiring items (<= 30 days) across all cars for the 30-day Alert Banner
+    const expiringItems = [];
+    const enrichedCars = (this.cars || []).map(c => {
+      const actInfo = this.parseExpiryDateInfo(c.act_expiry);
+      const insInfo = this.parseExpiryDateInfo(c.ins_expiry);
+      const minDays = Math.min(actInfo.daysLeft, insInfo.daysLeft);
+
+      if (actInfo.valid && actInfo.daysLeft <= 30) {
+        expiringItems.push({
+          plate: c.plate,
+          model: `${c.brand || ''} ${c.model || ''}`.trim(),
+          company: c.company || 'Sawasdee',
+          type: 'พ.ร.บ.',
+          field: 'act_expiry',
+          curr_expiry: actInfo.formatted,
+          days_left: actInfo.daysLeft
+        });
+      }
+      if (insInfo.valid && insInfo.daysLeft <= 30) {
+        expiringItems.push({
+          plate: c.plate,
+          model: `${c.brand || ''} ${c.model || ''}`.trim(),
+          company: c.company || 'Sawasdee',
+          type: 'ประกันภัย',
+          field: 'ins_expiry',
+          curr_expiry: insInfo.formatted,
+          days_left: insInfo.daysLeft
+        });
+      }
+
+      return {
+        car: c,
+        actInfo,
+        insInfo,
+        minDays
+      };
+    });
+
+    // Sort expiring items by days_left ascending (expired/urgent first)
+    expiringItems.sort((a, b) => a.days_left - b.days_left);
+
+    if (alertsContainer) {
+      let alertsHtml = "";
+      if (expiringItems.length > 0) {
+        const itemsRows = expiringItems.map(exp => {
+          const safePlate = String(exp.plate || "").replace(/'/g, "\\'");
+          let tagHtml = "";
+          if (exp.days_left < 0) {
+            tagHtml = `<span style="background:#FEE2E2; color:#991B1B; padding:2px 8px; border-radius:12px; font-weight:700; font-size:11px;">🔴 หมดอายุแล้ว (เกิน ${Math.abs(exp.days_left)} วัน)</span>`;
+          } else if (exp.days_left === 0) {
+            tagHtml = `<span style="background:#FEE2E2; color:#991B1B; padding:2px 8px; border-radius:12px; font-weight:700; font-size:11px;">🔴 หมดอายุวันนี้</span>`;
+          } else {
+            tagHtml = `<span style="background:#FEF3C7; color:#D97706; padding:2px 8px; border-radius:12px; font-weight:700; font-size:11px;">🟡 ใกล้หมดอายุ (เหลือ ${exp.days_left} วัน)</span>`;
+          }
+
+          return `
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; padding:7px 10px; background:#FFFFFF; border:1px solid #FDE68A; border-radius:8px; margin-bottom:6px;">
+              <div style="font-size:12.5px; color:#1F2937;">
+                🚘 <b>${exp.plate}</b> (${exp.model} - ${exp.company}) | <b>${exp.type}</b>: หมดอายุ <b>${exp.curr_expiry}</b> ${tagHtml}
+              </div>
+              <div style="display:flex; gap:6px; align-items:center;">
+                <button type="button" onclick="app.quickRenewCarExpiry('${safePlate}', '${exp.field}')" class="btn btn-sm btn-primary" style="padding:4px 10px; font-size:11.5px;">
+                  🔄 อัปเดต ${exp.type} (+1 ปีจากวันนี้)
+                </button>
+                <button type="button" onclick="app.openExpiryModal('${safePlate}', '${exp.field}')" class="btn btn-sm btn-secondary" style="padding:4px 8px; font-size:11.5px;" title="ระบุวันหมดอายุเอง">
+                  📅 กำหนดวันเอง
+                </button>
+              </div>
+            </div>
+          `;
+        }).join("");
+
+        alertsHtml += `
+          <div style="background:#FFFBEB; border:1px solid #FCD34D; border-left:5px solid #F59E0B; border-radius:10px; padding:12px 16px; margin-bottom:10px;">
+            <div style="font-weight:700; color:#B45309; font-size:14px; display:flex; align-items:center; gap:8px;">
+              <span>⚠️</span> แจ้งเตือน พ.ร.บ. / ประกันภัยใกล้หมดอายุ (ภายใน 30 วัน) หรือหมดอายุแล้ว (${expiringItems.length} รายการ)
+            </div>
+            <div style="font-size:12px; color:#92400E; margin-top:2px; margin-bottom:10px;">
+              เรียงลำดับจากรายการที่หมดอายุแล้วหรือใกล้หมดอายุที่สุดก่อน ท่านสามารถกดปุ่ม <b>'🔄 อัปเดต (+1 ปีจากวันนี้)'</b> หรือ <b>'📅 กำหนดวันเอง'</b> ได้ทันที
+            </div>
+            <div style="max-height:240px; overflow-y:auto; padding-right:4px;">
+              ${itemsRows}
+            </div>
+          </div>
+        `;
+      }
+
+      alertsHtml += `
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; background:#F0FDF4; border:1px solid #BBF7D0; border-radius:8px; padding:10px 14px; font-size:12px; color:#166534; line-height:1.5;">
+          <div>
+            📲 <b>ระบบแจ้งเตือน พ.ร.บ. / ประกันภัย ผ่าน LINE อัตโนมัติ (Broadcast):</b><br/>
+            • ส่งแจ้งเตือนอัตโนมัติทุกวันเวลา <b>20:00 น.</b> (ล่วงหน้า <b>30 วัน</b>, <b>7 วัน</b> และ <b>วันหมดอายุ</b>)<br/>
+            • เมื่อกดปุ่ม <b>'🔄 อัปเดต'</b> ต่ออายุแล้ว ระบบจะบันทึกลงฐานข้อมูลและหยุดส่งแจ้งเตือนทันที
+          </div>
+          <button type="button" onclick="app.triggerLineExpiryCheck()" class="btn btn-sm" style="background:#16A34A; color:#FFFFFF; border:none; font-weight:700; padding:7px 14px; border-radius:8px; cursor:pointer; white-space:nowrap;">
+            🔔 ทดสอบตรวจ & ส่งแจ้งเตือน LINE
+          </button>
+        </div>
+      `;
+      alertsContainer.innerHTML = alertsHtml;
+    }
+
+    // 2. Filter by search keyword
+    let filtered = enrichedCars.filter(item => {
+      if (!kw) return true;
+      const c = item.car;
+      const target = `${c.plate || ''} ${c.brand || ''} ${c.model || ''} ${c.company || ''} ${c.color || ''} ${c.status || ''}`.toLowerCase();
+      return target.includes(kw);
+    });
+
+    // 3. Sort according to selected sort mode (Default: earliest expiry first)
+    filtered.sort((a, b) => {
+      if (sortMode === "act_asc") {
+        if (a.actInfo.daysLeft !== b.actInfo.daysLeft) return a.actInfo.daysLeft - b.actInfo.daysLeft;
+        return a.insInfo.daysLeft - b.insInfo.daysLeft;
+      } else if (sortMode === "ins_asc") {
+        if (a.insInfo.daysLeft !== b.insInfo.daysLeft) return a.insInfo.daysLeft - b.insInfo.daysLeft;
+        return a.actInfo.daysLeft - b.actInfo.daysLeft;
+      } else if (sortMode === "plate_asc") {
+        return String(a.car.plate || "").localeCompare(String(b.car.plate || ""), "th");
+      } else {
+        // Default: expiry_asc (earliest of act_expiry or ins_expiry first)
+        if (a.minDays !== b.minDays) return a.minDays - b.minDays;
+        const aMax = Math.max(a.actInfo.daysLeft, a.insInfo.daysLeft);
+        const bMax = Math.max(b.actInfo.daysLeft, b.insInfo.daysLeft);
+        if (aMax !== bMax) return aMax - bMax;
+        return String(a.car.plate || "").localeCompare(String(b.car.plate || ""), "th");
+      }
+    });
+
+    if (filtered.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:28px; color:#64748B;">ไม่พบข้อมูลรถยนต์ที่ค้นหา</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = filtered.map(item => {
+      const c = item.car;
+      const safePlate = String(c.plate || "").replace(/'/g, "\\'");
+      const rowBg = item.minDays < 0 ? "background:#FEF2F2;" : (item.minDays <= 30 ? "background:#FFFBEB;" : "");
+
+      return `
+        <tr style="${rowBg}">
+          <td style="white-space:nowrap;"><b>🚘 ${c.plate}</b></td>
+          <td><b>${c.brand || ''}</b> ${c.model || ''}</td>
+          <td>${c.color || '-'}</td>
+          <td>${c.company || 'Sawasdee'}</td>
+          <td>
+            <span class="badge" style="background:${c.status_bg}; color:${c.status_color}; border:1px solid ${c.status_border};">
+              ${c.fleet_status_desc || c.status}
+            </span>
+          </td>
+          <td>${this.formatExpiryStatusCell(c.plate, 'act_expiry', c.act_expiry)}</td>
+          <td>${this.formatExpiryStatusCell(c.plate, 'ins_expiry', c.ins_expiry)}</td>
+          <td style="white-space:nowrap;">${c.mileage || '15,000'} km</td>
+          <td style="text-align:center; white-space:nowrap;">
+            <button type="button" onclick="app.openEditCarModal('${safePlate}')" class="btn btn-sm btn-secondary" style="padding:3px 7px; font-size:11.5px;" title="แก้ไขรายละเอียดรถและรูปรถ">
+              ✏️ แก้ไข
+            </button>
+            <button type="button" onclick="app.jumpToCarInFrontOffice('${safePlate}')" class="btn btn-sm btn-secondary" style="padding:3px 7px; font-size:11.5px;" title="ดูรถในหน้าเลือกรถยนต์">
+              🔍
+            </button>
+          </td>
+        </tr>
+      `;
+    }).join("");
+  }
+
+  async quickRenewCarExpiry(plate, field) {
+    const car = (this.cars || []).find(c => c.plate === plate);
+    if (!car) return;
+
+    const labelType = field === "act_expiry" ? "พ.ร.บ." : "ประกันภัย";
+    const now = new Date();
+    const nextYear = new Date(now.getFullYear() + 1, now.getMonth(), now.getDate());
+    const dd = String(nextYear.getDate()).padStart(2, "0");
+    const mm = String(nextYear.getMonth() + 1).padStart(2, "0");
+    const yyyy = nextYear.getFullYear();
+    const newDateStr = `${dd}/${mm}/${yyyy}`;
+
+    await this.saveCarExpiryUpdate(plate, field, newDateStr, labelType);
+  }
+
+  openExpiryModal(plate, field) {
+    const car = (this.cars || []).find(c => c.plate === plate);
+    if (!car) return;
+
+    const labelType = field === "act_expiry" ? "พ.ร.บ." : "ประกันภัย";
+    const currVal = car[field] || "-";
+    const info = this.parseExpiryDateInfo(currVal);
+
+    document.getElementById("expiry-modal-plate").value = plate;
+    document.getElementById("expiry-modal-field").value = field;
+    document.getElementById("modal-expiry-title").textContent = `🔄 อัปเดตวันหมดอายุ ${labelType} (${plate})`;
+    document.getElementById("expiry-modal-car-info").textContent = `🚘 ${plate} — ${car.brand || ''} ${car.model || ''} (${car.company || ''})`;
+    document.getElementById("expiry-modal-current-info").textContent = `วันหมดอายุ ${labelType} ปัจจุบัน: ${info.formatted}`;
+
+    // Pre-fill with +1 year from today by default
+    this.applyExpiryPreset("today_1y");
+    this.openModal("modal-update-expiry");
+  }
+
+  applyExpiryPreset(mode) {
+    const plate = document.getElementById("expiry-modal-plate")?.value;
+    const field = document.getElementById("expiry-modal-field")?.value;
+    const car = (this.cars || []).find(c => c.plate === plate) || {};
+    const info = this.parseExpiryDateInfo(car[field]);
+
+    let baseDate = new Date();
+    if (mode === "old_1y" && info.valid && info.dateObj) {
+      baseDate = info.dateObj;
+    }
+
+    const target = new Date(baseDate.getFullYear() + 1, baseDate.getMonth(), baseDate.getDate());
+    const dd = String(target.getDate()).padStart(2, "0");
+    const mm = String(target.getMonth() + 1).padStart(2, "0");
+    const yyyy = target.getFullYear();
+
+    const textInput = document.getElementById("expiry-modal-text-input");
+    const datePicker = document.getElementById("expiry-modal-date-picker");
+    if (textInput) textInput.value = `${dd}/${mm}/${yyyy}`;
+    if (datePicker) datePicker.value = `${yyyy}-${mm}-${dd}`;
+  }
+
+  onExpiryPickerChange(isoVal) {
+    if (!isoVal) return;
+    const parts = isoVal.split("-");
+    if (parts.length === 3) {
+      const textInput = document.getElementById("expiry-modal-text-input");
+      if (textInput) textInput.value = `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+  }
+
+  async submitExpiryModal() {
+    const plate = document.getElementById("expiry-modal-plate")?.value;
+    const field = document.getElementById("expiry-modal-field")?.value;
+    const rawNew = (document.getElementById("expiry-modal-text-input")?.value || "").trim();
+    if (!plate || !field || !rawNew) {
+      this.showToast("⚠️ กรุณาระบุวันหมดอายุใหม่", "warning");
+      return;
+    }
+
+    const parsed = this.parseExpiryDateInfo(rawNew);
+    const finalDateStr = parsed.valid ? parsed.formatted : rawNew;
+    const labelType = field === "act_expiry" ? "พ.ร.บ." : "ประกันภัย";
+
+    this.closeModal("modal-update-expiry");
+    await this.saveCarExpiryUpdate(plate, field, finalDateStr, labelType);
+  }
+
+  async saveCarExpiryUpdate(plate, field, newDateStr, labelType) {
+    const car = (this.cars || []).find(c => c.plate === plate);
+    if (!car) return;
+
+    const payload = Object.assign({}, car, {
+      plate: plate,
+      [field]: newDateStr
+    });
+
+    try {
+      const res = await fetch("/api/cars", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (data.success) {
+        this.showToast(`✅ อัปเดตวันหมดอายุ ${labelType} ทะเบียน ${plate} เป็น ${newDateStr} เรียบร้อย!`, "success");
+        await this.loadCars();
+      } else {
+        this.showToast("❌ อัปเดตไม่สำเร็จ: " + (data.detail || "เกิดข้อผิดพลาด"), "danger");
+      }
+    } catch (e) {
+      this.showToast("❌ เกิดข้อผิดพลาด: " + e.message, "danger");
+    }
+  }
+
+  jumpToCarInFrontOffice(plate) {
+    const sbSearch = document.getElementById("sidebar-search-input");
+    if (sbSearch) sbSearch.value = plate;
+    this.switchModule("frontoffice");
+    this.switchSubTab("cars");
+    this.renderFleetCards();
+    this.showToast(`🚘 แสดงข้อมูลรถยนต์ทะเบียน ${plate}`, "info");
   }
 
   toggleExpander(cardId) {
