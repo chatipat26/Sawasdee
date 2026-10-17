@@ -504,18 +504,29 @@ class App {
       const totalPrice = (c.price_day || 1000) * dur.days;
       const defImg = "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&q=80&w=500";
       const carImg = c.image || defImg;
+      const safePlate = String(c.plate || "").replace(/'/g, "\\'");
 
       return `
         <div class="car-card">
-          <div class="car-image-container">
+          <div class="car-image-container" style="position:relative;">
             <img src="${carImg}" alt="${c.brand} ${c.model}" class="car-image" onerror="this.src='${defImg}'">
             <span class="car-status-pill" style="background:${c.status_bg}; color:${c.status_color}; border:1px solid ${c.status_border};">
               ${c.fleet_status_desc}
             </span>
+            <button type="button" onclick="app.triggerCarPhotoUpload('${safePlate}')" title="อัปโหลดรูปรถคันนี้ใหม่" style="position:absolute; bottom:8px; right:8px; background:rgba(255,255,255,0.92); color:#1F2937; border:1px solid #CBD5E1; border-radius:20px; padding:4px 10px; font-size:11.5px; font-weight:700; cursor:pointer; box-shadow:0 2px 6px rgba(0,0,0,0.18); display:flex; align-items:center; gap:4px;">
+              📸 อัปโหลดรูป
+            </button>
           </div>
           <div class="car-body">
-            <div class="car-title">${c.brand} ${c.model}</div>
-            <div class="car-plate">🚘 ${c.plate}</div>
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:6px;">
+              <div>
+                <div class="car-title">${c.brand} ${c.model}</div>
+                <div class="car-plate">🚘 ${c.plate}</div>
+              </div>
+              <button type="button" onclick="app.openEditCarModal('${safePlate}')" class="btn btn-sm btn-secondary" style="padding:3px 8px; font-size:11.5px; background:#FAF7F2; border:1px solid #D1D5DB; color:#374151; white-space:nowrap;" title="แก้ไขรายละเอียดรถและรูปรถ">
+                ✏️ แก้ไขรถ
+              </button>
+            </div>
             <div class="car-specs">
               <span>💺 ${c.car_group || 'รถยนต์'}</span>
               <span>⛽ ${c.fuel_type || 'เบนซิน'}</span>
@@ -527,8 +538,8 @@ class App {
                 <div style="font-size:11px; color:#64748B;">ค่าเช่า (${dur.days} วัน):</div>
                 <div class="price-main">฿${totalPrice.toLocaleString()}</div>
               </div>
-              <div>
-                <button onclick="app.openBookModal('${c.plate}')" class="btn btn-sm ${isAvail ? 'btn-primary' : 'btn-secondary'}" ${!isAvail ? 'title="รถคันนี้ติดจอง แต่สามารถคลิกดูรายละเอียดหรือจองคิวต่อได้"' : ''}>
+              <div style="display:flex; gap:6px; align-items:center;">
+                <button onclick="app.openBookModal('${safePlate}')" class="btn btn-sm ${isAvail ? 'btn-primary' : 'btn-secondary'}" ${!isAvail ? 'title="รถคันนี้ติดจอง แต่สามารถคลิกดูรายละเอียดหรือจองคิวต่อได้"' : ''}>
                   ${isAvail ? '⚡ จองทันที' : '📅 จองคิว'}
                 </button>
               </div>
@@ -537,6 +548,176 @@ class App {
         </div>
       `;
     }).join("");
+  }
+
+  // --- Quick Car Photo Upload & Edit Car Modal ---
+  triggerCarPhotoUpload(plate) {
+    this.quickUploadTargetPlate = plate;
+    const inp = document.getElementById("quick-car-photo-input");
+    if (inp) {
+      inp.value = "";
+      inp.click();
+    }
+  }
+
+  async onQuickCarPhotoSelected(input) {
+    if (!input.files || input.files.length === 0 || !this.quickUploadTargetPlate) return;
+    const plate = this.quickUploadTargetPlate;
+    const file = input.files[0];
+    const car = this.cars.find(c => c.plate === plate);
+    if (!car) return;
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      this.showToast(`⏳ กำลังอัปโหลดรูปภาพสำหรับรถทะเบียน ${plate}...`, "info");
+      const upRes = await fetch("/api/upload-photo", { method: "POST", body: formData });
+      const upData = await upRes.json();
+      if (!upData.success || !upData.url) {
+        throw new Error(upData.detail || "อัปโหลดรูปภาพไม่สำเร็จ");
+      }
+
+      const payload = Object.assign({}, car, { plate: plate, image: upData.url });
+      const saveRes = await fetch("/api/cars", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const saveData = await saveRes.json();
+      if (saveData.success) {
+        this.showToast(`✅ อัปเดตรูปภาพรถทะเบียน ${plate} เรียบร้อยแล้ว!`, "success");
+        await this.loadCars();
+      }
+    } catch (e) {
+      this.showToast("❌ อัปโหลดรูปรถไม่สำเร็จ: " + e.message, "danger");
+    }
+  }
+
+  openEditCarModal(plate) {
+    const isNew = !plate;
+    const car = (!isNew && this.cars.find(c => c.plate === plate)) || {};
+    const defImg = "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&q=80&w=500";
+
+    const titleEl = document.getElementById("modal-edit-car-title");
+    if (titleEl) {
+      titleEl.textContent = isNew
+        ? "➕ เพิ่มรถยนต์ใหม่เข้าสู่ระบบ (Add New Vehicle)"
+        : `✏️ แก้ไขข้อมูลรถยนต์ & อัปโหลดรูปรถ (${plate})`;
+    }
+
+    const plateEl = document.getElementById("edit-car-plate");
+    if (plateEl) {
+      plateEl.value = car.plate || "";
+      plateEl.readOnly = !isNew;
+      plateEl.style.background = isNew ? "#FFFFFF" : "#F1F5F9";
+    }
+
+    const previewEl = document.getElementById("edit-car-img-preview");
+    if (previewEl) previewEl.src = car.image || defImg;
+
+    const urlEl = document.getElementById("edit-car-image-url");
+    if (urlEl) urlEl.value = car.image || "";
+
+    const fileEl = document.getElementById("edit-car-photo-file");
+    if (fileEl) fileEl.value = "";
+
+    document.getElementById("edit-car-brand").value = car.brand || "Toyota";
+    document.getElementById("edit-car-model").value = car.model || "";
+    document.getElementById("edit-car-group").value = car.car_group || "รถเก๋ง (Sedan/Hatchback)";
+    document.getElementById("edit-car-fuel").value = car.fuel_type || "เบนซิน";
+    document.getElementById("edit-car-cc").value = car.engine_cc || "1200";
+    document.getElementById("edit-car-company").value = car.company || "Sawasdee Rent A Car";
+    document.getElementById("edit-car-color").value = car.color || "";
+    document.getElementById("edit-car-mileage").value = car.mileage || "0";
+    document.getElementById("edit-car-pday").value = car.price_day !== undefined ? car.price_day : 1000;
+    document.getElementById("edit-car-pweek").value = car.price_week !== undefined ? car.price_week : 6000;
+    document.getElementById("edit-car-pmonth").value = car.price_month !== undefined ? car.price_month : 20000;
+    document.getElementById("edit-car-vin").value = car.chassis_no || "-";
+    document.getElementById("edit-car-act").value = car.act_expiry || "-";
+    document.getElementById("edit-car-ins").value = car.ins_expiry || "-";
+    document.getElementById("edit-car-status").value = car.status || "ว่างพร้อมใช้งาน";
+
+    this.openModal("modal-edit-car");
+  }
+
+  async onEditCarModalPhotoSelected(input) {
+    if (!input.files || input.files.length === 0) return;
+    const file = input.files[0];
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      this.showToast(`⏳ กำลังอัปโหลดรูปภาพ ${file.name}...`, "info");
+      const res = await fetch("/api/upload-photo", { method: "POST", body: formData });
+      const data = await res.json();
+      if (data.success && data.url) {
+        const previewEl = document.getElementById("edit-car-img-preview");
+        const urlEl = document.getElementById("edit-car-image-url");
+        if (previewEl) previewEl.src = data.url;
+        if (urlEl) urlEl.value = data.url;
+        this.showToast("📸 อัปโหลดรูปภาพสำเร็จ! กดบันทึกข้อมูลรถยนต์เพื่อยืนยัน", "success");
+      } else {
+        this.showToast("❌ อัปโหลดรูปไม่สำเร็จ", "danger");
+      }
+    } catch (e) {
+      this.showToast("❌ อัปโหลดรูปไม่สำเร็จ: " + e.message, "danger");
+    }
+  }
+
+  async submitEditCar() {
+    const plate = (document.getElementById("edit-car-plate")?.value || "").trim();
+    const brand = (document.getElementById("edit-car-brand")?.value || "").trim();
+    const model = (document.getElementById("edit-car-model")?.value || "").trim();
+    if (!plate) {
+      this.showToast("⚠️ กรุณาระบุเลขทะเบียนรถ", "warning");
+      return;
+    }
+    if (!brand || !model) {
+      this.showToast("⚠️ กรุณาระบุยี่ห้อและรุ่นรถยนต์", "warning");
+      return;
+    }
+
+    const existing = this.cars.find(c => c.plate === plate) || {};
+    const imgUrl = (document.getElementById("edit-car-image-url")?.value || "").trim() || existing.image || "";
+
+    const payload = {
+      plate: plate,
+      brand: brand,
+      model: model,
+      car_group: document.getElementById("edit-car-group")?.value || "รถเก๋ง (Sedan/Hatchback)",
+      fuel_type: document.getElementById("edit-car-fuel")?.value || "เบนซิน",
+      engine_cc: (document.getElementById("edit-car-cc")?.value || "1200").trim(),
+      company: (document.getElementById("edit-car-company")?.value || "Sawasdee Rent A Car").trim(),
+      color: (document.getElementById("edit-car-color")?.value || "-").trim(),
+      mileage: (document.getElementById("edit-car-mileage")?.value || "0").trim(),
+      price_day: parseInt(document.getElementById("edit-car-pday")?.value || "1000", 10),
+      price_week: parseInt(document.getElementById("edit-car-pweek")?.value || "6000", 10),
+      price_month: parseInt(document.getElementById("edit-car-pmonth")?.value || "20000", 10),
+      chassis_no: (document.getElementById("edit-car-vin")?.value || "-").trim(),
+      act_expiry: (document.getElementById("edit-car-act")?.value || "-").trim(),
+      ins_expiry: (document.getElementById("edit-car-ins")?.value || "-").trim(),
+      status: document.getElementById("edit-car-status")?.value || "ว่างพร้อมใช้งาน",
+      image: imgUrl
+    };
+
+    try {
+      const res = await fetch("/api/cars", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (data.success) {
+        this.closeModal("modal-edit-car");
+        this.showToast(`✅ บันทึกข้อมูลรถยนต์ทะเบียน ${plate} เรียบร้อยแล้ว!`, "success");
+        await this.loadCars();
+      } else {
+        this.showToast("❌ บันทึกไม่สำเร็จ: " + (data.detail || "เกิดข้อผิดพลาด"), "danger");
+      }
+    } catch (e) {
+      this.showToast("❌ เกิดข้อผิดพลาด: " + e.message, "danger");
+    }
   }
 
   // --- Modal: Book Car ---

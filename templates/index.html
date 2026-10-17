@@ -310,9 +310,15 @@
               <div style="font-size:12.5px; color:#475569;">
                 ⏱️ ระยะเวลาเช่าคำนวณ: <b id="calc-duration-text" style="color:#D97706;">1 วันตรง (24 ชั่วโมง)</b>
               </div>
-              <div style="font-size:12.5px; color:#059669; font-weight:700;" id="calc-cars-count">
-                พบรถว่างพร้อมให้บริการ: 0 คัน
+              <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+                <div style="font-size:12.5px; color:#059669; font-weight:700;" id="calc-cars-count">
+                  พบรถว่างพร้อมให้บริการ: 0 คัน
+                </div>
+                <button type="button" onclick="app.openEditCarModal('')" class="btn btn-sm btn-primary" style="font-size:12px; padding:5px 12px;">
+                  ➕ เพิ่มรถยนต์ใหม่
+                </button>
               </div>
+              <input type="file" id="quick-car-photo-input" accept="image/*" style="display:none;" onchange="app.onQuickCarPhotoSelected(this)">
             </div>
           </div>
 
@@ -1248,10 +1254,159 @@
     </div>
   </div>
 
+  <!-- 4. Edit Car Details & Upload Car Photo Modal -->
+  <div id="modal-edit-car" class="modal-backdrop">
+    <div class="modal-dialog" style="max-width:740px;">
+      <div class="modal-header">
+        <div class="modal-title" id="modal-edit-car-title">✏️ แก้ไขข้อมูลรถยนต์ & อัปโหลดรูปรถ</div>
+        <button class="modal-close" onclick="app.closeModal('modal-edit-car')">✕</button>
+      </div>
+
+      <!-- Car Photo Preview & Upload -->
+      <div style="display:grid; grid-template-columns: 200px 1fr; gap:16px; align-items:center; background:#FAF7F2; border:1px solid #E5E7EB; border-radius:10px; padding:12px; margin-bottom:16px;">
+        <div>
+          <img id="edit-car-img-preview" src="https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&q=80&w=500" alt="Car Preview" style="width:100%; height:115px; object-fit:cover; border-radius:8px; border:1px solid #CBD5E1;">
+        </div>
+        <div>
+          <label style="font-size:12.5px; font-weight:700; color:#1E293B; display:block; margin-bottom:6px;">📸 อัปโหลดรูปรถยนต์ (JPG, PNG, WEBP):</label>
+          <input type="file" id="edit-car-photo-file" class="form-control" accept="image/*" style="margin-bottom:8px;" onchange="app.onEditCarModalPhotoSelected(this)">
+          <label style="font-size:11.5px; color:#64748B; display:block; margin-bottom:3px;">หรือใส่ลิงก์รูปภาพ (Image URL):</label>
+          <input type="text" id="edit-car-image-url" class="form-control" placeholder="https://..." oninput="if(this.value) document.getElementById('edit-car-img-preview').src = this.value">
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; margin-bottom:12px;">
+        <div class="form-group">
+          <label>🚘 เลขทะเบียนรถ (Plate)*</label>
+          <input type="text" id="edit-car-plate" class="form-control" placeholder="เช่น 5ขศ 5181">
+        </div>
+        <div class="form-group">
+          <label>🏷️ ยี่ห้อ (Brand)*</label>
+          <input type="text" id="edit-car-brand" class="form-control" list="car-brands-list" placeholder="เช่น Toyota">
+          <datalist id="car-brands-list">
+            <option value="Toyota"></option>
+            <option value="Honda"></option>
+            <option value="Isuzu"></option>
+            <option value="Mitsubishi"></option>
+            <option value="Nissan"></option>
+            <option value="Mazda"></option>
+            <option value="Ford"></option>
+            <option value="BYD"></option>
+            <option value="GWM"></option>
+            <option value="MG"></option>
+            <option value="Mercedes-Benz"></option>
+            <option value="BMW"></option>
+            <option value="Hyundai"></option>
+          </datalist>
+        </div>
+        <div class="form-group">
+          <label>🚗 รุ่นรถยนต์ (Model)*</label>
+          <input type="text" id="edit-car-model" class="form-control" placeholder="เช่น Yaris Ativ">
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; margin-bottom:12px;">
+        <div class="form-group">
+          <label>💺 กลุ่มรถ (Car Group)*</label>
+          <select id="edit-car-group" class="form-control">
+            <option value="รถเก๋ง (Sedan/Hatchback)">รถเก๋ง (Sedan/Hatchback)</option>
+            <option value="SUV">SUV</option>
+            <option value="รถตู้ (Van)">รถตู้ (Van)</option>
+            <option value="รถกระบะ">รถกระบะ</option>
+            <option value="รถสปอร์ต/หรูหรา">รถสปอร์ต/หรูหรา</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>⛽ ระบบเชื้อเพลิง*</label>
+          <select id="edit-car-fuel" class="form-control">
+            <option value="เบนซิน">เบนซิน</option>
+            <option value="เบนซิน/Hybrid">เบนซิน/Hybrid</option>
+            <option value="ดีเซล">ดีเซล</option>
+            <option value="ดีเซล/Hybrid">ดีเซล/Hybrid</option>
+            <option value="ไฟฟ้า (EV)">ไฟฟ้า (EV)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>⚙️ ขนาดเครื่องยนต์ (CC / EV)</label>
+          <input type="text" id="edit-car-cc" class="form-control" placeholder="เช่น 1200 หรือ 1800">
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; margin-bottom:12px;">
+        <div class="form-group">
+          <label>🏢 เจ้าของกรรมสิทธิ์ / บริษัท*</label>
+          <input type="text" id="edit-car-company" class="form-control" list="car-companies-list" placeholder="เช่น Sawasdee Rent A Car">
+          <datalist id="car-companies-list">
+            <option value="Sawasdee Rent A Car"></option>
+            <option value="P.D.P. Co., Ltd."></option>
+            <option value="Sawasdee Car Rent"></option>
+            <option value="บจก.สวัสดี เรนทัล (Sawasdee Rental)"></option>
+            <option value="โตโยต้า ลีสซิ่ง"></option>
+          </datalist>
+        </div>
+        <div class="form-group">
+          <label>🎨 สีตัวถัง (Color)</label>
+          <input type="text" id="edit-car-color" class="form-control" placeholder="เช่น ขาว, ดำ, เทา">
+        </div>
+        <div class="form-group">
+          <label>🔢 เลขไมล์สะสม (km)</label>
+          <input type="text" id="edit-car-mileage" class="form-control" placeholder="เช่น 25,000">
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; margin-bottom:12px;">
+        <div class="form-group">
+          <label>💰 ค่าเช่ารายวัน (บาท)*</label>
+          <input type="number" id="edit-car-pday" class="form-control" value="1000" min="0" step="100">
+        </div>
+        <div class="form-group">
+          <label>💰 ค่าเช่ารายสัปดาห์ (บาท)</label>
+          <input type="number" id="edit-car-pweek" class="form-control" value="6000" min="0" step="500">
+        </div>
+        <div class="form-group">
+          <label>💰 ค่าเช่ารายเดือน (บาท)</label>
+          <input type="number" id="edit-car-pmonth" class="form-control" value="20000" min="0" step="1000">
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:12px; margin-bottom:18px;">
+        <div class="form-group">
+          <label>🔑 เลขตัวถัง (VIN)</label>
+          <input type="text" id="edit-car-vin" class="form-control" placeholder="-">
+        </div>
+        <div class="form-group">
+          <label>📅 วันหมดอายุ พ.ร.บ.</label>
+          <input type="text" id="edit-car-act" class="form-control" placeholder="DD/MM/YYYY">
+        </div>
+        <div class="form-group">
+          <label>📅 วันหมดอายุ ประกันภัย</label>
+          <input type="text" id="edit-car-ins" class="form-control" placeholder="DD/MM/YYYY">
+        </div>
+        <div class="form-group">
+          <label>🚦 สถานะรถยนต์*</label>
+          <select id="edit-car-status" class="form-control">
+            <option value="ว่างพร้อมใช้งาน">ว่างพร้อมใช้งาน</option>
+            <option value="ซ่อมบำรุง">ซ่อมบำรุง</option>
+            <option value="เตรียมส่งมอบ">เตรียมส่งมอบ</option>
+            <option value="กำลังเช่า">กำลังเช่า</option>
+            <option value="ติดจอง">ติดจอง</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="display:flex; justify-content:flex-end; gap:10px;">
+        <button onclick="app.closeModal('modal-edit-car')" class="btn btn-secondary">ยกเลิก</button>
+        <button onclick="app.submitEditCar()" class="btn btn-primary" id="btn-submit-edit-car">
+          💾 บันทึกข้อมูลรถยนต์
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Toast Notification Container -->
   <div class="toast-container" id="toast-container"></div>
 
   <!-- Scripts with cache busting -->
-  <script src="/static/js/app.js?v=2.9"></script>
+  <script src="/static/js/app.js?v=3.0"></script>
 </body>
 </html>

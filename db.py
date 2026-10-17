@@ -432,15 +432,22 @@ class DataStore:
         threading.Thread(target=_task, daemon=True).start()
 
     def async_sync_car(self, plate, car_dict):
+        VALID_CAR_COLS = {
+            'plate', 'brand', 'model', 'color', 'car_group', 'engine_cc', 'fuel_type',
+            'company', 'price_day', 'price_week', 'price_month', 'status', 'chassis_no',
+            'act_expiry', 'ins_expiry', 'mileage', 'image', 'created_at'
+        }
         with self.lock:
-            self.cars[plate] = car_dict
+            existing = dict(self.cars.get(plate, {}))
+            existing.update(car_dict)
+            existing["plate"] = plate
+            clean_mem = {k: v for k, v in existing.items() if k in VALID_CAR_COLS}
+            self.cars[plate] = clean_mem
         def _task():
             sb = get_supabase_client()
             if not sb: return
             try:
-                row = dict(car_dict)
-                row["plate"] = plate
-                sb.table("cars").upsert(row).execute()
+                sb.table("cars").upsert(clean_mem).execute()
             except Exception as e:
                 print(f"sb_sync_car error: {e}")
         threading.Thread(target=_task, daemon=True).start()
@@ -539,18 +546,25 @@ class DataStore:
         threading.Thread(target=_task, daemon=True).start()
 
     def upload_photo(self, filename, file_bytes, content_type="image/jpeg"):
+        import base64
         sb = get_supabase_client()
-        if not sb:
-            return None
+        if sb:
+            try:
+                sb.storage.from_("inspection-photos").upload(
+                    path=filename,
+                    file=file_bytes,
+                    file_options={"content-type": content_type, "upsert": "true"}
+                )
+                pub_url = sb.storage.from_("inspection-photos").get_public_url(filename)
+                if pub_url:
+                    return pub_url
+            except Exception as e:
+                print(f"Supabase storage upload fallback to base64: {e}")
         try:
-            sb.storage.from_("inspection-photos").upload(
-                path=filename,
-                file=file_bytes,
-                file_options={"content-type": content_type, "upsert": "true"}
-            )
-            return sb.storage.from_("inspection-photos").get_public_url(filename)
+            b64 = base64.b64encode(file_bytes).decode("utf-8")
+            return f"data:{content_type};base64,{b64}"
         except Exception as e:
-            print(f"Error uploading photo: {e}")
+            print(f"Error encoding photo: {e}")
             return None
 
     def archive_completed_booking(self, booking_id, fuel_level="⛽ เต็มถัง (Full - 8/8) [100%]", inspection_notes="ตรวจสภาพปกติ", inspection_photos=None, mileage="", late_fee=0.0):
