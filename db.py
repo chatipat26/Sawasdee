@@ -3,6 +3,7 @@ import sys
 import base64
 import time
 import threading
+import re
 from datetime import datetime, date, time as d_time, timedelta
 from supabase import create_client
 
@@ -254,6 +255,9 @@ class DataStore:
             "MRC261017104728", "MRC261017105734", "MRC261014110200", "MRC261014174658",
             "MRC261012110000", "MRC261010145909", "MRC261008093000"
         }
+        self.deleted_car_plates = {
+            "อบ 0000", "อบ0000"
+        }
         self.last_sync_time = time.time()
         self.is_syncing = False
         self.initial_sync_done = False
@@ -355,6 +359,18 @@ class DataStore:
                     for c in c_res.data:
                         pl = c.get("plate")
                         if pl:
+                            clean_pl = str(pl).strip()
+                            clean_norm = re.sub(r"[\s\-\.]+", "", clean_pl).lower()
+                            is_deleted = any(
+                                (dp == clean_pl or re.sub(r"[\s\-\.]+", "", str(dp)).lower() == clean_norm)
+                                for dp in self.deleted_car_plates
+                            )
+                            if is_deleted:
+                                try:
+                                    sb.table("cars").delete().eq("plate", pl).execute()
+                                except Exception:
+                                    pass
+                                continue
                             if c.get("status") in ["ติดจอง", "รอส่งมอบ", "เตรียมส่งมอบ", "กำลังเช่า", "เตรียมรับคืน"] and pl not in active_booked_plates:
                                 c["status"] = "ว่างพร้อมใช้งาน"
                                 try:
@@ -483,6 +499,27 @@ class DataStore:
                 sb.table("cars").upsert(clean_mem).execute()
             except Exception as e:
                 print(f"sb_sync_car error: {e}")
+        threading.Thread(target=_task, daemon=True).start()
+
+    def async_delete_car(self, plate):
+        clean_plate = str(plate).strip()
+        norm = re.sub(r"[\s\-\.]+", "", clean_plate).lower()
+        with self.lock:
+            to_remove = [k for k in self.cars if k == clean_plate or re.sub(r"[\s\-\.]+", "", str(k)).lower() == norm]
+            for k in to_remove:
+                self.cars.pop(k, None)
+                self.deleted_car_plates.add(k)
+            self.deleted_car_plates.add(clean_plate)
+        def _task():
+            sb = get_supabase_client()
+            if not sb: return
+            try:
+                sb.table("cars").delete().eq("plate", clean_plate).execute()
+                for k in to_remove:
+                    if k != clean_plate:
+                        sb.table("cars").delete().eq("plate", k).execute()
+            except Exception as e:
+                print(f"sb_delete_car error: {e}")
         threading.Thread(target=_task, daemon=True).start()
 
     def async_sync_customer(self, name, cust_dict):

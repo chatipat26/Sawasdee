@@ -259,13 +259,79 @@ async def list_cars(start_date: Optional[str] = None, end_date: Optional[str] = 
         cars_data.append(c_copy)
     return cars_data
 
+def normalize_plate(plate: str) -> str:
+    if not plate:
+        return ""
+    import re
+    return re.sub(r"[\s\-\.]+", "", str(plate)).lower()
+
 @app.post("/api/cars")
 async def create_or_update_car(payload: Dict[str, Any]):
     plate = str(payload.get("plate", "")).strip()
     if not plate:
         raise HTTPException(status_code=400, detail="กรุณาระบุเลขทะเบียนรถ")
+    
+    original_plate = str(payload.get("original_plate") or plate).strip()
+    norm_new = normalize_plate(plate)
+    norm_orig = normalize_plate(original_plate)
+
+    # 1. Block duplicate License Plate (ignoring spaces, dashes, dots)
+    for existing_plate, c_obj in store.cars.items():
+        if norm_orig and normalize_plate(existing_plate) == norm_orig:
+            continue  # Editing same vehicle is allowed
+        if normalize_plate(existing_plate) == norm_new:
+            dup_brand = c_obj.get("brand", "")
+            dup_model = c_obj.get("model", "")
+            raise HTTPException(
+                status_code=400,
+                detail=f"เลขทะเบียนรถ '{plate}' ซ้ำกับรถ '{dup_brand} {dup_model}' (ทะเบียน {existing_plate}) ในระบบแล้ว"
+            )
+
+    # 2. If plate renamed/corrected from a different original_plate
+    if original_plate and original_plate != plate and original_plate in store.cars:
+        store.async_delete_car(original_plate)
+        with store.lock:
+            for b in store.bookings:
+                if b.get("car_id") == original_plate:
+                    b["car_id"] = plate
+                    store.async_sync_booking(b)
+
+    payload["plate"] = plate
     store.async_sync_car(plate, payload)
     return {"success": True, "car": payload}
+
+@app.delete("/api/cars/{plate}")
+async def delete_car(plate: str):
+    plate = plate.strip()
+    norm_target = normalize_plate(plate)
+    target_key = None
+    target_obj = None
+
+    for p_key, c in store.cars.items():
+        if p_key == plate or normalize_plate(p_key) == norm_target:
+            target_key = p_key
+            target_obj = c
+            break
+
+    if not target_obj and target_key not in store.cars:
+        raise HTTPException(status_code=404, detail=f"ไม่พบข้อมูลรถยนต์ทะเบียน '{plate}' ในระบบ")
+
+    actual_plate = target_key or plate
+
+    # Check if this car has active bookings / contracts
+    active_bks = [
+        b for b in store.bookings
+        if (b.get("car_id") == actual_plate or (target_key and b.get("car_id") == target_key))
+        and b.get("status") not in ["เสร็จสิ้น", "ยกเลิก"]
+    ]
+    if active_bks:
+        raise HTTPException(
+            status_code=400,
+            detail=f"ไม่สามารถลบรถยนต์ทะเบียน '{actual_plate}' ได้ เนื่องจากมีรายการจองหรือสัญญาที่ยังไม่เสร็จสิ้น ({len(active_bks)} รายการ)"
+        )
+
+    store.async_delete_car(actual_plate)
+    return {"success": True, "message": f"ลบข้อมูลรถยนต์ทะเบียน {actual_plate} เรียบร้อยแล้ว"}
 
 # -------------------------------------------------------------------------
 # CUSTOMERS
@@ -282,13 +348,34 @@ async def create_or_update_customer(payload: Dict[str, Any]):
     if not name:
         raise HTTPException(status_code=400, detail="กรุณาระบุชื่อ-นามสกุลลูกค้า")
     
-    # Block duplicate Citizen ID / Passport No.
+    original_name = str(payload.get("original_name") or name).strip()
+    
+    # 1. Block duplicate Phone Number (Contact No.)
+    contact_no = str(payload.get("contact_no", "")).strip()
+    if contact_no and contact_no not in ["-", "none", "None", ""]:
+        clean_phone = "".join(ch for ch in contact_no if ch.isdigit())
+        if len(clean_phone) >= 9:
+            norm_phone = "0" + clean_phone[2:] if clean_phone.startswith("66") else clean_phone
+            for c_name, c_obj in store.customers.items():
+                if c_name.strip() in [name, original_name]:
+                    continue # editing existing customer is allowed
+                existing_phone = str(c_obj.get("contact_no", "")).strip()
+                if existing_phone and existing_phone not in ["-", "none", "None", ""]:
+                    clean_exist_phone = "".join(ch for ch in existing_phone if ch.isdigit())
+                    norm_exist = "0" + clean_exist_phone[2:] if clean_exist_phone.startswith("66") else clean_exist_phone
+                    if norm_exist == norm_phone:
+                        raise HTTPException(
+                            status_code=400,
+                            detail=f"เบอร์โทรศัพท์ '{contact_no}' ซ้ำกับข้อมูลของลูกค้า '{c_name}' ในระบบแล้ว"
+                        )
+    
+    # 2. Block duplicate Citizen ID / Passport No.
     passport_id = str(payload.get("passport_id", "")).strip()
     if passport_id and passport_id not in ["-", "none", "None", ""]:
         clean_pass = passport_id.replace(" ", "").replace("-", "").lower()
         for c_name, c_obj in store.customers.items():
-            if c_name.strip() == name:
-                continue # editing existing customer with same name is allowed
+            if c_name.strip() in [name, original_name]:
+                continue # editing existing customer is allowed
             existing_pass = str(c_obj.get("passport_id", "")).strip()
             if existing_pass and existing_pass not in ["-", "none", "None", ""]:
                 clean_exist = existing_pass.replace(" ", "").replace("-", "").lower()
@@ -298,11 +385,20 @@ async def create_or_update_customer(payload: Dict[str, Any]):
                         detail=f"หมายเลขบัตร ปชช. / Passport '{passport_id}' ซ้ำกับข้อมูลของลูกค้า '{c_name}' ในระบบแล้ว"
                     )
 
-    store.async_sync_customer(name, payload)
-    return {"success": True, "customer": payload}
+    # If renamed customer, delete the old customer record first
+    if original_name and original_name != name and original_name in store.customers:
+        store.async_delete_customer(original_name)
+
+    clean_payload = dict(payload)
+    clean_payload.pop("original_name", None)
+    clean_payload["full_name"] = name
+    store.async_sync_customer(name, clean_payload)
+    return {"success": True, "customer": clean_payload}
 
 @app.delete("/api/customers/{name}")
 async def delete_customer(name: str):
+    if name == "ลูกค้าทั่วไป (Walk-in)":
+        raise HTTPException(status_code=400, detail="ไม่สามารถลบลูกค้ารายการเริ่มต้นของระบบได้")
     store.async_delete_customer(name)
     return {"success": True}
 

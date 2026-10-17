@@ -633,11 +633,16 @@
                   </select>
                 </div>
                 <div class="form-group">
-                  <label>👤 เลือกลูกค้าผู้เช่า:</label>
-                  <div style="display:flex; gap:8px;">
-                    <select id="walkin-cust-select" class="form-control"></select>
-                    <button onclick="app.openAddCustomerModal()" class="btn btn-sm btn-secondary" type="button">➕ เพิ่ม</button>
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                    <label style="margin:0;">👤 เลือกลูกค้าผู้เช่า:</label>
+                    <div style="display:flex; gap:6px;">
+                      <button type="button" onclick="app.openEditSelectedCustomerModal('walkin')" class="btn btn-sm btn-secondary" style="padding:2px 8px; font-size:11.5px; background:#FAF7F2; border:1px solid #CBD5E1; color:#374151;" title="ดูและแก้ไขข้อมูลลูกค้าที่เลือก">✏️ ดู/แก้ไข</button>
+                      <button type="button" onclick="app.deleteSelectedCustomer('walkin')" class="btn btn-sm btn-danger" style="padding:2px 8px; font-size:11.5px;" title="ลบข้อมูลลูกค้านี้ (กรณีบันทึกผิด)">🗑️ ลบ</button>
+                      <button type="button" onclick="app.openAddCustomerModal()" class="btn btn-sm btn-primary" style="padding:2px 8px; font-size:11.5px;">➕ เพิ่มใหม่</button>
+                    </div>
                   </div>
+                  <select id="walkin-cust-select" class="form-control" onchange="app.onSelectWalkinCustomer()"></select>
+                  <div id="walkin-cust-info-badge" style="margin-top:6px; font-size:11.5px; color:#475569; background:#F8FAFC; border:1px solid #E2E8F0; border-radius:6px; padding:6px 10px; display:none;"></div>
                 </div>
               </div>
 
@@ -1221,11 +1226,16 @@
       </div>
 
       <div class="form-group" style="margin-bottom:12px;">
-        <label>👤 เลือกลูกค้าผู้เช่า:</label>
-        <div style="display:flex; gap:8px;">
-          <select id="book-cust-select" class="form-control"></select>
-          <button onclick="app.openAddCustomerModal()" class="btn btn-sm btn-secondary">➕ เพิ่ม</button>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+          <label style="margin:0;">👤 เลือกลูกค้าผู้เช่า:</label>
+          <div style="display:flex; gap:6px;">
+            <button type="button" onclick="app.openEditSelectedCustomerModal('book')" class="btn btn-sm btn-secondary" style="padding:2px 8px; font-size:11.5px; background:#FAF7F2; border:1px solid #CBD5E1; color:#374151;" title="ดูและแก้ไขข้อมูลลูกค้าที่เลือก">✏️ ดู/แก้ไข</button>
+            <button type="button" onclick="app.deleteSelectedCustomer('book')" class="btn btn-sm btn-danger" style="padding:2px 8px; font-size:11.5px;" title="ลบข้อมูลลูกค้านี้ (กรณีบันทึกผิด)">🗑️ ลบ</button>
+            <button type="button" onclick="app.openAddCustomerModal()" class="btn btn-sm btn-primary" style="padding:2px 8px; font-size:11.5px;">➕ เพิ่มใหม่</button>
+          </div>
         </div>
+        <select id="book-cust-select" class="form-control" onchange="app.onSelectBookingCustomer()"></select>
+        <div id="book-cust-info-badge" style="margin-top:6px; font-size:11.5px; color:#475569; background:#F8FAFC; border:1px solid #E2E8F0; border-radius:6px; padding:6px 10px; display:none;"></div>
       </div>
 
       <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;">
@@ -1284,13 +1294,15 @@
     </div>
   </div>
 
-  <!-- 3. Add Customer Modal (Rendered above booking modal when opened from inside it) -->
+  <!-- 3. Add / Edit Customer Modal (Rendered above booking modal when opened from inside it) -->
   <div id="modal-add-customer" class="modal-backdrop" style="z-index:2500;">
     <div class="modal-dialog" style="max-width:700px;">
       <div class="modal-header">
-        <div class="modal-title">➕ เพิ่มข้อมูลลูกค้าใหม่ (Add New Customer)</div>
+        <div class="modal-title" id="modal-cust-title">➕ เพิ่มข้อมูลลูกค้าใหม่ (Add New Customer)</div>
         <button class="modal-close" onclick="app.closeModal('modal-add-customer')">✕</button>
       </div>
+
+      <input type="hidden" id="cust-original-name">
 
       <div style="display:grid; grid-template-columns: 1fr 1fr; gap:14px; margin-bottom:16px;">
         <div class="form-group">
@@ -1298,8 +1310,9 @@
           <input type="text" id="cust-name-in" class="form-control" placeholder="เช่น สมเกียรติ มั่นคง">
         </div>
         <div class="form-group">
-          <label>เบอร์โทรศัพท์ (Contact No.)*</label>
-          <input type="text" id="cust-phone-in" class="form-control" placeholder="เช่น 081-234-5678">
+          <label>เบอร์โทรศัพท์ (Contact No.)* <span style="color:#DC2626; font-size:11px; font-weight:700;">*(ห้ามซ้ำ)</span></label>
+          <input type="text" id="cust-phone-in" class="form-control" placeholder="เช่น 081-234-5678" oninput="app.checkDuplicatePhone(this.value)">
+          <div id="cust-phone-warn" style="font-size:11.5px; color:#DC2626; display:none; margin-top:4px; font-weight:700;"></div>
         </div>
         <div class="form-group">
           <label>หมายเลขบัตร ปชช. / Passport <span style="color:#DC2626; font-size:11px; font-weight:700;">*(ห้ามซ้ำ)</span></label>
@@ -1336,9 +1349,12 @@
         <textarea id="cust-thai-in" class="form-control" rows="2" placeholder="โรงแรม / คอนโด..."></textarea>
       </div>
 
-      <div style="display:flex; justify-content:flex-end; gap:10px;">
-        <button onclick="app.closeModal('modal-add-customer')" class="btn btn-secondary">ยกเลิก</button>
-        <button onclick="app.submitNewCustomer()" class="btn btn-primary">💾 บันทึกข้อมูลลูกค้า</button>
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
+        <button type="button" id="btn-modal-cust-delete" onclick="app.deleteCurrentEditingCustomer()" class="btn btn-danger" style="display:none;">🗑️ ลบลูกค้ารายนี้</button>
+        <div style="display:flex; justify-content:flex-end; gap:10px; margin-left:auto;">
+          <button onclick="app.closeModal('modal-add-customer')" class="btn btn-secondary">ยกเลิก</button>
+          <button onclick="app.submitNewCustomer()" class="btn btn-primary" id="btn-modal-cust-save">💾 บันทึกข้อมูลลูกค้า</button>
+        </div>
       </div>
     </div>
   </div>
@@ -1364,10 +1380,14 @@
         </div>
       </div>
 
+      <input type="hidden" id="edit-car-original-plate" value="">
       <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; margin-bottom:12px;">
         <div class="form-group">
           <label>🚘 เลขทะเบียนรถ (Plate)*</label>
-          <input type="text" id="edit-car-plate" class="form-control" placeholder="เช่น 5ขศ 5181">
+          <input type="text" id="edit-car-plate" class="form-control" placeholder="เช่น 5ขศ 5181" oninput="app.checkDuplicatePlate(this.value)">
+          <div id="edit-car-plate-warn" style="display:none; font-size:11.5px; color:#DC2626; font-weight:600; margin-top:4px;">
+            ⚠️ ทะเบียนนี้มีอยู่ในระบบแล้ว
+          </div>
         </div>
         <div class="form-group">
           <label>🏷️ ยี่ห้อ (Brand)*</label>
@@ -1483,11 +1503,18 @@
         </div>
       </div>
 
-      <div style="display:flex; justify-content:flex-end; gap:10px;">
-        <button onclick="app.closeModal('modal-edit-car')" class="btn btn-secondary">ยกเลิก</button>
-        <button onclick="app.submitEditCar()" class="btn btn-primary" id="btn-submit-edit-car">
-          💾 บันทึกข้อมูลรถยนต์
-        </button>
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-top:16px;">
+        <div>
+          <button type="button" onclick="app.deleteCurrentEditingCar()" class="btn btn-danger" id="btn-modal-car-delete" style="background:#EF4444; color:#fff; border:none; padding:8px 16px; border-radius:8px; font-weight:600; font-size:13px; display:none; align-items:center; gap:6px;">
+            🗑️ ลบข้อมูลรถยนต์คันนี้
+          </button>
+        </div>
+        <div style="display:flex; gap:10px;">
+          <button type="button" onclick="app.closeModal('modal-edit-car')" class="btn btn-secondary">ยกเลิก</button>
+          <button type="button" onclick="app.submitEditCar()" class="btn btn-primary" id="btn-submit-edit-car">
+            💾 บันทึกข้อมูลรถยนต์
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -1542,6 +1569,6 @@
   <div class="toast-container" id="toast-container"></div>
 
   <!-- Scripts with cache busting -->
-  <script src="/static/js/app.js?v=3.8"></script>
+  <script src="/static/js/app.js?v=4.0"></script>
 </body>
 </html>

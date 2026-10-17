@@ -727,6 +727,37 @@ class App {
     }
   }
 
+  normalizePlate(plate) {
+    if (!plate) return "";
+    return String(plate).replace(/[\s\-\.]+/g, "").toLowerCase();
+  },
+
+  checkDuplicatePlate(val) {
+    const origPlate = (document.getElementById("edit-car-original-plate")?.value || "").trim();
+    const warnEl = document.getElementById("edit-car-plate-warn");
+    const clean = this.normalizePlate(val);
+    if (!clean) {
+      if (warnEl) warnEl.style.display = "none";
+      return false;
+    }
+    const origClean = this.normalizePlate(origPlate);
+    const dup = this.cars.find(c => {
+      const cClean = this.normalizePlate(c.plate);
+      if (origClean && cClean === origClean) return false;
+      return cClean === clean;
+    });
+    if (dup) {
+      if (warnEl) {
+        warnEl.textContent = `⚠️ ทะเบียน '${val}' ซ้ำกับ '${dup.brand} ${dup.model}' (ทะเบียน ${dup.plate}) ในระบบแล้ว`;
+        warnEl.style.display = "block";
+      }
+      return true;
+    } else {
+      if (warnEl) warnEl.style.display = "none";
+      return false;
+    }
+  },
+
   openEditCarModal(plate) {
     const isNew = !plate;
     const car = (!isNew && this.cars.find(c => c.plate === plate)) || {};
@@ -739,11 +770,20 @@ class App {
         : `✏️ แก้ไขข้อมูลรถยนต์ & อัปโหลดรูปรถ (${plate})`;
     }
 
+    const origPlateEl = document.getElementById("edit-car-original-plate");
+    if (origPlateEl) origPlateEl.value = isNew ? "" : (car.plate || plate);
+
+    const warnEl = document.getElementById("edit-car-plate-warn");
+    if (warnEl) warnEl.style.display = "none";
+
+    const delBtn = document.getElementById("btn-modal-car-delete");
+    if (delBtn) delBtn.style.display = isNew ? "none" : "inline-flex";
+
     const plateEl = document.getElementById("edit-car-plate");
     if (plateEl) {
       plateEl.value = car.plate || "";
-      plateEl.readOnly = !isNew;
-      plateEl.style.background = isNew ? "#FFFFFF" : "#F1F5F9";
+      plateEl.readOnly = false;
+      plateEl.style.background = "#FFFFFF";
     }
 
     const previewEl = document.getElementById("edit-car-img-preview");
@@ -772,7 +812,7 @@ class App {
     document.getElementById("edit-car-status").value = car.status || "ว่างพร้อมใช้งาน";
 
     this.openModal("modal-edit-car");
-  }
+  },
 
   async onEditCarModalPhotoSelected(input) {
     if (!input.files || input.files.length === 0) return;
@@ -796,9 +836,10 @@ class App {
     } catch (e) {
       this.showToast("❌ อัปโหลดรูปไม่สำเร็จ: " + e.message, "danger");
     }
-  }
+  },
 
   async submitEditCar() {
+    const origPlate = (document.getElementById("edit-car-original-plate")?.value || "").trim();
     const plate = (document.getElementById("edit-car-plate")?.value || "").trim();
     const brand = (document.getElementById("edit-car-brand")?.value || "").trim();
     const model = (document.getElementById("edit-car-model")?.value || "").trim();
@@ -811,10 +852,16 @@ class App {
       return;
     }
 
-    const existing = this.cars.find(c => c.plate === plate) || {};
+    if (this.checkDuplicatePlate(plate)) {
+      this.showToast(`⚠️ เลขทะเบียนรถ '${plate}' ซ้ำกับรถคันอื่นในระบบแล้ว`, "danger");
+      return;
+    }
+
+    const existing = this.cars.find(c => c.plate === (origPlate || plate)) || {};
     const imgUrl = (document.getElementById("edit-car-image-url")?.value || "").trim() || existing.image || "";
 
     const payload = {
+      original_plate: origPlate || plate,
       plate: plate,
       brand: brand,
       model: model,
@@ -843,6 +890,10 @@ class App {
       const data = await res.json();
       if (data.success) {
         this.closeModal("modal-edit-car");
+        if (origPlate && origPlate !== plate) {
+          const oldIdx = this.cars.findIndex(c => c.plate === origPlate);
+          if (oldIdx >= 0) this.cars.splice(oldIdx, 1);
+        }
         const idx = this.cars.findIndex(c => c.plate === plate);
         if (idx >= 0) {
           Object.assign(this.cars[idx], payload);
@@ -850,6 +901,8 @@ class App {
           this.cars.unshift(payload);
         }
         this.renderFleetCards();
+        this.renderFleetOverviewTable();
+        this.populateFleetDropdowns();
         this.showToast(`✅ บันทึกข้อมูลรถยนต์ทะเบียน ${plate} เรียบร้อยแล้ว!`, "success");
         await this.loadCars();
       } else {
@@ -858,7 +911,51 @@ class App {
     } catch (e) {
       this.showToast("❌ เกิดข้อผิดพลาด: " + e.message, "danger");
     }
-  }
+  },
+
+  async deleteCurrentEditingCar() {
+    const origPlate = (document.getElementById("edit-car-original-plate")?.value || "").trim();
+    const plate = (document.getElementById("edit-car-plate")?.value || "").trim();
+    const target = origPlate || plate;
+    if (!target) return;
+    const ok = await this.deleteCarByPlate(target);
+    if (ok) {
+      this.closeModal("modal-edit-car");
+    }
+  },
+
+  async deleteCarByPlate(plate) {
+    if (!plate) return false;
+    const car = this.cars.find(c => c.plate === plate) || {};
+    const label = car.brand && car.model ? `${car.brand} ${car.model} (${plate})` : plate;
+    const conf = confirm(`คุณแน่ใจหรือไม่ว่าต้องการลบรถยนต์ "${label}" ออกจากระบบ?\n\n⚠️ คำเตือน: ระบบจะไม่อนุญาตให้ลบหากมีรายการจองหรือสัญญาที่ยังไม่เสร็จสิ้น`);
+    if (!conf) return false;
+
+    try {
+      this.showToast(`⏳ กำลังลบข้อมูลรถยนต์ ${plate}...`, "info");
+      const res = await fetch(`/api/cars/${encodeURIComponent(plate)}`, {
+        method: "DELETE"
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        const norm = this.normalizePlate(plate);
+        this.cars = this.cars.filter(c => c.plate !== plate && this.normalizePlate(c.plate) !== norm);
+        this.renderFleetCards();
+        this.renderFleetOverviewTable();
+        this.populateFleetDropdowns();
+        this.showToast(`🗑️ ลบข้อมูลรถยนต์ทะเบียน ${plate} เรียบร้อยแล้ว!`, "success");
+        await this.loadCars();
+        return true;
+      } else {
+        alert("❌ ไม่สามารถลบรถยนต์คันนี้ได้:\n" + (data.detail || "เกิดข้อผิดพลาดในการลบ"));
+        this.showToast("❌ ลบไม่สำเร็จ: " + (data.detail || "เกิดข้อผิดพลาด"), "danger");
+        return false;
+      }
+    } catch (e) {
+      this.showToast("❌ เกิดข้อผิดพลาด: " + e.message, "danger");
+      return false;
+    }
+  },
 
   // --- Modal: Book Car ---
   openBookModal(plate) {
@@ -2189,7 +2286,7 @@ class App {
     }
   }
 
-  // --- Customers Table & Add Modal ---
+  // --- Customers Table & Add/Edit/Delete Operations ---
   renderCustomersTable() {
     const tbody = document.getElementById("customers-table-tbody");
     if (!tbody) return;
@@ -2203,22 +2300,33 @@ class App {
       return true;
     });
 
-    tbody.innerHTML = filtered.map(c => `
-      <tr>
-        <td><b>${c.full_name}</b></td>
-        <td>
-          📞 ${c.contact_no || '-'}<br/>
-          ${c.whatsapp && c.whatsapp !== '-' ? `<span style="font-size:11px; color:#10B981;">WA: ${c.whatsapp}</span>` : ''}
-        </td>
-        <td>${c.passport_id || '-'}</td>
-        <td>${c.licence_no || '-'}</td>
-        <td>${c.nationality || 'THAI'}</td>
-        <td style="max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${c.thai_address}">${c.thai_address || '-'}</td>
-        <td style="text-align:center;">
-          <button onclick="app.deleteCustomer('${c.full_name}')" class="btn btn-sm btn-danger">🗑️</button>
-        </td>
-      </tr>
-    `).join("");
+    tbody.innerHTML = filtered.map(c => {
+      const safeName = String(c.full_name || '').replace(/'/g, "\\'");
+      const isDefault = c.full_name === "ลูกค้าทั่วไป (Walk-in)";
+      return `
+        <tr>
+          <td><b>${c.full_name}</b></td>
+          <td>
+            📞 ${c.contact_no || '-'}<br/>
+            ${c.whatsapp && c.whatsapp !== '-' ? `<span style="font-size:11px; color:#10B981;">WA: ${c.whatsapp}</span>` : ''}
+          </td>
+          <td>${c.passport_id || '-'}</td>
+          <td>${c.licence_no || '-'}</td>
+          <td>${c.nationality || 'THAI'}</td>
+          <td style="max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${c.thai_address}">${c.thai_address || '-'}</td>
+          <td style="text-align:center; white-space:nowrap;">
+            <button type="button" onclick="app.openEditCustomerModal('${safeName}')" class="btn btn-sm btn-secondary" title="ดู/แก้ไขข้อมูลลูกค้า" style="padding:3px 8px; font-size:12px; margin-right:4px;">
+              ✏️
+            </button>
+            ${!isDefault ? `
+              <button type="button" onclick="app.deleteCustomer('${safeName}')" class="btn btn-sm btn-danger" title="ลบข้อมูลลูกค้านี้" style="padding:3px 8px; font-size:12px;">
+                🗑️
+              </button>
+            ` : ''}
+          </td>
+        </tr>
+      `;
+    }).join("");
   }
 
   populateCustomerDropdowns(preferredName = null) {
@@ -2232,6 +2340,7 @@ class App {
       if (curVal && Array.from(sel.options).some(o => o.value === curVal)) {
         sel.value = curVal;
       }
+      this.onSelectBookingCustomer();
     }
     const walkinSel = document.getElementById("walkin-cust-select");
     if (walkinSel) {
@@ -2241,6 +2350,141 @@ class App {
       if (curVal && Array.from(walkinSel.options).some(o => o.value === curVal)) {
         walkinSel.value = curVal;
       }
+      this.onSelectWalkinCustomer();
+    }
+  }
+
+  onSelectBookingCustomer() {
+    const sel = document.getElementById("book-cust-select");
+    const badge = document.getElementById("book-cust-info-badge");
+    if (!sel || !badge) return;
+    const name = sel.value;
+    const cust = this.customers.find(c => c.full_name === name);
+    if (!cust) {
+      badge.style.display = "none";
+      return;
+    }
+    badge.style.display = "block";
+    badge.innerHTML = `
+      <div style="line-height:1.5;">
+        👤 <b>${cust.full_name}</b> | 📞 <b>${cust.contact_no || '-'}</b> | 🪪 เลขบัตร/Passport: <b style="color:#2563EB;">${cust.passport_id || '-'}</b> | 🚗 ใบขับขี่: <b>${cust.licence_no || '-'}</b><br/>
+        📍 ที่อยู่: <span style="color:#64748B;">${cust.thai_address || cust.home_address || '-'}</span>
+      </div>
+    `;
+  }
+
+  onSelectWalkinCustomer() {
+    const sel = document.getElementById("walkin-cust-select");
+    const badge = document.getElementById("walkin-cust-info-badge");
+    if (!sel || !badge) return;
+    const name = sel.value;
+    const cust = this.customers.find(c => c.full_name === name);
+    if (!cust) {
+      badge.style.display = "none";
+      return;
+    }
+    badge.style.display = "block";
+    badge.innerHTML = `
+      <div style="line-height:1.5;">
+        👤 <b>${cust.full_name}</b> | 📞 <b>${cust.contact_no || '-'}</b> | 🪪 เลขบัตร/Passport: <b style="color:#2563EB;">${cust.passport_id || '-'}</b> | 🚗 ใบขับขี่: <b>${cust.licence_no || '-'}</b>
+      </div>
+    `;
+  }
+
+  openEditCustomerModal(customerName) {
+    const cust = this.customers.find(c => c.full_name === customerName);
+    if (!cust) {
+      this.showToast("⚠️ ไม่พบข้อมูลลูกค้าที่ต้องการแก้ไข", "warning");
+      return;
+    }
+    document.getElementById("cust-original-name").value = cust.full_name;
+    document.getElementById("cust-name-in").value = cust.full_name || "";
+    document.getElementById("cust-phone-in").value = cust.contact_no !== "-" ? (cust.contact_no || "") : "";
+    document.getElementById("cust-pass-in").value = cust.passport_id !== "-" ? (cust.passport_id || "") : "";
+    document.getElementById("cust-lic-in").value = cust.licence_no !== "-" ? (cust.licence_no || "") : "";
+    document.getElementById("cust-nat-in").value = cust.nationality || "THAI";
+    document.getElementById("cust-wa-in").value = cust.whatsapp !== "-" ? (cust.whatsapp || "") : "";
+    document.getElementById("cust-dob-in").value = cust.dob || "1990-01-01";
+    document.getElementById("cust-licexp-in").value = cust.licence_expiry || "2030-01-01";
+    document.getElementById("cust-home-in").value = cust.home_address !== "-" ? (cust.home_address || "") : "";
+    document.getElementById("cust-thai-in").value = cust.thai_address !== "-" ? (cust.thai_address || "") : "";
+
+    document.getElementById("modal-cust-title").textContent = `✏️ ดูและแก้ไขข้อมูลลูกค้า (${cust.full_name})`;
+    const btnSave = document.getElementById("btn-modal-cust-save");
+    if (btnSave) btnSave.textContent = "💾 บันทึกการแก้ไข";
+
+    const btnDel = document.getElementById("btn-modal-cust-delete");
+    if (btnDel) {
+      btnDel.style.display = cust.full_name === "ลูกค้าทั่วไป (Walk-in)" ? "none" : "inline-flex";
+    }
+
+    const warnPhone = document.getElementById("cust-phone-warn");
+    if (warnPhone) { warnPhone.style.display = "none"; warnPhone.textContent = ""; }
+    const warnPass = document.getElementById("cust-pass-warn");
+    if (warnPass) { warnPass.style.display = "none"; warnPass.textContent = ""; }
+
+    this.openModal("modal-add-customer");
+    setTimeout(() => document.getElementById("cust-phone-in")?.focus(), 80);
+  }
+
+  openEditSelectedCustomerModal(context = 'book') {
+    const selId = context === 'book' ? "book-cust-select" : "walkin-cust-select";
+    const name = document.getElementById(selId)?.value;
+    if (!name) {
+      this.showToast("⚠️ กรุณาเลือกลูกค้าก่อนกดแก้ไข", "warning");
+      return;
+    }
+    this.openEditCustomerModal(name);
+  }
+
+  async deleteSelectedCustomer(context = 'book') {
+    const selId = context === 'book' ? "book-cust-select" : "walkin-cust-select";
+    const name = document.getElementById(selId)?.value;
+    if (!name) {
+      this.showToast("⚠️ กรุณาเลือกลูกค้าก่อนกดลบ", "warning");
+      return;
+    }
+    if (name === "ลูกค้าทั่วไป (Walk-in)") {
+      this.showToast("⚠️ ไม่สามารถลบ 'ลูกค้าทั่วไป (Walk-in)' ได้", "warning");
+      return;
+    }
+    await this.deleteCustomer(name);
+  }
+
+  async deleteCurrentEditingCustomer() {
+    const origName = document.getElementById("cust-original-name")?.value || document.getElementById("cust-name-in")?.value;
+    if (!origName) return;
+    this.closeModal("modal-add-customer");
+    await this.deleteCustomer(origName);
+  }
+
+  checkDuplicatePhone(val) {
+    const warnEl = document.getElementById("cust-phone-warn");
+    if (!warnEl) return;
+    const cleanDigits = String(val || "").replace(/\D/g, "");
+    if (!cleanDigits || cleanDigits.length < 9) {
+      warnEl.style.display = "none";
+      warnEl.textContent = "";
+      return;
+    }
+    const normPhone = cleanDigits.startsWith("66") ? "0" + cleanDigits.slice(2) : cleanDigits;
+    const origName = (document.getElementById("cust-original-name")?.value || "").trim();
+    const currentName = (document.getElementById("cust-name-in")?.value || "").trim();
+
+    const dup = (this.customers || []).find(c => {
+      if (c.full_name === currentName || (origName && c.full_name === origName)) return false;
+      const existPhone = String(c.contact_no || "").replace(/\D/g, "");
+      if (!existPhone || existPhone.length < 9) return false;
+      const existNorm = existPhone.startsWith("66") ? "0" + existPhone.slice(2) : existPhone;
+      return existNorm === normPhone;
+    });
+
+    if (dup) {
+      warnEl.style.display = "block";
+      warnEl.innerHTML = `⚠️ เบอร์โทรศัพท์นี้ซ้ำกับลูกค้า: <b>${dup.full_name}</b> (เลขบัตร/Passport: ${dup.passport_id || '-'}) ในระบบแล้ว (ห้ามใช้ซ้ำ)`;
+    } else {
+      warnEl.style.display = "none";
+      warnEl.textContent = "";
     }
   }
 
@@ -2253,12 +2497,15 @@ class App {
       warnEl.textContent = "";
       return;
     }
+    const origName = (document.getElementById("cust-original-name")?.value || "").trim();
     const currentName = (document.getElementById("cust-name-in")?.value || "").trim();
+
     const dup = (this.customers || []).find(c => {
-      if (c.full_name === currentName) return false;
+      if (c.full_name === currentName || (origName && c.full_name === origName)) return false;
       const existPass = String(c.passport_id || "").replace(/[\s-]/g, "").toLowerCase();
       return existPass && existPass !== "-" && existPass !== "none" && existPass === clean;
     });
+
     if (dup) {
       warnEl.style.display = "block";
       warnEl.innerHTML = `⚠️ หมายเลขบัตร ปชช. / พาสปอร์ตนี้ซ้ำกับลูกค้า: <b>${dup.full_name}</b> (📞 ${dup.contact_no || '-'}) ในระบบแล้ว (ห้ามใช้ซ้ำ)`;
@@ -2269,15 +2516,24 @@ class App {
   }
 
   openAddCustomerModal() {
+    const origEl = document.getElementById("cust-original-name");
+    if (origEl) origEl.value = "";
     ["cust-name-in", "cust-phone-in", "cust-pass-in", "cust-lic-in", "cust-wa-in", "cust-home-in", "cust-thai-in"].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.value = "";
     });
-    const warnEl = document.getElementById("cust-pass-warn");
-    if (warnEl) {
-      warnEl.style.display = "none";
-      warnEl.textContent = "";
-    }
+    const titleEl = document.getElementById("modal-cust-title");
+    if (titleEl) titleEl.textContent = "➕ เพิ่มข้อมูลลูกค้าใหม่ (Add New Customer)";
+    const btnSave = document.getElementById("btn-modal-cust-save");
+    if (btnSave) btnSave.textContent = "💾 บันทึกข้อมูลลูกค้า";
+    const btnDel = document.getElementById("btn-modal-cust-delete");
+    if (btnDel) btnDel.style.display = "none";
+
+    const warnPhone = document.getElementById("cust-phone-warn");
+    if (warnPhone) { warnPhone.style.display = "none"; warnPhone.textContent = ""; }
+    const warnPass = document.getElementById("cust-pass-warn");
+    if (warnPass) { warnPass.style.display = "none"; warnPass.textContent = ""; }
+
     const natEl = document.getElementById("cust-nat-in");
     if (natEl) natEl.value = "THAI";
     const dobEl = document.getElementById("cust-dob-in");
@@ -2291,16 +2547,46 @@ class App {
 
   async submitNewCustomer() {
     const name = (document.getElementById("cust-name-in")?.value || "").trim();
+    const origName = (document.getElementById("cust-original-name")?.value || "").trim();
+
     if (!name) {
       alert("กรุณาระบุชื่อ-นามสกุลลูกค้า");
       return;
     }
 
+    // 1. Phone number duplicate check
+    const phone = (document.getElementById("cust-phone-in")?.value || "").trim();
+    if (phone && phone !== "-" && phone.toLowerCase() !== "none") {
+      const cleanDigits = phone.replace(/\D/g, "");
+      if (cleanDigits.length >= 9) {
+        const normPhone = cleanDigits.startsWith("66") ? "0" + cleanDigits.slice(2) : cleanDigits;
+        const dupPhone = (this.customers || []).find(c => {
+          if (c.full_name === name || (origName && c.full_name === origName)) return false;
+          const existPhone = String(c.contact_no || "").replace(/\D/g, "");
+          if (!existPhone || existPhone.length < 9) return false;
+          const existNorm = existPhone.startsWith("66") ? "0" + existPhone.slice(2) : existPhone;
+          return existNorm === normPhone;
+        });
+        if (dupPhone) {
+          this.showToast(`❌ ไม่อนุญาตให้ใช้เบอร์โทรศัพท์ซ้ำกับ '${dupPhone.full_name}'`, "danger");
+          alert(`❌ ระบบไม่อนุญาตให้ใช้เบอร์โทรศัพท์ซ้ำ!\n\nเบอร์ '${phone}' ซ้ำกับข้อมูลของลูกค้า '${dupPhone.full_name}' ที่มีอยู่ในระบบแล้ว กรุณาตรวจสอบ`);
+          const warnEl = document.getElementById("cust-phone-warn");
+          if (warnEl) {
+            warnEl.style.display = "block";
+            warnEl.innerHTML = `⚠️ เบอร์โทรศัพท์นี้ซ้ำกับลูกค้า: <b>${dupPhone.full_name}</b> ในระบบแล้ว (ห้ามใช้ซ้ำ)`;
+          }
+          document.getElementById("cust-phone-in")?.focus();
+          return;
+        }
+      }
+    }
+
+    // 2. Citizen ID / Passport duplicate check
     const passId = (document.getElementById("cust-pass-in")?.value || "").trim();
     if (passId && passId !== "-" && passId.toLowerCase() !== "none") {
       const cleanPass = passId.replace(/[\s-]/g, "").toLowerCase();
       const duplicate = (this.customers || []).find(c => {
-        if (c.full_name === name) return false;
+        if (c.full_name === name || (origName && c.full_name === origName)) return false;
         const existPass = String(c.passport_id || "").trim();
         if (!existPass || existPass === "-" || existPass.toLowerCase() === "none") return false;
         return existPass.replace(/[\s-]/g, "").toLowerCase() === cleanPass;
@@ -2320,7 +2606,8 @@ class App {
 
     const payload = {
       full_name: name,
-      contact_no: document.getElementById("cust-phone-in")?.value.trim() || "-",
+      original_name: origName || name,
+      contact_no: phone || "-",
       passport_id: passId || "-",
       licence_no: document.getElementById("cust-lic-in")?.value.trim() || "-",
       nationality: document.getElementById("cust-nat-in")?.value.trim() || "THAI",
@@ -2345,6 +2632,9 @@ class App {
         return;
       }
       this.lastAddedCustomerName = name;
+      if (origName && origName !== name) {
+        this.customers = this.customers.filter(c => c.full_name !== origName);
+      }
       const existIdx = this.customers.findIndex(c => c.full_name === name);
       if (existIdx >= 0) {
         this.customers[existIdx] = payload;
@@ -2353,22 +2643,35 @@ class App {
       }
       this.populateCustomerDropdowns(name);
       this.closeModal("modal-add-customer");
-      this.showToast(`🎉 บันทึกข้อมูลลูกค้า '${name}' และล็อกเลือกในฟอร์มเรียบร้อย!`, "success");
+      this.showToast(`🎉 บันทึกข้อมูลลูกค้า '${name}' เรียบร้อย!`, "success");
       await this.loadCustomers();
       this.populateCustomerDropdowns(name);
+      this.renderCustomersTable();
     } catch (e) {
       this.showToast("บันทึกไม่สำเร็จ: " + e.message, "danger");
     }
   }
 
   async deleteCustomer(name) {
-    if (!confirm(`คุณแน่ใจหรือไม่ว่าต้องการลบข้อมูลลูกค้า '${name}'?`)) return;
+    if (name === "ลูกค้าทั่วไป (Walk-in)") {
+      this.showToast("⚠️ ไม่สามารถลบ 'ลูกค้าทั่วไป (Walk-in)' ได้", "warning");
+      return;
+    }
+    if (!confirm(`คุณแน่ใจหรือไม่ว่าต้องการลบข้อมูลลูกค้า '${name}' ออกจากระบบ? (กรณีบันทึกผิดหรือข้อมูลซ้ำ)`)) return;
     try {
       const res = await fetch(`/api/customers/${encodeURIComponent(name)}`, { method: "DELETE" });
       const data = await res.json();
       if (data.success) {
-        this.showToast(`ลบข้อมูลลูกค้า '${name}' เรียบร้อย`, "success");
+        this.showToast(`🗑️ ลบข้อมูลลูกค้า '${name}' เรียบร้อยแล้ว`, "success");
+        this.customers = this.customers.filter(c => c.full_name !== name);
+        if (this.lastAddedCustomerName === name) {
+          this.lastAddedCustomerName = null;
+        }
         await this.loadCustomers();
+        this.populateCustomerDropdowns();
+        this.renderCustomersTable();
+      } else {
+        this.showToast("ลบไม่สำเร็จ: " + (data.detail || "เกิดข้อผิดพลาด"), "danger");
       }
     } catch (e) {
       this.showToast("ลบไม่สำเร็จ: " + e.message, "danger");
@@ -2586,6 +2889,9 @@ class App {
             </button>
             <button type="button" onclick="app.jumpToCarInFrontOffice('${safePlate}')" class="btn btn-sm btn-secondary" style="padding:3px 7px; font-size:11.5px;" title="ดูรถในหน้าเลือกรถยนต์">
               🔍
+            </button>
+            <button type="button" onclick="app.deleteCarByPlate('${safePlate}')" class="btn btn-sm" style="padding:3px 7px; font-size:11.5px; background:#FEE2E2; color:#B91C1C; border:1px solid #FCA5A5;" title="ลบรถยนต์คันนี้ออกจากระบบ">
+              🗑️
             </button>
           </td>
         </tr>
