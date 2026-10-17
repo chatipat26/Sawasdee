@@ -132,9 +132,18 @@ class App {
           const st = await res.json();
           const syncTxt = document.getElementById("sync-time-txt");
           if (syncTxt) syncTxt.textContent = st.last_sync_formatted || "เมื่อสักครู่";
+          if (st.data_signature && this.lastDataSignature && st.data_signature !== this.lastDataSignature) {
+            this.lastDataSignature = st.data_signature;
+            await this.fetchInitialData();
+          } else if (st.data_signature && !this.lastDataSignature) {
+            this.lastDataSignature = st.data_signature;
+            if (typeof st.total_bookings === "number" && st.total_bookings !== this.bookings.length) {
+              await this.fetchInitialData();
+            }
+          }
         }
       } catch (e) {}
-    }, 10000);
+    }, 8000);
   }
 
   async manualSync() {

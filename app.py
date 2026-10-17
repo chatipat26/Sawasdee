@@ -1356,17 +1356,8 @@ def sync_cloud_data(force=False, auto=False):
                     b_copy["contract_issued"] = bool(b_copy.get("contract_done", False)) or bool(b_copy.get("rental_paid", False)) or (b_copy.get("status") in ["กำลังเช่า", "เตรียมรับคืน", "เสร็จสิ้น"])
                 fresh_b.append(b_copy)
 
-            # ผสานรายการจองในหน่วยความจำที่เพิ่งสร้างและยังไม่ถูกดึงมาจากคลาวด์ (ป้องกันการถูกล้างหาย)
+            # ยึดข้อมูลจากตาราง bookings บน Supabase เป็นหลัก 100% (ไม่ส่งข้อมูลเก่าในหน่วยความจำกลับขึ้นไปทับเมื่อถูกลบจาก Database)
             cur_b = st.session_state.get("bookings_db", [])
-            fresh_ids = {b.get("booking_id") for b in fresh_b}
-            for b_loc in cur_b:
-                b_lid = b_loc.get("booking_id")
-                if b_lid and b_lid not in fresh_ids and b_lid not in del_ids:
-                    fresh_b.append(b_loc)
-                    try:
-                        sb_sync_booking(b_loc)
-                    except Exception:
-                        pass
 
             old_b_sigs = {(b.get("booking_id"), b.get("status"), b.get("worker_delivery"), b.get("worker_return"), b.get("rental_paid"), b.get("deposit_paid")) for b in cur_b}
             new_b_sigs = {(b.get("booking_id"), b.get("status"), b.get("worker_delivery"), b.get("worker_return"), b.get("rental_paid"), b.get("deposit_paid")) for b in fresh_b}

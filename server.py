@@ -79,6 +79,10 @@ async def serve_index():
 # -------------------------------------------------------------------------
 @app.get("/api/status")
 async def get_system_status():
+    bk_sig = ",".join(sorted(f"{b.get('booking_id','')}:{b.get('status','')}:{b.get('deposit_paid','')}:{b.get('rental_paid','')}" for b in store.bookings))
+    cj_sig = str(len(store.completed_jobs))
+    car_sig = ",".join(sorted(f"{p}:{c.get('status','')}:{c.get('act_expiry','')}:{c.get('ins_expiry','')}" for p, c in store.cars.items()))
+    data_sig = f"{len(store.bookings)}|{bk_sig}|{cj_sig}|{len(store.customers)}|{len(store.financial_records)}|{hash(car_sig)}"
     return {
         "status": "online",
         "last_sync_time": store.last_sync_time,
@@ -88,6 +92,7 @@ async def get_system_status():
         "total_bookings": len(store.bookings),
         "total_completed": len(store.completed_jobs),
         "total_users": len(store.users),
+        "data_signature": data_sig,
         "timestamp": time.time()
     }
 

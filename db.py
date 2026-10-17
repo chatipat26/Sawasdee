@@ -249,7 +249,11 @@ class DataStore:
         self.completed_jobs = []
         self.financial_records = []
         self.users = dict(DEFAULT_USERS)
-        self.deleted_booking_ids = set()
+        self.deleted_booking_ids = {
+            "MRC261017104446", "MRC261017071034", "MRC261017102938", "MRC261017101804",
+            "MRC261017104728", "MRC261017105734", "MRC261014110200", "MRC261014174658",
+            "MRC261012110000", "MRC261010145909", "MRC261008093000"
+        }
         self.last_sync_time = time.time()
         self.is_syncing = False
         self.initial_sync_done = False
@@ -318,12 +322,17 @@ class DataStore:
                 print(f"Users sync error: {e}")
 
             # 2. Bookings
+            fresh_b = []
             try:
                 b_res = sb.table("bookings").select("*").order("created_at", desc=True).execute()
                 if b_res.data is not None:
-                    fresh_b = []
                     for b in b_res.data:
-                        if b.get("booking_id") in self.deleted_booking_ids:
+                        bid = b.get("booking_id")
+                        if bid in self.deleted_booking_ids:
+                            try:
+                                sb.table("bookings").delete().eq("booking_id", bid).execute()
+                            except Exception:
+                                pass
                             continue
                         b_copy = dict(b)
                         if b_copy.get("start_date"): b_copy["start_date"] = to_date(b_copy["start_date"])
@@ -334,14 +343,24 @@ class DataStore:
             except Exception as e:
                 print(f"Bookings sync error: {e}")
 
-            # 3. Cars
+            # 3. Cars (and auto-release cars whose bookings were deleted from Supabase)
             try:
                 c_res = sb.table("cars").select("*").execute()
                 if c_res.data:
+                    active_booked_plates = {
+                        b.get("car_id") for b in fresh_b
+                        if b.get("car_id") and b.get("status") not in ["เสร็จสิ้น", "ยกเลิก"]
+                    }
                     fresh_cars = {}
                     for c in c_res.data:
                         pl = c.get("plate")
                         if pl:
+                            if c.get("status") in ["ติดจอง", "รอส่งมอบ", "เตรียมส่งมอบ", "กำลังเช่า", "เตรียมรับคืน"] and pl not in active_booked_plates:
+                                c["status"] = "ว่างพร้อมใช้งาน"
+                                try:
+                                    sb.table("cars").update({"status": "ว่างพร้อมใช้งาน"}).eq("plate", pl).execute()
+                                except Exception:
+                                    pass
                             fresh_cars[pl] = c
                     if fresh_cars:
                         with self.lock:
@@ -352,15 +371,29 @@ class DataStore:
             # 4. Customers
             try:
                 cust_res = sb.table("customers").select("*").execute()
-                if cust_res.data:
-                    fresh_cust = {}
+                if cust_res.data is not None:
+                    fresh_cust = {
+                        "ลูกค้าทั่วไป (Walk-in)": {
+                            "full_name": "ลูกค้าทั่วไป (Walk-in)",
+                            "nationality": "THAI",
+                            "dob": "01/01/1990",
+                            "passport_id": "-",
+                            "licence_no": "-",
+                            "issue_place": "-",
+                            "licence_expiry": "01/01/2030",
+                            "home_address": "-",
+                            "thai_address": "-",
+                            "contact_no": "-",
+                            "whatsapp": "-",
+                            "email": "-"
+                        }
+                    }
                     for c in cust_res.data:
                         fn = c.get("full_name")
                         if fn:
                             fresh_cust[fn] = c
-                    if fresh_cust:
-                        with self.lock:
-                            self.customers.update(fresh_cust)
+                    with self.lock:
+                        self.customers = fresh_cust
             except Exception as e:
                 print(f"Customers sync error: {e}")
 
@@ -655,6 +688,6 @@ def start_background_cloud_sync():
                 store.sync_from_supabase_async()
             except Exception as e:
                 print(f"Background cloud sync loop error: {e}")
-            time.sleep(20)
+            time.sleep(8)
     t = threading.Thread(target=_loop, daemon=True, name="SupabaseBackgroundSync")
     t.start()
