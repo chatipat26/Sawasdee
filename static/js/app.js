@@ -1755,123 +1755,231 @@ class App {
     this.renderTrendChart();
   }
 
+  setDonutMode(mode) {
+    this.donutMode = mode;
+    const btnStatus = document.getElementById("btn-donut-status");
+    const btnCompare = document.getElementById("btn-donut-compare");
+    if (mode === "compare") {
+      if (btnCompare) { btnCompare.style.background = "#E85826"; btnCompare.style.color = "#FFFFFF"; }
+      if (btnStatus) { btnStatus.style.background = "transparent"; btnStatus.style.color = "#6B7280"; }
+    } else {
+      if (btnStatus) { btnStatus.style.background = "#E85826"; btnStatus.style.color = "#FFFFFF"; }
+      if (btnCompare) { btnCompare.style.background = "transparent"; btnCompare.style.color = "#6B7280"; }
+    }
+    this.renderDonutCharts();
+  }
+
   renderDonutCharts() {
     const container = document.getElementById("dashboard-donuts-container");
     if (!container || !this.cars || this.cars.length === 0) return;
 
-    // Group cars by company
-    const compMap = {};
+    const compList = ["Sawasdee Rent A Car", "P.D.P. Co., Ltd.", "Sawasdee Car Rent"];
+    const compPalette = ["#E85826", "#10B981", "#3B82F6"];
+    const compIcons = {
+      "Sawasdee Rent A Car": "🚙",
+      "P.D.P. Co., Ltd.": "🚗",
+      "Sawasdee Car Rent": "🚐"
+    };
+
+    const compMap = {
+      "Sawasdee Rent A Car": { total: 0, avail: 0, rent: 0, maint: 0, color: "#E85826" },
+      "P.D.P. Co., Ltd.": { total: 0, avail: 0, rent: 0, maint: 0, color: "#10B981" },
+      "Sawasdee Car Rent": { total: 0, avail: 0, rent: 0, maint: 0, color: "#3B82F6" }
+    };
+
+    const hasExactScr = this.cars.some(c => (c.company || "").trim() === "Sawasdee Car Rent");
+
     this.cars.forEach(c => {
-      const comp = (c.company || "บจก.สวัสดี เรนทัล (Sawasdee Rental)").trim();
-      if (!compMap[comp]) {
-        compMap[comp] = { total: 0, avail: 0, rent: 0, maint: 0 };
+      const rawComp = (c.company || "").trim();
+      let targetComp = null;
+      if (rawComp === "Sawasdee Rent A Car" || rawComp.includes("สวัสดี เรนทัล") || rawComp.includes("Sawasdee Rental")) {
+        targetComp = "Sawasdee Rent A Car";
+      } else if (rawComp === "P.D.P. Co., Ltd." || rawComp.includes("P.D.P") || rawComp.includes("พี.ดี.พี")) {
+        targetComp = "P.D.P. Co., Ltd.";
+      } else if (rawComp === "Sawasdee Car Rent" || (!hasExactScr && rawComp.includes("บี คลิ๊ก"))) {
+        targetComp = "Sawasdee Car Rent";
       }
-      compMap[comp].total++;
-      if (c.fleet_status_key === "maintenance") {
-        compMap[comp].maint++;
-      } else if (c.fleet_status_key === "unavailable") {
-        compMap[comp].rent++;
+
+      if (!targetComp) return;
+
+      compMap[targetComp].total++;
+      if (c.fleet_status_key === "maintenance" || c.status === "ซ่อมบำรุง") {
+        compMap[targetComp].maint++;
+      } else if (c.fleet_status_key === "unavailable" || ["กำลังเช่า", "ติดจอง", "เตรียมส่งมอบ", "เตรียมรับคืน", "รอส่งมอบ"].includes(c.status)) {
+        compMap[targetComp].rent++;
       } else {
-        compMap[comp].avail++;
+        compMap[targetComp].avail++;
       }
     });
 
-    const compIcons = {
-      "บจก.สวัสดี เรนทัล (Sawasdee Rental)": "🏢",
-      "Sawasdee Rent A Car": "🏢",
-      "โตโยต้า ลีสซิ่ง": "🚗",
-      "โตโยต้า ลีสซิ่ง / คุณประสงฆ์": "🚗",
-      "บจก.บี คลิ๊ก ลีส แอนด์ โลจิสติกส์": "🚛",
-      "P.D.P. Co., Ltd.": "🚛",
-      "ซุปเปอร์เจ": "⭐",
-      "Sawasdee Car Rent": "🚙",
-      "บจ.อนันต์": "🏢"
-    };
+    const mode = this.donutMode || "status";
 
-    const compKeys = Object.keys(compMap);
-    if (compKeys.length === 0) return;
+    if (mode === "compare") {
+      // Compare 3 companies across: 1) Total Fleet, 2) Rented/Reserved, 3) Available
+      const metrics = [
+        { key: "total", title: "🚗 กองยานพาหนะรวม", sub: "สัดส่วนจำนวนรถทั้งหมดที่ถือครอง", badgeColor: "#E85826" },
+        { key: "rent", title: "🔑 รถกำลังเช่า/ติดจอง", sub: "สัดส่วนรถที่ติดสัญญาเช่าและล็อกคิว", badgeColor: "#E85826" },
+        { key: "avail", title: "✨ รถว่างพร้อมให้บริการ", sub: "สัดส่วนรถว่างที่พร้อมปล่อยเช่าได้ทันที", badgeColor: "#10B981" }
+      ];
 
-    container.innerHTML = compKeys.map((compName, idx) => {
-      const data = compMap[compName];
-      const icon = compIcons[compName] || "🏢";
-      const canvasId = `donut-chart-canvas-${idx}`;
-      const availPct = data.total > 0 ? ((data.avail / data.total) * 100).toFixed(0) : 0;
-      const rentPct = data.total > 0 ? ((data.rent / data.total) * 100).toFixed(0) : 0;
-      const maintPct = data.total > 0 ? ((data.maint / data.total) * 100).toFixed(0) : 0;
-
-      return `
-        <div class="donut-card">
-          <div class="donut-header">
-            <span>${icon} ${compName}</span>
-            <span style="font-size:12px; font-weight:800; color:#E85826; background:#FFF7ED; padding:2px 8px; border-radius:12px; border:1px solid #FED7AA;">
-              ${data.total} คัน
-            </span>
-          </div>
-          <div class="donut-sub">สัดส่วนสถานะรถภายในองค์กร</div>
-          <div style="position:relative; height:150px; margin-bottom:12px;">
-            <canvas id="${canvasId}"></canvas>
-          </div>
-          <div>
+      container.innerHTML = metrics.map((m, idx) => {
+        const canvasId = `donut-chart-canvas-${idx}`;
+        const tot = compList.reduce((acc, cName) => acc + compMap[cName][m.key], 0);
+        const rowsHtml = compList.map((cName, cIdx) => {
+          const val = compMap[cName][m.key];
+          const pct = tot > 0 ? ((val / tot) * 100).toFixed(1) : "0.0";
+          return `
             <div class="donut-stat-row">
-              <span><span style="color:#10B981; font-size:13px;">●</span> ว่างพร้อมใช้งาน</span>
-              <b>${data.avail} คัน (${availPct}%)</b>
+              <span><span style="color:${compPalette[cIdx]}; font-size:13px;">●</span> ${cName}</span>
+              <b>${val} คัน (${pct}%)</b>
             </div>
-            <div class="donut-stat-row">
-              <span><span style="color:#3B82F6; font-size:13px;">●</span> กำลังเช่า/ติดจอง</span>
-              <b>${data.rent} คัน (${rentPct}%)</b>
+          `;
+        }).join("");
+
+        return `
+          <div class="donut-card">
+            <div class="donut-header">
+              <span>${m.title}</span>
+              <span style="font-size:12px; font-weight:800; color:${m.badgeColor}; background:#FFF7ED; padding:2px 8px; border-radius:12px; border:1px solid #FED7AA;">
+                ${tot} คัน
+              </span>
             </div>
-            <div class="donut-stat-row">
-              <span><span style="color:#F97316; font-size:13px;">●</span> ซ่อมบำรุง</span>
-              <b>${data.maint} คัน (${maintPct}%)</b>
+            <div class="donut-sub">${m.sub}</div>
+            <div style="position:relative; height:150px; margin-bottom:12px;">
+              <canvas id="${canvasId}"></canvas>
             </div>
+            <div>${rowsHtml}</div>
           </div>
-        </div>
-      `;
-    }).join("");
+        `;
+      }).join("");
 
-    if (typeof Chart === "undefined") return;
+      if (typeof Chart === "undefined") return;
 
-    compKeys.forEach((compName, idx) => {
-      const data = compMap[compName];
-      const canvasId = `donut-chart-canvas-${idx}`;
-      const canvas = document.getElementById(canvasId);
-      if (!canvas) return;
+      metrics.forEach((m, idx) => {
+        const canvasId = `donut-chart-canvas-${idx}`;
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) return;
+        if (this.donutCharts[canvasId]) this.donutCharts[canvasId].destroy();
 
-      if (this.donutCharts[canvasId]) {
-        this.donutCharts[canvasId].destroy();
-      }
+        const vals = compList.map(cName => compMap[cName][m.key]);
+        const tot = vals.reduce((a, b) => a + b, 0);
 
-      this.donutCharts[canvasId] = new Chart(canvas, {
-        type: 'doughnut',
-        data: {
-          labels: ['ว่างพร้อมใช้งาน', 'กำลังเช่า/ติดจอง', 'ซ่อมบำรุง'],
-          datasets: [{
-            data: [data.avail, data.rent, data.maint],
-            backgroundColor: ['#10B981', '#3B82F6', '#F97316'],
-            borderWidth: 2,
-            borderColor: '#FFFFFF'
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          cutout: '68%',
-          plugins: {
-            legend: { display: false },
-            tooltip: {
-              callbacks: {
-                label: function(ctx) {
-                  const val = ctx.raw || 0;
-                  const total = data.total || 1;
-                  const pct = ((val / total) * 100).toFixed(1);
-                  return ` ${ctx.label}: ${val} คัน (${pct}%)`;
+        this.donutCharts[canvasId] = new Chart(canvas, {
+          type: 'doughnut',
+          data: {
+            labels: compList,
+            datasets: [{
+              data: tot > 0 ? vals : [1, 1, 1],
+              backgroundColor: tot > 0 ? compPalette : ['#E5E7EB', '#E5E7EB', '#E5E7EB'],
+              borderWidth: 2,
+              borderColor: '#FFFFFF'
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '68%',
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                callbacks: {
+                  label: function(ctx) {
+                    const val = tot > 0 ? (ctx.raw || 0) : 0;
+                    const pct = tot > 0 ? ((val / tot) * 100).toFixed(1) : "0.0";
+                    return ` ${ctx.label}: ${val} คัน (${pct}%)`;
+                  }
                 }
               }
             }
           }
-        }
+        });
       });
-    });
+    } else {
+      // Default: 3 cards for the 3 main companies showing status breakdown
+      container.innerHTML = compList.map((compName, idx) => {
+        const data = compMap[compName];
+        const icon = compIcons[compName] || "🏢";
+        const canvasId = `donut-chart-canvas-${idx}`;
+        const availPct = data.total > 0 ? ((data.avail / data.total) * 100).toFixed(1) : "0.0";
+        const rentPct = data.total > 0 ? ((data.rent / data.total) * 100).toFixed(1) : "0.0";
+        const maintPct = data.total > 0 ? ((data.maint / data.total) * 100).toFixed(1) : "0.0";
+
+        return `
+          <div class="donut-card">
+            <div class="donut-header">
+              <span>${icon} ${compName}</span>
+              <span style="font-size:12px; font-weight:800; color:${data.color}; background:#FFF7ED; padding:2px 8px; border-radius:12px; border:1px solid #FED7AA;">
+                ${data.total} คัน
+              </span>
+            </div>
+            <div class="donut-sub">สัดส่วนสถานะรถภายในองค์กร</div>
+            <div style="position:relative; height:150px; margin-bottom:12px;">
+              <canvas id="${canvasId}"></canvas>
+            </div>
+            <div>
+              <div class="donut-stat-row">
+                <span><span style="color:#10B981; font-size:13px;">●</span> ว่างพร้อมใช้งาน</span>
+                <b>${data.avail} คัน (${availPct}%)</b>
+              </div>
+              <div class="donut-stat-row">
+                <span><span style="color:#E85826; font-size:13px;">●</span> กำลังเช่า/ติดจอง</span>
+                <b>${data.rent} คัน (${rentPct}%)</b>
+              </div>
+              <div class="donut-stat-row">
+                <span><span style="color:#EF4444; font-size:13px;">●</span> ซ่อมบำรุง</span>
+                <b>${data.maint} คัน (${maintPct}%)</b>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      if (typeof Chart === "undefined") return;
+
+      compList.forEach((compName, idx) => {
+        const data = compMap[compName];
+        const canvasId = `donut-chart-canvas-${idx}`;
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) return;
+
+        if (this.donutCharts[canvasId]) {
+          this.donutCharts[canvasId].destroy();
+        }
+
+        const hasData = data.total > 0;
+        this.donutCharts[canvasId] = new Chart(canvas, {
+          type: 'doughnut',
+          data: {
+            labels: ['ว่างพร้อมใช้งาน', 'กำลังเช่า/ติดจอง', 'ซ่อมบำรุง'],
+            datasets: [{
+              data: hasData ? [data.avail, data.rent, data.maint] : [1],
+              backgroundColor: hasData ? ['#10B981', '#E85826', '#EF4444'] : ['#E5E7EB'],
+              borderWidth: 2,
+              borderColor: '#FFFFFF'
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '68%',
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                callbacks: {
+                  label: function(ctx) {
+                    if (!hasData) return ' ยังไม่มีข้อมูลรถ';
+                    const val = ctx.raw || 0;
+                    const total = data.total || 1;
+                    const pct = ((val / total) * 100).toFixed(1);
+                    return ` ${ctx.label}: ${val} คัน (${pct}%)`;
+                  }
+                }
+              }
+            }
+          }
+        });
+      });
+    }
   }
 
   setTrendMetric(metric) {

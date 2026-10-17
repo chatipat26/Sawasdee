@@ -833,20 +833,28 @@
           </div>
         </div>
 
-        <!-- Donut Charts: Company Fleet Breakdown -->
+        <!-- Donut Charts: 3 Main Companies Fleet Breakdown -->
         <div class="card" style="margin-bottom:20px;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:8px;">
             <div>
               <div class="card-title" style="margin:0;">
-                <span>🍩</span> สัดส่วนสถานะรถยนต์แยกตามสังกัดบริษัท (Company Fleet Status Share)
+                <span>🍩</span> สัดส่วนยานพาหนะ 3 บริษัท (Company Fleet Distribution)
               </div>
               <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">
-                สัดส่วนสถานะรถยนต์ (ว่างพร้อมใช้งาน / กำลังเช่า-ติดจอง / ซ่อมบำรุง) แสดงผลแบบ Dynamic
+                สัดส่วนสถานะรถยนต์ 3 บริษัทหลัก (Sawasdee Rent A Car / P.D.P. Co., Ltd. / Sawasdee Car Rent)
               </div>
+            </div>
+            <div style="display:flex; background:#F4EBE1; padding:3px; border-radius:8px; border:1px solid #E5DFD7;">
+              <button type="button" id="btn-donut-status" onclick="app.setDonutMode('status')" class="btn btn-sm" style="background:#E85826; color:white; font-size:12px; font-weight:700; border-radius:6px; padding:4px 12px; border:none; cursor:pointer;">
+                🏢 สัดส่วนสถานะรถแยกราย 3 บริษัท
+              </button>
+              <button type="button" id="btn-donut-compare" onclick="app.setDonutMode('compare')" class="btn btn-sm" style="background:transparent; color:#6B7280; font-size:12px; font-weight:700; border-radius:6px; padding:4px 12px; border:none; cursor:pointer;">
+                📊 สัดส่วนเปรียบเทียบระหว่าง 3 บริษัท
+              </button>
             </div>
           </div>
           <div id="dashboard-donuts-container" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:18px;">
-            <!-- Rendered dynamically by JS -->
+            <!-- Rendered dynamically by JS (3 main companies only) -->
           </div>
         </div>
 
@@ -1205,6 +1213,6 @@
   <div class="toast-container" id="toast-container"></div>
 
   <!-- Scripts with cache busting -->
-  <script src="/static/js/app.js?v=2.6"></script>
+  <script src="/static/js/app.js?v=2.7"></script>
 </body>
 </html>
