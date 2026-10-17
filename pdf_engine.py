@@ -1,6 +1,6 @@
 import os
 import io
-from datetime import datetime, date, time as d_time
+from datetime import datetime, date, time as d_time, timedelta, timezone
 from pypdf import PdfReader, PdfWriter
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
@@ -11,6 +11,10 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+TH_TZ = timezone(timedelta(hours=7))
+
+def now_th():
+    return datetime.now(TH_TZ)
 
 # -------------------------------------------------------------------------
 # FONT REGISTRATION
@@ -84,10 +88,11 @@ def generate_filled_pdf(template_path, booking_info, customer_info, car_info):
         car_brand_model = f"{car_info.get('brand', '')} {car_info.get('model', '')}".strip() or "-"
         car_plate = str(car_info.get("plate", "-"))
         car_color = str(car_info.get("color", "-"))
-        s_time_pdf = booking_info.get('start_time', '10:00')
-        e_time_pdf = booking_info.get('end_time', '10:00')
-        s_date = f"{format_date_dmy(booking_info.get('start_date'))} ({s_time_pdf})"
-        e_date = f"{format_date_dmy(booking_info.get('end_date'))} ({e_time_pdf})"
+        th_now = now_th()
+        s_time_pdf = booking_info.get('start_time') or th_now.strftime('%H:%M')
+        e_time_pdf = booking_info.get('end_time') or th_now.strftime('%H:%M')
+        s_date = f"{format_date_dmy(booking_info.get('start_date'))} ({s_time_pdf} น.)"
+        e_date = f"{format_date_dmy(booking_info.get('end_date'))} ({e_time_pdf} น.)"
         net_price = booking_info.get('net_price', 0)
         price_val = f"{net_price:,}" if isinstance(net_price, (int, float)) else str(net_price)
         b_id = str(booking_info.get("booking_id", "-"))
@@ -113,7 +118,7 @@ def generate_filled_pdf(template_path, booking_info, customer_info, car_info):
         can.setFillColorRGB(0.1, 0.1, 0.1)
         can.drawString(485, 782, b_id)
         can.setFont(FONT_REGULAR, 7.5)
-        can.drawString(485, 768, f"Issued: {format_date_dmy(datetime.now().date())}")
+        can.drawString(485, 768, f"Issued: {format_date_dmy(th_now.date())} {th_now.strftime('%H:%M')} น.")
         
         # --- 1. Section 01: VEHICLE ---
         can.setFillColorRGB(1, 1, 1)
@@ -272,7 +277,7 @@ def generate_receipt_bytes(receipt_no, booking_info, customer_info, car_info, am
     
     data = [
         ["Receipt No. (เลขที่ใบเสร็จ):", receipt_no],
-        ["Date (วันที่ออกใบเสร็จ):", datetime.now().strftime("%d/%m/%Y %H:%M")],
+        ["Date (วันที่ออกใบเสร็จ):", f"{now_th().strftime('%d/%m/%Y %H:%M')} น."],
         ["Booking ID (รหัสการจอง):", booking_info.get("booking_id", "-")],
         ["Customer Name (ชื่อลูกค้า):", c_name],
         ["Vehicle (รถยนต์):", car_name],
@@ -320,10 +325,11 @@ def generate_job_pdf(booking_info, customer_info, car_info, job_type="Dispatch",
     mile_val = insp.get("mileage") or booking_info.get("return_mileage") or booking_info.get("dispatch_mileage") or (car_info.get("mileage", "-") if car_info else "-")
     notes_val = insp.get("inspection_notes") or booking_info.get("return_notes") or booking_info.get("dispatch_notes") or "ตรวจสภาพปกติ เรียบร้อยดี"
     
+    th_now = now_th()
     doc_title = "VEHICLE INSPECTION CHECKLIST (ใบตรวจสภาพรถยนต์ & ลิสต์เช็ครถ)"
     elements.append(Paragraph("SAWASDEE CAR RENTAL CO., LTD.", title_style))
     elements.append(Paragraph(doc_title, title_style))
-    elements.append(Paragraph(f"Booking Ref: <b>{booking_info.get('booking_id', '-')}</b> | วันที่บันทึก: {datetime.now().strftime('%d/%m/%Y %H:%M')}", sub_style))
+    elements.append(Paragraph(f"Booking Ref: <b>{booking_info.get('booking_id', '-')}</b> | วันที่บันทึก: {th_now.strftime('%d/%m/%Y %H:%M')} น.", sub_style))
     elements.append(Spacer(1, 16))
     
     c_name = customer_info.get("full_name", "-") if customer_info else "-"
@@ -331,9 +337,11 @@ def generate_job_pdf(booking_info, customer_info, car_info, job_type="Dispatch",
     w_val = worker if worker and worker.strip() else (booking_info.get("worker_return") or booking_info.get("worker_delivery") or "-")
     l_val = loc if loc and loc.strip() else (booking_info.get("loc_return") or booking_info.get("loc_delivery") or "-")
     
+    s_t_job = booking_info.get('start_time') or th_now.strftime('%H:%M')
+    e_t_job = booking_info.get('end_time') or th_now.strftime('%H:%M')
     data = [
         ["Customer Name (ลูกค้า):", c_name], ["Vehicle (รถยนต์):", car_name],
-        ["Rental Period (ระยะเวลาเช่า):", f"{format_date_dmy(booking_info.get('start_date'))} ({booking_info.get('start_time', '10:00')}) - {format_date_dmy(booking_info.get('end_date'))} ({booking_info.get('end_time', '10:00')})"],
+        ["Rental Period (ระยะเวลาเช่า):", f"{format_date_dmy(booking_info.get('start_date'))} ({s_t_job} น.) - {format_date_dmy(booking_info.get('end_date'))} ({e_t_job} น.)"],
         ["Assigned Staff (พนักงานส่ง/รับรถ):", w_val], ["Location (สถานที่นัดหมาย):", l_val],
         ["Fuel Level (ระดับน้ำมัน):", str(fuel_val)], ["Mileage (เลขไมล์สะสม):", f"{mile_val} km"]
     ]

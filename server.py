@@ -1,7 +1,7 @@
 import os
 import io
 import time
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from typing import Optional, List, Dict, Any
 from fastapi import FastAPI, HTTPException, Request, Response, UploadFile, File, Form, Depends
 from fastapi.staticfiles import StaticFiles
@@ -27,6 +27,10 @@ from line_service import (
 )
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+TH_TZ = timezone(timedelta(hours=7))
+
+def now_th():
+    return datetime.now(TH_TZ)
 
 app = FastAPI(title="SawasdeeRental Web App", version="2.0.0")
 
@@ -73,7 +77,7 @@ async def get_system_status():
     return {
         "status": "online",
         "last_sync_time": store.last_sync_time,
-        "last_sync_formatted": datetime.fromtimestamp(store.last_sync_time).strftime("%H:%M:%S") if store.last_sync_time else "เมื่อสักครู่",
+        "last_sync_formatted": datetime.fromtimestamp(store.last_sync_time, tz=TH_TZ).strftime("%H:%M:%S") if store.last_sync_time else "เมื่อสักครู่",
         "total_cars": len(store.cars),
         "total_customers": len(store.customers),
         "total_bookings": len(store.bookings),
@@ -287,14 +291,15 @@ async def list_bookings():
 
 @app.post("/api/bookings")
 async def create_booking(payload: Dict[str, Any]):
-    # Generate booking ID: MRC<YYMMDD><HHMMSS>
-    now = datetime.now()
+    # Generate booking ID in Thailand Time: MRC<YYMMDD><HHMMSS>
+    now = now_th()
     bk_id = payload.get("booking_id") or f"MRC{now.strftime('%y%m%d%H%M%S')}"
     
     start_d = to_date(payload.get("start_date"))
     end_d = to_date(payload.get("end_date"))
-    start_t = payload.get("start_time", "10:00")
-    end_t = payload.get("end_time", "10:00")
+    default_t = now.strftime("%H:%M")
+    start_t = payload.get("start_time") or default_t
+    end_t = payload.get("end_time") or default_t
     
     billable_days, extra_hours, rem_minutes, is_over_4hr, explanation = calculate_rental_duration_and_days(
         start_d, start_t, end_d, end_t
@@ -349,7 +354,7 @@ async def create_booking(payload: Dict[str, Any]):
         "extension_history": [],
         "is_fully_paid": rental_paid,
         "rental_payment_method": payload.get("rental_payment_method", "เงินสด"),
-        "created_at": datetime.utcnow().isoformat()
+        "created_at": now.isoformat()
     }
     
     with store.lock:
@@ -401,16 +406,17 @@ async def record_deposit(bk_id: str, payload: Dict[str, Any]):
     also_pay_rental = bool(payload.get("also_pay_rental", False))
     net_p = float(target.get("net_price", 0.0))
 
+    th_today = now_th().date().isoformat()
     target["deposit_paid"] = True
     target["deposit_amount"] = dep_amount
-    target["deposit_date"] = date.today().isoformat()
+    target["deposit_date"] = th_today
     target["deposit_method"] = dep_method
 
     if also_pay_rental:
         target["rental_paid"] = True
         target["remaining_rental"] = 0.0
         target["is_fully_paid"] = True
-        target["rental_payment_date"] = date.today().isoformat()
+        target["rental_payment_date"] = th_today
         target["rental_payment_method"] = dep_method
     else:
         target["remaining_rental"] = net_p
@@ -433,7 +439,7 @@ async def record_deposit(bk_id: str, payload: Dict[str, Any]):
         "category": "เงินมัดจำประกันสัญญา (จองรถ)",
         "amount": dep_amount,
         "ref": bk_id,
-        "date": datetime.now().strftime("%Y-%m-%d"),
+        "date": th_today,
         "detail": f"รับเงินมัดจำประกันสัญญาตอนจองรถ ({dep_method})"
     }
     store.async_sync_financial(f_dep)
@@ -445,7 +451,7 @@ async def record_deposit(bk_id: str, payload: Dict[str, Any]):
             "category": "ค่าเช่ารถ",
             "amount": net_p,
             "ref": bk_id,
-            "date": datetime.now().strftime("%Y-%m-%d"),
+            "date": th_today,
             "detail": f"ชำระค่าเช่ารถพร้อมมัดจำ {car_id} ({dep_method})"
         }
         store.async_sync_financial(f_rent)
@@ -461,10 +467,11 @@ async def settle_rental(bk_id: str, payload: Dict[str, Any]):
     settle_method = str(payload.get("payment_method", "เงินสด"))
     net_p = float(target.get("net_price", 0.0))
 
+    th_today = now_th().date().isoformat()
     target["rental_paid"] = True
     target["remaining_rental"] = 0.0
     target["is_fully_paid"] = True
-    target["rental_payment_date"] = date.today().isoformat()
+    target["rental_payment_date"] = th_today
     target["rental_payment_method"] = settle_method
 
     store.async_sync_booking(target)
@@ -477,7 +484,7 @@ async def settle_rental(bk_id: str, payload: Dict[str, Any]):
         "category": "ค่าเช่ารถ",
         "amount": net_p,
         "ref": bk_id,
-        "date": datetime.now().strftime("%Y-%m-%d"),
+        "date": th_today,
         "detail": f"ชำระค่าเช่ารถคงเหลือ {car_id} ({settle_method})"
     }
     store.async_sync_financial(f_rent)

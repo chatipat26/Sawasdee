@@ -35,17 +35,37 @@ class App {
     }
   }
 
+  getThaiDateTime(offsetDays = 0) {
+    const now = new Date(Date.now() + offsetDays * 86400000);
+    const parts = new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Asia/Bangkok",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false
+    }).formatToParts(now);
+    const map = {};
+    parts.forEach(p => { map[p.type] = p.value; });
+    const h = map.hour === "24" ? "00" : map.hour;
+    return {
+      date: `${map.year}-${map.month}-${map.day}`,
+      time: `${h}:${map.minute}`
+    };
+  }
+
   setupDatePickers() {
-    const today = new Date().toISOString().split("T")[0];
-    const next3 = new Date(Date.now() + 3 * 86400000).toISOString().split("T")[0];
+    const thNow = this.getThaiDateTime(0);
+    const thNext3 = this.getThaiDateTime(3);
     const sDate = document.getElementById("filter-start-date");
     const eDate = document.getElementById("filter-end-date");
-    if (sDate && !sDate.value) sDate.value = today;
-    if (eDate && !eDate.value) eDate.value = next3;
+    if (sDate && !sDate.value) sDate.value = thNow.date;
+    if (eDate && !eDate.value) eDate.value = thNext3.date;
     const sTime = document.getElementById("filter-start-time");
     const eTime = document.getElementById("filter-end-time");
-    if (sTime && !sTime.value) sTime.value = "10:00";
-    if (eTime && !eTime.value) eTime.value = "10:00";
+    if (sTime && !sTime.value) sTime.value = thNow.time;
+    if (eTime && !eTime.value) eTime.value = thNow.time;
   }
 
   updateAuthUI() {
@@ -197,18 +217,18 @@ class App {
     if (selComp) selComp.value = "ทั้งหมด";
     if (selStatus) selStatus.value = "ทั้งหมด";
 
-    const today = new Date().toISOString().split("T")[0];
-    const next3 = new Date(Date.now() + 3 * 86400000).toISOString().split("T")[0];
-    if (sDate) sDate.value = today;
-    if (eDate) eDate.value = next3;
-    if (sTime) sTime.value = "10:00";
-    if (eTime) eTime.value = "10:00";
+    const thNow = this.getThaiDateTime(0);
+    const thNext3 = this.getThaiDateTime(3);
+    if (sDate) sDate.value = thNow.date;
+    if (eDate) eDate.value = thNext3.date;
+    if (sTime) sTime.value = thNow.time;
+    if (eTime) eTime.value = thNow.time;
     if (sbSearch) sbSearch.value = "";
     this.sidebarSearchKw = "";
 
     this.loadCars();
     this.onFilterChange();
-    this.showToast("🔄 คืนค่าตัวกรองทั้งหมดเรียบร้อย", "info");
+    this.showToast("🔄 คืนค่าตัวกรองทั้งหมดเรียบร้อย (เวลาไทย)", "info");
   }
 
   onDateFilterChange() {
@@ -510,28 +530,81 @@ class App {
     if (!car) return;
 
     document.getElementById("book-car-plate").value = plate;
-    const dur = this.calcDuration();
-    const totalPrice = (car.price_day || 1000) * dur.days;
+    const thNow = this.getThaiDateTime(0);
+    const thNext3 = this.getThaiDateTime(3);
+    const fSDate = document.getElementById("filter-start-date")?.value || thNow.date;
+    const fSTime = document.getElementById("filter-start-time")?.value || thNow.time;
+    const fEDate = document.getElementById("filter-end-date")?.value || thNext3.date;
+    const fETime = document.getElementById("filter-end-time")?.value || thNow.time;
 
-    document.getElementById("book-car-preview").innerHTML = `
-      <div style="display:flex; justify-content:space-between; align-items:center;">
-        <div>
-          <b style="font-size:15px; color:#1E293B;">${car.brand} ${car.model}</b> | ทะเบียน: <b>${car.plate}</b><br/>
-          <span style="font-size:12px; color:#64748B;">ระยะเวลา: ${dur.text}</span>
-        </div>
-        <div style="text-align:right;">
-          <span style="font-size:11px; color:#64748B;">อัตราวันละ:</span><br/>
-          <b style="font-size:16px; color:#D97706;">฿${(car.price_day || 1000).toLocaleString()}/วัน</b>
-        </div>
-      </div>
-    `;
+    const mSDate = document.getElementById("book-modal-start-date");
+    const mSTime = document.getElementById("book-modal-start-time");
+    const mEDate = document.getElementById("book-modal-end-date");
+    const mETime = document.getElementById("book-modal-end-time");
 
-    document.getElementById("book-price-input").value = totalPrice;
+    if (mSDate) mSDate.value = fSDate;
+    if (mSTime) mSTime.value = fSTime;
+    if (mEDate) mEDate.value = fEDate;
+    if (mETime) mETime.value = fETime;
+
     document.getElementById("book-discount-input").value = 0;
-    document.getElementById("book-modal-net-price").textContent = `฿${totalPrice.toLocaleString('th-TH', {minimumFractionDigits: 2})}`;
+    this.recalcBookingModalFromDates();
 
     this.populateCustomerDropdowns();
     this.openModal("modal-book-car");
+  }
+
+  recalcBookingModalFromDates() {
+    const plate = document.getElementById("book-car-plate")?.value;
+    const car = this.cars.find(c => c.plate === plate) || { brand: "", model: "", plate: plate || "-", price_day: 1000 };
+    const thNow = this.getThaiDateTime(0);
+    const sDate = document.getElementById("book-modal-start-date")?.value || thNow.date;
+    const sTime = document.getElementById("book-modal-start-time")?.value || thNow.time;
+    const eDate = document.getElementById("book-modal-end-date")?.value || thNow.date;
+    const eTime = document.getElementById("book-modal-end-time")?.value || thNow.time;
+
+    let days = 1;
+    let desc = "1 วัน";
+    const start = new Date(`${sDate}T${sTime}`);
+    const end = new Date(`${eDate}T${eTime}`);
+    if (end > start) {
+      const diffMs = end - start;
+      const totalHours = Math.floor(diffMs / (1000 * 60 * 60));
+      const remMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+      const baseDays = Math.floor(totalHours / 24);
+      const extraHours = totalHours % 24;
+      days = (extraHours > 4 || (extraHours === 4 && remMins > 0)) ? baseDays + 1 : Math.max(1, baseDays);
+      desc = `${days} วัน (${sDate} ${sTime} น. ถึง ${eDate} ${eTime} น.)`;
+    }
+
+    const dailyRate = parseFloat(car.price_day || car.daily_rate || 1000);
+    const cType = document.getElementById("book-contract-type")?.value || "รายวัน";
+    let totalPrice = dailyRate * days;
+    if (cType === "รายสัปดาห์") {
+      totalPrice = Math.round((dailyRate * 7 * 0.9) * Math.max(1, Math.ceil(days / 7)));
+    } else if (cType === "รายเดือน") {
+      totalPrice = Math.round((dailyRate * 30 * 0.8) * Math.max(1, Math.ceil(days / 30)));
+    }
+
+    const preview = document.getElementById("book-car-preview");
+    if (preview) {
+      preview.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <b style="font-size:15px; color:#1E293B;">${car.brand} ${car.model}</b> | ทะเบียน: <b>${car.plate}</b><br/>
+            <span style="font-size:12px; color:#64748B;">ระยะเวลา: ${desc}</span>
+          </div>
+          <div style="text-align:right;">
+            <span style="font-size:11px; color:#64748B;">อัตราวันละ:</span><br/>
+            <b style="font-size:16px; color:#D97706;">฿${dailyRate.toLocaleString()}/วัน</b>
+          </div>
+        </div>
+      `;
+    }
+
+    const pInput = document.getElementById("book-price-input");
+    if (pInput) pInput.value = totalPrice;
+    this.recalcBookingModalPrice();
   }
 
   recalcBookingModalPrice() {
@@ -542,13 +615,14 @@ class App {
   }
 
   async submitInstantBooking() {
+    const thNow = this.getThaiDateTime(0);
     const plate = document.getElementById("book-car-plate").value;
     const cust = document.getElementById("book-cust-select").value;
     const cType = document.getElementById("book-contract-type").value;
-    const sDate = document.getElementById("filter-start-date").value;
-    const sTime = document.getElementById("filter-start-time").value || "10:00";
-    const eDate = document.getElementById("filter-end-date").value;
-    const eTime = document.getElementById("filter-end-time").value || "10:00";
+    const sDate = document.getElementById("book-modal-start-date")?.value || document.getElementById("filter-start-date").value;
+    const sTime = document.getElementById("book-modal-start-time")?.value || document.getElementById("filter-start-time").value || thNow.time;
+    const eDate = document.getElementById("book-modal-end-date")?.value || document.getElementById("filter-end-date").value;
+    const eTime = document.getElementById("book-modal-end-time")?.value || document.getElementById("filter-end-time").value || thNow.time;
     const baseP = parseFloat(document.getElementById("book-price-input").value);
     const disc = parseFloat(document.getElementById("book-discount-input").value || 0);
 
@@ -853,14 +927,46 @@ class App {
       `;
     }
 
-    // Schedule
+    // Schedule (Editable Thailand Date & Time)
     const schedEl = document.getElementById("contract-sched-info");
     if (schedEl) {
+      const thNow = this.getThaiDateTime(0);
+      const curSDate = b.start_date || thNow.dateStr;
+      const curSTime = b.start_time || thNow.timeStr;
+      const curEDate = b.end_date || this.getThaiDateTime(3).dateStr;
+      const curETime = b.end_time || thNow.timeStr;
+      const curLoc = b.loc_delivery || 'หน้าร้าน / สาขา';
+
       schedEl.innerHTML = `
-        • <b>เริ่มสัญญา (Pick-up):</b> ${b.start_date_formatted || b.start_date} (${b.start_time || '10:00'})<br/>
-        • <b>สิ้นสุดสัญญา (Return):</b> ${b.end_date_formatted || b.end_date} (${b.end_time || '10:00'})<br/>
-        • <b>สถานที่ส่งมอบ:</b> ${b.loc_delivery || 'หน้าร้าน / สาขา'}<br/>
-        • <b>พนักงานส่งมอบ:</b> ${b.worker_delivery || 'ยังไม่ได้มอบหมาย'}
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          <div>
+            • <b>เริ่มสัญญา (Pick-up เวลาไทย):</b>
+            <div style="display:flex; gap:6px; margin-top:3px;">
+              <input type="date" id="contract-edit-start-date" class="form-control" style="padding:4px 8px; font-size:12.5px;" value="${curSDate}">
+              <input type="time" id="contract-edit-start-time" class="form-control" style="padding:4px 8px; font-size:12.5px; max-width:115px;" value="${curSTime}">
+            </div>
+          </div>
+          <div>
+            • <b>สิ้นสุดสัญญา (Return เวลาไทย):</b>
+            <div style="display:flex; gap:6px; margin-top:3px;">
+              <input type="date" id="contract-edit-end-date" class="form-control" style="padding:4px 8px; font-size:12.5px;" value="${curEDate}">
+              <input type="time" id="contract-edit-end-time" class="form-control" style="padding:4px 8px; font-size:12.5px; max-width:115px;" value="${curETime}">
+            </div>
+          </div>
+          <div>
+            • <b>สถานที่ส่งมอบ:</b>
+            <input type="text" id="contract-edit-loc" class="form-control" style="padding:4px 8px; font-size:12.5px; margin-top:3px;" value="${curLoc}">
+          </div>
+          <div>• <b>พนักงานส่งมอบ:</b> ${b.worker_delivery || 'ยังไม่ได้มอบหมาย'}</div>
+          <div style="display:flex; gap:6px; margin-top:4px; flex-wrap:wrap;">
+            <button type="button" onclick="app.setContractToCurrentThaiTime()" class="btn btn-outline btn-sm" style="font-size:11.5px; padding:4px 10px;">
+              🕒 ใช้เวลาไทยปัจจุบัน
+            </button>
+            <button type="button" onclick="app.saveContractSchedule()" class="btn btn-primary btn-sm" style="font-size:11.5px; padding:4px 10px;">
+              💾 บันทึกวัน-เวลาสัญญา
+            </button>
+          </div>
+        </div>
       `;
     }
 
@@ -907,6 +1013,50 @@ class App {
     }
   }
 
+  async setContractToCurrentThaiTime() {
+    const thNow = this.getThaiDateTime(0);
+    const sTimeEl = document.getElementById("contract-edit-start-time");
+    const eTimeEl = document.getElementById("contract-edit-end-time");
+    if (sTimeEl) sTimeEl.value = thNow.timeStr;
+    if (eTimeEl) eTimeEl.value = thNow.timeStr;
+    await this.saveContractSchedule();
+  }
+
+  async saveContractSchedule(silent = false) {
+    const bkId = document.getElementById("contract-sel-bk")?.value;
+    if (!bkId) return;
+    const sDate = document.getElementById("contract-edit-start-date")?.value;
+    const sTime = document.getElementById("contract-edit-start-time")?.value;
+    const eDate = document.getElementById("contract-edit-end-date")?.value;
+    const eTime = document.getElementById("contract-edit-end-time")?.value;
+    const loc = document.getElementById("contract-edit-loc")?.value;
+
+    const payload = {};
+    if (sDate) payload.start_date = sDate;
+    if (sTime) payload.start_time = sTime;
+    if (eDate) payload.end_date = eDate;
+    if (eTime) payload.end_time = eTime;
+    if (loc !== undefined) payload.loc_delivery = loc;
+
+    try {
+      const res = await fetch(`/api/bookings/${bkId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (data.success) {
+        if (!silent) {
+          this.showToast("✅ บันทึกวัน-เวลาสัญญาเช่า (เวลาประเทศไทย) เรียบร้อย!", "success");
+        }
+        await this.loadBookings();
+        this.onSelectContractBooking();
+      }
+    } catch (e) {
+      if (!silent) this.showToast("เกิดข้อผิดพลาด: " + e.message, "danger");
+    }
+  }
+
   async markContractIssued() {
     const bkId = document.getElementById("contract-sel-bk")?.value;
     if (!bkId) return;
@@ -940,14 +1090,18 @@ class App {
   }
 
   // --- Document Center & PDF Download Handlers ---
-  downloadContractPdf(bkId) {
-    const id = bkId || document.getElementById("contract-sel-bk")?.value || document.getElementById("deposit-sel-booking")?.value || this.currentSelectedBooking?.booking_id;
+  async downloadContractPdf(bkId) {
+    const selBk = document.getElementById("contract-sel-bk")?.value;
+    const id = bkId || selBk || document.getElementById("deposit-sel-booking")?.value || this.currentSelectedBooking?.booking_id;
     if (!id) {
       this.showToast("⚠️ กรุณาเลือกรายการจองก่อนดาวน์โหลดสัญญาเช่า", "warning");
       return;
     }
+    if (selBk && id === selBk && document.getElementById("contract-edit-start-time")) {
+      await this.saveContractSchedule(true);
+    }
     this.showToast(`📝 กำลังดาวน์โหลดสัญญาเช่า PDF สำหรับ ${id}...`, "info");
-    window.open(`/api/pdf/contract/${encodeURIComponent(id)}`, "_blank");
+    window.open(`/api/pdf/contract/${encodeURIComponent(id)}?t=${Date.now()}`, "_blank");
   }
 
   downloadDepositReceipt(bkId) {
@@ -957,7 +1111,7 @@ class App {
       return;
     }
     this.showToast(`🧾 กำลังดาวน์โหลดใบเสร็จรับเงินมัดจำ PDF สำหรับ ${id}...`, "info");
-    window.open(`/api/pdf/deposit-receipt/${encodeURIComponent(id)}`, "_blank");
+    window.open(`/api/pdf/deposit-receipt/${encodeURIComponent(id)}?t=${Date.now()}`, "_blank");
   }
 
   downloadRentalReceipt(bkId) {
@@ -967,7 +1121,7 @@ class App {
       return;
     }
     this.showToast(`🧾 กำลังดาวน์โหลดใบเสร็จรับเงินค่าเช่า PDF สำหรับ ${id}...`, "info");
-    window.open(`/api/pdf/receipt/${encodeURIComponent(id)}`, "_blank");
+    window.open(`/api/pdf/receipt/${encodeURIComponent(id)}?t=${Date.now()}`, "_blank");
   }
 
   downloadJobPdf(bkId) {
@@ -977,7 +1131,7 @@ class App {
       return;
     }
     this.showToast(`📋 กำลังดาวน์โหลดใบตรวจสภาพรถ PDF สำหรับ ${id}...`, "info");
-    window.open(`/api/pdf/job/${encodeURIComponent(id)}`, "_blank");
+    window.open(`/api/pdf/job/${encodeURIComponent(id)}?t=${Date.now()}`, "_blank");
   }
 
   // --- Walk-in Direct Contract Formulation Logic ---
@@ -1015,22 +1169,27 @@ class App {
       if (curVal) workerSel.value = curVal;
     }
 
-    // 4. Default dates if empty
+    // 4. Default dates & times in Thailand timezone if empty
     const sDate = document.getElementById("walkin-start-date");
     const eDate = document.getElementById("walkin-end-date");
-    const today = new Date().toISOString().split("T")[0];
-    const next3 = new Date(Date.now() + 3 * 86400000).toISOString().split("T")[0];
-    if (sDate && !sDate.value) sDate.value = today;
-    if (eDate && !eDate.value) eDate.value = next3;
+    const sTime = document.getElementById("walkin-start-time");
+    const eTime = document.getElementById("walkin-end-time");
+    const thNow = this.getThaiDateTime(0);
+    const thNext3 = this.getThaiDateTime(3);
+    if (sDate && !sDate.value) sDate.value = thNow.dateStr;
+    if (eDate && !eDate.value) eDate.value = thNext3.dateStr;
+    if (sTime && !sTime.value) sTime.value = thNow.timeStr;
+    if (eTime && !eTime.value) eTime.value = thNow.timeStr;
 
     this.recalcWalkinPrice();
   }
 
   calcWalkinDuration() {
+    const thNow = this.getThaiDateTime(0);
     const sDate = document.getElementById("walkin-start-date")?.value;
-    const sTime = document.getElementById("walkin-start-time")?.value || "10:00";
+    const sTime = document.getElementById("walkin-start-time")?.value || thNow.timeStr;
     const eDate = document.getElementById("walkin-end-date")?.value;
-    const eTime = document.getElementById("walkin-end-time")?.value || "10:00";
+    const eTime = document.getElementById("walkin-end-time")?.value || thNow.timeStr;
 
     if (!sDate || !eDate) return { days: 1, text: "1 วัน" };
 
@@ -1099,12 +1258,13 @@ class App {
   }
 
   async submitWalkinContract() {
+    const thNow = this.getThaiDateTime(0);
     const carId = document.getElementById("walkin-car-select")?.value;
     const cust = document.getElementById("walkin-cust-select")?.value;
     const sDate = document.getElementById("walkin-start-date")?.value;
-    const sTime = document.getElementById("walkin-start-time")?.value || "10:00";
+    const sTime = document.getElementById("walkin-start-time")?.value || thNow.timeStr;
     const eDate = document.getElementById("walkin-end-date")?.value;
-    const eTime = document.getElementById("walkin-end-time")?.value || "10:00";
+    const eTime = document.getElementById("walkin-end-time")?.value || thNow.timeStr;
     const cType = document.getElementById("walkin-contract-type")?.value || "รายวัน";
     const worker = document.getElementById("walkin-worker-select")?.value || "admin";
     const loc = document.getElementById("walkin-loc")?.value || "หน้าร้านสาขา";

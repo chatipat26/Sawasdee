@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sawasdee Rental - ระบบบริหารจัดการรถเช่าระดับพรีเมียม</title>
-  <link rel="stylesheet" href="/static/css/app.css?v=2.4">
+  <link rel="stylesheet" href="/static/css/app.css?v=2.5">
   <link rel="icon" type="image/png" href="/static/sawasdee-logo.png">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -288,14 +288,14 @@
                 <label>📅 วันที่ส่งรถ (Pick-up)</label>
                 <div style="display:flex; gap:6px;">
                   <input type="date" id="filter-start-date" class="form-control" onchange="app.onDateFilterChange()">
-                  <input type="time" id="filter-start-time" class="form-control" value="10:00" style="width:115px;" onchange="app.onFilterChange()">
+                  <input type="time" id="filter-start-time" class="form-control" style="width:115px;" onchange="app.onFilterChange()">
                 </div>
               </div>
               <div class="form-group">
                 <label>📅 วันที่คืนรถ (Return)</label>
                 <div style="display:flex; gap:6px;">
                   <input type="date" id="filter-end-date" class="form-control" onchange="app.onDateFilterChange()">
-                  <input type="time" id="filter-end-time" class="form-control" value="10:00" style="width:115px;" onchange="app.onFilterChange()">
+                  <input type="time" id="filter-end-time" class="form-control" style="width:115px;" onchange="app.onFilterChange()">
                 </div>
               </div>
               <div class="form-group">
@@ -587,17 +587,17 @@
 
               <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:14px; margin-bottom:14px;">
                 <div class="form-group">
-                  <label>📅 วันที่ส่งมอบรถ (Pick-up):</label>
+                  <label>📅 วันที่ส่งมอบรถ (Pick-up เวลาไทย):</label>
                   <div style="display:flex; gap:6px;">
                     <input type="date" id="walkin-start-date" class="form-control" onchange="app.recalcWalkinPrice()">
-                    <input type="time" id="walkin-start-time" class="form-control" value="10:00" style="width:110px;" onchange="app.recalcWalkinPrice()">
+                    <input type="time" id="walkin-start-time" class="form-control" style="width:110px;" onchange="app.recalcWalkinPrice()">
                   </div>
                 </div>
                 <div class="form-group">
-                  <label>📅 วันที่คืนรถ (Return):</label>
+                  <label>📅 วันที่คืนรถ (Return เวลาไทย):</label>
                   <div style="display:flex; gap:6px;">
                     <input type="date" id="walkin-end-date" class="form-control" onchange="app.recalcWalkinPrice()">
-                    <input type="time" id="walkin-end-time" class="form-control" value="10:00" style="width:110px;" onchange="app.recalcWalkinPrice()">
+                    <input type="time" id="walkin-end-time" class="form-control" style="width:110px;" onchange="app.recalcWalkinPrice()">
                   </div>
                 </div>
               </div>
@@ -1134,7 +1134,7 @@
         <!-- preview car specs -->
       </div>
 
-      <div class="form-group" style="margin-bottom:14px;">
+      <div class="form-group" style="margin-bottom:12px;">
         <label>👤 เลือกลูกค้าผู้เช่า:</label>
         <div style="display:flex; gap:8px;">
           <select id="book-cust-select" class="form-control"></select>
@@ -1142,9 +1142,26 @@
         </div>
       </div>
 
-      <div class="form-group" style="margin-bottom:14px;">
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:12px;">
+        <div class="form-group">
+          <label>📅 วัน-เวลารับรถ (เวลาไทย):</label>
+          <div style="display:flex; gap:4px;">
+            <input type="date" id="book-modal-start-date" class="form-control" onchange="app.recalcBookingModalFromDates()">
+            <input type="time" id="book-modal-start-time" class="form-control" style="width:105px;" onchange="app.recalcBookingModalFromDates()">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>📅 วัน-เวลาคืนรถ (เวลาไทย):</label>
+          <div style="display:flex; gap:4px;">
+            <input type="date" id="book-modal-end-date" class="form-control" onchange="app.recalcBookingModalFromDates()">
+            <input type="time" id="book-modal-end-time" class="form-control" style="width:105px;" onchange="app.recalcBookingModalFromDates()">
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-bottom:12px;">
         <label>📋 ประเภทสัญญา:</label>
-        <select id="book-contract-type" class="form-control" onchange="app.recalcBookingModalPrice()">
+        <select id="book-contract-type" class="form-control" onchange="app.recalcBookingModalFromDates()">
           <option value="รายวัน">รายวัน (Daily)</option>
           <option value="รายสัปดาห์">รายสัปดาห์ (Weekly)</option>
           <option value="รายเดือน">รายเดือน (Monthly)</option>
@@ -1154,7 +1171,7 @@
       <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:14px;">
         <div class="form-group">
           <label>ยอดค่าเช่า (บาท):</label>
-          <input type="number" id="book-price-input" class="form-control" value="1000">
+          <input type="number" id="book-price-input" class="form-control" value="1000" oninput="app.recalcBookingModalPrice()">
         </div>
         <div class="form-group">
           <label>ส่วนลด (บาท):</label>
@@ -1180,6 +1197,6 @@
   <div class="toast-container" id="toast-container"></div>
 
   <!-- Scripts with cache busting -->
-  <script src="/static/js/app.js?v=2.4"></script>
+  <script src="/static/js/app.js?v=2.5"></script>
 </body>
 </html>
