@@ -1228,26 +1228,31 @@
         </div>
       </div>
 
-      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:12px;">
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;">
         <div class="form-group">
           <label>📅 วัน-เวลารับรถ (เวลาไทย):</label>
           <div style="display:flex; gap:4px;">
-            <input type="date" id="book-modal-start-date" class="form-control" onchange="app.recalcBookingModalFromDates()">
-            <input type="time" id="book-modal-start-time" class="form-control" style="width:105px;" onchange="app.recalcBookingModalFromDates()">
+            <input type="date" id="book-modal-start-date" class="form-control" onchange="app.recalcBookingModalFromDates(true)">
+            <input type="time" id="book-modal-start-time" class="form-control" style="width:105px;" onchange="app.recalcBookingModalFromDates(true)">
           </div>
         </div>
         <div class="form-group">
           <label>📅 วัน-เวลาคืนรถ (เวลาไทย):</label>
           <div style="display:flex; gap:4px;">
-            <input type="date" id="book-modal-end-date" class="form-control" onchange="app.recalcBookingModalFromDates()">
-            <input type="time" id="book-modal-end-time" class="form-control" style="width:105px;" onchange="app.recalcBookingModalFromDates()">
+            <input type="date" id="book-modal-end-date" class="form-control" onchange="app.recalcBookingModalFromDates(true)">
+            <input type="time" id="book-modal-end-time" class="form-control" style="width:105px;" onchange="app.recalcBookingModalFromDates(true)">
           </div>
         </div>
       </div>
 
+      <!-- Prominent Day Counter & Duration Breakdown Box (Screenshot 1) -->
+      <div id="book-modal-duration-box" style="background:#EFF6FF; border:1px solid #BFDBFE; border-radius:8px; padding:10px 14px; margin-bottom:12px;">
+        <!-- Dynamically rendered by app.recalcBookingModalFromDates() -->
+      </div>
+
       <div class="form-group" style="margin-bottom:12px;">
         <label>📋 ประเภทสัญญา:</label>
-        <select id="book-contract-type" class="form-control" onchange="app.recalcBookingModalFromDates()">
+        <select id="book-contract-type" class="form-control" onchange="app.recalcBookingModalFromDates(false)">
           <option value="รายวัน">รายวัน (Daily)</option>
           <option value="รายสัปดาห์">รายสัปดาห์ (Weekly)</option>
           <option value="รายเดือน">รายเดือน (Monthly)</option>
@@ -1297,8 +1302,9 @@
           <input type="text" id="cust-phone-in" class="form-control" placeholder="เช่น 081-234-5678">
         </div>
         <div class="form-group">
-          <label>หมายเลขบัตร ปชช. / Passport</label>
-          <input type="text" id="cust-pass-in" class="form-control" placeholder="1100400...">
+          <label>หมายเลขบัตร ปชช. / Passport <span style="color:#DC2626; font-size:11px; font-weight:700;">*(ห้ามซ้ำ)</span></label>
+          <input type="text" id="cust-pass-in" class="form-control" placeholder="1100400... หรือ เลขพาสปอร์ต" oninput="app.checkDuplicatePassport(this.value)">
+          <div id="cust-pass-warn" style="font-size:11.5px; color:#DC2626; display:none; margin-top:4px; font-weight:700;"></div>
         </div>
         <div class="form-group">
           <label>หมายเลขใบขับขี่ (Licence No.)</label>
@@ -1536,6 +1542,6 @@
   <div class="toast-container" id="toast-container"></div>
 
   <!-- Scripts with cache busting -->
-  <script src="/static/js/app.js?v=3.7"></script>
+  <script src="/static/js/app.js?v=3.8"></script>
 </body>
 </html>

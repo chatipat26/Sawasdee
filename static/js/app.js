@@ -506,6 +506,60 @@ class App {
     this.renderFleetCards();
   }
 
+  // --- Rate Engine for Daily, Weekly, Monthly ---
+  getCarRates(car) {
+    const c = car || {};
+    const priceDay = parseFloat(c.price_day !== undefined ? c.price_day : (c.daily_rate || 1000));
+    const rawWeek = parseFloat(c.price_week || 0);
+    const rawMonth = parseFloat(c.price_month || 0);
+    const priceWeek = rawWeek > 0 ? rawWeek : (priceDay * 6);
+    const priceMonth = rawMonth > 0 ? rawMonth : (priceDay * 20);
+    return { priceDay, priceWeek, priceMonth };
+  }
+
+  calculateCarRentalPrice(car, days, contractType = "รายวัน") {
+    const { priceDay, priceWeek, priceMonth } = this.getCarRates(car);
+    const billableDays = Math.max(1, parseInt(days, 10) || 1);
+    let basePrice = 0;
+    let breakdownText = "";
+
+    if (contractType === "รายสัปดาห์") {
+      if (billableDays <= 7) {
+        basePrice = priceWeek;
+        breakdownText = `เรทรายสัปดาห์ (1 สัปดาห์): ฿${priceWeek.toLocaleString()} / สัปดาห์`;
+      } else {
+        const weeks = Math.floor(billableDays / 7);
+        const remDays = billableDays % 7;
+        basePrice = (weeks * priceWeek) + (remDays * priceDay);
+        if (remDays === 0) {
+          breakdownText = `เรทรายสัปดาห์: ${weeks} สัปดาห์ (${billableDays} วัน) × ฿${priceWeek.toLocaleString()}`;
+        } else {
+          breakdownText = `เรทรายสัปดาห์: ${weeks} สัปดาห์ (฿${(weeks * priceWeek).toLocaleString()}) + เศษ ${remDays} วัน (฿${(remDays * priceDay).toLocaleString()})`;
+        }
+      }
+    } else if (contractType === "รายเดือน") {
+      if (billableDays <= 30) {
+        basePrice = priceMonth;
+        breakdownText = `เรทรายเดือน (1 เดือน): ฿${priceMonth.toLocaleString()} / เดือน`;
+      } else {
+        const months = Math.floor(billableDays / 30);
+        const remDays = billableDays % 30;
+        basePrice = (months * priceMonth) + (remDays * priceDay);
+        if (remDays === 0) {
+          breakdownText = `เรทรายเดือน: ${months} เดือน (${billableDays} วัน) × ฿${priceMonth.toLocaleString()}`;
+        } else {
+          breakdownText = `เรทรายเดือน: ${months} เดือน (฿${(months * priceMonth).toLocaleString()}) + เศษ ${remDays} วัน (฿${(remDays * priceDay).toLocaleString()})`;
+        }
+      }
+    } else {
+      // รายวัน (Daily)
+      basePrice = billableDays * priceDay;
+      breakdownText = `เรทรายวัน: ${billableDays} วัน × ฿${priceDay.toLocaleString()}/วัน = ฿${basePrice.toLocaleString()}`;
+    }
+
+    return { basePrice, breakdownText, priceDay, priceWeek, priceMonth };
+  }
+
   // --- Rendering: Fleet Cards ---
   renderFleetCards() {
     const container = document.getElementById("fleet-cards-container");
@@ -576,7 +630,8 @@ class App {
 
     container.innerHTML = filtered.map(c => {
       const isAvail = c.fleet_status_key === "available" || c.fleet_status_key === "reserved";
-      const totalPrice = (c.price_day || 1000) * dur.days;
+      const autoType = dur.days >= 30 ? "รายเดือน" : (dur.days >= 7 ? "รายสัปดาห์" : "รายวัน");
+      const { basePrice, priceDay, priceWeek, priceMonth } = this.calculateCarRentalPrice(c, dur.days, autoType);
       const defImg = "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&q=80&w=500";
       const carImg = c.image || defImg;
       const safePlate = String(c.plate || "").replace(/'/g, "\\'");
@@ -611,7 +666,10 @@ class App {
             <div class="car-pricing">
               <div>
                 <div style="font-size:11px; color:#64748B;">ค่าเช่า (${dur.days} วัน):</div>
-                <div class="price-main">฿${totalPrice.toLocaleString()}</div>
+                <div class="price-main">฿${basePrice.toLocaleString()}</div>
+                <div style="font-size:10.5px; color:#64748B; margin-top:2px;" title="อัตราค่าเช่าที่ตั้งค่าไว้">
+                  ฿${priceDay.toLocaleString()}/ว | ฿${priceWeek.toLocaleString()}/ส | ฿${priceMonth.toLocaleString()}/ด
+                </div>
               </div>
               <div style="display:flex; gap:6px; align-items:center;">
                 <button onclick="app.openBookModal('${safePlate}')" class="btn btn-sm ${isAvail ? 'btn-primary' : 'btn-secondary'}" ${!isAvail ? 'title="รถคันนี้ติดจอง แต่สามารถคลิกดูรายละเอียดหรือจองคิวต่อได้"' : ''}>
@@ -785,6 +843,13 @@ class App {
       const data = await res.json();
       if (data.success) {
         this.closeModal("modal-edit-car");
+        const idx = this.cars.findIndex(c => c.plate === plate);
+        if (idx >= 0) {
+          Object.assign(this.cars[idx], payload);
+        } else {
+          this.cars.unshift(payload);
+        }
+        this.renderFleetCards();
         this.showToast(`✅ บันทึกข้อมูลรถยนต์ทะเบียน ${plate} เรียบร้อยแล้ว!`, "success");
         await this.loadCars();
       } else {
@@ -819,13 +884,27 @@ class App {
     if (mETime) mETime.value = fETime;
 
     document.getElementById("book-discount-input").value = 0;
-    this.recalcBookingModalFromDates();
+    this.recalcBookingModalFromDates(true);
 
     this.populateCustomerDropdowns(this.lastAddedCustomerName || null);
     this.openModal("modal-book-car");
   }
 
-  recalcBookingModalFromDates() {
+  setBookingModalDurationDays(targetDays) {
+    const sDateInput = document.getElementById("book-modal-start-date");
+    const eDateInput = document.getElementById("book-modal-end-date");
+    if (!sDateInput || !eDateInput || !sDateInput.value) return;
+
+    const [y, m, d] = sDateInput.value.split("-").map(n => parseInt(n, 10));
+    const target = new Date(y, m - 1, d + targetDays);
+    const yyyy = target.getFullYear();
+    const mm = String(target.getMonth() + 1).padStart(2, "0");
+    const dd = String(target.getDate()).padStart(2, "0");
+    eDateInput.value = `${yyyy}-${mm}-${dd}`;
+    this.recalcBookingModalFromDates(false);
+  }
+
+  recalcBookingModalFromDates(fromDateChange = false) {
     const plate = document.getElementById("book-car-plate")?.value;
     const car = this.cars.find(c => c.plate === plate) || { brand: "", model: "", plate: plate || "-", price_day: 1000 };
     const thNow = this.getThaiDateTime(0);
@@ -834,47 +913,135 @@ class App {
     const eDate = document.getElementById("book-modal-end-date")?.value || thNow.date;
     const eTime = document.getElementById("book-modal-end-time")?.value || thNow.time;
 
-    let days = 1;
-    let desc = "1 วัน";
     const start = new Date(`${sDate}T${sTime}`);
     const end = new Date(`${eDate}T${eTime}`);
-    if (end > start) {
+
+    let days = 1;
+    let baseDays = 1;
+    let extraHours = 0;
+    let remMins = 0;
+    let isOver4 = false;
+    let isInvalidDate = false;
+
+    if (end <= start) {
+      days = 1;
+      baseDays = 1;
+      isInvalidDate = true;
+    } else {
       const diffMs = end - start;
       const totalHours = Math.floor(diffMs / (1000 * 60 * 60));
-      const remMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-      const baseDays = Math.floor(totalHours / 24);
-      const extraHours = totalHours % 24;
-      days = (extraHours > 4 || (extraHours === 4 && remMins > 0)) ? baseDays + 1 : Math.max(1, baseDays);
-      desc = `${days} วัน (${sDate} ${sTime} น. ถึง ${eDate} ${eTime} น.)`;
+      remMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+      baseDays = Math.floor(totalHours / 24);
+      extraHours = totalHours % 24;
+      if (extraHours > 4 || (extraHours === 4 && remMins > 0)) {
+        days = baseDays + 1;
+        isOver4 = true;
+      } else {
+        days = Math.max(1, baseDays);
+      }
     }
 
-    const dailyRate = parseFloat(car.price_day || car.daily_rate || 1000);
-    const cType = document.getElementById("book-contract-type")?.value || "รายวัน";
-    let totalPrice = dailyRate * days;
-    if (cType === "รายสัปดาห์") {
-      totalPrice = Math.round((dailyRate * 7 * 0.9) * Math.max(1, Math.ceil(days / 7)));
-    } else if (cType === "รายเดือน") {
-      totalPrice = Math.round((dailyRate * 30 * 0.8) * Math.max(1, Math.ceil(days / 30)));
+    const cTypeEl = document.getElementById("book-contract-type");
+    if (fromDateChange && cTypeEl) {
+      if (days >= 30) {
+        cTypeEl.value = "รายเดือน";
+      } else if (days >= 7) {
+        cTypeEl.value = "รายสัปดาห์";
+      } else {
+        cTypeEl.value = "รายวัน";
+      }
     }
 
+    const cType = cTypeEl?.value || "รายวัน";
+    const { basePrice, breakdownText, priceDay, priceWeek, priceMonth } = this.calculateCarRentalPrice(car, days, cType);
+
+    // 1. Render Day & Duration Counter Box (Screenshot 1: เพิ่มตัวเลขการนับวัน)
+    const durationBox = document.getElementById("book-modal-duration-box");
+    if (durationBox) {
+      let statusNotice = "";
+      let boxBorder = "#BFDBFE";
+      let boxBg = "#EFF6FF";
+
+      if (isInvalidDate) {
+        boxBorder = "#FCA5A5";
+        boxBg = "#FEF2F2";
+        statusNotice = `<span style="color:#DC2626; font-size:12px; font-weight:700;">⚠️ วัน-เวลาคืนรถต้องอยู่หลังเวลารับรถ (ระบบคำนวณขั้นต่ำคิดเป็น 1 วัน)</span>`;
+      } else if (isOver4) {
+        boxBorder = "#FDBA74";
+        boxBg = "#FFF7ED";
+        statusNotice = `<span style="color:#C2410C; font-size:12px;">⚠️ คืนรถเกินเวลา <b>${extraHours} ชม. ${remMins} นาที</b> (เกิน 4 ชม. ปรับคิดเพิ่ม 1 วันเต็ม ➔ คิดรวม <b>${days} วัน</b>)</span>`;
+      } else if (extraHours > 0 || remMins > 0) {
+        boxBorder = "#BFDBFE";
+        boxBg = "#EFF6FF";
+        statusNotice = `<span style="color:#1D4ED8; font-size:12px;">⏱️ เกินเวลา <b>${extraHours} ชม. ${remMins} นาที</b> (อนุโลมไม่เกิน 4 ชม. ไม่คิดวันเพิ่ม ➔ คิด <b>${days} วัน</b>)</span>`;
+      } else {
+        boxBorder = "#BBF7D0";
+        boxBg = "#F0FDF4";
+        statusNotice = `<span style="color:#15803D; font-size:12px;">🟢 ตรงเวลาพอดี <b>${days} วันเต็ม</b> (${days * 24} ชั่วโมง)</span>`;
+      }
+
+      let quickAdjustHtml = "";
+      if (cType === "รายสัปดาห์" && days < 7) {
+        quickAdjustHtml = `
+          <button type="button" onclick="app.setBookingModalDurationDays(7)" style="margin-left:auto; background:#FFFFFF; border:1px solid #3B82F6; color:#1D4ED8; padding:3px 9px; border-radius:6px; font-size:11.5px; font-weight:700; cursor:pointer;" title="ปรับวันคืนรถให้ครบ 7 วันพอดี">
+            ⚡ ปรับวันคืนรถเป็น 7 วัน (1 สัปดาห์)
+          </button>
+        `;
+      } else if (cType === "รายเดือน" && days < 30) {
+        quickAdjustHtml = `
+          <button type="button" onclick="app.setBookingModalDurationDays(30)" style="margin-left:auto; background:#FFFFFF; border:1px solid #3B82F6; color:#1D4ED8; padding:3px 9px; border-radius:6px; font-size:11.5px; font-weight:700; cursor:pointer;" title="ปรับวันคืนรถให้ครบ 30 วันพอดี">
+            ⚡ ปรับวันคืนรถเป็น 30 วัน (1 เดือน)
+          </button>
+        `;
+      }
+
+      durationBox.style.background = boxBg;
+      durationBox.style.borderColor = boxBorder;
+      durationBox.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:6px;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:13.5px; font-weight:700; color:#1E293B;">🗓️ จำนวนวันเช่ารวม:</span>
+            <span style="background:#1D4ED8; color:#FFFFFF; font-size:15px; font-weight:800; padding:3px 14px; border-radius:20px; box-shadow:0 1px 3px rgba(0,0,0,0.12);">
+              ${days} วัน
+            </span>
+          </div>
+          ${quickAdjustHtml}
+        </div>
+        <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+          ${statusNotice}
+        </div>
+      `;
+    }
+
+    // 2. Render Top Car Preview Box (Screenshots 2 & 3: แสดงราคาตรงตามข้อมูลที่ลงไว้)
     const preview = document.getElementById("book-car-preview");
     if (preview) {
+      const activeStyle = "background:#FFFBEB; color:#B45309; border:1.5px solid #F59E0B; font-weight:800;";
+      const inactiveStyle = "background:#F1F5F9; color:#475569; border:1px solid #E2E8F0;";
+
       preview.innerHTML = `
-        <div style="display:flex; justify-content:space-between; align-items:center;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:8px;">
           <div>
-            <b style="font-size:15px; color:#1E293B;">${car.brand} ${car.model}</b> | ทะเบียน: <b>${car.plate}</b><br/>
-            <span style="font-size:12px; color:#64748B;">ระยะเวลา: ${desc}</span>
+            <b style="font-size:15px; color:#1E293B;">${car.brand || ''} ${car.model || ''}</b> | ทะเบียน: <b style="color:#D97706;">${car.plate}</b><br/>
+            <span style="font-size:12px; color:#64748B;">🏷️ กลุ่ม: ${car.car_group || 'รถยนต์'} | ⛽ ${car.fuel_type || 'เบนซิน'} | 🏢 ${car.company || '-'}</span>
           </div>
           <div style="text-align:right;">
-            <span style="font-size:11px; color:#64748B;">อัตราวันละ:</span><br/>
-            <b style="font-size:16px; color:#D97706;">฿${dailyRate.toLocaleString()}/วัน</b>
+            <div style="font-size:11px; color:#64748B; margin-bottom:3px;">💰 อัตราค่าเช่าที่ตั้งค่าไว้:</div>
+            <div style="display:flex; gap:4px; font-size:11.5px; justify-content:flex-end; flex-wrap:wrap;">
+              <span style="padding:2px 7px; border-radius:6px; ${cType === 'รายวัน' ? activeStyle : inactiveStyle}">฿${priceDay.toLocaleString()}/วัน</span>
+              <span style="padding:2px 7px; border-radius:6px; ${cType === 'รายสัปดาห์' ? activeStyle : inactiveStyle}">฿${priceWeek.toLocaleString()}/สัปดาห์</span>
+              <span style="padding:2px 7px; border-radius:6px; ${cType === 'รายเดือน' ? activeStyle : inactiveStyle}">฿${priceMonth.toLocaleString()}/เดือน</span>
+            </div>
           </div>
+        </div>
+        <div style="margin-top:7px; padding-top:6px; border-top:1px dashed #E2E8F0; font-size:12px; color:#475569;">
+          💡 <b>คำนวณราคาประเภท ${cType}:</b> <span style="color:#D97706; font-weight:700;">${breakdownText}</span>
         </div>
       `;
     }
 
     const pInput = document.getElementById("book-price-input");
-    if (pInput) pInput.value = totalPrice;
+    if (pInput) pInput.value = basePrice;
     this.recalcBookingModalPrice();
   }
 
@@ -1619,8 +1786,8 @@ class App {
     if (carSel) {
       const curVal = carSel.value;
       const opts = this.cars.map(c => {
-        const rate = parseFloat(c.daily_rate || 1000);
-        return `<option value="${c.plate}" data-rate="${rate}">${c.plate} - ${c.brand || ''} ${c.model || ''} (${c.car_group || 'ทั่วไป'}, ฿${rate.toLocaleString()}/วัน)</option>`;
+        const { priceDay, priceWeek, priceMonth } = this.getCarRates(c);
+        return `<option value="${c.plate}">${c.plate} - ${c.brand || ''} ${c.model || ''} (฿${priceDay.toLocaleString()}/ว | ฿${priceWeek.toLocaleString()}/ส | ฿${priceMonth.toLocaleString()}/ด)</option>`;
       }).join("");
       carSel.innerHTML = '<option value="">-- เลือกรถยนต์จากฝูงรถ --</option>' + opts;
       if (curVal) carSel.value = curVal;
@@ -1659,7 +1826,7 @@ class App {
     if (sTime && !sTime.value) sTime.value = thNow.timeStr;
     if (eTime && !eTime.value) eTime.value = thNow.timeStr;
 
-    this.recalcWalkinPrice();
+    this.recalcWalkinPrice(true);
   }
 
   calcWalkinDuration() {
@@ -1697,33 +1864,32 @@ class App {
     return { days: billableDays, text: desc };
   }
 
-  recalcWalkinPrice() {
+  recalcWalkinPrice(fromDateChange = false) {
     const carSel = document.getElementById("walkin-car-select");
-    const cType = document.getElementById("walkin-contract-type")?.value || "รายวัน";
+    const carPlate = carSel?.value;
+    const car = this.cars.find(c => c.plate === carPlate) || {};
     const discInput = document.getElementById("walkin-discount");
     const summaryBox = document.getElementById("walkin-price-summary");
-
-    const selectedOpt = carSel ? carSel.options[carSel.selectedIndex] : null;
-    const dailyRate = selectedOpt && selectedOpt.dataset.rate ? parseFloat(selectedOpt.dataset.rate) : 1000;
     const discount = discInput ? parseFloat(discInput.value || 0) : 0;
 
     const dur = this.calcWalkinDuration();
-    let basePrice = 0;
+    const cTypeEl = document.getElementById("walkin-contract-type");
 
-    if (cType === "รายสัปดาห์") {
-      basePrice = Math.round((dailyRate * 7 * 0.9) * Math.max(1, Math.ceil(dur.days / 7)));
-    } else if (cType === "รายเดือน") {
-      basePrice = Math.round((dailyRate * 30 * 0.8) * Math.max(1, Math.ceil(dur.days / 30)));
-    } else {
-      basePrice = dailyRate * dur.days;
+    if (fromDateChange && cTypeEl) {
+      if (dur.days >= 30) cTypeEl.value = "รายเดือน";
+      else if (dur.days >= 7) cTypeEl.value = "รายสัปดาห์";
+      else cTypeEl.value = "รายวัน";
     }
 
+    const cType = cTypeEl?.value || "รายวัน";
+    const { basePrice, breakdownText } = this.calculateCarRentalPrice(car, dur.days, cType);
     const netPrice = Math.max(0, basePrice - discount);
 
     if (summaryBox) {
       summaryBox.innerHTML = `
         <div style="line-height:1.7;">
           ⏱️ <b>ระยะเวลาคำนวณ:</b> <span style="color:#D97706; font-weight:700;">${dur.text}</span> (${dur.days} วัน)<br/>
+          💡 <b>เรทราคา (${cType}):</b> <span style="color:#2563EB;">${breakdownText}</span><br/>
           💰 <b>ค่าเช่าก่อนลด:</b> ฿${basePrice.toLocaleString('th-TH', {minimumFractionDigits: 2})} 
           | 🏷️ <b>ส่วนลด:</b> ฿${discount.toLocaleString('th-TH', {minimumFractionDigits: 2})}<br/>
           💵 <b>ยอดค่าเช่าสุทธิ:</b> <b style="color:#B45309; font-size:16px;">฿${netPrice.toLocaleString('th-TH', {minimumFractionDigits: 2})}</b> 
@@ -2078,11 +2244,40 @@ class App {
     }
   }
 
+  checkDuplicatePassport(val) {
+    const warnEl = document.getElementById("cust-pass-warn");
+    if (!warnEl) return;
+    const clean = String(val || "").replace(/[\s-]/g, "").toLowerCase();
+    if (!clean || clean === "-" || clean === "none") {
+      warnEl.style.display = "none";
+      warnEl.textContent = "";
+      return;
+    }
+    const currentName = (document.getElementById("cust-name-in")?.value || "").trim();
+    const dup = (this.customers || []).find(c => {
+      if (c.full_name === currentName) return false;
+      const existPass = String(c.passport_id || "").replace(/[\s-]/g, "").toLowerCase();
+      return existPass && existPass !== "-" && existPass !== "none" && existPass === clean;
+    });
+    if (dup) {
+      warnEl.style.display = "block";
+      warnEl.innerHTML = `⚠️ หมายเลขบัตร ปชช. / พาสปอร์ตนี้ซ้ำกับลูกค้า: <b>${dup.full_name}</b> (📞 ${dup.contact_no || '-'}) ในระบบแล้ว (ห้ามใช้ซ้ำ)`;
+    } else {
+      warnEl.style.display = "none";
+      warnEl.textContent = "";
+    }
+  }
+
   openAddCustomerModal() {
     ["cust-name-in", "cust-phone-in", "cust-pass-in", "cust-lic-in", "cust-wa-in", "cust-home-in", "cust-thai-in"].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.value = "";
     });
+    const warnEl = document.getElementById("cust-pass-warn");
+    if (warnEl) {
+      warnEl.style.display = "none";
+      warnEl.textContent = "";
+    }
     const natEl = document.getElementById("cust-nat-in");
     if (natEl) natEl.value = "THAI";
     const dobEl = document.getElementById("cust-dob-in");
@@ -2095,16 +2290,38 @@ class App {
   }
 
   async submitNewCustomer() {
-    const name = document.getElementById("cust-name-in")?.value.trim();
+    const name = (document.getElementById("cust-name-in")?.value || "").trim();
     if (!name) {
       alert("กรุณาระบุชื่อ-นามสกุลลูกค้า");
       return;
     }
 
+    const passId = (document.getElementById("cust-pass-in")?.value || "").trim();
+    if (passId && passId !== "-" && passId.toLowerCase() !== "none") {
+      const cleanPass = passId.replace(/[\s-]/g, "").toLowerCase();
+      const duplicate = (this.customers || []).find(c => {
+        if (c.full_name === name) return false;
+        const existPass = String(c.passport_id || "").trim();
+        if (!existPass || existPass === "-" || existPass.toLowerCase() === "none") return false;
+        return existPass.replace(/[\s-]/g, "").toLowerCase() === cleanPass;
+      });
+      if (duplicate) {
+        this.showToast(`❌ ไม่อนุญาตให้ใช้เลขบัตร/พาสปอร์ตซ้ำกับ '${duplicate.full_name}'`, "danger");
+        alert(`❌ ระบบไม่อนุญาตให้ใช้เลขบัตรประชาชนหรือพาสปอร์ตซ้ำ!\n\nหมายเลข '${passId}' ซ้ำกับข้อมูลของลูกค้า '${duplicate.full_name}' ที่มีอยู่ในระบบแล้ว กรุณาตรวจสอบ`);
+        const warnEl = document.getElementById("cust-pass-warn");
+        if (warnEl) {
+          warnEl.style.display = "block";
+          warnEl.innerHTML = `⚠️ หมายเลขบัตร ปชช. / พาสปอร์ตนี้ซ้ำกับลูกค้า: <b>${duplicate.full_name}</b> ในระบบแล้ว (ห้ามใช้ซ้ำ)`;
+        }
+        document.getElementById("cust-pass-in")?.focus();
+        return;
+      }
+    }
+
     const payload = {
       full_name: name,
       contact_no: document.getElementById("cust-phone-in")?.value.trim() || "-",
-      passport_id: document.getElementById("cust-pass-in")?.value.trim() || "-",
+      passport_id: passId || "-",
       licence_no: document.getElementById("cust-lic-in")?.value.trim() || "-",
       nationality: document.getElementById("cust-nat-in")?.value.trim() || "THAI",
       whatsapp: document.getElementById("cust-wa-in")?.value.trim() || "-",
@@ -2121,20 +2338,24 @@ class App {
         body: JSON.stringify(payload)
       });
       const data = await res.json();
-      if (data.success) {
-        this.lastAddedCustomerName = name;
-        const existIdx = this.customers.findIndex(c => c.full_name === name);
-        if (existIdx >= 0) {
-          this.customers[existIdx] = payload;
-        } else {
-          this.customers.unshift(payload);
-        }
-        this.populateCustomerDropdowns(name);
-        this.closeModal("modal-add-customer");
-        this.showToast(`🎉 บันทึกข้อมูลลูกค้า '${name}' และล็อกเลือกในฟอร์มเรียบร้อย!`, "success");
-        await this.loadCustomers();
-        this.populateCustomerDropdowns(name);
+      if (!res.ok || !data.success) {
+        const errMsg = data.detail || data.error || "เกิดข้อผิดพลาดในการบันทึกข้อมูล";
+        this.showToast("❌ บันทึกไม่สำเร็จ: " + errMsg, "danger");
+        alert("❌ บันทึกไม่สำเร็จ: " + errMsg);
+        return;
       }
+      this.lastAddedCustomerName = name;
+      const existIdx = this.customers.findIndex(c => c.full_name === name);
+      if (existIdx >= 0) {
+        this.customers[existIdx] = payload;
+      } else {
+        this.customers.unshift(payload);
+      }
+      this.populateCustomerDropdowns(name);
+      this.closeModal("modal-add-customer");
+      this.showToast(`🎉 บันทึกข้อมูลลูกค้า '${name}' และล็อกเลือกในฟอร์มเรียบร้อย!`, "success");
+      await this.loadCustomers();
+      this.populateCustomerDropdowns(name);
     } catch (e) {
       this.showToast("บันทึกไม่สำเร็จ: " + e.message, "danger");
     }

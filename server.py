@@ -281,6 +281,23 @@ async def create_or_update_customer(payload: Dict[str, Any]):
     name = str(payload.get("full_name", "")).strip()
     if not name:
         raise HTTPException(status_code=400, detail="กรุณาระบุชื่อ-นามสกุลลูกค้า")
+    
+    # Block duplicate Citizen ID / Passport No.
+    passport_id = str(payload.get("passport_id", "")).strip()
+    if passport_id and passport_id not in ["-", "none", "None", ""]:
+        clean_pass = passport_id.replace(" ", "").replace("-", "").lower()
+        for c_name, c_obj in store.customers.items():
+            if c_name.strip() == name:
+                continue # editing existing customer with same name is allowed
+            existing_pass = str(c_obj.get("passport_id", "")).strip()
+            if existing_pass and existing_pass not in ["-", "none", "None", ""]:
+                clean_exist = existing_pass.replace(" ", "").replace("-", "").lower()
+                if clean_exist == clean_pass:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"หมายเลขบัตร ปชช. / Passport '{passport_id}' ซ้ำกับข้อมูลของลูกค้า '{c_name}' ในระบบแล้ว"
+                    )
+
     store.async_sync_customer(name, payload)
     return {"success": True, "customer": payload}
 
@@ -328,17 +345,27 @@ async def create_booking(payload: Dict[str, Any]):
     
     car_id = payload.get("car_id")
     car_obj = store.cars.get(car_id, {})
-    price_day = float(car_obj.get("price_day", 1000))
+    price_day = float(car_obj.get("price_day") or car_obj.get("daily_rate") or 1000)
+    price_week = float(car_obj.get("price_week") or (price_day * 6))
+    price_month = float(car_obj.get("price_month") or (price_day * 20))
     contract_type = payload.get("contract_type", "รายวัน")
     
     base_price = payload.get("base_price")
     if base_price is None:
-        if contract_type == "รายวัน":
-            base_price = price_day * billable_days
-        elif contract_type == "รายสัปดาห์":
-            base_price = float(car_obj.get("price_week", price_day * 6))
+        if contract_type == "รายสัปดาห์":
+            if billable_days <= 7:
+                base_price = price_week
+            else:
+                weeks = billable_days // 7
+                rem_days = billable_days % 7
+                base_price = (weeks * price_week) + (rem_days * price_day)
         elif contract_type == "รายเดือน":
-            base_price = float(car_obj.get("price_month", price_day * 20))
+            if billable_days <= 30:
+                base_price = price_month
+            else:
+                months = billable_days // 30
+                rem_days = billable_days % 30
+                base_price = (months * price_month) + (rem_days * price_day)
         else:
             base_price = price_day * billable_days
 
