@@ -6,21 +6,17 @@ class App {
   constructor() {
     let savedUser = null;
     try {
-      savedUser = JSON.parse(localStorage.getItem("sawasdee_user") || "null");
+      const authV = localStorage.getItem("sawasdee_auth_v");
+      if (authV !== "4.7") {
+        // Clear legacy auto-admin session so authentication screen is properly presented
+        localStorage.removeItem("sawasdee_user");
+        localStorage.setItem("sawasdee_auth_v", "4.7");
+        savedUser = null;
+      } else {
+        savedUser = JSON.parse(localStorage.getItem("sawasdee_user") || "null");
+      }
     } catch (e) {
       savedUser = null;
-    }
-    // Always default to Admin so the app is immediately accessible without any lockouts
-    if (!savedUser || !savedUser.username) {
-      savedUser = {
-        username: "admin",
-        name: "ผู้ดูแลระบบ (Admin)",
-        role: "Admin",
-        status: "approved"
-      };
-      try {
-        localStorage.setItem("sawasdee_user", JSON.stringify(savedUser));
-      } catch (e) {}
     }
     this.user = savedUser;
 

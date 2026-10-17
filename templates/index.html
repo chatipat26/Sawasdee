@@ -13,7 +13,7 @@
   <!-- ========================================================================= -->
   <!-- 0. AUTHENTICATION GATE SCREEN (EXCLUSIVE LOGIN SCREEN MATCHING STREAMLIT) -->
   <!-- ========================================================================= -->
-  <div id="auth-gate-screen" class="auth-gate-wrapper" style="display:none;">
+  <div id="auth-gate-screen" class="auth-gate-wrapper" style="display:flex;">
     <div class="auth-gate-card">
       <!-- Circular Logo -->
       <div class="auth-gate-logo-circle">
@@ -137,7 +137,7 @@
   <!-- ========================================================================= -->
   <!-- MAIN APPLICATION WRAPPER (SHOWN ONLY AFTER SUCCESSFUL LOGIN)              -->
   <!-- ========================================================================= -->
-  <div id="main-app-wrapper" style="display:flex; flex-direction:column; min-height:100vh;">
+  <div id="main-app-wrapper" style="display:none; flex-direction:column; min-height:100vh;">
 
     <!-- Top Navigation Header -->
     <header class="app-header">
@@ -1590,6 +1590,6 @@
   <div class="toast-container" id="toast-container"></div>
 
   <!-- Scripts with cache busting -->
-  <script src="/static/js/app.js?v=4.6"></script>
+  <script src="/static/js/app.js?v=4.7"></script>
 </body>
 </html>
