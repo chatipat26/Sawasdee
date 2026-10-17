@@ -22,8 +22,10 @@ class App {
   async init() {
     this.setupDatePickers();
     this.updateAuthUI();
-    await this.fetchInitialData();
-    this.startLiveSyncPoller();
+    if (this.user) {
+      await this.fetchInitialData();
+      this.startLiveSyncPoller();
+    }
   }
 
   setupDatePickers() {
@@ -36,28 +38,38 @@ class App {
   }
 
   updateAuthUI() {
-    const badge = document.getElementById("user-profile-badge");
-    const loginBtn = document.getElementById("btn-open-login");
-    const nameTxt = document.getElementById("user-display-name");
-    const roleTag = document.getElementById("user-role-tag");
-    const navUsers = document.getElementById("nav-users");
+    const gateScreen = document.getElementById("auth-gate-screen");
+    const mainWrapper = document.getElementById("main-app-wrapper");
+    const sbName = document.getElementById("sb-user-name");
+    const sbRole = document.getElementById("sb-user-role");
+    const sbAdminBtn = document.getElementById("sb-admin-staff-btn");
+    const headerName = document.getElementById("user-display-name");
+    const headerRole = document.getElementById("user-role-tag");
 
     if (this.user) {
-      if (badge) badge.style.display = "flex";
-      if (loginBtn) loginBtn.style.display = "none";
-      if (nameTxt) nameTxt.textContent = this.user.name || this.user.username;
-      if (roleTag) {
-        roleTag.textContent = this.user.role;
-        roleTag.style.background = this.user.role === "Admin" ? "#FEF3C7" : "#EFF6FF";
-        roleTag.style.color = this.user.role === "Admin" ? "#92400E" : "#1E40AF";
+      if (gateScreen) gateScreen.style.display = "none";
+      if (mainWrapper) mainWrapper.style.display = "flex";
+
+      const un = this.user.name || this.user.username || "admin";
+      const role = this.user.role || "Staff";
+      const isAdmin = (role === "Admin" || (this.user.username && this.user.username.toLowerCase() === "admin"));
+      const roleLabel = isAdmin ? "👑 ผู้ดูแลระบบ (Admin)" : "👷 พนักงานปฏิบัติงาน";
+
+      if (sbName) sbName.textContent = this.user.username || un;
+      if (sbRole) sbRole.textContent = roleLabel;
+      if (headerName) headerName.textContent = un;
+      if (headerRole) {
+        headerRole.textContent = role;
+        headerRole.style.background = isAdmin ? "#FEF3C7" : "#EFF6FF";
+        headerRole.style.color = isAdmin ? "#92400E" : "#1E40AF";
       }
-      if (navUsers) {
-        navUsers.style.display = (this.user.role === "Admin" || this.user.username.toLowerCase() === "admin") ? "flex" : "none";
+
+      if (sbAdminBtn) {
+        sbAdminBtn.style.display = isAdmin ? "flex" : "none";
       }
     } else {
-      if (badge) badge.style.display = "none";
-      if (loginBtn) loginBtn.style.display = "inline-flex";
-      if (navUsers) navUsers.style.display = "none";
+      if (gateScreen) gateScreen.style.display = "flex";
+      if (mainWrapper) mainWrapper.style.display = "none";
     }
   }
 
@@ -1089,32 +1101,44 @@ class App {
     await this.loadUsers();
   }
 
-  // --- Auth Dialog & Session ---
-  openLoginModal() {
-    this.openModal("modal-login");
+  // --- Authentication Gate & Session Management ---
+  setGateMode(mode) {
+    const loginBox = document.getElementById("gate-mode-login");
+    const regBox = document.getElementById("gate-mode-register");
+    const forgotBox = document.getElementById("gate-mode-forgot");
+    if (loginBox) loginBox.style.display = mode === "login" ? "block" : "none";
+    if (regBox) regBox.style.display = mode === "register" ? "block" : "none";
+    if (forgotBox) forgotBox.style.display = mode === "forgot" ? "block" : "none";
+
+    ["login", "reg", "forgot"].forEach(m => {
+      const el = document.getElementById(`gate-${m}-alert`);
+      if (el) { el.style.display = "none"; el.textContent = ""; }
+    });
   }
 
-  toggleAuthMode(mode) {
-    const loginBox = document.getElementById("auth-login-box");
-    const regBox = document.getElementById("auth-reg-box");
-    const title = document.getElementById("auth-title");
-    if (mode === "register") {
-      loginBox.style.display = "none";
-      regBox.style.display = "block";
-      title.textContent = "📝 ลงทะเบียนพนักงานใหม่";
-    } else {
-      loginBox.style.display = "block";
-      regBox.style.display = "none";
-      title.textContent = "🔑 เข้าสู่ระบบ Sawasdee Rental";
-    }
+  showGateAlert(mode, type, msg) {
+    const el = document.getElementById(`gate-${mode}-alert`);
+    if (!el) return;
+    el.className = `gate-alert ${type}`;
+    el.textContent = msg;
+    el.style.display = "block";
   }
 
-  async submitLogin() {
-    const un = document.getElementById("login-username").value.trim();
-    const pw = document.getElementById("login-password").value.trim();
+  async submitGateLogin() {
+    const unInput = document.getElementById("gate-login-username");
+    const pwInput = document.getElementById("gate-login-password");
+    const btn = document.getElementById("btn-gate-submit-login");
+    const un = (unInput?.value || "").trim();
+    const pw = (pwInput?.value || "").trim();
+
     if (!un || !pw) {
-      alert("กรุณากรอกชื่อผู้ใช้และรหัสผ่าน");
+      this.showGateAlert("login", "error", "กรุณากรอกชื่อผู้ใช้งานและรหัสผ่าน");
       return;
+    }
+
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "⏳ กำลังเข้าสู่ระบบ...";
     }
 
     try {
@@ -1124,24 +1148,44 @@ class App {
         body: JSON.stringify({ username: un, password: pw })
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || "เข้าสู่ระบบไม่สำเร็จ");
+      if (!res.ok) {
+        throw new Error(data.detail || "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง");
+      }
 
       this.user = data.user;
       localStorage.setItem("sawasdee_user", JSON.stringify(this.user));
       this.updateAuthUI();
-      this.closeModal("modal-login");
-      this.showToast(`🎉 ยินดีต้อนรับคุณ ${this.user.name || this.user.username}!`, "success");
-    } catch (e) {
-      alert(e.message);
+      this.showToast(`เข้าสู่ระบบสำเร็จในฐานะ: ${this.user.name || this.user.username} ☁️`, "success");
+
+      // Load all data after login
+      await this.fetchInitialData();
+      this.startLiveSyncPoller();
+    } catch (err) {
+      this.showGateAlert("login", "error", "❌ " + err.message);
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = "⚡ เข้าสู่ระบบ (Supabase Auth)";
+      }
     }
   }
 
-  async submitRegister() {
-    const un = document.getElementById("reg-username").value.trim();
-    const fn = document.getElementById("reg-name").value.trim();
-    const pw = document.getElementById("reg-password").value.trim();
-    if (!un || !pw) {
-      alert("กรุณากรอกข้อมูลให้ครบถ้วน");
+  async submitGateRegister() {
+    const un = (document.getElementById("gate-reg-username")?.value || "").trim();
+    const fn = (document.getElementById("gate-reg-fullname")?.value || "").trim();
+    const p1 = (document.getElementById("gate-reg-password")?.value || "").trim();
+    const p2 = (document.getElementById("gate-reg-password2")?.value || "").trim();
+
+    if (!un) {
+      this.showGateAlert("reg", "error", "กรุณากรอกชื่อผู้ใช้งาน");
+      return;
+    }
+    if (p1 !== p2) {
+      this.showGateAlert("reg", "error", "รหัสผ่านทั้งสองช่องไม่ตรงกัน");
+      return;
+    }
+    if (p1.length < 6) {
+      this.showGateAlert("reg", "error", "รหัสผ่านต้องมีความยาวอย่างน้อย 6 ตัวอักษร");
       return;
     }
 
@@ -1149,15 +1193,92 @@ class App {
       const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: un, name: fn, password: pw })
+        body: JSON.stringify({ username: un, name: fn, password: p1 })
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || "ลงทะเบียนไม่สำเร็จ");
+      if (!res.ok) {
+        throw new Error(data.detail || "ไม่สามารถลงทะเบียนได้");
+      }
+      this.showGateAlert("reg", "success", "✅ " + (data.message || "ลงทะเบียนสำเร็จ รอ Admin อนุมัติ"));
+      setTimeout(() => {
+        this.setGateMode("login");
+        const uInp = document.getElementById("gate-login-username");
+        if (uInp) uInp.value = un;
+      }, 1500);
+    } catch (err) {
+      this.showGateAlert("reg", "error", "❌ " + err.message);
+    }
+  }
 
-      alert(data.message || "ลงทะเบียนสำเร็จ กรุณารอแอดมินอนุมัติ");
-      this.toggleAuthMode("login");
-    } catch (e) {
-      alert(e.message);
+  async submitGateForgot() {
+    const un = (document.getElementById("gate-forgot-username")?.value || "").trim();
+    const oldP = (document.getElementById("gate-forgot-old-password")?.value || "").trim();
+    const newP = (document.getElementById("gate-forgot-new-password")?.value || "").trim();
+
+    if (!un || !newP) {
+      this.showGateAlert("forgot", "error", "กรุณากรอกข้อมูลให้ครบถ้วน");
+      return;
+    }
+    if (newP.length < 6) {
+      this.showGateAlert("forgot", "error", "รหัสผ่านใหม่ต้องมีความยาวอย่างน้อย 6 ตัวอักษร");
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/auth/change-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: un, old_password: oldP, new_password: newP })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.detail || "ไม่สามารถเปลี่ยนรหัสผ่านได้");
+      }
+      this.showGateAlert("forgot", "success", "✅ เปลี่ยนรหัสผ่านสำเร็จเรียบร้อย กรุณาเข้าสู่ระบบใหม่");
+      setTimeout(() => {
+        this.setGateMode("login");
+      }, 1500);
+    } catch (err) {
+      this.showGateAlert("forgot", "error", "❌ " + err.message);
+    }
+  }
+
+  handleSidebarSearch(kw) {
+    const cleanKw = (kw || "").trim().toLowerCase();
+    if (!cleanKw) {
+      this.renderFleet();
+      this.renderBackOffice();
+      return;
+    }
+
+    const matchedCar = this.cars.find(c =>
+      (c.plate || "").toLowerCase().includes(cleanKw) ||
+      (c.brand || "").toLowerCase().includes(cleanKw) ||
+      (c.model || "").toLowerCase().includes(cleanKw)
+    );
+
+    const matchedBk = this.bookings.find(b =>
+      (b.booking_id || "").toLowerCase().includes(cleanKw) ||
+      (b.car_id || "").toLowerCase().includes(cleanKw) ||
+      (b.customer || "").toLowerCase().includes(cleanKw)
+    );
+
+    if (matchedBk) {
+      this.switchModule("frontoffice");
+      this.switchTab("deposit");
+      const sel = document.getElementById("deposit-select-booking");
+      if (sel) {
+        sel.value = matchedBk.booking_id;
+        this.onSelectDepositBooking(matchedBk.booking_id);
+      }
+    } else if (matchedCar) {
+      this.switchModule("frontoffice");
+      this.switchTab("fleet");
+      const searchBox = document.getElementById("search-plate");
+      if (searchBox) {
+        searchBox.value = matchedCar.plate;
+        this.filterCars();
+      }
     }
   }
 

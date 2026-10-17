@@ -728,3 +728,237 @@ body::before {
     padding: 16px;
   }
 }
+
+/* =========================================================================
+   AUTHENTICATION GATE SCREEN (EXCLUSIVE LOGIN SCREEN MATCHING STREAMLIT)
+   ========================================================================= */
+.auth-gate-wrapper {
+  position: fixed;
+  inset: 0;
+  background-color: var(--bg-main);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 99999;
+  padding: 24px 16px;
+  overflow-y: auto;
+}
+
+.auth-gate-wrapper::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url('/static/sawasdee-logo.png');
+  background-repeat: no-repeat;
+  background-position: 50% 50%;
+  background-size: min(55vw, 500px);
+  opacity: 0.04;
+  pointer-events: none;
+}
+
+.auth-gate-card {
+  width: 100%;
+  max-width: 440px;
+  position: relative;
+  z-index: 1;
+}
+
+.auth-gate-logo-circle {
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  background: #111111;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px auto;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+  overflow: hidden;
+}
+
+.auth-gate-logo-circle img {
+  width: 70px;
+  height: auto;
+  object-fit: contain;
+}
+
+.auth-gate-box {
+  background: #FFFFFF;
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 4px 24px rgba(31, 41, 55, 0.06);
+  padding: 28px 26px;
+}
+
+.gate-form-group {
+  margin-bottom: 14px;
+}
+
+.gate-label {
+  display: block;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #374151;
+  margin-bottom: 6px;
+}
+
+.gate-input {
+  width: 100%;
+  padding: 11px 14px;
+  background: #FAF7F2;
+  border: 1.5px solid #E5DFD7;
+  border-radius: 8px;
+  font-size: 13.5px;
+  color: #1F2937;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.gate-input:focus {
+  border-color: var(--brand-primary);
+  background: #FFFFFF;
+  box-shadow: 0 0 0 3px var(--brand-glow);
+}
+
+.gate-alert {
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  margin-bottom: 14px;
+  display: none;
+}
+
+.gate-alert.error {
+  display: block;
+  background: #FEF2F2;
+  border: 1px solid #FECACA;
+  color: #DC2626;
+}
+
+.gate-alert.success {
+  display: block;
+  background: #F0FDF4;
+  border: 1px solid #BBF7D0;
+  color: #166534;
+}
+
+.gate-btn-submit {
+  width: 100%;
+  padding: 12px;
+  background: var(--brand-gradient);
+  color: #FFFFFF;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 12px var(--brand-glow);
+  margin-top: 4px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.gate-btn-submit:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(232, 88, 38, 0.3);
+}
+
+.gate-sub-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.gate-btn-sub {
+  flex: 1;
+  padding: 9.5px;
+  background: #FFFFFF;
+  border: 1px solid #D1D5DB;
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: center;
+}
+
+.gate-btn-sub:hover {
+  border-color: var(--brand-primary);
+  color: var(--brand-primary);
+  background: #FFF7ED;
+}
+
+.gate-form-title {
+  text-align: center;
+  color: var(--brand-primary);
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.gate-form-desc {
+  font-size: 12px;
+  color: #6B7280;
+  text-align: center;
+  margin-bottom: 16px;
+  line-height: 1.4;
+}
+
+/* Sidebar Custom User Card */
+.sb-user-card {
+  background: #FFFFFF;
+  border: 1px solid #EFEAE3;
+  border-left: 4px solid var(--brand-primary);
+  border-radius: 8px;
+  padding: 9px 12px;
+  margin-bottom: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+}
+
+.sb-admin-staff-btn {
+  background: #FFFFFF;
+  border: 1px solid #EFEAE3;
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #374151;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.sb-admin-staff-btn:hover {
+  border-color: var(--brand-primary);
+  color: var(--brand-primary);
+  background: #FFF7ED;
+}
+
+.sb-logout-btn {
+  width: 100%;
+  margin-top: auto;
+  padding: 8px 12px;
+  background: #FFFFFF;
+  border: 1px solid #FECACA;
+  color: #DC2626;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.sb-logout-btn:hover {
+  background: #FEE2E2;
+  border-color: #EF4444;
+}
+

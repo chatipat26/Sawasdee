@@ -9,79 +9,198 @@
 </head>
 <body>
 
-  <!-- Top Navigation Header -->
-  <header class="app-header">
-    <div class="brand-section">
-      <img src="/static/sawasdee-logo.png" alt="Sawasdee Rental Logo" class="brand-logo" onerror="this.style.display='none'">
-      <div>
-        <div class="brand-title">SAWASDEE RENTAL</div>
-        <div class="brand-subtitle">Cloud Fleet & Booking Management System</div>
+  <!-- ========================================================================= -->
+  <!-- 0. AUTHENTICATION GATE SCREEN (EXCLUSIVE LOGIN SCREEN MATCHING STREAMLIT) -->
+  <!-- ========================================================================= -->
+  <div id="auth-gate-screen" class="auth-gate-wrapper">
+    <div class="auth-gate-card">
+      <!-- Circular Logo -->
+      <div class="auth-gate-logo-circle">
+        <img src="/static/sawasdee-logo.png" alt="Sawasdee Logo" onerror="this.src='/static/sawasdee-logo.png'">
+      </div>
+
+      <!-- Mode 1: Login -->
+      <div id="gate-mode-login" class="auth-gate-box">
+        <div class="gate-form-group">
+          <label class="gate-label">ชื่อผู้ใช้งาน หรือ อีเมล (Username / Email)</label>
+          <input type="text" id="gate-login-username" class="gate-input" placeholder="เช่น admin หรือ user@email.com" autocomplete="username" onkeydown="if(event.key==='Enter') app.submitGateLogin()">
+        </div>
+
+        <div class="gate-form-group">
+          <label class="gate-label">รหัสผ่าน (Password)</label>
+          <input type="password" id="gate-login-password" class="gate-input" placeholder="กรอกรหัสผ่าน (อย่างน้อย 6 ตัวอักษร)" autocomplete="current-password" onkeydown="if(event.key==='Enter') app.submitGateLogin()">
+        </div>
+
+        <div id="gate-login-alert" class="gate-alert"></div>
+
+        <button id="btn-gate-submit-login" onclick="app.submitGateLogin()" class="gate-btn-submit">
+          ⚡ เข้าสู่ระบบ (Supabase Auth)
+        </button>
+
+        <div class="gate-sub-actions">
+          <button type="button" onclick="app.setGateMode('register')" class="gate-btn-sub">📝 สมัครสมาชิก</button>
+          <button type="button" onclick="app.setGateMode('forgot')" class="gate-btn-sub">🔑 แก้ไขรหัสผ่าน</button>
+        </div>
+      </div>
+
+      <!-- Mode 2: Register -->
+      <div id="gate-mode-register" class="auth-gate-box" style="display:none;">
+        <h4 class="gate-form-title">📝 สมัครสมาชิกพนักงานใหม่ (Supabase Cloud)</h4>
+        <p class="gate-form-desc">เมื่อสมัครสมาชิกแล้ว ข้อมูลจะถูกบันทึกลง Supabase Auth และส่งให้ Admin อนุมัติก่อนใช้งาน</p>
+
+        <div class="gate-form-group">
+          <label class="gate-label">ชื่อผู้ใช้งาน / ชื่อพนักงาน (Username)</label>
+          <input type="text" id="gate-reg-username" class="gate-input" placeholder="เช่น somchai">
+        </div>
+
+        <div class="gate-form-group">
+          <label class="gate-label">ชื่อ-นามสกุลจริง (Full Name)</label>
+          <input type="text" id="gate-reg-fullname" class="gate-input" placeholder="เช่น สมชาย ใจดี">
+        </div>
+
+        <div class="gate-form-group">
+          <label class="gate-label">รหัสผ่าน (อย่างน้อย 6 ตัวอักษร)</label>
+          <input type="password" id="gate-reg-password" class="gate-input" placeholder="รหัสผ่าน...">
+        </div>
+
+        <div class="gate-form-group">
+          <label class="gate-label">ยืนยันรหัสผ่าน</label>
+          <input type="password" id="gate-reg-password2" class="gate-input" placeholder="พิมพ์รหัสผ่านซ้ำอีกครั้ง">
+        </div>
+
+        <div id="gate-reg-alert" class="gate-alert"></div>
+
+        <button onclick="app.submitGateRegister()" class="gate-btn-submit">
+          📝 ยืนยันการลงทะเบียน
+        </button>
+
+        <button type="button" onclick="app.setGateMode('login')" class="gate-btn-sub" style="margin-top:12px; width:100%;">
+          ← กลับไปหน้าเข้าสู่ระบบ
+        </button>
+      </div>
+
+      <!-- Mode 3: Forgot Password -->
+      <div id="gate-mode-forgot" class="auth-gate-box" style="display:none;">
+        <h4 class="gate-form-title">🔑 เปลี่ยนรหัสผ่านใหม่ (Supabase Auth)</h4>
+        <p class="gate-form-desc">กรอกชื่อผู้ใช้งานเดิมและตั้งรหัสผ่านใหม่เพื่ออัปเดตระบบ</p>
+
+        <div class="gate-form-group">
+          <label class="gate-label">ชื่อผู้ใช้งานเดิม (Username)</label>
+          <input type="text" id="gate-forgot-username" class="gate-input" placeholder="เช่น admin หรือ user">
+        </div>
+
+        <div class="gate-form-group">
+          <label class="gate-label">รหัสผ่านเดิม</label>
+          <input type="password" id="gate-forgot-old-password" class="gate-input" placeholder="รหัสผ่านเดิม">
+        </div>
+
+        <div class="gate-form-group">
+          <label class="gate-label">รหัสผ่านใหม่ (อย่างน้อย 6 ตัวอักษร)</label>
+          <input type="password" id="gate-forgot-new-password" class="gate-input" placeholder="รหัสผ่านใหม่">
+        </div>
+
+        <div id="gate-forgot-alert" class="gate-alert"></div>
+
+        <button onclick="app.submitGateForgot()" class="gate-btn-submit">
+          🔑 ยืนยันเปลี่ยนรหัสผ่าน
+        </button>
+
+        <button type="button" onclick="app.setGateMode('login')" class="gate-btn-sub" style="margin-top:12px; width:100%;">
+          ← กลับไปหน้าเข้าสู่ระบบ
+        </button>
       </div>
     </div>
+  </div>
 
-    <div class="header-actions">
-      <!-- Live Cloud Sync Pill -->
-      <div class="cloud-pill" onclick="app.manualSync()" title="คลิกเพื่อซิงค์ข้อมูลกับ Supabase Cloud ทันที">
-        <span class="pulse-dot"></span>
-        <span>ซิงค์ Cloud อัตโนมัติ: <b id="sync-time-txt">กำลังเชื่อมต่อ...</b></span>
-        <span style="font-size:11px; margin-left:2px;">🔄</span>
+  <!-- ========================================================================= -->
+  <!-- MAIN APPLICATION WRAPPER (SHOWN ONLY AFTER SUCCESSFUL LOGIN)              -->
+  <!-- ========================================================================= -->
+  <div id="main-app-wrapper" style="display:none; flex-direction:column; min-height:100vh;">
+
+    <!-- Top Navigation Header -->
+    <header class="app-header">
+      <div class="brand-section">
+        <div style="font-size:12px; font-weight:700; color:#E85826; letter-spacing:0.5px;">SAWASDEE RENTAL</div>
+        <div style="font-size:11px; color:#6B7280;">Front Office & Fleet Management System</div>
       </div>
 
-      <!-- Logged-in User Profile -->
-      <div id="user-profile-badge" class="user-badge" style="display:none;">
-        <span>👤</span>
-        <span id="user-display-name">Admin</span>
-        <span id="user-role-tag" class="role-tag">Admin</span>
-        <button onclick="app.logout()" class="btn btn-sm btn-secondary" style="padding:2px 8px; margin-left:4px;" title="ออกจากระบบ">🚪 ออก</button>
+      <div class="header-actions">
+        <!-- Live Cloud Sync Pill -->
+        <div class="cloud-pill" onclick="app.manualSync()" title="คลิกเพื่อซิงค์ข้อมูลกับ Supabase Cloud ทันที">
+          <span class="pulse-dot"></span>
+          <span>ซิงค์ Cloud อัตโนมัติ: <b id="sync-time-txt">กำลังเชื่อมต่อ...</b></span>
+          <span style="font-size:11px; margin-left:2px;">🔄</span>
+        </div>
+
+        <!-- Role Badge in Header -->
+        <div class="user-badge">
+          <span>👤</span>
+          <span id="user-display-name">Admin</span>
+          <span id="user-role-tag" class="role-tag">Admin</span>
+        </div>
       </div>
+    </header>
 
-      <!-- Login Button (if guest) -->
-      <button id="btn-open-login" onclick="app.openLoginModal()" class="btn btn-sm btn-primary">
-        🔑 เข้าสู่ระบบ
-      </button>
-    </div>
-  </header>
+    <!-- Main Container -->
+    <div class="app-container">
+      <!-- Sidebar Navigation Matching Streamlit -->
+      <aside class="app-sidebar">
+        <!-- Logo Section -->
+        <div style="padding: 6px 0 10px 0; text-align: center;">
+          <div style="background: #111111; width: 78px; height: 78px; border-radius: 50%; display: flex; align-items: center; justify-content: center; overflow: hidden; margin: 0 auto 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+            <img src="/static/sawasdee-logo.png" style="width: 60px; height: auto;" alt="Sawasdee Logo" />
+          </div>
+          <h3 style="color: #E85826; font-weight: 800; margin: 0; font-size: 18px; letter-spacing:0.5px;">SAWASDEE</h3>
+          <div style="font-size: 10px; letter-spacing: 1.5px; color: #888888; font-weight: 600;">FLEET MANAGEMENT</div>
+        </div>
 
-  <!-- Main Container -->
-  <div class="app-container">
-    <!-- Sidebar Navigation -->
-    <aside class="app-sidebar">
-      <div style="font-size:11px; font-weight:700; color:#94A3B8; text-transform:uppercase; margin-bottom:8px; padding-left:8px;">
-        โมดูลหลัก (Modules)
-      </div>
+        <!-- User Profile Card in Sidebar -->
+        <div class="sb-user-card">
+          <div style="font-size: 11px; color: #8C827A;">เข้าสู่ระบบโดย:</div>
+          <div style="font-size: 13.5px; font-weight: 700; color: #1F2937;">👤 <span id="sb-user-name">admin</span></div>
+          <div style="font-size: 11px; color: #E85826; font-weight: 600;" id="sb-user-role">👑 ผู้ดูแลระบบ (Admin)</div>
+        </div>
 
-      <a class="nav-item active" onclick="app.switchModule('frontoffice')" id="nav-frontoffice">
-        <span>🚗</span> Front Office
-        <span class="nav-badge" id="badge-frontoffice-bks">0</span>
-      </a>
+        <!-- Admin Staff Management Button -->
+        <div id="sb-admin-staff-btn" class="sb-admin-staff-btn" onclick="app.switchModule('users')" style="display:none;">
+          <span>👥 จัดการ & อนุมัติพนักงาน</span>
+          <span id="badge-pending-users" style="background:#EF4444; color:white; font-size:10.5px; font-weight:700; padding:1px 7px; border-radius:10px; display:none;">0</span>
+        </div>
 
-      <a class="nav-item" onclick="app.switchModule('backoffice')" id="nav-backoffice">
-        <span>📋</span> Back Office
-        <span class="nav-badge" id="badge-backoffice-jobs" style="background:#2563EB;">0</span>
-      </a>
+        <!-- Global Search in Sidebar -->
+        <div style="margin-bottom: 12px;">
+          <input type="text" id="sb-search-input" oninput="app.handleSidebarSearch(this.value)" placeholder="🔍 ค้นหา (เลขที่จอง / ทะเบียน / ลูกค้า)" style="width: 100%; padding: 9px 12px; border: 1.5px solid #E5DFD7; border-radius: 8px; background: #FAF7F2; font-size: 12px; outline: none; transition: all 0.2s;" onfocus="this.style.borderColor='#E85826'; this.style.background='#FFFFFF';" onblur="this.style.borderColor='#E5DFD7'; this.style.background='#FAF7F2';" />
+        </div>
 
-      <a class="nav-item" onclick="app.switchModule('customers')" id="nav-customers">
-        <span>👥</span> ฐานข้อมูลลูกค้า
-        <span class="nav-badge" id="badge-customers-count" style="background:#64748B;">0</span>
-      </a>
+        <!-- Main Navigation Links -->
+        <div style="font-size: 11px; font-weight: 600; color: #6B7280; margin-bottom: 6px;">เมนูระบบงานหลัก:</div>
 
-      <a class="nav-item" onclick="app.switchModule('dashboard')" id="nav-dashboard">
-        <span>📊</span> Dashboard & รายงาน
-      </a>
+        <a class="nav-item active" onclick="app.switchModule('frontoffice')" id="nav-frontoffice">
+          <span>🖥️</span> Front Office
+          <span class="nav-badge" id="badge-frontoffice-bks">0</span>
+        </a>
 
-      <a class="nav-item" onclick="app.switchModule('users')" id="nav-users" style="display:none;">
-        <span>⚙️</span> ผู้ใช้งาน & อนุมัติสิทธิ์
-        <span class="nav-badge" id="badge-pending-users" style="background:#EF4444; display:none;">0</span>
-      </a>
+        <a class="nav-item" onclick="app.switchModule('backoffice')" id="nav-backoffice">
+          <span>📋</span> Back Office (ตารางใบงาน)
+          <span class="nav-badge" id="badge-backoffice-jobs" style="background:#2563EB;">0</span>
+        </a>
 
-      <div style="margin-top:auto; padding:12px; background:#F8FAFC; border-radius:8px; border:1px solid #E2E8F0; font-size:11.5px; color:#64748B;">
-        <div style="font-weight:700; color:#334155; margin-bottom:4px;">⚡ High-Speed Engine</div>
-        <div>FastAPI + Client Cache ตอบสนองทันทีในระดับมิลลิวินาที ไม่กระตุก</div>
-      </div>
-    </aside>
+        <a class="nav-item" onclick="app.switchModule('dashboard')" id="nav-dashboard">
+          <span>📊</span> สรุปแดชบอร์ด & การเงิน
+        </a>
 
-    <!-- Content Workspace -->
-    <main class="app-content">
+        <a class="nav-item" onclick="app.switchModule('customers')" id="nav-customers" style="display:none;">
+          <span>👥</span> ฐานข้อมูลลูกค้า
+        </a>
+
+        <!-- Logout Button -->
+        <button onclick="app.logout()" class="sb-logout-btn">
+          <span>🚪</span> ออกจากระบบ
+        </button>
+      </aside>
+
+      <!-- Content Workspace -->
+      <main class="app-content">
 
       <!-- =================================================================== -->
       <!-- 1. MODULE: FRONT OFFICE -->
@@ -416,20 +535,28 @@
       <!-- 2. MODULE: BACK OFFICE (FOR FIELD WORKERS / DRIVERS) -->
       <!-- =================================================================== -->
       <section id="module-backoffice" style="display:none;">
-        <div class="card">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
+        <div class="card" style="margin-bottom:14px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
             <div>
-              <h2 style="font-size:20px; font-weight:800; color:#1E293B; margin:0;">
-                📋 Back Office - ตารางใบงานสำหรับคนขับและพนักงานรับ-ส่งรถ
+              <h2 style="font-size:19px; font-weight:800; color:#1F2937; margin:0; display:flex; align-items:center; gap:8px;">
+                📋 Back Office (ตารางใบงานสำหรับคนงาน / พนักงานขับรถ)
               </h2>
-              <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">
-                Vehicle Dispatch & Return Work Orders Table & Handover Inspection Center
+              <div style="font-size:12px; color:#6B7280; margin-top:3px;">
+                Vehicle Dispatch & Return Work Orders Table & PDF Document Center
               </div>
             </div>
-            <div style="display:flex; gap:8px;">
-              <input type="text" id="bo-search-input" class="form-control" placeholder="🔍 ค้นหาใบงาน..." style="width:180px;" oninput="app.renderBackOfficeJobs()">
-              <button onclick="app.loadBackOfficeJobs()" class="btn btn-secondary btn-sm">🔄 รีเฟรช</button>
+            <div style="display:flex; align-items:center; gap:10px;">
+              <span style="background:#FFF7ED; color:#C2410C; border:1px solid #FFEDD5; padding:5px 14px; border-radius:20px; font-size:12px; font-weight:700;">👑 สิทธิ์ผู้ดูแลระบบ (Admin): สั่งงานได้ทุกใบงาน</span>
+              <input type="text" id="bo-search-input" class="form-control" placeholder="🔍 ค้นหาใบงาน..." style="width:160px; padding:6px 10px; font-size:12px;" oninput="app.renderBackOfficeJobs()">
+              <button onclick="app.loadBackOfficeJobs()" class="btn btn-secondary btn-sm" style="padding:6px 12px; font-size:12px;">🔄 รีเฟรช</button>
             </div>
+          </div>
+        </div>
+
+        <!-- Section Box -->
+        <div class="card">
+          <div class="card-title" style="font-size:15px; color:#1F2937; margin-bottom:14px;">
+            <span>🚚</span> รายการใบงานรับ-ส่งรถทั้งหมดในระบบ
           </div>
 
           <div class="table-responsive">
@@ -652,6 +779,7 @@
 
     </main>
   </div>
+  </div> <!-- End main-app-wrapper -->
 
   <!-- ===================================================================== -->
   <!-- MODALS -->

@@ -11,6 +11,7 @@ import pandas as pd
 
 from db import (
     store,
+    get_supabase_client,
     get_car_fleet_status,
     calculate_rental_duration_and_days,
     format_date_dmy,
@@ -95,27 +96,61 @@ async def login(payload: Dict[str, Any]):
     if not un or not pw:
         raise HTTPException(status_code=400, detail="กรุณากรอกชื่อผู้ใช้และรหัสผ่าน")
 
-    user = store.users.get(un)
-    if not user:
-        # Check case-insensitive
+    sb = get_supabase_client()
+    user_rec = None
+    
+    # 1. Supabase Auth (Sign in with email & password)
+    if sb:
+        email = un.lower()
+        if "@" not in email:
+            email = f"{email}@sawasdeecarrental.com"
+        try:
+            auth_res = sb.auth.sign_in_with_password({"email": email, "password": pw})
+            if auth_res and auth_res.user:
+                for k, v in store.users.items():
+                    if k.lower() == un.lower() or (v.get("email") and v.get("email").lower() == email):
+                        user_rec = v
+                        break
+                if not user_rec:
+                    user_rec = {
+                        "username": un,
+                        "name": (auth_res.user.user_metadata or {}).get("name", un),
+                        "role": (auth_res.user.user_metadata or {}).get("role", "Staff"),
+                        "status": "approved"
+                    }
+        except Exception:
+            pass
+
+    # 2. In-memory / users table match
+    if not user_rec:
         for k, v in store.users.items():
-            if k.lower() == un.lower():
-                user = v
-                break
+            if k.lower() == un.lower() or (v.get("email") and v.get("email").lower() == un.lower()):
+                if v.get("password") == pw:
+                    user_rec = v
+                    break
 
-    if not user or user.get("password") != pw:
-        raise HTTPException(status_code=401, detail="ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง")
+    # 3. Direct query to Supabase users table
+    if not user_rec and sb:
+        try:
+            res = sb.table("users").select("*").ilike("username", un).execute()
+            if res.data and str(res.data[0].get("password")) == pw:
+                user_rec = res.data[0]
+        except Exception:
+            pass
 
-    if user.get("status") == "pending":
-        raise HTTPException(status_code=403, detail="บัญชีของคุณอยู่ระหว่างรอผู้ดูแลระบบ (Admin) อนุมัติการเข้าใช้งาน")
+    if not user_rec:
+        raise HTTPException(status_code=401, detail="ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง")
+
+    is_pending = (user_rec.get("status") == "pending")
 
     return {
         "success": True,
+        "is_pending": is_pending,
         "user": {
-            "username": user.get("username"),
-            "name": user.get("name") or user.get("username"),
-            "role": user.get("role", "Staff"),
-            "status": user.get("status", "approved")
+            "username": user_rec.get("username", un),
+            "name": user_rec.get("name") or user_rec.get("username", un),
+            "role": user_rec.get("role", "Staff"),
+            "status": user_rec.get("status", "approved")
         }
     }
 
