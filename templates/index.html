@@ -390,7 +390,10 @@
                 <button id="btn-dl-contract-from-dep" onclick="app.downloadContractPdf()" class="btn btn-secondary" style="display:none;">
                   📝 โหลดสัญญาเช่า (Rental Agreement PDF)
                 </button>
-                <button onclick="app.switchTab('contract')" class="btn btn-secondary" style="background:#FAF7F2; border:1px solid #CBD5E1; color:#374151;">
+                <button onclick="app.goToTabWithBooking('assign', document.getElementById('deposit-sel-booking').value)" class="btn btn-secondary" style="background:#FFF7ED; border:1px solid #FDBA74; color:#C2410C; font-weight:700;">
+                  🚚 ไปหน้าออกใบงานส่ง/รับรถ (แท็บ 3) ➔
+                </button>
+                <button onclick="app.goToTabWithBooking('contract', document.getElementById('deposit-sel-booking').value)" class="btn btn-secondary" style="background:#FAF7F2; border:1px solid #CBD5E1; color:#374151;">
                   📝 ไปหน้าจัดทำสัญญา (แท็บ 4) ➔
                 </button>
               </div>
@@ -1533,6 +1536,6 @@
   <div class="toast-container" id="toast-container"></div>
 
   <!-- Scripts with cache busting -->
-  <script src="/static/js/app.js?v=3.3"></script>
+  <script src="/static/js/app.js?v=3.4"></script>
 </body>
 </html>

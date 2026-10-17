@@ -421,6 +421,10 @@ class App {
     if (tabName === "assign") {
       this.populateBookingDropdowns();
       this.populateStaffDropdowns();
+      const dispSel = document.getElementById("assign-disp-bk");
+      if (dispSel && !dispSel.value && this.currentSelectedBooking?.booking_id) {
+        dispSel.value = this.currentSelectedBooking.booking_id;
+      }
       this.onSelectAssignDispBooking();
       this.onSelectAssignRetBooking();
     } else if (tabName === "contract") {
@@ -1031,9 +1035,11 @@ class App {
       });
       const data = await res.json();
       if (data.success) {
-        this.showToast(`✅ บันทึกรับเงินมัดจำ ${bkId} เรียบร้อย!`, "success");
+        this.showToast(`✅ บันทึกรับเงินมัดจำ ${bkId} เรียบร้อย! กำลังพาไปหน้าออกใบงานส่ง/รับรถ...`, "success");
         await this.loadBookings();
+        await this.loadCars();
         this.onSelectDepositBooking();
+        await this.goToTabWithBooking("assign", bkId);
       }
     } catch (e) {
       this.showToast("เกิดข้อผิดพลาด: " + e.message, "danger");
@@ -1088,6 +1094,10 @@ class App {
   }
 
   async goToTabWithBooking(tabName, bkId) {
+    if (bkId) {
+      const b = this.bookings.find(x => x.booking_id === bkId);
+      if (b) this.currentSelectedBooking = b;
+    }
     await this.switchTab(tabName);
     if (!bkId) return;
     if (tabName === "deposit") {
@@ -1095,6 +1105,12 @@ class App {
       if (sel) {
         sel.value = bkId;
         this.onSelectDepositBooking();
+      }
+    } else if (tabName === "assign") {
+      const sel = document.getElementById("assign-disp-bk");
+      if (sel) {
+        sel.value = bkId;
+        this.onSelectAssignDispBooking();
       }
     } else if (tabName === "contract") {
       const sel = document.getElementById("contract-sel-bk");
