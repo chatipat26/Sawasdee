@@ -277,15 +277,72 @@ class App {
     try {
       const res = await fetch("/api/reports/kpis");
       if (res.ok) {
-        const kpi = await res.json();
-        document.getElementById("kpi-total-cars").textContent = kpi.total_cars;
-        document.getElementById("kpi-active-rentals").textContent = kpi.active_rentals;
-        document.getElementById("kpi-utilization").textContent = `${kpi.utilization_rate}%`;
-        document.getElementById("kpi-total-revenue").textContent = `฿${kpi.total_revenue.toLocaleString('th-TH', {minimumFractionDigits: 2})}`;
+        this.rawKpiData = await res.json();
       }
+      await this.loadMonthlyReports();
+      this.updateDashboardKPIsFromScope();
       this.renderDashboardCharts();
-      this.loadMonthlyReports();
+      this.renderFleetOverviewTable();
     } catch (e) {}
+  }
+
+  onDashboardScopeChange() {
+    this.updateDashboardKPIsFromScope();
+    this.renderFleetOverviewTable();
+  }
+
+  matchesCompanyScope(rawCompany, scopeVal) {
+    if (!scopeVal || scopeVal === "ทั้งหมด") return true;
+    const raw = String(rawCompany || "").trim();
+    if (raw === scopeVal) return true;
+    if (scopeVal === "Sawasdee Rent A Car" && (raw.includes("สวัสดี เรนทัล") || raw.includes("Sawasdee Rental"))) return true;
+    if (scopeVal === "P.D.P. Co., Ltd." && (raw.includes("P.D.P") || raw.includes("พี.ดี.พี"))) return true;
+    if (scopeVal === "Sawasdee Car Rent" && raw.includes("บี คลิ๊ก")) return true;
+    return false;
+  }
+
+  updateDashboardKPIsFromScope() {
+    const scopeVal = document.getElementById("dash-company-scope")?.value || "ทั้งหมด";
+    const scopedCars = (this.cars || []).filter(c => this.matchesCompanyScope(c.company, scopeVal));
+
+    const totalCars = scopedCars.length;
+    const availCars = scopedCars.filter(c => c.fleet_status_key === "available" || c.status === "ว่างพร้อมใช้งาน").length;
+    const maintCars = scopedCars.filter(c => c.fleet_status_key === "maintenance" || c.status === "ซ่อมบำรุง").length;
+    const activeRentals = scopedCars.filter(c => c.fleet_status_key === "unavailable" || ["กำลังเช่า", "ติดจอง", "เตรียมส่งมอบ", "เตรียมรับคืน", "รอส่งมอบ"].includes(c.status)).length;
+    const utilRate = totalCars > 0 ? ((activeRentals / totalCars) * 100).toFixed(1) : "0.0";
+
+    let totalRev = 0;
+    if (scopeVal === "ทั้งหมด" && this.rawKpiData && this.rawKpiData.total_revenue !== undefined) {
+      totalRev = parseFloat(this.rawKpiData.total_revenue || 0);
+    } else {
+      totalRev = (this.completedJobs || [])
+        .filter(j => this.matchesCompanyScope(j.company, scopeVal))
+        .reduce((sum, j) => sum + parseFloat(j.net_price || 0), 0);
+    }
+
+    const elTotal = document.getElementById("kpi-total-cars");
+    const elAvail = document.getElementById("kpi-avail-pill");
+    const elActive = document.getElementById("kpi-active-rentals");
+    const elMaint = document.getElementById("kpi-maint-pill");
+    const elUtil = document.getElementById("kpi-utilization");
+    const elRev = document.getElementById("kpi-total-revenue");
+    const elUpd = document.getElementById("dash-last-updated-txt");
+
+    if (elTotal) elTotal.textContent = totalCars;
+    if (elAvail) elAvail.textContent = `พร้อมให้บริการ ${availCars} คัน`;
+    if (elActive) elActive.textContent = activeRentals;
+    if (elMaint) elMaint.textContent = `ซ่อมบำรุง ${maintCars} คัน`;
+    if (elUtil) elUtil.textContent = `${utilRate}%`;
+    if (elRev) elRev.textContent = `฿${totalRev.toLocaleString('th-TH', { minimumFractionDigits: 2 })}`;
+    if (elUpd) {
+      const now = new Date();
+      const dd = String(now.getDate()).padStart(2, "0");
+      const mm = String(now.getMonth() + 1).padStart(2, "0");
+      const yyyy = now.getFullYear();
+      const hh = String(now.getHours()).padStart(2, "0");
+      const min = String(now.getMinutes()).padStart(2, "0");
+      elUpd.textContent = `🕒 ข้อมูลอัปเดตล่าสุด ณ ${dd}/${mm}/${yyyy} ${hh}:${min}`;
+    }
   }
 
   async loadMonthlyReports() {
@@ -297,6 +354,7 @@ class App {
       const data = await res.json();
       this.completedJobs = data.jobs || [];
       this.renderCompletedJobsTable();
+      this.renderTrendChart();
     }
   }
 
@@ -2105,136 +2163,77 @@ class App {
     const tbody = document.getElementById("fleet-overview-tbody");
     if (!tbody) return;
 
-    const alertsContainer = document.getElementById("fleet-expiry-alerts-container");
+    const summaryEl = document.getElementById("dash-fleet-expiry-summary");
     const sortMode = document.getElementById("dash-fleet-sort-select")?.value || "expiry_asc";
-    const kw = (document.getElementById("dash-fleet-search-input")?.value || "").toLowerCase().trim();
+    const localKw = (document.getElementById("dash-fleet-search-input")?.value || "").toLowerCase().trim();
+    const sbKw = (this.sidebarSearchKw || "").toLowerCase().trim();
+    const scopeVal = document.getElementById("dash-company-scope")?.value || "ทั้งหมด";
 
-    // 1. Collect all expiring items (<= 30 days) across all cars for the 30-day Alert Banner
-    const expiringItems = [];
-    const enrichedCars = (this.cars || []).map(c => {
+    // 1. Filter by Company Scope first (matching app.py)
+    const scopedCars = (this.cars || []).filter(c => this.matchesCompanyScope(c.company, scopeVal));
+
+    let expiredCount = 0;
+    let warningCount = 0;
+    let normalCount = 0;
+
+    const enrichedCars = scopedCars.map(c => {
       const actInfo = this.parseExpiryDateInfo(c.act_expiry);
       const insInfo = this.parseExpiryDateInfo(c.ins_expiry);
       const minDays = Math.min(actInfo.daysLeft, insInfo.daysLeft);
+      const maxDays = Math.max(actInfo.daysLeft, insInfo.daysLeft);
 
-      if (actInfo.valid && actInfo.daysLeft <= 30) {
-        expiringItems.push({
-          plate: c.plate,
-          model: `${c.brand || ''} ${c.model || ''}`.trim(),
-          company: c.company || 'Sawasdee',
-          type: 'พ.ร.บ.',
-          field: 'act_expiry',
-          curr_expiry: actInfo.formatted,
-          days_left: actInfo.daysLeft
-        });
-      }
-      if (insInfo.valid && insInfo.daysLeft <= 30) {
-        expiringItems.push({
-          plate: c.plate,
-          model: `${c.brand || ''} ${c.model || ''}`.trim(),
-          company: c.company || 'Sawasdee',
-          type: 'ประกันภัย',
-          field: 'ins_expiry',
-          curr_expiry: insInfo.formatted,
-          days_left: insInfo.daysLeft
-        });
-      }
+      if (minDays < 0) expiredCount++;
+      else if (minDays <= 30) warningCount++;
+      else normalCount++;
 
       return {
         car: c,
         actInfo,
         insInfo,
-        minDays
+        minDays,
+        maxDays
       };
     });
 
-    // Sort expiring items by days_left ascending (expired/urgent first)
-    expiringItems.sort((a, b) => a.days_left - b.days_left);
-
-    if (alertsContainer) {
-      let alertsHtml = "";
-      if (expiringItems.length > 0) {
-        const itemsRows = expiringItems.map(exp => {
-          const safePlate = String(exp.plate || "").replace(/'/g, "\\'");
-          let tagHtml = "";
-          if (exp.days_left < 0) {
-            tagHtml = `<span style="background:#FEE2E2; color:#991B1B; padding:2px 8px; border-radius:12px; font-weight:700; font-size:11px;">🔴 หมดอายุแล้ว (เกิน ${Math.abs(exp.days_left)} วัน)</span>`;
-          } else if (exp.days_left === 0) {
-            tagHtml = `<span style="background:#FEE2E2; color:#991B1B; padding:2px 8px; border-radius:12px; font-weight:700; font-size:11px;">🔴 หมดอายุวันนี้</span>`;
-          } else {
-            tagHtml = `<span style="background:#FEF3C7; color:#D97706; padding:2px 8px; border-radius:12px; font-weight:700; font-size:11px;">🟡 ใกล้หมดอายุ (เหลือ ${exp.days_left} วัน)</span>`;
-          }
-
-          return `
-            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; padding:7px 10px; background:#FFFFFF; border:1px solid #FDE68A; border-radius:8px; margin-bottom:6px;">
-              <div style="font-size:12.5px; color:#1F2937;">
-                🚘 <b>${exp.plate}</b> (${exp.model} - ${exp.company}) | <b>${exp.type}</b>: หมดอายุ <b>${exp.curr_expiry}</b> ${tagHtml}
-              </div>
-              <div style="display:flex; gap:6px; align-items:center;">
-                <button type="button" onclick="app.quickRenewCarExpiry('${safePlate}', '${exp.field}')" class="btn btn-sm btn-primary" style="padding:4px 10px; font-size:11.5px;">
-                  🔄 อัปเดต ${exp.type} (+1 ปีจากวันนี้)
-                </button>
-                <button type="button" onclick="app.openExpiryModal('${safePlate}', '${exp.field}')" class="btn btn-sm btn-secondary" style="padding:4px 8px; font-size:11.5px;" title="ระบุวันหมดอายุเอง">
-                  📅 กำหนดวันเอง
-                </button>
-              </div>
-            </div>
-          `;
-        }).join("");
-
-        alertsHtml += `
-          <div style="background:#FFFBEB; border:1px solid #FCD34D; border-left:5px solid #F59E0B; border-radius:10px; padding:12px 16px; margin-bottom:10px;">
-            <div style="font-weight:700; color:#B45309; font-size:14px; display:flex; align-items:center; gap:8px;">
-              <span>⚠️</span> แจ้งเตือน พ.ร.บ. / ประกันภัยใกล้หมดอายุ (ภายใน 30 วัน) หรือหมดอายุแล้ว (${expiringItems.length} รายการ)
-            </div>
-            <div style="font-size:12px; color:#92400E; margin-top:2px; margin-bottom:10px;">
-              เรียงลำดับจากรายการที่หมดอายุแล้วหรือใกล้หมดอายุที่สุดก่อน ท่านสามารถกดปุ่ม <b>'🔄 อัปเดต (+1 ปีจากวันนี้)'</b> หรือ <b>'📅 กำหนดวันเอง'</b> ได้ทันที
-            </div>
-            <div style="max-height:240px; overflow-y:auto; padding-right:4px;">
-              ${itemsRows}
-            </div>
-          </div>
-        `;
-      }
-
-      alertsHtml += `
-        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; background:#F0FDF4; border:1px solid #BBF7D0; border-radius:8px; padding:10px 14px; font-size:12px; color:#166534; line-height:1.5;">
-          <div>
-            📲 <b>ระบบแจ้งเตือน พ.ร.บ. / ประกันภัย ผ่าน LINE อัตโนมัติ (Broadcast):</b><br/>
-            • ส่งแจ้งเตือนอัตโนมัติทุกวันเวลา <b>20:00 น.</b> (ล่วงหน้า <b>30 วัน</b>, <b>7 วัน</b> และ <b>วันหมดอายุ</b>)<br/>
-            • เมื่อกดปุ่ม <b>'🔄 อัปเดต'</b> ต่ออายุแล้ว ระบบจะบันทึกลงฐานข้อมูลและหยุดส่งแจ้งเตือนทันที
-          </div>
-          <button type="button" onclick="app.triggerLineExpiryCheck()" class="btn btn-sm" style="background:#16A34A; color:#FFFFFF; border:none; font-weight:700; padding:7px 14px; border-radius:8px; cursor:pointer; white-space:nowrap;">
-            🔔 ทดสอบตรวจ & ส่งแจ้งเตือน LINE
-          </button>
-        </div>
+    if (summaryEl) {
+      summaryEl.innerHTML = `
+        <span style="background:#FEE2E2; color:#991B1B; border:1px solid #FECACA; padding:3px 9px; border-radius:12px; font-size:11.5px; font-weight:700;">
+          🔴 หมดอายุ: ${expiredCount} คัน
+        </span>
+        <span style="background:#FEF3C7; color:#B45309; border:1px solid #FDE68A; padding:3px 9px; border-radius:12px; font-size:11.5px; font-weight:700;">
+          🟡 ใกล้หมด (≤30 วัน): ${warningCount} คัน
+        </span>
+        <span style="background:#ECFDF5; color:#065F46; border:1px solid #A7F3D0; padding:3px 9px; border-radius:12px; font-size:11.5px; font-weight:700;">
+          🟢 ปกติ: ${normalCount} คัน
+        </span>
       `;
-      alertsContainer.innerHTML = alertsHtml;
     }
 
-    // 2. Filter by search keyword
+    // 2. Filter by search keyword (local search or sidebar search)
     let filtered = enrichedCars.filter(item => {
-      if (!kw) return true;
       const c = item.car;
-      const target = `${c.plate || ''} ${c.brand || ''} ${c.model || ''} ${c.company || ''} ${c.color || ''} ${c.status || ''}`.toLowerCase();
-      return target.includes(kw);
+      const target = `${c.plate || ''} ${c.brand || ''} ${c.model || ''} ${c.company || ''} ${c.color || ''} ${c.status || ''} ${c.act_expiry || ''} ${c.ins_expiry || ''}`.toLowerCase();
+      if (localKw && !target.includes(localKw)) return false;
+      if (sbKw && !target.includes(sbKw)) return false;
+      return true;
     });
 
-    // 3. Sort according to selected sort mode (Default: earliest expiry first)
+    // 3. Sort according to selected sort mode (Default: earliest expiry of ACT & Insurance first)
     filtered.sort((a, b) => {
       if (sortMode === "act_asc") {
         if (a.actInfo.daysLeft !== b.actInfo.daysLeft) return a.actInfo.daysLeft - b.actInfo.daysLeft;
-        return a.insInfo.daysLeft - b.insInfo.daysLeft;
+        if (a.insInfo.daysLeft !== b.insInfo.daysLeft) return a.insInfo.daysLeft - b.insInfo.daysLeft;
+        return String(a.car.plate || "").localeCompare(String(b.car.plate || ""), "th");
       } else if (sortMode === "ins_asc") {
         if (a.insInfo.daysLeft !== b.insInfo.daysLeft) return a.insInfo.daysLeft - b.insInfo.daysLeft;
-        return a.actInfo.daysLeft - b.actInfo.daysLeft;
+        if (a.actInfo.daysLeft !== b.actInfo.daysLeft) return a.actInfo.daysLeft - b.actInfo.daysLeft;
+        return String(a.car.plate || "").localeCompare(String(b.car.plate || ""), "th");
       } else if (sortMode === "plate_asc") {
         return String(a.car.plate || "").localeCompare(String(b.car.plate || ""), "th");
       } else {
-        // Default: expiry_asc (earliest of act_expiry or ins_expiry first)
+        // Default: expiry_asc (earliest expiry date first; if tied on minDays, compare maxDays so updating 1 column immediately drops it below cars where both are unrenewed)
         if (a.minDays !== b.minDays) return a.minDays - b.minDays;
-        const aMax = Math.max(a.actInfo.daysLeft, a.insInfo.daysLeft);
-        const bMax = Math.max(b.actInfo.daysLeft, b.insInfo.daysLeft);
-        if (aMax !== bMax) return aMax - bMax;
+        if (a.maxDays !== b.maxDays) return a.maxDays - b.maxDays;
         return String(a.car.plate || "").localeCompare(String(b.car.plate || ""), "th");
       }
     });
@@ -2250,7 +2249,7 @@ class App {
       const rowBg = item.minDays < 0 ? "background:#FEF2F2;" : (item.minDays <= 30 ? "background:#FFFBEB;" : "");
 
       return `
-        <tr style="${rowBg}">
+        <tr style="${rowBg} transition: background 0.25s ease;">
           <td style="white-space:nowrap;"><b>🚘 ${c.plate}</b></td>
           <td><b>${c.brand || ''}</b> ${c.model || ''}</td>
           <td>${c.color || '-'}</td>
@@ -2264,8 +2263,11 @@ class App {
           <td>${this.formatExpiryStatusCell(c.plate, 'ins_expiry', c.ins_expiry)}</td>
           <td style="white-space:nowrap;">${c.mileage || '15,000'} km</td>
           <td style="text-align:center; white-space:nowrap;">
+            <button type="button" onclick="app.quickRenewBothExpiry('${safePlate}')" class="btn btn-sm" style="padding:3px 7px; font-size:11px; font-weight:700; background:#ECFDF5; color:#047857; border:1px solid #6EE7B7;" title="ต่ออายุทั้ง พ.ร.บ. และ ประกันภัย (+1 ปี) พร้อมกัน">
+              🔄 ต่อคู่
+            </button>
             <button type="button" onclick="app.openEditCarModal('${safePlate}')" class="btn btn-sm btn-secondary" style="padding:3px 7px; font-size:11.5px;" title="แก้ไขรายละเอียดรถและรูปรถ">
-              ✏️ แก้ไข
+              ✏️
             </button>
             <button type="button" onclick="app.jumpToCarInFrontOffice('${safePlate}')" class="btn btn-sm btn-secondary" style="padding:3px 7px; font-size:11.5px;" title="ดูรถในหน้าเลือกรถยนต์">
               🔍
@@ -2276,19 +2278,73 @@ class App {
     }).join("");
   }
 
+  computeRenewedDateStr(rawStr) {
+    const now = new Date();
+    const info = this.parseExpiryDateInfo(rawStr);
+    let targetDate = null;
+
+    if (info.valid && info.dateObj) {
+      const d = info.dateObj;
+      let targetYear = Math.max(d.getFullYear() + 1, now.getFullYear() + 1);
+      targetDate = new Date(targetYear, d.getMonth(), d.getDate());
+      const diffDays = Math.round((targetDate.getTime() - now.getTime()) / 86400000);
+      if (diffDays <= 30) {
+        targetDate = new Date(targetYear + 1, d.getMonth(), d.getDate());
+      }
+    } else {
+      targetDate = new Date(now.getFullYear() + 1, now.getMonth(), now.getDate());
+    }
+
+    const dd = String(targetDate.getDate()).padStart(2, "0");
+    const mm = String(targetDate.getMonth() + 1).padStart(2, "0");
+    const yyyy = targetDate.getFullYear();
+    return `${dd}/${mm}/${yyyy}`;
+  }
+
   async quickRenewCarExpiry(plate, field) {
     const car = (this.cars || []).find(c => c.plate === plate);
     if (!car) return;
 
     const labelType = field === "act_expiry" ? "พ.ร.บ." : "ประกันภัย";
-    const now = new Date();
-    const nextYear = new Date(now.getFullYear() + 1, now.getMonth(), now.getDate());
-    const dd = String(nextYear.getDate()).padStart(2, "0");
-    const mm = String(nextYear.getMonth() + 1).padStart(2, "0");
-    const yyyy = nextYear.getFullYear();
-    const newDateStr = `${dd}/${mm}/${yyyy}`;
+    const newDateStr = this.computeRenewedDateStr(car[field]);
 
     await this.saveCarExpiryUpdate(plate, field, newDateStr, labelType);
+  }
+
+  async quickRenewBothExpiry(plate) {
+    const car = (this.cars || []).find(c => c.plate === plate);
+    if (!car) return;
+
+    const newAct = this.computeRenewedDateStr(car.act_expiry);
+    const newIns = this.computeRenewedDateStr(car.ins_expiry);
+
+    // Update locally right away so table re-sorts immediately
+    car.act_expiry = newAct;
+    car.ins_expiry = newIns;
+    this.renderFleetOverviewTable();
+
+    const payload = Object.assign({}, car, {
+      plate: plate,
+      act_expiry: newAct,
+      ins_expiry: newIns
+    });
+
+    try {
+      const res = await fetch("/api/cars", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (data.success) {
+        this.showToast(`✅ ต่ออายุทั้ง พ.ร.บ. (${newAct}) และ ประกันภัย (${newIns}) ทะเบียน ${plate} เรียบร้อย! (เลื่อนลำดับตามวันหมดอายุใหม่แล้ว)`, "success");
+        await this.loadCars();
+      } else {
+        this.showToast("❌ อัปเดตไม่สำเร็จ: " + (data.detail || "เกิดข้อผิดพลาด"), "danger");
+      }
+    } catch (e) {
+      this.showToast("❌ เกิดข้อผิดพลาด: " + e.message, "danger");
+    }
   }
 
   openExpiryModal(plate, field) {
@@ -2305,8 +2361,8 @@ class App {
     document.getElementById("expiry-modal-car-info").textContent = `🚘 ${plate} — ${car.brand || ''} ${car.model || ''} (${car.company || ''})`;
     document.getElementById("expiry-modal-current-info").textContent = `วันหมดอายุ ${labelType} ปัจจุบัน: ${info.formatted}`;
 
-    // Pre-fill with +1 year from today by default
-    this.applyExpiryPreset("today_1y");
+    // Pre-fill with +1 year from old expiry date by default
+    this.applyExpiryPreset("old_1y");
     this.openModal("modal-update-expiry");
   }
 
@@ -2314,22 +2370,26 @@ class App {
     const plate = document.getElementById("expiry-modal-plate")?.value;
     const field = document.getElementById("expiry-modal-field")?.value;
     const car = (this.cars || []).find(c => c.plate === plate) || {};
-    const info = this.parseExpiryDateInfo(car[field]);
 
-    let baseDate = new Date();
-    if (mode === "old_1y" && info.valid && info.dateObj) {
-      baseDate = info.dateObj;
+    let newDateStr = "";
+    if (mode === "old_1y") {
+      newDateStr = this.computeRenewedDateStr(car[field]);
+    } else {
+      const now = new Date();
+      const target = new Date(now.getFullYear() + 1, now.getMonth(), now.getDate());
+      const dd = String(target.getDate()).padStart(2, "0");
+      const mm = String(target.getMonth() + 1).padStart(2, "0");
+      const yyyy = target.getFullYear();
+      newDateStr = `${dd}/${mm}/${yyyy}`;
     }
 
-    const target = new Date(baseDate.getFullYear() + 1, baseDate.getMonth(), baseDate.getDate());
-    const dd = String(target.getDate()).padStart(2, "0");
-    const mm = String(target.getMonth() + 1).padStart(2, "0");
-    const yyyy = target.getFullYear();
-
+    const parts = newDateStr.split("/");
     const textInput = document.getElementById("expiry-modal-text-input");
     const datePicker = document.getElementById("expiry-modal-date-picker");
-    if (textInput) textInput.value = `${dd}/${mm}/${yyyy}`;
-    if (datePicker) datePicker.value = `${yyyy}-${mm}-${dd}`;
+    if (textInput) textInput.value = newDateStr;
+    if (datePicker && parts.length === 3) {
+      datePicker.value = `${parts[2]}-${parts[1]}-${parts[0]}`;
+    }
   }
 
   onExpiryPickerChange(isoVal) {
@@ -2362,6 +2422,15 @@ class App {
     const car = (this.cars || []).find(c => c.plate === plate);
     if (!car) return;
 
+    // Optimistically update in-memory car object and re-sort table immediately
+    car[field] = newDateStr;
+    this.renderFleetOverviewTable();
+
+    const otherField = field === "act_expiry" ? "ins_expiry" : "act_expiry";
+    const otherLabel = field === "act_expiry" ? "ประกันภัย" : "พ.ร.บ.";
+    const otherInfo = this.parseExpiryDateInfo(car[otherField]);
+    const sortMode = document.getElementById("dash-fleet-sort-select")?.value || "expiry_asc";
+
     const payload = Object.assign({}, car, {
       plate: plate,
       [field]: newDateStr
@@ -2375,7 +2444,11 @@ class App {
       });
       const data = await res.json();
       if (data.success) {
-        this.showToast(`✅ อัปเดตวันหมดอายุ ${labelType} ทะเบียน ${plate} เป็น ${newDateStr} เรียบร้อย!`, "success");
+        if (sortMode === "expiry_asc" && otherInfo.valid && otherInfo.daysLeft <= 30) {
+          this.showToast(`✅ อัปเดต ${labelType} ทะเบียน ${plate} เป็น ${newDateStr} แล้ว (หมายเหตุ: ${otherLabel} ยังหมดอายุ ${otherInfo.formatted} กด 🔄 ที่ ${otherLabel} หรือปุ่ม '🔄 ต่อคู่' เพื่อให้แถวเลื่อนลงไปท้ายตาราง)`, "success");
+        } else {
+          this.showToast(`✅ อัปเดตวันหมดอายุ ${labelType} ทะเบียน ${plate} เป็น ${newDateStr} เรียบร้อย! (เรียงลำดับตารางใหม่แล้ว)`, "success");
+        }
         await this.loadCars();
       } else {
         this.showToast("❌ อัปเดตไม่สำเร็จ: " + (data.detail || "เกิดข้อผิดพลาด"), "danger");
@@ -2386,12 +2459,13 @@ class App {
   }
 
   jumpToCarInFrontOffice(plate) {
-    const sbSearch = document.getElementById("sidebar-search-input");
+    const sbSearch = document.getElementById("sb-search-input");
     if (sbSearch) sbSearch.value = plate;
+    this.sidebarSearchKw = String(plate || "").toLowerCase().trim();
     this.switchModule("frontoffice");
-    this.switchSubTab("cars");
+    this.switchTab("fleet");
     this.renderFleetCards();
-    this.showToast(`🚘 แสดงข้อมูลรถยนต์ทะเบียน ${plate}`, "info");
+    this.showToast(`🚘 ข้ามไปยังข้อมูลรถยนต์ทะเบียน ${plate}`, "info");
   }
 
   toggleExpander(cardId) {
@@ -2683,6 +2757,7 @@ class App {
     if (!canvas || typeof Chart === "undefined") return;
 
     const months = ["1. พ.ค.", "2. มิ.ย.", "3. ก.ค.", "4. ส.ค.", "5. ก.ย.", "6. ต.ค."];
+    const monthNums = [5, 6, 7, 8, 9, 10];
     const baseTrend = {
       "Sawasdee Rent A Car": {
         rev: [120000, 145000, 160000, 140000, 150000, 190000],
@@ -2700,6 +2775,30 @@ class App {
         color: "#3B82F6"
       }
     };
+
+    // Dynamically incorporate completedJobs into baseTrend (matching app.py lines 7054-7068)
+    (this.completedJobs || []).forEach(item => {
+      const dStr = String(item.completed_date || item.end_date || "");
+      let mNum = null;
+      if (dStr.includes("-")) {
+        const parts = dStr.split("-");
+        if (parts.length >= 2) mNum = parseInt(parts[1], 10);
+      } else if (dStr.includes("/")) {
+        const parts = dStr.split("/");
+        if (parts.length >= 2) mNum = parseInt(parts[1], 10);
+      }
+      const mIdx = monthNums.indexOf(mNum);
+      if (mIdx !== -1) {
+        let comp = item.company || "Sawasdee Rent A Car";
+        if (this.matchesCompanyScope(comp, "Sawasdee Rent A Car")) comp = "Sawasdee Rent A Car";
+        else if (this.matchesCompanyScope(comp, "P.D.P. Co., Ltd.")) comp = "P.D.P. Co., Ltd.";
+        else if (this.matchesCompanyScope(comp, "Sawasdee Car Rent")) comp = "Sawasdee Car Rent";
+        if (baseTrend[comp]) {
+          baseTrend[comp].rev[mIdx] += parseFloat(item.net_price || 0);
+          baseTrend[comp].jobs[mIdx] += 1;
+        }
+      }
+    });
 
     // Render company selector checkboxes if empty
     const togglesContainer = document.getElementById("trend-company-toggles");
@@ -2809,30 +2908,133 @@ class App {
     const tbody = document.getElementById("completed-jobs-tbody");
     if (!tbody) return;
 
-    if (this.completedJobs.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="11" style="text-align:center; padding:30px; color:#64748B;">ยังไม่มีประวัติงานเสร็จสิ้นในเดือนที่เลือก</td></tr>`;
+    const compFilter = document.getElementById("report-company-filter")?.value || "ทั้งหมด";
+    const sbKw = (this.sidebarSearchKw || "").toLowerCase().trim();
+
+    const filtered = (this.completedJobs || []).filter(j => {
+      if (compFilter !== "ทั้งหมด" && !this.matchesCompanyScope(j.company, compFilter)) {
+        return false;
+      }
+      if (sbKw) {
+        const s = `${j.booking_id || ''} ${j.car_id || ''} ${j.customer || ''} ${j.worker_delivery || ''} ${j.worker_return || ''} ${j.company || ''}`.toLowerCase();
+        if (!s.includes(sbKw)) return false;
+      }
+      return true;
+    });
+
+    // Update Expander Title Count
+    const titleEl = document.getElementById("title-expander-completed");
+    if (titleEl) {
+      titleEl.textContent = `คลังประวัติงานเสร็จสิ้น & รีพอร์ตรายเดือน (Completed Jobs Archive) — (${filtered.length} รายการ)`;
+    }
+
+    // Update 4 Monthly Summary KPI Cards (matching app.py lines 7344-7378)
+    const totalJobsCnt = filtered.length;
+    const totalRevSum = filtered.reduce((sum, x) => sum + parseFloat(x.net_price || 0), 0);
+    const uniqueCarsCnt = new Set(filtered.map(x => x.car_id).filter(Boolean)).size;
+    const uniqueCustCnt = new Set(filtered.map(x => x.customer).filter(Boolean)).size;
+
+    const elJobs = document.getElementById("rpt-kpi-jobs");
+    const elRev = document.getElementById("rpt-kpi-rev");
+    const elCars = document.getElementById("rpt-kpi-cars");
+    const elCusts = document.getElementById("rpt-kpi-custs");
+
+    if (elJobs) elJobs.innerHTML = `${totalJobsCnt} <span style="font-size:13px; font-weight:500;">งาน</span>`;
+    if (elRev) elRev.textContent = `฿${totalRevSum.toLocaleString('th-TH', { minimumFractionDigits: 2 })}`;
+    if (elCars) elCars.innerHTML = `${uniqueCarsCnt} <span style="font-size:13px; font-weight:500;">คัน</span>`;
+    if (elCusts) elCusts.innerHTML = `${uniqueCustCnt} <span style="font-size:13px; font-weight:500;">ราย</span>`;
+
+    const photosContainer = document.getElementById("completed-jobs-photos-container");
+
+    if (filtered.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="12" style="text-align:center; padding:30px; color:#64748B;">ไม่มีข้อมูลงานที่เสร็จสิ้นตรงกับเงื่อนไขที่เลือก</td></tr>`;
+      if (photosContainer) photosContainer.innerHTML = "";
       return;
     }
 
-    tbody.innerHTML = this.completedJobs.map(j => `
-      <tr>
-        <td><b style="color:#D97706;">${j.booking_id}</b></td>
-        <td>📅 ${j.completed_date || j.end_date || '-'}</td>
-        <td><b>${j.car_id}</b></td>
-        <td><b>${j.customer}</b></td>
-        <td>${j.company || '-'}</td>
-        <td><span class="badge badge-gray">${j.contract_type || 'รายวัน'}</span></td>
-        <td style="font-weight:700; color:#059669;">฿${parseFloat(j.net_price || 0).toLocaleString()}</td>
-        <td style="font-size:12px;">${j.worker_delivery || '-'} / ${j.worker_return || '-'}</td>
-        <td style="font-size:12px;">${j.fuel_level || '-'}</td>
-        <td><span class="badge badge-success">เสร็จสิ้น</span></td>
-        <td style="text-align:center; white-space:nowrap;">
-          <a href="/api/pdf/contract/${j.booking_id}" target="_blank" class="btn btn-sm btn-secondary" title="สัญญา">📝</a>
-          <a href="/api/pdf/receipt/${j.booking_id}" target="_blank" class="btn btn-sm btn-secondary" title="ใบเสร็จ">🧾</a>
-          <a href="/api/pdf/job/${j.booking_id}" target="_blank" class="btn btn-sm btn-secondary" title="ใบตรวจสภาพ">📋</a>
-        </td>
-      </tr>
-    `).join("");
+    tbody.innerHTML = filtered.map(j => {
+      const custObj = (this.customers || []).find(c => c.full_name === j.customer) || {};
+      const phone = custObj.contact_no && custObj.contact_no !== "-" ? `<div style="font-size:11px; color:#64748B;">📞 ${custObj.contact_no}</div>` : "";
+      const locStr = j.loc_return || j.loc_delivery || "-";
+      const photos = Array.isArray(j.inspection_photos) ? j.inspection_photos : [];
+      const pBadge = photos.length > 0
+        ? `<span style="background:#E0E7FF; color:#4338CA; padding:2px 7px; border-radius:10px; font-size:11px; font-weight:700; margin-left:4px;">📸 ${photos.length} รูป</span>`
+        : "";
+      const notes = j.inspection_notes || "ตรวจสภาพปกติ";
+
+      return `
+        <tr>
+          <td><b style="color:#D97706;">${j.booking_id}</b></td>
+          <td style="white-space:nowrap;">📅 ${j.completed_date || j.end_date || '-'}</td>
+          <td style="white-space:nowrap;"><b>🚘 ${j.car_id}</b></td>
+          <td>
+            <b>👤 ${j.customer}</b>
+            ${phone}
+          </td>
+          <td>${j.company || '-'}</td>
+          <td><span class="badge badge-gray">${j.contract_type || 'รายวัน'}</span></td>
+          <td style="text-align:right; font-weight:700; color:#E85826;">฿${parseFloat(j.net_price || 0).toLocaleString('th-TH', { minimumFractionDigits: 2 })}</td>
+          <td style="font-size:12px;">${j.worker_delivery || '-'} / ${j.worker_return || '-'}</td>
+          <td style="font-size:12px; max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${locStr}">${locStr}</td>
+          <td>
+            <div style="font-size:12px; white-space:nowrap;"><b>${j.fuel_level || '⛽ เต็มถัง (100%)'}</b>${pBadge}</div>
+            <div style="font-size:11px; color:#64748B; max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${notes}">${notes}</div>
+          </td>
+          <td><span class="badge badge-success">เสร็จสิ้น</span></td>
+          <td style="text-align:center; white-space:nowrap;">
+            <a href="/api/pdf/contract/${j.booking_id}" target="_blank" class="btn btn-sm btn-secondary" title="โหลดสัญญาเช่า PDF">📝</a>
+            <a href="/api/pdf/receipt/${j.booking_id}" target="_blank" class="btn btn-sm btn-secondary" title="โหลดใบเสร็จ PDF">🧾</a>
+            <a href="/api/pdf/job/${j.booking_id}" target="_blank" class="btn btn-sm btn-secondary" title="โหลดลิสต์ตรวจเช็ครถ PDF">📋</a>
+          </td>
+        </tr>
+      `;
+    }).join("");
+
+    // Render Collapsible Photo Gallery if any completed job has inspection photos (matching app.py lines 7468-7479)
+    if (photosContainer) {
+      const jobsWithPhotos = filtered.filter(j => Array.isArray(j.inspection_photos) && j.inspection_photos.length > 0);
+      if (jobsWithPhotos.length === 0) {
+        photosContainer.innerHTML = "";
+      } else {
+        const totalPhotoCnt = jobsWithPhotos.reduce((acc, j) => acc + j.inspection_photos.length, 0);
+        const galleryItems = jobsWithPhotos.map(j => {
+          const imgsHtml = j.inspection_photos.map(p => {
+            const src = typeof p === "string" ? p : (p.data || p.url || "");
+            const cap = typeof p === "object" && p.name ? p.name : "ภาพสภาพรถ";
+            return `
+              <div style="border:1px solid #E2E8F0; border-radius:8px; padding:6px; background:#FFFFFF; text-align:center;">
+                <a href="${src}" target="_blank">
+                  <img src="${src}" alt="${cap}" style="width:100%; height:130px; object-fit:cover; border-radius:6px;">
+                </a>
+                <div style="font-size:11px; color:#64748B; margin-top:4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${cap}</div>
+              </div>
+            `;
+          }).join("");
+
+          return `
+            <div style="margin-bottom:14px;">
+              <div style="font-size:13px; font-weight:700; color:#1F2937; margin-bottom:6px;">
+                🚘 ${j.car_id} | รหัส: ${j.booking_id} (${j.customer}) — ระดับน้ำมัน: ${j.fuel_level || '-'}
+              </div>
+              <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap:10px;">
+                ${imgsHtml}
+              </div>
+            </div>
+          `;
+        }).join("");
+
+        photosContainer.innerHTML = `
+          <details style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:10px; padding:10px 14px;">
+            <summary style="cursor:pointer; font-weight:700; font-size:13px; color:#334155;">
+              📸 คลังรูปภาพสภาพรถ & เกจ์น้ำมันตอนส่งงานปิดจ๊อบ (${totalPhotoCnt} รูป) — คลิกเพื่อดูภาพหลักฐาน
+            </summary>
+            <div style="margin-top:12px;">
+              ${galleryItems}
+            </div>
+          </details>
+        `;
+      }
+    }
   }
 
   async triggerLineExpiryCheck() {
