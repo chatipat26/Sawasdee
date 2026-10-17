@@ -271,9 +271,9 @@ async def create_or_update_car(payload: Dict[str, Any]):
     if not plate:
         raise HTTPException(status_code=400, detail="กรุณาระบุเลขทะเบียนรถ")
     
-    original_plate = str(payload.get("original_plate") or plate).strip()
+    original_plate = str(payload.get("original_plate") or "").strip()
     norm_new = normalize_plate(plate)
-    norm_orig = normalize_plate(original_plate)
+    norm_orig = normalize_plate(original_plate) if original_plate else ""
 
     # 1. Block duplicate License Plate (ignoring spaces, dashes, dots)
     for existing_plate, c_obj in store.cars.items():
@@ -284,7 +284,7 @@ async def create_or_update_car(payload: Dict[str, Any]):
             dup_model = c_obj.get("model", "")
             raise HTTPException(
                 status_code=400,
-                detail=f"เลขทะเบียนรถ '{plate}' ซ้ำกับรถ '{dup_brand} {dup_model}' (ทะเบียน {existing_plate}) ในระบบแล้ว"
+                detail=f"เลขทะเบียนรถ '{plate}' ซ้ำกับรถ '{dup_brand} {dup_model}' (ทะเบียน {existing_plate}) ในระบบแล้ว ไม่สามารถบันทึกได้"
             )
 
     # 2. If plate renamed/corrected from a different original_plate
@@ -348,7 +348,15 @@ async def create_or_update_customer(payload: Dict[str, Any]):
     if not name:
         raise HTTPException(status_code=400, detail="กรุณาระบุชื่อ-นามสกุลลูกค้า")
     
-    original_name = str(payload.get("original_name") or name).strip()
+    original_name = str(payload.get("original_name") or "").strip()
+    is_new = not bool(original_name)
+
+    # 0. Block duplicate customer name if adding new customer
+    if is_new and name in store.customers:
+        raise HTTPException(
+            status_code=400,
+            detail=f"มีลูกค้ารายชื่อ '{name}' ในระบบแล้ว หากต้องการแก้ไขข้อมูล กรุณากดปุ่ม [✏️ ดู/แก้ไข]"
+        )
     
     # 1. Block duplicate Phone Number (Contact No.)
     contact_no = str(payload.get("contact_no", "")).strip()
@@ -357,7 +365,7 @@ async def create_or_update_customer(payload: Dict[str, Any]):
         if len(clean_phone) >= 9:
             norm_phone = "0" + clean_phone[2:] if clean_phone.startswith("66") else clean_phone
             for c_name, c_obj in store.customers.items():
-                if c_name.strip() in [name, original_name]:
+                if original_name and c_name.strip() == original_name:
                     continue # editing existing customer is allowed
                 existing_phone = str(c_obj.get("contact_no", "")).strip()
                 if existing_phone and existing_phone not in ["-", "none", "None", ""]:
@@ -374,7 +382,7 @@ async def create_or_update_customer(payload: Dict[str, Any]):
     if passport_id and passport_id not in ["-", "none", "None", ""]:
         clean_pass = passport_id.replace(" ", "").replace("-", "").lower()
         for c_name, c_obj in store.customers.items():
-            if c_name.strip() in [name, original_name]:
+            if original_name and c_name.strip() == original_name:
                 continue # editing existing customer is allowed
             existing_pass = str(c_obj.get("passport_id", "")).strip()
             if existing_pass and existing_pass not in ["-", "none", "None", ""]:

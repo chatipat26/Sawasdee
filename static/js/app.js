@@ -27,12 +27,98 @@ class App {
   }
 
   async init() {
+    this.initGlobalEnterKeyNavigation();
     this.setupDatePickers();
     this.updateAuthUI();
     if (this.user) {
       await this.fetchInitialData();
       this.startLiveSyncPoller();
     }
+  }
+
+  initGlobalEnterKeyNavigation() {
+    document.addEventListener("keydown", (e) => {
+      // Only handle Enter without Ctrl / Meta / Alt, and ignore IME composition
+      if (e.key !== "Enter" || e.ctrlKey || e.metaKey || e.altKey || e.isComposing) return;
+
+      const activeEl = document.activeElement;
+      if (!activeEl) return;
+
+      const tag = activeEl.tagName.toLowerCase();
+      // Allow textarea to insert line breaks normally
+      if (tag === "textarea") return;
+      // Allow buttons to be triggered normally on Enter
+      if (tag === "button") return;
+
+      // Only handle input and select
+      if (tag !== "input" && tag !== "select") return;
+
+      const inputType = (activeEl.getAttribute("type") || "text").toLowerCase();
+      if (["button", "submit", "reset", "file"].includes(inputType)) return;
+
+      // Prevent default form submit or page reload
+      e.preventDefault();
+
+      // Find the logical container context:
+      // 1. Is it inside an open modal?
+      const openModal = activeEl.closest(".modal-backdrop.active, .modal-backdrop[style*='display: flex'], .modal-backdrop[style*='display: block'], .modal-backdrop");
+      let container = null;
+      if (openModal && window.getComputedStyle(openModal).display !== "none") {
+        container = openModal.querySelector(".modal-dialog, .modal-box, .modal-content") || openModal;
+      } else {
+        // 2. Is it inside an active tab?
+        container = activeEl.closest(".tab-content.active, .tab-pane.active") || activeEl.closest(".tab-content");
+      }
+      if (!container) {
+        // 3. Fallback to closest section, card, form, or body
+        container = activeEl.closest(".card, form, main") || document.body;
+      }
+
+      // Query candidate form elements within this container
+      const selector = [
+        'input:not([type="hidden"]):not([type="file"]):not([type="button"]):not([type="submit"]):not([type="reset"]):not([disabled]):not([readonly])',
+        'select:not([disabled]):not([readonly])'
+      ].join(", ");
+
+      const candidates = Array.from(container.querySelectorAll(selector));
+      const visibleFields = candidates.filter(el => {
+        if (el.disabled || el.readOnly || el.type === "hidden") return false;
+        const style = window.getComputedStyle(el);
+        if (style.display === "none" || style.visibility === "hidden" || style.opacity === "0") return false;
+        return (el.offsetWidth > 0 || el.offsetHeight > 0 || el.getClientRects().length > 0);
+      });
+
+      const currIndex = visibleFields.indexOf(activeEl);
+
+      // Support Shift + Enter to navigate to previous field
+      if (e.shiftKey) {
+        if (currIndex > 0) {
+          const prevEl = visibleFields[currIndex - 1];
+          prevEl.focus();
+          if (typeof prevEl.select === "function" && prevEl.tagName.toLowerCase() === "input" && !["date", "time", "color", "range"].includes(prevEl.type)) {
+            prevEl.select();
+          }
+        }
+        return;
+      }
+
+      // Enter to navigate to next field
+      if (currIndex >= 0 && currIndex < visibleFields.length - 1) {
+        const nextEl = visibleFields[currIndex + 1];
+        nextEl.focus();
+        if (typeof nextEl.select === "function" && nextEl.tagName.toLowerCase() === "input" && !["date", "time", "color", "range"].includes(nextEl.type)) {
+          nextEl.select();
+        }
+      } else if (currIndex === visibleFields.length - 1) {
+        // At the last field in container: focus the primary action / submit button
+        const primaryBtn = container.querySelector(
+          'button.btn-primary:not([disabled]):not([style*="display: none"]), button[type="submit"]:not([disabled]):not([style*="display: none"]), .btn-save:not([disabled])'
+        );
+        if (primaryBtn && window.getComputedStyle(primaryBtn).display !== "none") {
+          primaryBtn.focus();
+        }
+      }
+    });
   }
 
   getThaiDateTime(offsetDays = 0) {
@@ -853,7 +939,13 @@ class App {
     }
 
     if (this.checkDuplicatePlate(plate)) {
+      alert(`⚠️ ไม่สามารถบันทึกได้!\nเลขทะเบียนรถ '${plate}' ซ้ำกับรถคันอื่นที่มีอยู่ในระบบแล้ว กรุณาตรวจสอบและแก้ไขเลขทะเบียน`);
       this.showToast(`⚠️ เลขทะเบียนรถ '${plate}' ซ้ำกับรถคันอื่นในระบบแล้ว`, "danger");
+      const plateEl = document.getElementById("edit-car-plate");
+      if (plateEl) {
+        plateEl.focus();
+        plateEl.select();
+      }
       return;
     }
 
@@ -861,7 +953,7 @@ class App {
     const imgUrl = (document.getElementById("edit-car-image-url")?.value || "").trim() || existing.image || "";
 
     const payload = {
-      original_plate: origPlate || plate,
+      original_plate: origPlate,
       plate: plate,
       brand: brand,
       model: model,
