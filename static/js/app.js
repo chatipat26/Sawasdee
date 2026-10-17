@@ -168,8 +168,12 @@ class App {
     }).formatToParts(now);
     const map = {};
     parts.forEach(p => { map[p.type] = p.value; });
+    let yr = parseInt(map.year, 10);
+    if (yr > 2400) {
+      yr -= 543; // Always ensure 4-digit Gregorian year (YYYY) for HTML5 <input type="date">
+    }
     const h = map.hour === "24" ? "00" : map.hour;
-    const dStr = `${map.year}-${map.month}-${map.day}`;
+    const dStr = `${yr}-${map.month}-${map.day}`;
     const tStr = `${h}:${map.minute}`;
     return {
       date: dStr,
@@ -184,12 +188,18 @@ class App {
     const thNext3 = this.getThaiDateTime(3);
     const sDate = document.getElementById("filter-start-date");
     const eDate = document.getElementById("filter-end-date");
-    if (sDate && !sDate.value) sDate.value = thNow.date;
-    if (eDate && !eDate.value) eDate.value = thNext3.date;
+    if (sDate) {
+      sDate.value = thNow.date;
+      sDate.min = thNow.date;
+    }
+    if (eDate) {
+      eDate.value = thNext3.date;
+      eDate.min = thNow.date;
+    }
     const sTime = document.getElementById("filter-start-time");
     const eTime = document.getElementById("filter-end-time");
-    if (sTime && !sTime.value) sTime.value = thNow.time;
-    if (eTime && !eTime.value) eTime.value = thNow.time;
+    if (sTime) sTime.value = thNow.time;
+    if (eTime) eTime.value = thNow.time;
   }
 
   updateAuthUI() {
@@ -238,16 +248,19 @@ class App {
   async fetchInitialData() {
     try {
       await Promise.all([
-        this.loadUsers(),
-        this.loadCars(),
-        this.loadCustomers(),
-        this.loadBookings(),
-        this.loadBackOfficeJobs(),
-        this.loadDashboardKPIs()
+        this.loadUsers().catch(e => console.error("loadUsers err:", e)),
+        this.loadCars().catch(e => console.error("loadCars err:", e)),
+        this.loadCustomers().catch(e => console.error("loadCustomers err:", e)),
+        this.loadBookings().catch(e => console.error("loadBookings err:", e)),
+        this.loadBackOfficeJobs().catch(e => console.error("loadBackOfficeJobs err:", e)),
+        this.loadDashboardKPIs().catch(e => console.error("loadDashboardKPIs err:", e))
       ]);
       this.onFilterChange();
     } catch (e) {
       console.error("Initial load error:", e);
+      try {
+        this.onFilterChange();
+      } catch (err2) {}
     }
   }
 
@@ -1144,7 +1157,8 @@ class App {
     const eDateInput = document.getElementById("book-modal-end-date");
     if (!sDateInput || !eDateInput || !sDateInput.value) return;
 
-    const [y, m, d] = sDateInput.value.split("-").map(n => parseInt(n, 10));
+    let [y, m, d] = sDateInput.value.split("-").map(n => parseInt(n, 10));
+    if (y > 2400) y -= 543;
     const target = new Date(y, m - 1, d + targetDays);
     const yyyy = target.getFullYear();
     const mm = String(target.getMonth() + 1).padStart(2, "0");
@@ -4007,6 +4021,8 @@ class App {
         btn.textContent = "⚡ เข้าสู่ระบบ (Supabase Auth)";
       }
     }
+  }
+
   enterDirectly() {
     this.user = {
       username: "admin",
