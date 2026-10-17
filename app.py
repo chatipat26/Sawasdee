@@ -877,8 +877,8 @@ def init_expiry_scheduler_thread():
         print(f"Failed to start expiry scheduler: {e}")
         return False
 
-# เริ่มต้นเธรดตรวจสอบเวลา 20:00 น. (cached singleton ผ่าน @st.cache_resource)
-init_expiry_scheduler_thread()
+# ปิดเธรดแจ้งเตือน 20:00 น. บนฝั่ง Streamlit เนื่องจากย้ายไปทำงานบน Render (server.py / line_service.py) แล้ว เพื่อไม่ให้ส่งซ้ำ 2 รอบ
+# init_expiry_scheduler_thread()
 
 # =========================================================================
 # 3. INITIALIZE STATE & DATA STORE (SUPABASE CLOUD PERSISTENCE)

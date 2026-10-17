@@ -186,17 +186,56 @@ def send_line_broadcast(message, channel_access_token):
         return False
 
 
+def has_already_sent_today(sb_url, sb_key, today_tag):
+    try:
+        from supabase import create_client
+        sb = create_client(sb_url, sb_key)
+        res = sb.table("financial_records").select("id").eq("type", "SYSTEM_LOCK").eq("category", "LINE_EXPIRY_ALERT").eq("date", today_tag).limit(1).execute()
+        return bool(res.data and len(res.data) > 0)
+    except Exception as e:
+        print(f"⚠️ ตรวจสอบสถานะการส่งประจำวันไม่สำเร็จ: {e}")
+        return False
+
+
+def mark_sent_today(sb_url, sb_key, today_tag):
+    try:
+        from supabase import create_client
+        sb = create_client(sb_url, sb_key)
+        sb.table("financial_records").insert({
+            "company": "SYSTEM",
+            "type": "SYSTEM_LOCK",
+            "category": "LINE_EXPIRY_ALERT",
+            "amount": 0,
+            "ref": f"EXPIRY_{today_tag}",
+            "date": today_tag,
+            "detail": "Daily 20:00 LINE Expiry Alert Lock"
+        }).execute()
+    except Exception as e:
+        print(f"⚠️ บันทึกสถานะการส่งประจำวันไม่สำเร็จ: {e}")
+
+
 def run_daily_check(force_send=False):
     """
     ฟังก์ชันหลักในการตรวจสอบและส่งแจ้งเตือน:
+    - ตรวจสอบ Shared Lock บน Supabase ก่อน เพื่อป้องกันการส่งซ้ำระหว่าง Render / GitHub Actions / Streamlit
     - ถ้าไม่มีรายการที่เข้าเงื่อนไข (30 วัน, 7 วัน, 0 วัน) -> จะไม่ส่งข้อความ (ไม่กินโควต้า LINE)
-    - ถ้ามีรายการ -> ส่งข้อความ Broadcast ไปหาพนักงานทุกคน
+    - ถ้ามีรายการ -> ส่งข้อความ Broadcast ไปหาพนักงานทุกคนเพียง 1 ครั้งต่อวัน
     """
     token, sb_url, sb_key = get_credentials()
-    today = date.today()
+    now_bkk = datetime.utcnow() + timedelta(hours=7)
+    today = now_bkk.date()
+    today_tag = today.strftime("%Y-%m-%d")
     print("=" * 60)
     print(f"🔍 เริ่มการตรวจสอบวันหมดอายุ พ.ร.บ. / ประกันภัย ประจำวันที่: {today.strftime('%d/%m/%Y')}")
     print("=" * 60)
+
+    if not force_send and has_already_sent_today(sb_url, sb_key, today_tag):
+        print(f"ℹ️ วันนี้ ({today_tag}) ระบบได้ส่งแจ้งเตือนเวลา 20:00 น. ไปเรียบร้อยแล้ว (ป้องกันการส่งซ้ำ)")
+        return {
+            "status": "already_sent_today",
+            "count": 0,
+            "message": "ส่งแจ้งเตือนของวันนี้ไปแล้ว"
+        }
 
     cars = fetch_cars_from_supabase(sb_url, sb_key)
     print(f"📊 โหลดข้อมูลรถยนต์จาก Supabase ทั้งหมด: {len(cars)} คัน")
@@ -205,6 +244,7 @@ def run_daily_check(force_send=False):
     expiring_items = check_expiring_cars(cars, target_days=target_days, check_date=today)
 
     if not expiring_items:
+        mark_sent_today(sb_url, sb_key, today_tag)
         print("ℹ️ ไม่มีรายการ พ.ร.บ. หรือ ประกันภัย ที่ตรงกับเงื่อนไขแจ้งเตือนในวันนี้ (ล่วงหน้า 30 วัน, 7 วัน, หรือวันหมดอายุ)")
         print("🛑 ระบบจะไม่ส่งข้อความทาง LINE (เพื่อประหยัดโควต้าข้อความ)")
         return {
@@ -217,6 +257,8 @@ def run_daily_check(force_send=False):
     for item in expiring_items:
         print(f"  - [{item['doc_type']}] ทะเบียน: {item['plate']} ({item['model']}) -> {item['status_desc']} (หมดอายุ {item['expiry_date']})")
 
+    # บันทึก Lock ลง Supabase ทันทีก่อนส่ง เพื่อป้องกันอีกเซิร์ฟเวอร์ส่งซ้ำ
+    mark_sent_today(sb_url, sb_key, today_tag)
     alert_msg = build_alert_message(expiring_items)
     success = send_line_broadcast(alert_msg, token)
 

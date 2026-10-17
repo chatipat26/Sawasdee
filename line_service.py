@@ -193,15 +193,57 @@ def check_and_send_expiry_alerts(cars_dict=None, target_days=(30, 31, 7, 0)):
         return {"sent": False, "count": 0, "error": str(e)}
 
 _last_run_tag = None
+
+def _has_sent_expiry_today(today_tag: str) -> bool:
+    global _last_run_tag
+    if _last_run_tag == today_tag:
+        return True
+    try:
+        from db import get_supabase_client
+        sb = get_supabase_client()
+        if sb:
+            res = sb.table("financial_records").select("id").eq("type", "SYSTEM_LOCK").eq("category", "LINE_EXPIRY_ALERT").eq("date", today_tag).limit(1).execute()
+            if res.data and len(res.data) > 0:
+                _last_run_tag = today_tag
+                return True
+    except Exception as e:
+        print(f"Check expiry lock error: {e}")
+    return False
+
+def _mark_sent_expiry_today(today_tag: str):
+    global _last_run_tag
+    _last_run_tag = today_tag
+    try:
+        from db import get_supabase_client
+        sb = get_supabase_client()
+        if sb:
+            sb.table("financial_records").insert({
+                "company": "SYSTEM",
+                "type": "SYSTEM_LOCK",
+                "category": "LINE_EXPIRY_ALERT",
+                "amount": 0,
+                "ref": f"EXPIRY_{today_tag}",
+                "date": today_tag,
+                "detail": "Daily 20:00 LINE Expiry Alert Lock"
+            }).execute()
+    except Exception as e:
+        print(f"Mark expiry lock error: {e}")
+
 def init_expiry_scheduler_thread():
     def _scheduler_loop():
         global _last_run_tag
+        # If server boots up after 20:02 ICT, mark today as already handled so redeploys after 8 PM don't re-trigger
+        now_init = datetime.utcnow() + timedelta(hours=7)
+        init_tag = now_init.strftime("%Y-%m-%d")
+        if now_init.hour > 20 or (now_init.hour == 20 and now_init.minute >= 2):
+            _mark_sent_expiry_today(init_tag)
+
         while True:
             try:
                 now_bkk = datetime.utcnow() + timedelta(hours=7)
                 today_tag = now_bkk.strftime("%Y-%m-%d")
-                if now_bkk.hour >= 20 and _last_run_tag != today_tag:
-                    _last_run_tag = today_tag
+                if now_bkk.hour == 20 and not _has_sent_expiry_today(today_tag):
+                    _mark_sent_expiry_today(today_tag)
                     print(f"⏰ [{now_bkk.strftime('%H:%M')} ICT] Running daily expiry check {today_tag}...")
                     check_and_send_expiry_alerts(target_days=(30, 31, 7, 0))
                 time.sleep(60)
