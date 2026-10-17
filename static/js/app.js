@@ -739,9 +739,14 @@ class App {
                 <div class="car-title">${c.brand} ${c.model}</div>
                 <div class="car-plate">🚘 ${c.plate}</div>
               </div>
-              <button type="button" onclick="app.openEditCarModal('${safePlate}')" class="btn btn-sm btn-secondary" style="padding:3px 8px; font-size:11.5px; background:#FAF7F2; border:1px solid #D1D5DB; color:#374151; white-space:nowrap;" title="แก้ไขรายละเอียดรถและรูปรถ">
-                ✏️ แก้ไขรถ
-              </button>
+              <div style="display:flex; gap:5px; align-items:center;">
+                <button type="button" onclick="app.openEditCarModal('${safePlate}')" class="btn btn-sm btn-secondary" style="padding:4px 8px; font-size:11.5px; background:#FAF7F2; border:1px solid #D1D5DB; color:#374151; white-space:nowrap; border-radius:6px;" title="แก้ไขรายละเอียดรถและรูปรถ">
+                  ✏️ แก้ไขรถ
+                </button>
+                <button type="button" onclick="app.deleteCarByPlate('${safePlate}')" class="btn btn-sm btn-danger" style="padding:4px 8px; font-size:11.5px; background:#FEE2E2; border:1px solid #FCA5A5; color:#DC2626; white-space:nowrap; border-radius:6px; cursor:pointer;" title="ลบข้อมูลรถยนต์คันนี้ออกจากระบบ">
+                  🗑️ ลบ
+                </button>
+              </div>
             </div>
             <div class="car-specs">
               <span>💺 ${c.car_group || 'รถยนต์'}</span>
