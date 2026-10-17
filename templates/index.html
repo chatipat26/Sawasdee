@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sawasdee Rental - ระบบบริหารจัดการรถเช่าระดับพรีเมียม</title>
-  <link rel="stylesheet" href="/static/css/app.css?v=2.3">
+  <link rel="stylesheet" href="/static/css/app.css?v=2.4">
   <link rel="icon" type="image/png" href="/static/sawasdee-logo.png">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -368,7 +368,7 @@
                 </div>
               </div>
 
-              <div style="display:flex; gap:12px; flex-wrap:wrap;">
+              <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
                 <button onclick="app.submitDeposit()" class="btn btn-primary">
                   💳 ยืนยันบันทึกรับเงินมัดจำ & ล็อกคิวรถ
                 </button>
@@ -380,6 +380,12 @@
                 </button>
                 <button id="btn-dl-rent-receipt" onclick="app.downloadRentalReceipt()" class="btn btn-secondary" style="display:none;">
                   📥 โหลดใบเสร็จค่าเช่า (PDF)
+                </button>
+                <button id="btn-dl-contract-from-dep" onclick="app.downloadContractPdf()" class="btn btn-secondary" style="display:none;">
+                  📝 โหลดสัญญาเช่า (Rental Agreement PDF)
+                </button>
+                <button onclick="app.switchTab('contract')" class="btn btn-secondary" style="background:#FAF7F2; border:1px solid #CBD5E1; color:#374151;">
+                  📝 ไปหน้าจัดทำสัญญา (แท็บ 4) ➔
                 </button>
               </div>
             </div>
@@ -457,56 +463,176 @@
 
         <!-- TAB 4: CONTRACT FORMULATION -->
         <div id="subtab-contract" class="tab-pane" style="display:none;">
-          <div class="card">
+          <!-- 1. Document Center & Contract Review Card -->
+          <div class="card" style="margin-bottom:20px;">
             <div class="card-title">
-              <span>📝</span> ศูนย์จัดทำและตรวจสอบสัญญาเช่า (Rental Contract Formulation)
+              <span>📝</span> ศูนย์จัดทำและตรวจสอบสัญญาเช่า (Rental Contract Formulation & Inspection)
             </div>
             <div style="font-size:12.5px; color:var(--text-muted); margin-bottom:16px;">
-              สร้างและดาวน์โหลดสัญญาเช่ารถยนต์ทางการ (Official Rental Agreement PDF) พิกัดมาตรฐานเป๊ะ 100%
+              สร้างและดาวน์โหลดสัญญาเช่ารถยนต์ทางการ (Official Rental Agreement PDF) พิกัดมาตรฐานเป๊ะ 100% พร้อมใบเสร็จรับเงิน
             </div>
 
-            <div class="form-group" style="max-width:400px; margin-bottom:20px;">
-              <label>เลือกรหัสการจองเพื่อออกสัญญา:</label>
-              <select id="contract-sel-bk" class="form-control" onchange="app.onSelectContractBooking()">
-                <option value="">-- เลือกรหัสการจอง --</option>
-              </select>
+            <div style="display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap; margin-bottom:20px; max-width:680px;">
+              <div class="form-group" style="flex:1; min-width:280px;">
+                <label>📋 เลือกสัญญาเช่าเพื่อตรวจสอบและดาวน์โหลดเอกสาร PDF:</label>
+                <select id="contract-sel-bk" class="form-control" onchange="app.onSelectContractBooking()">
+                  <option value="">-- กรุณาเลือกรายการจอง --</option>
+                </select>
+              </div>
+              <button onclick="app.populateBookingDropdowns(); app.onSelectContractBooking();" class="btn btn-secondary btn-sm" style="height:38px; padding:0 14px;">
+                🔄 รีเฟรชรายการ
+              </button>
             </div>
 
-            <div id="contract-details-card" style="display:none; background:#F8FAFC; border:1px solid #E2E8F0; border-radius:var(--radius-lg); padding:20px; margin-bottom:20px;">
+            <!-- Empty message if no booking selected -->
+            <div id="contract-empty-msg" style="display:none; padding:30px; text-align:center; background:#FAF7F2; border:1px dashed #D1D5DB; border-radius:8px; color:#6B7280;">
+              ℹ️ ยังไม่มีรายการสัญญาเช่าที่เปิดใช้งานอยู่ในระบบ สามารถเลือกสร้างสัญญาใหม่ได้จากฟอร์ม Walk-in ด้านล่าง หรือกลับไปเลือกรถยนต์ในแท็บ 1
+            </div>
+
+            <!-- Contract Details Card -->
+            <div id="contract-details-card" style="display:none; background:#F8FAFC; border:1.5px solid #CBD5E1; border-radius:var(--radius-lg); padding:20px; margin-bottom:12px;">
+              <!-- Header with Booking ID and Badges -->
+              <div id="contract-header-info" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:14px; border-bottom:1px solid #E2E8F0; padding-bottom:12px;">
+                <!-- Rendered by JS -->
+              </div>
+
+              <!-- 3 Info Columns -->
               <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:16px; margin-bottom:16px;">
-                <div style="background:white; border:1px solid #E2E8F0; border-radius:8px; padding:12px;">
-                  <b style="color:#1E3A8A; font-size:13px;">👤 ข้อมูลผู้เช่า</b>
-                  <div id="contract-cust-info" style="font-size:12px; margin-top:6px; line-height:1.6;">-</div>
+                <div style="background:white; border:1px solid #E2E8F0; border-radius:8px; padding:14px;">
+                  <b style="color:#1E3A8A; font-size:13px;">👤 ข้อมูลผู้เช่า (Customer)</b>
+                  <div id="contract-cust-info" style="font-size:12px; margin-top:8px; line-height:1.7;">-</div>
                 </div>
-                <div style="background:white; border:1px solid #E2E8F0; border-radius:8px; padding:12px;">
-                  <b style="color:#1E3A8A; font-size:13px;">🚘 ข้อมูลรถยนต์</b>
-                  <div id="contract-car-info" style="font-size:12px; margin-top:6px; line-height:1.6;">-</div>
+                <div style="background:white; border:1px solid #E2E8F0; border-radius:8px; padding:14px;">
+                  <b style="color:#1E3A8A; font-size:13px;">🚘 ข้อมูลรถยนต์ (Vehicle)</b>
+                  <div id="contract-car-info" style="font-size:12px; margin-top:8px; line-height:1.7;">-</div>
                 </div>
-                <div style="background:white; border:1px solid #E2E8F0; border-radius:8px; padding:12px;">
-                  <b style="color:#1E3A8A; font-size:13px;">📅 ระยะเวลา & กำหนดการ</b>
-                  <div id="contract-sched-info" style="font-size:12px; margin-top:6px; line-height:1.6;">-</div>
+                <div style="background:white; border:1px solid #E2E8F0; border-radius:8px; padding:14px;">
+                  <b style="color:#1E3A8A; font-size:13px;">📅 ระยะเวลา & กำหนดการ (Schedule)</b>
+                  <div id="contract-sched-info" style="font-size:12px; margin-top:8px; line-height:1.7;">-</div>
                 </div>
               </div>
 
               <!-- Price Box -->
-              <div style="background:#FFF7ED; border:1px solid #FED7AA; border-radius:8px; padding:10px 16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-                <span>💰 ค่าเช่า: <b id="contract-net-price">฿0.00</b></span>
-                <span>🛡️ มัดจำ: <b id="contract-dep-status">฿5,000.00</b></span>
-                <span>🧾 ยอดคงเหลือ: <b id="contract-rem-price" style="color:#E85826; font-size:15px;">฿0.00</b></span>
+              <div style="background:#FFF7ED; border:1px solid #FED7AA; border-radius:8px; padding:12px 18px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:18px;">
+                <span>💰 <b>ยอดค่าเช่าตามสัญญา:</b> <b id="contract-net-price" style="color:#92400E; font-size:14px;">฿0.00</b></span>
+                <span>🛡️ <b>มัดจำประกันสัญญา:</b> <b id="contract-dep-status" style="color:#15803D; font-size:14px;">฿5,000.00</b></span>
+                <span>🧾 <b>ยอดค่าเช่าคงเหลือ:</b> <b id="contract-rem-price" style="color:#E85826; font-size:16px;">฿0.00</b></span>
               </div>
 
-              <!-- Actions -->
-              <div style="margin-top:20px; display:flex; gap:12px; flex-wrap:wrap;">
-                <a id="btn-dl-contract-pdf" href="#" target="_blank" class="btn btn-primary">
-                  📝 พิมพ์ / ดาวน์โหลดสัญญาเช่า (Rental Agreement PDF)
-                </a>
-                <a id="btn-dl-contract-receipt" href="#" target="_blank" class="btn btn-secondary">
-                  🧾 ดาวน์โหลดใบเสร็จ (Receipt PDF)
-                </a>
-                <button onclick="app.markContractIssued()" class="btn btn-success">
-                  ✅ ยืนยันออกสัญญาเรียบร้อย
-                </button>
+              <!-- Actions & Document Center -->
+              <div style="border-top:1px solid #E2E8F0; padding-top:16px;">
+                <div style="font-size:13px; font-weight:700; color:#1F2937; margin-bottom:10px;">
+                  📥 พิมพ์และดาวน์โหลดเอกสารทางการ (Document Center):
+                </div>
+                <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+                  <button type="button" id="btn-dl-contract-pdf" onclick="app.downloadContractPdf()" class="btn btn-primary" style="font-weight:700;">
+                    📝 ดาวน์โหลดสัญญาเช่า (Rental Agreement PDF)
+                  </button>
+                  <button type="button" id="btn-dl-contract-dep-receipt" onclick="app.downloadDepositReceipt()" class="btn btn-secondary">
+                    🧾 โหลดใบเสร็จมัดจำ (Deposit Receipt PDF)
+                  </button>
+                  <button type="button" id="btn-dl-contract-rent-receipt" onclick="app.downloadRentalReceipt()" class="btn btn-secondary">
+                    🧾 โหลดใบเสร็จค่าเช่า (Rental Receipt PDF)
+                  </button>
+                  <button type="button" id="btn-dl-contract-job" onclick="app.downloadJobPdf()" class="btn btn-secondary">
+                    📋 โหลดใบตรวจสภาพรถ (Checklist PDF)
+                  </button>
+                </div>
+
+                <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin-top:14px; border-top:1px dashed #CBD5E1; padding-top:12px;">
+                  <span id="contract-issued-status-pill">
+                    <button onclick="app.markContractIssued()" class="btn btn-success">
+                      ✅ ยืนยันออกสัญญาเรียบร้อย
+                    </button>
+                  </span>
+                  <button onclick="app.goToDepositFromContract()" class="btn btn-primary" style="background:#0284C7; border-color:#0284C7;">
+                    💳 ไปหน้าชำระเงิน / ปิดยอดคงเหลือ ➔
+                  </button>
+                </div>
               </div>
+            </div>
+          </div>
+
+          <!-- 2. Walk-in Direct Contract Formulation Form -->
+          <div class="expander-card" id="expander-walkin-contract">
+            <div class="expander-header open" onclick="app.toggleExpander('expander-walkin-contract')">
+              <div class="expander-title">
+                <span>➕</span> สร้างสัญญาเช่าใหม่โดยตรง (Walk-in Direct Contract Formulation)
+              </div>
+              <div class="expander-indicator">
+                <span id="indicator-expander-walkin-contract">▲ คลิกเพื่อพับเก็บ</span>
+              </div>
+            </div>
+            <div class="expander-body" id="body-expander-walkin-contract" style="display:block;">
+              <div style="font-size:12.5px; color:var(--text-muted); margin-bottom:16px;">
+                สำหรับกรณีลูกค้า Walk-in เข้ามาที่หน้าร้านโดยตรง สามารถกรอกรายละเอียด ออกสัญญาเช่า และดาวน์โหลด PDF ได้ทันที
+              </div>
+
+              <!-- Form Fields -->
+              <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:14px; margin-bottom:14px;">
+                <div class="form-group">
+                  <label>🚘 เลือกรถยนต์:</label>
+                  <select id="walkin-car-select" class="form-control" onchange="app.recalcWalkinPrice()">
+                    <option value="">-- เลือกรถยนต์จากฝูงรถ --</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>👤 เลือกลูกค้าผู้เช่า:</label>
+                  <div style="display:flex; gap:8px;">
+                    <select id="walkin-cust-select" class="form-control"></select>
+                    <button onclick="app.openAddCustomerModal()" class="btn btn-sm btn-secondary" type="button">➕ เพิ่ม</button>
+                  </div>
+                </div>
+              </div>
+
+              <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:14px; margin-bottom:14px;">
+                <div class="form-group">
+                  <label>📅 วันที่ส่งมอบรถ (Pick-up):</label>
+                  <div style="display:flex; gap:6px;">
+                    <input type="date" id="walkin-start-date" class="form-control" onchange="app.recalcWalkinPrice()">
+                    <input type="time" id="walkin-start-time" class="form-control" value="10:00" style="width:110px;" onchange="app.recalcWalkinPrice()">
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label>📅 วันที่คืนรถ (Return):</label>
+                  <div style="display:flex; gap:6px;">
+                    <input type="date" id="walkin-end-date" class="form-control" onchange="app.recalcWalkinPrice()">
+                    <input type="time" id="walkin-end-time" class="form-control" value="10:00" style="width:110px;" onchange="app.recalcWalkinPrice()">
+                  </div>
+                </div>
+              </div>
+
+              <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:14px; margin-bottom:14px;">
+                <div class="form-group">
+                  <label>📋 ประเภทสัญญา:</label>
+                  <select id="walkin-contract-type" class="form-control" onchange="app.recalcWalkinPrice()">
+                    <option value="รายวัน">รายวัน (Daily)</option>
+                    <option value="รายสัปดาห์">รายสัปดาห์ (Weekly)</option>
+                    <option value="รายเดือน">รายเดือน (Monthly)</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>🏷️ ส่วนลดพิเศษ (บาท):</label>
+                  <input type="number" id="walkin-discount" class="form-control" value="0" min="0" step="100" oninput="app.recalcWalkinPrice()">
+                </div>
+                <div class="form-group">
+                  <label>👤 พนักงานจัดส่งมอบรถ:</label>
+                  <select id="walkin-worker-select" class="form-control"></select>
+                </div>
+                <div class="form-group">
+                  <label>📍 สถานที่ส่งมอบรถ:</label>
+                  <input type="text" id="walkin-loc" class="form-control" placeholder="เช่น หน้าร้านสาขา หรือ โรงแรม...">
+                </div>
+              </div>
+
+              <!-- Price calculation summary banner -->
+              <div id="walkin-price-summary" style="background:#FFFBEB; border:1px solid #FDE68A; border-radius:8px; padding:12px 16px; margin-bottom:16px; font-size:13px; color:#475569;">
+                ⏱️ คำนวณระยะเวลาเช่า: <b style="color:#D97706;">1 วัน</b>
+              </div>
+
+              <button type="button" onclick="app.submitWalkinContract()" class="btn btn-primary" style="width:100%; height:44px; font-weight:700; font-size:14px;">
+                💾 บันทึกสร้างสัญญาเช่า Walk-in & เปิดเอกสาร PDF ทันที ➔
+              </button>
             </div>
           </div>
         </div>
@@ -1054,6 +1180,6 @@
   <div class="toast-container" id="toast-container"></div>
 
   <!-- Scripts with cache busting -->
-  <script src="/static/js/app.js?v=2.3"></script>
+  <script src="/static/js/app.js?v=2.4"></script>
 </body>
 </html>

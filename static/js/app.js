@@ -321,6 +321,34 @@ class App {
       const pane = document.getElementById(`subtab-${t}`);
       if (pane) pane.style.display = (t === tabName) ? "block" : "none";
     });
+
+    if (tabName === "contract") {
+      this.populateBookingDropdowns();
+      this.populateWalkinDropdowns();
+      const contractSel = document.getElementById("contract-sel-bk");
+      if (contractSel) {
+        if (!contractSel.value) {
+          if (this.currentSelectedBooking?.booking_id) {
+            contractSel.value = this.currentSelectedBooking.booking_id;
+          } else {
+            const activeBks = this.bookings.filter(b => b.status !== "ยกเลิก" && b.status !== "เสร็จสิ้น");
+            if (activeBks.length > 0) {
+              contractSel.value = activeBks[0].booking_id;
+            } else if (this.bookings.length > 0) {
+              contractSel.value = this.bookings[0].booking_id;
+            }
+          }
+        }
+        this.onSelectContractBooking();
+      }
+    } else if (tabName === "deposit") {
+      this.populateBookingDropdowns();
+      const depSel = document.getElementById("deposit-sel-booking");
+      if (depSel && !depSel.value && this.currentSelectedBooking?.booking_id) {
+        depSel.value = this.currentSelectedBooking.booking_id;
+        this.onSelectDepositBooking();
+      }
+    }
   }
 
   // --- Duration & Filter Engine ---
@@ -572,16 +600,33 @@ class App {
     const contractSel = document.getElementById("contract-sel-bk");
 
     const activeBks = this.bookings.filter(b => b.status !== "ยกเลิก" && b.status !== "เสร็จสิ้น");
+    const allValidBks = this.bookings.filter(b => b.status !== "ยกเลิก");
 
     const renderOpts = (bks) => `
       <option value="">-- กรุณาเลือกรายการจอง --</option>
       ${bks.map(b => `<option value="${b.booking_id}">${b.booking_id} | ${b.car_id} (${b.customer}) [สถานะ: ${b.status}]</option>`).join("")}
     `;
 
-    if (depSel) depSel.innerHTML = renderOpts(activeBks);
-    if (assignDispSel) assignDispSel.innerHTML = renderOpts(activeBks);
-    if (assignRetSel) assignRetSel.innerHTML = renderOpts(activeBks);
-    if (contractSel) contractSel.innerHTML = renderOpts(activeBks);
+    if (depSel) {
+      const cur = depSel.value;
+      depSel.innerHTML = renderOpts(activeBks);
+      if (cur) depSel.value = cur;
+    }
+    if (assignDispSel) {
+      const cur = assignDispSel.value;
+      assignDispSel.innerHTML = renderOpts(activeBks);
+      if (cur) assignDispSel.value = cur;
+    }
+    if (assignRetSel) {
+      const cur = assignRetSel.value;
+      assignRetSel.innerHTML = renderOpts(activeBks);
+      if (cur) assignRetSel.value = cur;
+    }
+    if (contractSel) {
+      const cur = contractSel.value;
+      contractSel.innerHTML = renderOpts(allValidBks.length > 0 ? allValidBks : this.bookings);
+      if (cur) contractSel.value = cur;
+    }
   }
 
   onSelectDepositBooking() {
@@ -591,6 +636,7 @@ class App {
     const btnSettle = document.getElementById("btn-settle-rental");
     const btnDlDep = document.getElementById("btn-dl-dep-receipt");
     const btnDlRent = document.getElementById("btn-dl-rent-receipt");
+    const btnDlContract = document.getElementById("btn-dl-contract-from-dep");
 
     if (!bkId) {
       if (summary) summary.style.display = "none";
@@ -620,14 +666,9 @@ class App {
     `;
 
     if (btnSettle) btnSettle.style.display = (!isRent && isDep) ? "inline-flex" : "none";
-    if (btnDlDep) {
-      btnDlDep.style.display = isDep ? "inline-flex" : "none";
-      btnDlDep.onclick = () => window.open(`/api/pdf/deposit-receipt/${b.booking_id}`, "_blank");
-    }
-    if (btnDlRent) {
-      btnDlRent.style.display = isRent ? "inline-flex" : "none";
-      btnDlRent.onclick = () => window.open(`/api/pdf/receipt/${b.booking_id}`, "_blank");
-    }
+    if (btnDlDep) btnDlDep.style.display = isDep ? "inline-flex" : "none";
+    if (btnDlRent) btnDlRent.style.display = isRent ? "inline-flex" : "none";
+    if (btnDlContract) btnDlContract.style.display = "inline-flex";
   }
 
   async submitDeposit() {
@@ -744,64 +785,390 @@ class App {
     }
   }
 
-  // --- Tab 4: Contract Formulation ---
+  // --- Tab 4: Contract Formulation & Document Center ---
   onSelectContractBooking() {
-    const bkId = document.getElementById("contract-sel-bk").value;
+    const bkId = document.getElementById("contract-sel-bk")?.value;
     const card = document.getElementById("contract-details-card");
-    if (!bkId) { card.style.display = "none"; return; }
+    const emptyMsg = document.getElementById("contract-empty-msg");
+    if (!card) return;
+
+    if (!bkId) {
+      card.style.display = "none";
+      if (emptyMsg) emptyMsg.style.display = (this.bookings && this.bookings.length === 0) ? "block" : "none";
+      return;
+    }
 
     const b = this.bookings.find(x => x.booking_id === bkId);
-    if (!b) return;
+    if (!b) {
+      card.style.display = "none";
+      if (emptyMsg) emptyMsg.style.display = "block";
+      return;
+    }
 
+    if (emptyMsg) emptyMsg.style.display = "none";
     card.style.display = "block";
+
     const cust = this.customers.find(c => c.full_name === b.customer) || {};
     const car = this.cars.find(c => c.plate === b.car_id) || {};
 
-    document.getElementById("contract-cust-info").innerHTML = `
-      • <b>ชื่อ:</b> ${b.customer}<br/>
-      • <b>Passport/ID:</b> ${cust.passport_id || '-'}<br/>
-      • <b>เบอร์โทร:</b> ${cust.contact_no || '-'}<br/>
-      • <b>ใบขับขี่:</b> ${cust.licence_no || '-'}
-    `;
+    // Header with badges
+    const header = document.getElementById("contract-header-info");
+    if (header) {
+      const isIssued = !!b.contract_issued;
+      header.innerHTML = `
+        <div>
+          <span style="font-size:18px; font-weight:800; color:#1E3A8A; letter-spacing:0.5px;">📄 สัญญาเช่ารหัส: ${b.booking_id}</span>
+          <span style="margin-left:8px;" class="badge ${isIssued ? 'badge-success' : 'badge-warning'}">
+            ${isIssued ? '✅ ออกสัญญาเรียบร้อยแล้ว' : '⏳ รอยืนยันออกสัญญา'}
+          </span>
+          <span style="margin-left:4px;" class="badge badge-info">${b.status}</span>
+        </div>
+        <div style="font-size:12px; color:#64748B;">
+          📅 จัดทำ: ${b.start_date_formatted || b.start_date} | ผู้บันทึก: ${b.created_by || 'Admin'}
+        </div>
+      `;
+    }
 
-    document.getElementById("contract-car-info").innerHTML = `
-      • <b>ทะเบียน:</b> ${b.car_id}<br/>
-      • <b>รุ่น:</b> ${car.brand || ''} ${car.model || ''}<br/>
-      • <b>สี:</b> ${car.color || '-'}<br/>
-      • <b>บริษัท:</b> ${car.company || '-'}
-    `;
+    // Customer
+    const custEl = document.getElementById("contract-cust-info");
+    if (custEl) {
+      custEl.innerHTML = `
+        • <b>ชื่อผู้เช่า:</b> ${b.customer}<br/>
+        • <b>Passport / เลขบัตร:</b> ${cust.passport_id || b.customer_id_card || '-'}<br/>
+        • <b>เบอร์ติดต่อ:</b> ${b.customer_phone || cust.contact_no || '-'}<br/>
+        • <b>ใบขับขี่:</b> ${cust.licence_no || '-'}<br/>
+        • <b>สัญชาติ:</b> ${cust.nationality || 'THAI'}
+      `;
+    }
 
-    document.getElementById("contract-sched-info").innerHTML = `
-      • <b>เริ่ม:</b> ${b.start_date_formatted} (${b.start_time || '10:00'})<br/>
-      • <b>คืน:</b> ${b.end_date_formatted} (${b.end_time || '10:00'})<br/>
-      • <b>พนักงานส่ง:</b> ${b.worker_delivery || 'รอมอบหมาย'}
-    `;
+    // Car
+    const carEl = document.getElementById("contract-car-info");
+    if (carEl) {
+      carEl.innerHTML = `
+        • <b>หมายเลขทะเบียน:</b> <b style="color:#D97706;">${b.car_id}</b><br/>
+        • <b>ยี่ห้อ/รุ่น:</b> ${car.brand || b.car_brand || ''} ${car.model || b.car_model || ''}<br/>
+        • <b>กลุ่มรถ/สี:</b> ${car.car_group || '-'} / ${car.color || '-'}<br/>
+        • <b>บริษัทสังกัด:</b> ${car.company || '-'}<br/>
+        • <b>สถานะรถ:</b> ${car.fleet_status_desc || car.status || 'พร้อมใช้งาน'}
+      `;
+    }
 
+    // Schedule
+    const schedEl = document.getElementById("contract-sched-info");
+    if (schedEl) {
+      schedEl.innerHTML = `
+        • <b>เริ่มสัญญา (Pick-up):</b> ${b.start_date_formatted || b.start_date} (${b.start_time || '10:00'})<br/>
+        • <b>สิ้นสุดสัญญา (Return):</b> ${b.end_date_formatted || b.end_date} (${b.end_time || '10:00'})<br/>
+        • <b>สถานที่ส่งมอบ:</b> ${b.loc_delivery || 'หน้าร้าน / สาขา'}<br/>
+        • <b>พนักงานส่งมอบ:</b> ${b.worker_delivery || 'ยังไม่ได้มอบหมาย'}
+      `;
+    }
+
+    // Financial
     const netP = parseFloat(b.net_price || 0);
-    const remP = parseFloat(b.remaining_rental || (b.rental_paid ? 0 : netP));
-    document.getElementById("contract-net-price").textContent = `฿${netP.toLocaleString()}`;
-    document.getElementById("contract-dep-status").textContent = b.deposit_paid ? "ชำระแล้ว (฿5,000)" : "รอมัดจำ";
-    document.getElementById("contract-rem-price").textContent = `฿${remP.toLocaleString()}`;
+    const depAmt = parseFloat(b.deposit_amount || 5000);
+    const isDep = !!b.deposit_paid;
+    const isRent = !!b.rental_paid;
+    const remP = isRent ? 0 : parseFloat(b.remaining_rental || netP);
 
-    const btnDl = document.getElementById("btn-dl-contract-pdf");
-    if (btnDl) btnDl.href = `/api/pdf/contract/${b.booking_id}`;
+    const netEl = document.getElementById("contract-net-price");
+    if (netEl) netEl.textContent = `฿${netP.toLocaleString('th-TH', {minimumFractionDigits: 2})}`;
 
-    const btnRc = document.getElementById("btn-dl-contract-receipt");
-    if (btnRc) btnRc.href = `/api/pdf/receipt/${b.booking_id}`;
+    const depEl = document.getElementById("contract-dep-status");
+    if (depEl) {
+      depEl.innerHTML = isDep 
+        ? `<span style="color:#059669;">ชำระแล้ว (฿${depAmt.toLocaleString()})</span>`
+        : `<span style="color:#DC2626;">รอมัดจำ (฿${depAmt.toLocaleString()})</span>`;
+    }
+
+    const remEl = document.getElementById("contract-rem-price");
+    if (remEl) {
+      remEl.innerHTML = isRent 
+        ? `<span style="color:#059669;">฿0.00 (ชำระครบแล้ว)</span>`
+        : `<span style="color:#E85826;">฿${remP.toLocaleString('th-TH', {minimumFractionDigits: 2})}</span>`;
+    }
+
+    // Status pill
+    const pill = document.getElementById("contract-issued-status-pill");
+    if (pill) {
+      if (b.contract_issued) {
+        pill.innerHTML = `
+          <span class="badge badge-success" style="font-size:13px; padding:6px 14px;">
+            ✅ ออกสัญญาเรียบร้อยแล้ว
+          </span>
+        `;
+      } else {
+        pill.innerHTML = `
+          <button onclick="app.markContractIssued()" class="btn btn-success">
+            ✅ ยืนยันออกสัญญาเรียบร้อย
+          </button>
+        `;
+      }
+    }
   }
 
   async markContractIssued() {
-    const bkId = document.getElementById("contract-sel-bk").value;
+    const bkId = document.getElementById("contract-sel-bk")?.value;
     if (!bkId) return;
     try {
-      await fetch(`/api/bookings/${bkId}`, {
+      const res = await fetch(`/api/bookings/${bkId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ contract_issued: true })
       });
-      this.showToast("✅ บันทึกสถานะออกสัญญาเช่าเรียบร้อย!", "success");
-      await this.loadBookings();
-    } catch (e) {}
+      const data = await res.json();
+      if (data.success) {
+        this.showToast("✅ บันทึกสถานะออกสัญญาเช่าเรียบร้อย!", "success");
+        await this.loadBookings();
+        this.onSelectContractBooking();
+      }
+    } catch (e) {
+      this.showToast("เกิดข้อผิดพลาด: " + e.message, "danger");
+    }
+  }
+
+  goToDepositFromContract() {
+    const bkId = document.getElementById("contract-sel-bk")?.value;
+    this.switchTab("deposit");
+    if (bkId) {
+      const depSel = document.getElementById("deposit-sel-booking");
+      if (depSel) {
+        depSel.value = bkId;
+        this.onSelectDepositBooking();
+      }
+    }
+  }
+
+  // --- Document Center & PDF Download Handlers ---
+  downloadContractPdf(bkId) {
+    const id = bkId || document.getElementById("contract-sel-bk")?.value || document.getElementById("deposit-sel-booking")?.value || this.currentSelectedBooking?.booking_id;
+    if (!id) {
+      this.showToast("⚠️ กรุณาเลือกรายการจองก่อนดาวน์โหลดสัญญาเช่า", "warning");
+      return;
+    }
+    this.showToast(`📝 กำลังดาวน์โหลดสัญญาเช่า PDF สำหรับ ${id}...`, "info");
+    window.open(`/api/pdf/contract/${encodeURIComponent(id)}`, "_blank");
+  }
+
+  downloadDepositReceipt(bkId) {
+    const id = bkId || document.getElementById("contract-sel-bk")?.value || document.getElementById("deposit-sel-booking")?.value || this.currentSelectedBooking?.booking_id;
+    if (!id) {
+      this.showToast("⚠️ กรุณาเลือกรายการจองก่อนดาวน์โหลดใบเสร็จมัดจำ", "warning");
+      return;
+    }
+    this.showToast(`🧾 กำลังดาวน์โหลดใบเสร็จรับเงินมัดจำ PDF สำหรับ ${id}...`, "info");
+    window.open(`/api/pdf/deposit-receipt/${encodeURIComponent(id)}`, "_blank");
+  }
+
+  downloadRentalReceipt(bkId) {
+    const id = bkId || document.getElementById("contract-sel-bk")?.value || document.getElementById("deposit-sel-booking")?.value || this.currentSelectedBooking?.booking_id;
+    if (!id) {
+      this.showToast("⚠️ กรุณาเลือกรายการจองก่อนดาวน์โหลดใบเสร็จค่าเช่า", "warning");
+      return;
+    }
+    this.showToast(`🧾 กำลังดาวน์โหลดใบเสร็จรับเงินค่าเช่า PDF สำหรับ ${id}...`, "info");
+    window.open(`/api/pdf/receipt/${encodeURIComponent(id)}`, "_blank");
+  }
+
+  downloadJobPdf(bkId) {
+    const id = bkId || document.getElementById("contract-sel-bk")?.value || document.getElementById("deposit-sel-booking")?.value || this.currentSelectedBooking?.booking_id;
+    if (!id) {
+      this.showToast("⚠️ กรุณาเลือกรายการจองก่อนดาวน์โหลดใบตรวจสภาพรถ", "warning");
+      return;
+    }
+    this.showToast(`📋 กำลังดาวน์โหลดใบตรวจสภาพรถ PDF สำหรับ ${id}...`, "info");
+    window.open(`/api/pdf/job/${encodeURIComponent(id)}`, "_blank");
+  }
+
+  // --- Walk-in Direct Contract Formulation Logic ---
+  populateWalkinDropdowns() {
+    // 1. Car select
+    const carSel = document.getElementById("walkin-car-select");
+    if (carSel) {
+      const curVal = carSel.value;
+      const opts = this.cars.map(c => {
+        const rate = parseFloat(c.daily_rate || 1000);
+        return `<option value="${c.plate}" data-rate="${rate}">${c.plate} - ${c.brand || ''} ${c.model || ''} (${c.car_group || 'ทั่วไป'}, ฿${rate.toLocaleString()}/วัน)</option>`;
+      }).join("");
+      carSel.innerHTML = '<option value="">-- เลือกรถยนต์จากฝูงรถ --</option>' + opts;
+      if (curVal) carSel.value = curVal;
+    }
+
+    // 2. Customer select
+    const custSel = document.getElementById("walkin-cust-select");
+    if (custSel) {
+      const curVal = custSel.value;
+      const opts = this.customers.map(c => 
+        `<option value="${c.full_name}">${c.full_name} (📞 ${c.contact_no || '-'})</option>`
+      ).join("");
+      custSel.innerHTML = '<option value="">-- เลือกลูกค้าผู้เช่า --</option>' + opts;
+      if (curVal) custSel.value = curVal;
+    }
+
+    // 3. Worker select
+    const workerSel = document.getElementById("walkin-worker-select");
+    if (workerSel) {
+      const curVal = workerSel.value;
+      const approved = this.users.filter(u => u.status === "approved");
+      const opts = approved.map(u => `<option value="${u.username}">${u.name || u.username} (${u.role})</option>`).join("");
+      workerSel.innerHTML = opts || `<option value="admin">ผู้ดูแลระบบ (admin)</option>`;
+      if (curVal) workerSel.value = curVal;
+    }
+
+    // 4. Default dates if empty
+    const sDate = document.getElementById("walkin-start-date");
+    const eDate = document.getElementById("walkin-end-date");
+    const today = new Date().toISOString().split("T")[0];
+    const next3 = new Date(Date.now() + 3 * 86400000).toISOString().split("T")[0];
+    if (sDate && !sDate.value) sDate.value = today;
+    if (eDate && !eDate.value) eDate.value = next3;
+
+    this.recalcWalkinPrice();
+  }
+
+  calcWalkinDuration() {
+    const sDate = document.getElementById("walkin-start-date")?.value;
+    const sTime = document.getElementById("walkin-start-time")?.value || "10:00";
+    const eDate = document.getElementById("walkin-end-date")?.value;
+    const eTime = document.getElementById("walkin-end-time")?.value || "10:00";
+
+    if (!sDate || !eDate) return { days: 1, text: "1 วัน" };
+
+    const start = new Date(`${sDate}T${sTime}`);
+    const end = new Date(`${eDate}T${eTime}`);
+    if (end <= start) return { days: 1, text: "1 วัน (ขั้นต่ำ)" };
+
+    const diffMs = end - start;
+    const totalHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const remMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+    const baseDays = Math.floor(totalHours / 24);
+    const extraHours = totalHours % 24;
+
+    let billableDays = baseDays;
+    let desc = "";
+
+    if (extraHours > 4 || (extraHours === 4 && remMins > 0)) {
+      billableDays = baseDays + 1;
+      desc = `${baseDays} วัน + เกินเวลา ${extraHours} ชม. ${remMins} น. (เกิน 4 ชม. ปรับเป็น 1 วัน ➔ คิด ${billableDays} วัน)`;
+    } else if (extraHours > 0 || remMins > 0) {
+      desc = `${baseDays} วัน + เศษ ${extraHours} ชม. ${remMins} น. (ไม่เกิน 4 ชม. ➔ คิด ${billableDays} วัน)`;
+    } else {
+      desc = `${baseDays} วัน (พอดี)`;
+    }
+    if (billableDays < 1) billableDays = 1;
+
+    return { days: billableDays, text: desc };
+  }
+
+  recalcWalkinPrice() {
+    const carSel = document.getElementById("walkin-car-select");
+    const cType = document.getElementById("walkin-contract-type")?.value || "รายวัน";
+    const discInput = document.getElementById("walkin-discount");
+    const summaryBox = document.getElementById("walkin-price-summary");
+
+    const selectedOpt = carSel ? carSel.options[carSel.selectedIndex] : null;
+    const dailyRate = selectedOpt && selectedOpt.dataset.rate ? parseFloat(selectedOpt.dataset.rate) : 1000;
+    const discount = discInput ? parseFloat(discInput.value || 0) : 0;
+
+    const dur = this.calcWalkinDuration();
+    let basePrice = 0;
+
+    if (cType === "รายสัปดาห์") {
+      basePrice = Math.round((dailyRate * 7 * 0.9) * Math.max(1, Math.ceil(dur.days / 7)));
+    } else if (cType === "รายเดือน") {
+      basePrice = Math.round((dailyRate * 30 * 0.8) * Math.max(1, Math.ceil(dur.days / 30)));
+    } else {
+      basePrice = dailyRate * dur.days;
+    }
+
+    const netPrice = Math.max(0, basePrice - discount);
+
+    if (summaryBox) {
+      summaryBox.innerHTML = `
+        <div style="line-height:1.7;">
+          ⏱️ <b>ระยะเวลาคำนวณ:</b> <span style="color:#D97706; font-weight:700;">${dur.text}</span> (${dur.days} วัน)<br/>
+          💰 <b>ค่าเช่าก่อนลด:</b> ฿${basePrice.toLocaleString('th-TH', {minimumFractionDigits: 2})} 
+          | 🏷️ <b>ส่วนลด:</b> ฿${discount.toLocaleString('th-TH', {minimumFractionDigits: 2})}<br/>
+          💵 <b>ยอดค่าเช่าสุทธิ:</b> <b style="color:#B45309; font-size:16px;">฿${netPrice.toLocaleString('th-TH', {minimumFractionDigits: 2})}</b> 
+          | 🛡️ <b>มัดจำประกันสัญญา:</b> <b style="color:#059669;">฿5,000.00</b>
+        </div>
+      `;
+    }
+
+    return { basePrice, discount, netPrice, durationDays: dur.days };
+  }
+
+  async submitWalkinContract() {
+    const carId = document.getElementById("walkin-car-select")?.value;
+    const cust = document.getElementById("walkin-cust-select")?.value;
+    const sDate = document.getElementById("walkin-start-date")?.value;
+    const sTime = document.getElementById("walkin-start-time")?.value || "10:00";
+    const eDate = document.getElementById("walkin-end-date")?.value;
+    const eTime = document.getElementById("walkin-end-time")?.value || "10:00";
+    const cType = document.getElementById("walkin-contract-type")?.value || "รายวัน";
+    const worker = document.getElementById("walkin-worker-select")?.value || "admin";
+    const loc = document.getElementById("walkin-loc")?.value || "หน้าร้านสาขา";
+    const discount = parseFloat(document.getElementById("walkin-discount")?.value || 0);
+
+    if (!carId) {
+      this.showToast("⚠️ กรุณาเลือกรถยนต์สำหรับทำสัญญา", "warning");
+      return;
+    }
+    if (!cust) {
+      this.showToast("⚠️ กรุณาเลือกลูกค้าผู้เช่า", "warning");
+      return;
+    }
+    if (!sDate || !eDate) {
+      this.showToast("⚠️ กรุณาระบุวันรับรถและวันคืนรถ", "warning");
+      return;
+    }
+
+    const { basePrice } = this.recalcWalkinPrice();
+
+    const payload = {
+      car_id: carId,
+      customer: cust,
+      contract_type: cType,
+      start_date: sDate,
+      end_date: eDate,
+      start_time: sTime,
+      end_time: eTime,
+      base_price: basePrice,
+      discount: discount,
+      deposit_amount: 5000.0,
+      worker_delivery: worker,
+      loc_delivery: loc,
+      created_by: this.user ? this.user.username : "admin"
+    };
+
+    try {
+      this.showToast("⏳ กำลังสร้างสัญญาเช่า Walk-in และเตรียมเอกสาร PDF...", "info");
+      const res = await fetch("/api/bookings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (data.success) {
+        this.showToast(`🎉 ออกสัญญาเช่า Walk-in ${data.booking_id} เรียบร้อย!`, "success");
+        await this.loadBookings();
+        await this.loadCars();
+
+        // Select the newly created booking in Tab 4 dropdown
+        const contractSel = document.getElementById("contract-sel-bk");
+        if (contractSel) {
+          contractSel.value = data.booking_id;
+          this.onSelectContractBooking();
+        }
+
+        // Open official Rental Agreement PDF immediately in new tab
+        window.open(`/api/pdf/contract/${data.booking_id}`, "_blank");
+      } else {
+        this.showToast("❌ สร้างสัญญาไม่สำเร็จ: " + (data.error || "เกิดข้อผิดพลาด"), "danger");
+      }
+    } catch (e) {
+      this.showToast("❌ เกิดข้อผิดพลาด: " + e.message, "danger");
+    }
   }
 
   // --- Tab 5: Bookings Table ---
@@ -861,8 +1228,10 @@ class App {
             <span class="badge badge-info">${b.status}</span>
           </td>
           <td style="text-align:center; white-space:nowrap;">
-            <a href="/api/pdf/contract/${b.booking_id}" target="_blank" class="btn btn-sm btn-secondary" title="สัญญาเช่า PDF">📝</a>
-            <a href="/api/pdf/receipt/${b.booking_id}" target="_blank" class="btn btn-sm btn-secondary" title="ใบเสร็จค่าเช่า PDF">🧾</a>
+            <a href="/api/pdf/contract/${b.booking_id}" target="_blank" class="btn btn-sm btn-secondary" title="สัญญาเช่า (Rental Agreement PDF)">📝</a>
+            <a href="/api/pdf/deposit-receipt/${b.booking_id}" target="_blank" class="btn btn-sm btn-secondary" title="ใบเสร็จมัดจำ (Deposit Receipt PDF)">🛡️</a>
+            <a href="/api/pdf/receipt/${b.booking_id}" target="_blank" class="btn btn-sm btn-secondary" title="ใบเสร็จค่าเช่า (Rental Receipt PDF)">🧾</a>
+            <a href="/api/pdf/job/${b.booking_id}" target="_blank" class="btn btn-sm btn-secondary" title="ใบตรวจสภาพรถ (Checklist PDF)">📋</a>
             <button onclick="app.deleteBooking('${b.booking_id}')" class="btn btn-sm btn-danger" title="ลบรายการจอง">🗑️</button>
           </td>
         </tr>
@@ -1052,6 +1421,13 @@ class App {
     const sel = document.getElementById("book-cust-select");
     if (sel) {
       sel.innerHTML = this.customers.map(c => `<option value="${c.full_name}">${c.full_name} (📞 ${c.contact_no || '-'})</option>`).join("");
+    }
+    const walkinSel = document.getElementById("walkin-cust-select");
+    if (walkinSel) {
+      const curVal = walkinSel.value;
+      walkinSel.innerHTML = '<option value="">-- เลือกลูกค้าผู้เช่า --</option>' +
+        this.customers.map(c => `<option value="${c.full_name}">${c.full_name} (📞 ${c.contact_no || '-'})</option>`).join("");
+      if (curVal) walkinSel.value = curVal;
     }
   }
 
