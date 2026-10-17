@@ -56,7 +56,7 @@ def startup_event():
 # -------------------------------------------------------------------------
 # ROOT HTML (SPA)
 # -------------------------------------------------------------------------
-@app.get("/", response_class=HTMLResponse)
+@app.api_route("/", methods=["GET", "HEAD"], response_class=HTMLResponse)
 async def serve_index():
     index_file = os.path.join(BASE_DIR, "templates", "index.html")
     if os.path.exists(index_file):
