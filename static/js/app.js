@@ -212,15 +212,9 @@ class App {
     const headerRole = document.getElementById("user-role-tag");
 
     if (!this.user || !this.user.username) {
-      this.user = {
-        username: "admin",
-        name: "ผู้ดูแลระบบ (Admin)",
-        role: "Admin",
-        status: "approved"
-      };
-      try {
-        localStorage.setItem("sawasdee_user", JSON.stringify(this.user));
-      } catch (e) {}
+      if (gateScreen) gateScreen.style.display = "flex";
+      if (mainWrapper) mainWrapper.style.display = "none";
+      return;
     }
 
     if (gateScreen) gateScreen.style.display = "none";
@@ -875,7 +869,7 @@ class App {
   normalizePlate(plate) {
     if (!plate) return "";
     return String(plate).replace(/[\s\-\.]+/g, "").toLowerCase();
-  },
+  }
 
   checkDuplicatePlate(val) {
     const origPlate = (document.getElementById("edit-car-original-plate")?.value || "").trim();
@@ -901,7 +895,7 @@ class App {
       if (warnEl) warnEl.style.display = "none";
       return false;
     }
-  },
+  }
 
   openEditCarModal(plate) {
     const isNew = !plate;
@@ -940,24 +934,29 @@ class App {
     const fileEl = document.getElementById("edit-car-photo-file");
     if (fileEl) fileEl.value = "";
 
-    document.getElementById("edit-car-brand").value = car.brand || "Toyota";
-    document.getElementById("edit-car-model").value = car.model || "";
-    document.getElementById("edit-car-group").value = car.car_group || "รถเก๋ง (Sedan/Hatchback)";
-    document.getElementById("edit-car-fuel").value = car.fuel_type || "เบนซิน";
-    document.getElementById("edit-car-cc").value = car.engine_cc || "1200";
-    document.getElementById("edit-car-company").value = car.company || "Sawasdee Rent A Car";
-    document.getElementById("edit-car-color").value = car.color || "";
-    document.getElementById("edit-car-mileage").value = car.mileage || "0";
-    document.getElementById("edit-car-pday").value = car.price_day !== undefined ? car.price_day : 1000;
-    document.getElementById("edit-car-pweek").value = car.price_week !== undefined ? car.price_week : 6000;
-    document.getElementById("edit-car-pmonth").value = car.price_month !== undefined ? car.price_month : 20000;
-    document.getElementById("edit-car-vin").value = car.chassis_no || "-";
-    document.getElementById("edit-car-act").value = car.act_expiry || "-";
-    document.getElementById("edit-car-ins").value = car.ins_expiry || "-";
-    document.getElementById("edit-car-status").value = car.status || "ว่างพร้อมใช้งาน";
+    const setVal = (id, val) => {
+      const el = document.getElementById(id);
+      if (el) el.value = val !== undefined && val !== null ? val : "";
+    };
+
+    setVal("edit-car-brand", car.brand || "Toyota");
+    setVal("edit-car-model", car.model || "");
+    setVal("edit-car-group", car.car_group || "รถเก๋ง (Sedan/Hatchback)");
+    setVal("edit-car-fuel", car.fuel_type || "เบนซิน");
+    setVal("edit-car-cc", car.engine_cc || "1200");
+    setVal("edit-car-company", car.company || "Sawasdee Rent A Car");
+    setVal("edit-car-color", car.color || "");
+    setVal("edit-car-mileage", car.mileage || "0");
+    setVal("edit-car-pday", car.price_day !== undefined ? car.price_day : 1000);
+    setVal("edit-car-pweek", car.price_week !== undefined ? car.price_week : 6000);
+    setVal("edit-car-pmonth", car.price_month !== undefined ? car.price_month : 20000);
+    setVal("edit-car-vin", car.chassis_no || "-");
+    setVal("edit-car-act", car.act_expiry || "-");
+    setVal("edit-car-ins", car.ins_expiry || "-");
+    setVal("edit-car-status", car.status || "ว่างพร้อมใช้งาน");
 
     this.openModal("modal-edit-car");
-  },
+  }
 
   async onEditCarModalPhotoSelected(input) {
     if (!input.files || input.files.length === 0) return;
@@ -981,7 +980,7 @@ class App {
     } catch (e) {
       this.showToast("❌ อัปโหลดรูปไม่สำเร็จ: " + e.message, "danger");
     }
-  },
+  }
 
   async submitEditCar() {
     const origPlate = (document.getElementById("edit-car-original-plate")?.value || "").trim();
@@ -1062,7 +1061,7 @@ class App {
     } catch (e) {
       this.showToast("❌ เกิดข้อผิดพลาด: " + e.message, "danger");
     }
-  },
+  }
 
   async deleteCurrentEditingCar() {
     const origPlate = (document.getElementById("edit-car-original-plate")?.value || "").trim();
@@ -1073,7 +1072,7 @@ class App {
     if (ok) {
       this.closeModal("modal-edit-car");
     }
-  },
+  }
 
   async deleteCarByPlate(plate) {
     if (!plate) return false;
@@ -1106,7 +1105,7 @@ class App {
       this.showToast("❌ เกิดข้อผิดพลาด: " + e.message, "danger");
       return false;
     }
-  },
+  }
 
   // --- Modal: Book Car ---
   openBookModal(plate) {
@@ -1441,7 +1440,7 @@ class App {
   }
 
   onSelectDepositBooking() {
-    const bkId = document.getElementById("deposit-sel-booking").value;
+    const bkId = document.getElementById("deposit-sel-booking")?.value;
     const summary = document.getElementById("deposit-booking-summary");
     const actionSec = document.getElementById("deposit-action-section");
     const btnSettle = document.getElementById("btn-settle-rental");
@@ -1459,8 +1458,8 @@ class App {
     if (!b) return;
 
     this.currentSelectedBooking = b;
-    summary.style.display = "block";
-    actionSec.style.display = "block";
+    if (summary) summary.style.display = "block";
+    if (actionSec) actionSec.style.display = "block";
 
     const isDep = b.deposit_paid;
     const isRent = b.rental_paid;
@@ -4023,7 +4022,7 @@ class App {
     }
   }
 
-  enterDirectly() {
+  async enterDirectly() {
     this.user = {
       username: "admin",
       name: "ผู้ดูแลระบบ (Admin)",
@@ -4034,7 +4033,9 @@ class App {
       localStorage.setItem("sawasdee_user", JSON.stringify(this.user));
     } catch (e) {}
     this.updateAuthUI();
-    this.fetchInitialData();
+    this.showToast("เข้าสู่ระบบในฐานะ Admin เรียบร้อย! 🚀", "success");
+    await this.fetchInitialData();
+    this.startLiveSyncPoller();
   }
 
   async quickLogin(username, password) {
