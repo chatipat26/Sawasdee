@@ -617,6 +617,7 @@ class DataStore:
 
     def upload_photo(self, filename, file_bytes, content_type="image/jpeg"):
         import base64
+        import io
         sb = get_supabase_client()
         if sb:
             try:
@@ -631,8 +632,21 @@ class DataStore:
             except Exception as e:
                 print(f"Supabase storage upload fallback to base64: {e}")
         try:
-            b64 = base64.b64encode(file_bytes).decode("utf-8")
-            return f"data:{content_type};base64,{b64}"
+            # Compress image with PIL before base64 encoding to prevent payload bloat
+            try:
+                from PIL import Image
+                img = Image.open(io.BytesIO(file_bytes))
+                if img.mode in ("RGBA", "P"):
+                    img = img.convert("RGB")
+                img.thumbnail((800, 600), Image.Resampling.LANCZOS)
+                out_buf = io.BytesIO()
+                img.save(out_buf, format="JPEG", quality=75, optimize=True)
+                compressed_bytes = out_buf.getvalue()
+                b64 = base64.b64encode(compressed_bytes).decode("utf-8")
+                return f"data:image/jpeg;base64,{b64}"
+            except Exception as pil_err:
+                b64 = base64.b64encode(file_bytes).decode("utf-8")
+                return f"data:{content_type};base64,{b64}"
         except Exception as e:
             print(f"Error encoding photo: {e}")
             return None

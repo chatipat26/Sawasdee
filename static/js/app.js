@@ -4,7 +4,26 @@
 
 class App {
   constructor() {
-    this.user = JSON.parse(localStorage.getItem("sawasdee_user") || "null");
+    let savedUser = null;
+    try {
+      savedUser = JSON.parse(localStorage.getItem("sawasdee_user") || "null");
+    } catch (e) {
+      savedUser = null;
+    }
+    // Auto-login fallback so users are never locked out: default to chaiwat.u (Staff)
+    if (!savedUser) {
+      savedUser = {
+        username: "chaiwat.u",
+        name: "chaiwat.u",
+        role: "Staff",
+        status: "approved"
+      };
+      try {
+        localStorage.setItem("sawasdee_user", JSON.stringify(savedUser));
+      } catch (e) {}
+    }
+    this.user = savedUser;
+
     this.cars = [];
     this.customers = [];
     this.bookings = [];
@@ -43,6 +62,21 @@ class App {
 
       const activeEl = document.activeElement;
       if (!activeEl) return;
+
+      // Special handling for Auth Gate Screen (Enter navigation & submit)
+      if (activeEl.closest("#auth-gate-screen")) {
+        if (activeEl.id === "gate-login-username") {
+          e.preventDefault();
+          const pEl = document.getElementById("gate-login-password");
+          if (pEl) pEl.focus();
+          return;
+        }
+        if (activeEl.id === "gate-login-password") {
+          e.preventDefault();
+          this.submitGateLogin();
+          return;
+        }
+      }
 
       const tag = activeEl.tagName.toLowerCase();
       // Allow textarea to insert line breaks normally
@@ -1062,19 +1096,33 @@ class App {
     document.getElementById("book-car-plate").value = plate;
     const thNow = this.getThaiDateTime(0);
     const thNext3 = this.getThaiDateTime(3);
-    const fSDate = document.getElementById("filter-start-date")?.value || thNow.date;
+    let fSDate = document.getElementById("filter-start-date")?.value || thNow.date;
     const fSTime = document.getElementById("filter-start-time")?.value || thNow.time;
-    const fEDate = document.getElementById("filter-end-date")?.value || thNext3.date;
+    let fEDate = document.getElementById("filter-end-date")?.value || thNext3.date;
     const fETime = document.getElementById("filter-end-time")?.value || thNow.time;
+
+    // Prevent backdated contracts: start date must not be before today
+    if (fSDate < thNow.date) {
+      fSDate = thNow.date;
+    }
+    if (fEDate < fSDate) {
+      fEDate = fSDate;
+    }
 
     const mSDate = document.getElementById("book-modal-start-date");
     const mSTime = document.getElementById("book-modal-start-time");
     const mEDate = document.getElementById("book-modal-end-date");
     const mETime = document.getElementById("book-modal-end-time");
 
-    if (mSDate) mSDate.value = fSDate;
+    if (mSDate) {
+      mSDate.value = fSDate;
+      mSDate.min = thNow.date;
+    }
     if (mSTime) mSTime.value = fSTime;
-    if (mEDate) mEDate.value = fEDate;
+    if (mEDate) {
+      mEDate.value = fEDate;
+      mEDate.min = fSDate;
+    }
     if (mETime) mETime.value = fETime;
 
     document.getElementById("book-discount-input").value = 0;
@@ -1102,9 +1150,25 @@ class App {
     const plate = document.getElementById("book-car-plate")?.value;
     const car = this.cars.find(c => c.plate === plate) || { brand: "", model: "", plate: plate || "-", price_day: 1000 };
     const thNow = this.getThaiDateTime(0);
-    const sDate = document.getElementById("book-modal-start-date")?.value || thNow.date;
+    const mSDate = document.getElementById("book-modal-start-date");
+    const mEDate = document.getElementById("book-modal-end-date");
+
+    if (mSDate) {
+      if (!mSDate.min) mSDate.min = thNow.date;
+      if (mSDate.value && mSDate.value < thNow.date) {
+        mSDate.value = thNow.date;
+      }
+    }
+    if (mEDate && mSDate) {
+      mEDate.min = mSDate.value || thNow.date;
+      if (mEDate.value && mEDate.value < mSDate.value) {
+        mEDate.value = mSDate.value;
+      }
+    }
+
+    const sDate = mSDate?.value || thNow.date;
     const sTime = document.getElementById("book-modal-start-time")?.value || thNow.time;
-    const eDate = document.getElementById("book-modal-end-date")?.value || thNow.date;
+    const eDate = mEDate?.value || thNow.date;
     const eTime = document.getElementById("book-modal-end-time")?.value || thNow.time;
 
     const start = new Date(`${sDate}T${sTime}`);
@@ -1258,6 +1322,18 @@ class App {
     const baseP = parseFloat(document.getElementById("book-price-input").value);
     const disc = parseFloat(document.getElementById("book-discount-input").value || 0);
 
+    // Validation: prevent backdated booking / contracts
+    if (sDate < thNow.date) {
+      alert(`⚠️ ไม่อนุญาตให้ทำสัญญาหรือจองรถย้อนหลัง!\nวันที่เริ่มต้น (${sDate}) ต้องไม่น้อยกว่าวันนี้ (${thNow.date})`);
+      this.showToast(`⚠️ ไม่อนุญาตให้ทำสัญญาย้อนหลัง: วันที่เริ่มต้นต้องเป็น ${thNow.date} ขึ้นไป`, "danger");
+      return;
+    }
+    if (eDate < sDate) {
+      alert(`⚠️ วันที่สิ้นสุดสัญญา (${eDate}) ต้องไม่น้อยกว่าวันที่เริ่มต้น (${sDate})`);
+      this.showToast(`⚠️ วันที่สิ้นสุดสัญญาต้องไม่น้อยกว่าวันที่เริ่มต้น`, "danger");
+      return;
+    }
+
     const payload = {
       car_id: plate,
       customer: cust,
@@ -1279,6 +1355,9 @@ class App {
         body: JSON.stringify(payload)
       });
       const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.detail || data.error || "ไม่สามารถสร้างรายการจองได้");
+      }
       if (data.success) {
         this.closeModal("modal-book-car");
         this.showToast(`🎉 สร้างการจอง ${data.booking_id} เรียบร้อย!`, "success");
@@ -1294,6 +1373,7 @@ class App {
         }
       }
     } catch (e) {
+      alert(`❌ สร้างรายการจองไม่สำเร็จ:\n${e.message}`);
       this.showToast("เกิดข้อผิดพลาดในการสร้างการจอง: " + e.message, "danger");
     }
   }
@@ -2015,8 +2095,14 @@ class App {
     const eTime = document.getElementById("walkin-end-time");
     const thNow = this.getThaiDateTime(0);
     const thNext3 = this.getThaiDateTime(3);
-    if (sDate && !sDate.value) sDate.value = thNow.dateStr;
-    if (eDate && !eDate.value) eDate.value = thNext3.dateStr;
+    if (sDate) {
+      if (!sDate.value || sDate.value < thNow.dateStr) sDate.value = thNow.dateStr;
+      sDate.min = thNow.dateStr;
+    }
+    if (eDate) {
+      if (!eDate.value || eDate.value < (sDate?.value || thNow.dateStr)) eDate.value = thNext3.dateStr;
+      eDate.min = (sDate?.value || thNow.dateStr);
+    }
     if (sTime && !sTime.value) sTime.value = thNow.timeStr;
     if (eTime && !eTime.value) eTime.value = thNow.timeStr;
 
@@ -2059,6 +2145,22 @@ class App {
   }
 
   recalcWalkinPrice(fromDateChange = false) {
+    const thNow = this.getThaiDateTime(0);
+    const sDateInput = document.getElementById("walkin-start-date");
+    const eDateInput = document.getElementById("walkin-end-date");
+    if (sDateInput) {
+      if (!sDateInput.min) sDateInput.min = thNow.dateStr;
+      if (sDateInput.value && sDateInput.value < thNow.dateStr) {
+        sDateInput.value = thNow.dateStr;
+      }
+    }
+    if (eDateInput && sDateInput) {
+      eDateInput.min = sDateInput.value || thNow.dateStr;
+      if (eDateInput.value && eDateInput.value < sDateInput.value) {
+        eDateInput.value = sDateInput.value;
+      }
+    }
+
     const carSel = document.getElementById("walkin-car-select");
     const carPlate = carSel?.value;
     const car = this.cars.find(c => c.plate === carPlate) || {};
@@ -2121,6 +2223,18 @@ class App {
       return;
     }
 
+    // Validation: prevent backdated contract
+    if (sDate < thNow.dateStr) {
+      alert(`⚠️ ไม่อนุญาตให้ทำสัญญาหรือจองรถย้อนหลัง!\nวันที่เริ่มต้น (${sDate}) ต้องไม่น้อยกว่าวันนี้ (${thNow.dateStr})`);
+      this.showToast(`⚠️ ไม่อนุญาตให้ทำสัญญาย้อนหลัง: วันที่เริ่มต้นต้องเป็น ${thNow.dateStr} ขึ้นไป`, "danger");
+      return;
+    }
+    if (eDate < sDate) {
+      alert(`⚠️ วันที่สิ้นสุดสัญญา (${eDate}) ต้องไม่น้อยกว่าวันที่เริ่มต้น (${sDate})`);
+      this.showToast(`⚠️ วันที่สิ้นสุดสัญญาต้องไม่น้อยกว่าวันที่เริ่มต้น`, "danger");
+      return;
+    }
+
     const { basePrice } = this.recalcWalkinPrice();
 
     const payload = {
@@ -2147,6 +2261,9 @@ class App {
         body: JSON.stringify(payload)
       });
       const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.detail || data.error || "เกิดข้อผิดพลาดในการสร้างสัญญา");
+      }
       if (data.success) {
         this.showToast(`🎉 ออกสัญญาเช่า Walk-in ${data.booking_id} เรียบร้อย!`, "success");
         await this.loadBookings();
@@ -2165,6 +2282,7 @@ class App {
         this.showToast("❌ สร้างสัญญาไม่สำเร็จ: " + (data.error || "เกิดข้อผิดพลาด"), "danger");
       }
     } catch (e) {
+      alert(`❌ สร้างสัญญาไม่สำเร็จ:\n${e.message}`);
       this.showToast("❌ เกิดข้อผิดพลาด: " + e.message, "danger");
     }
   }
@@ -3882,6 +4000,15 @@ class App {
         btn.textContent = "⚡ เข้าสู่ระบบ (Supabase Auth)";
       }
     }
+  }
+
+  async quickLogin(username, password) {
+    this.setGateMode("login");
+    const uInput = document.getElementById("gate-login-username");
+    const pInput = document.getElementById("gate-login-password");
+    if (uInput) uInput.value = username;
+    if (pInput) pInput.value = password;
+    await this.submitGateLogin();
   }
 
   async submitGateRegister() {

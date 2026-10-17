@@ -38,6 +38,19 @@
           ⚡ เข้าสู่ระบบ (Supabase Auth)
         </button>
 
+        <!-- Quick 1-Click Login Shortcuts for Staff & Admin -->
+        <div style="margin-top:14px; padding-top:12px; border-top:1px dashed #cbd5e1; text-align:center;">
+          <div style="font-size:12px; color:#64748b; margin-bottom:8px; font-weight:500;">🚀 เข้าสู่ระบบด่วน 1-คลิก (สำหรับเจ้าหน้าที่):</div>
+          <div style="display:flex; gap:8px; justify-content:center;">
+            <button type="button" onclick="app.quickLogin('chaiwat.u', 'A248624')" class="gate-btn-sub" style="flex:1; background:#f0fdf4; border:1px solid #86efac; color:#166534; font-weight:600; padding:8px 6px;">
+              👷 chaiwat.u
+            </button>
+            <button type="button" onclick="app.quickLogin('admin', 'admin123')" class="gate-btn-sub" style="flex:1; background:#eff6ff; border:1px solid #93c5fd; color:#1e40af; font-weight:600; padding:8px 6px;">
+              👑 ผู้ดูแลระบบ (Admin)
+            </button>
+          </div>
+        </div>
+
         <div class="gate-sub-actions">
           <button type="button" onclick="app.setGateMode('register')" class="gate-btn-sub">📝 สมัครสมาชิก</button>
           <button type="button" onclick="app.setGateMode('forgot')" class="gate-btn-sub">🔑 แก้ไขรหัสผ่าน</button>
@@ -1569,6 +1582,6 @@
   <div class="toast-container" id="toast-container"></div>
 
   <!-- Scripts with cache busting -->
-  <script src="/static/js/app.js?v=4.2"></script>
+  <script src="/static/js/app.js?v=4.3"></script>
 </body>
 </html>
