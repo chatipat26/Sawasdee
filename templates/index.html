@@ -4,8 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sawasdee Rental - ระบบบริหารจัดการรถเช่าระดับพรีเมียม</title>
-  <link rel="stylesheet" href="/static/css/app.css?v=2.2">
+  <link rel="stylesheet" href="/static/css/app.css?v=2.3">
   <link rel="icon" type="image/png" href="/static/sawasdee-logo.png">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
 
@@ -235,7 +236,7 @@
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
               <div>
                 <h3 style="font-size:17px; font-weight:800; color:#92400E; margin:0;">
-                  ✨ ระบบค้นหาและจองรถยนต์อัจฉริยะ (The Booking Bar)
+                  ✨ 2. INSTANT BOOKING FORM (THE BOOKING BAR) — ค้นหาและเลือกรถด่วนสำหรับเซล
                 </h3>
                 <div style="font-size:12px; color:#B45309;">
                   เลือกวัน-เวลา เพื่อเช็คสถานะรถว่างและคำนวณระยะเวลาเช่าตามจริงอัตโนมัติ (เกิน 4 ชม. ปรับเป็น 1 วัน)
@@ -246,46 +247,70 @@
               </button>
             </div>
 
-            <div class="booking-bar-grid">
+            <!-- แถวที่ 1: ดรอปดาวน์ตัวกรอง 4 ตัว (หมวดหมู่รถ, ยี่ห้อ, กรรมสิทธิ์/บริษัท, สถานะรถ) -->
+            <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:12px; margin-bottom:12px;">
               <div class="form-group">
-                <label>📅 วันที่รับรถ (Start Date)</label>
-                <input type="date" id="filter-start-date" class="form-control" onchange="app.onFilterChange()">
-              </div>
-              <div class="form-group">
-                <label>⏰ เวลารับรถ (Start Time)</label>
-                <input type="time" id="filter-start-time" class="form-control" value="10:00" onchange="app.onFilterChange()">
-              </div>
-              <div class="form-group">
-                <label>📅 วันที่คืนรถ (End Date)</label>
-                <input type="date" id="filter-end-date" class="form-control" onchange="app.onFilterChange()">
-              </div>
-              <div class="form-group">
-                <label>⏰ เวลาคืนรถ (End Time)</label>
-                <input type="time" id="filter-end-time" class="form-control" value="10:00" onchange="app.onFilterChange()">
-              </div>
-              <div class="form-group">
-                <label>🏢 สังกัดบริษัท</label>
-                <select id="filter-company" class="form-control" onchange="app.onFilterChange()">
-                  <option value="ทั้งหมด">ทั้งหมด (All Companies)</option>
-                  <option value="บจก.สวัสดี เรนทัล (Sawasdee Rental)">บจก.สวัสดี เรนทัล</option>
-                  <option value="โตโยต้า ลีสซิ่ง">โตโยต้า ลีสซิ่ง</option>
-                  <option value="บจก.บี คลิ๊ก ลีส แอนด์ โลจิสติกส์">บี คลิ๊ก ลีส</option>
-                  <option value="ซุปเปอร์เจ">ซุปเปอร์เจ</option>
-                  <option value="บจ.อนันต์">บจ.อนันต์</option>
+                <label>🚘 หมวดหมู่รถ (Category)</label>
+                <select id="filter-group" class="form-control" onchange="app.onFilterChange()">
+                  <option value="ทั้งหมด">ทั้งหมด</option>
                 </select>
               </div>
               <div class="form-group">
-                <label>🔍 ค้นหา (ยี่ห้อ/รุ่น/ทะเบียน)</label>
-                <input type="text" id="filter-search-kw" class="form-control" placeholder="เช่น Yaris, Cross, 5ขฒ..." oninput="app.onFilterChange()">
+                <label>🏷️ ยี่ห้อ (Brand)</label>
+                <select id="filter-brand" class="form-control" onchange="app.onFilterChange()">
+                  <option value="ทั้งหมด">ทั้งหมด</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>🏢 กรรมสิทธิ์/บริษัท</label>
+                <select id="filter-company" class="form-control" onchange="app.onFilterChange()">
+                  <option value="ทั้งหมด">ทั้งหมด</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>🚦 สถานะรถ (Status)</label>
+                <select id="filter-status" class="form-control" onchange="app.onFilterChange()">
+                  <option value="ทั้งหมด">ทั้งหมด</option>
+                  <option value="ว่างไม่มีการจอง (🟢)">ว่างไม่มีการจอง (🟢)</option>
+                  <option value="มีการจองล่วงหน้าไว้ (🟡)">มีการจองล่วงหน้าไว้ (🟡)</option>
+                  <option value="ไม่ว่างในวันที่เลือก (🔴)">ไม่ว่างในวันที่เลือก (🔴)</option>
+                  <option value="สถานะซ่อมบำรุง (🟠)">สถานะซ่อมบำรุง (🟠)</option>
+                  <option value="ว่างพร้อมใช้งาน (🟢+🟡)">ว่างพร้อมใช้งาน (🟢+🟡)</option>
+                  <option value="กำลังเช่า">กำลังเช่า</option>
+                  <option value="ติดจอง">ติดจอง</option>
+                </select>
               </div>
             </div>
 
-            <!-- Calculation result banner -->
+            <!-- แถวที่ 2: ระบุวันที่ (วันที่ส่งรถ, วันที่คืนรถ) และปุ่มล้างตัวกรอง -->
+            <div style="display:grid; grid-template-columns: 1.5fr 1.5fr 1fr; gap:12px; align-items:flex-end;">
+              <div class="form-group">
+                <label>📅 วันที่ส่งรถ (Pick-up)</label>
+                <div style="display:flex; gap:6px;">
+                  <input type="date" id="filter-start-date" class="form-control" onchange="app.onDateFilterChange()">
+                  <input type="time" id="filter-start-time" class="form-control" value="10:00" style="width:115px;" onchange="app.onFilterChange()">
+                </div>
+              </div>
+              <div class="form-group">
+                <label>📅 วันที่คืนรถ (Return)</label>
+                <div style="display:flex; gap:6px;">
+                  <input type="date" id="filter-end-date" class="form-control" onchange="app.onDateFilterChange()">
+                  <input type="time" id="filter-end-time" class="form-control" value="10:00" style="width:115px;" onchange="app.onFilterChange()">
+                </div>
+              </div>
+              <div class="form-group">
+                <button type="button" onclick="app.resetFleetFilters()" class="btn btn-secondary" style="width:100%; height:40px; font-weight:700; background:#FAF7F2; border:1.5px solid #D1D5DB; color:#374151;">
+                  🔄 ล้างตัวกรอง
+                </button>
+              </div>
+            </div>
+
+            <!-- แถบสรุปคำนวณระยะเวลาและจำนวนรถว่าง -->
             <div id="booking-bar-calc-banner" style="margin-top:14px; padding:10px 16px; background:#FFFFFF; border-radius:8px; border:1px solid #FDE68A; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
               <div style="font-size:12.5px; color:#475569;">
-                ⏱️ ระยะเวลาเช่าคำนวณ: <b id="calc-duration-text" style="color:#D97706;">1 วัน</b>
+                ⏱️ ระยะเวลาเช่าคำนวณ: <b id="calc-duration-text" style="color:#D97706;">1 วันตรง (24 ชั่วโมง)</b>
               </div>
-              <div style="font-size:12px; color:#059669; font-weight:600;" id="calc-cars-count">
+              <div style="font-size:12.5px; color:#059669; font-weight:700;" id="calc-cars-count">
                 พบรถว่างพร้อมให้บริการ: 0 คัน
               </div>
             </div>
@@ -674,74 +699,133 @@
           </div>
         </div>
 
-        <!-- Fleet Status Table (Collapsible) -->
-        <div class="card">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; cursor:pointer;" onclick="app.toggleFleetTableCollapse()">
-            <div class="card-title" style="margin:0;">
-              <span>🚘</span> ข้อมูลทะเบียนรถและสถานะ พ.ร.บ. / ประกันภัย (Fleet Status Overview)
+        <!-- Donut Charts: Company Fleet Breakdown -->
+        <div class="card" style="margin-bottom:20px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:8px;">
+            <div>
+              <div class="card-title" style="margin:0;">
+                <span>🍩</span> สัดส่วนสถานะรถยนต์แยกตามสังกัดบริษัท (Company Fleet Status Share)
+              </div>
+              <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">
+                สัดส่วนสถานะรถยนต์ (ว่างพร้อมใช้งาน / กำลังเช่า-ติดจอง / ซ่อมบำรุง) แสดงผลแบบ Dynamic
+              </div>
             </div>
-            <span id="fleet-collapse-icon" style="font-size:14px; font-weight:700; color:#64748B;">▼ คลิกเพื่อย่อ/ขยาย</span>
           </div>
-          <div id="fleet-table-wrapper" class="table-responsive">
-            <table class="custom-table">
-              <thead>
-                <tr>
-                  <th>ทะเบียน</th>
-                  <th>ยี่ห้อ / รุ่น</th>
-                  <th>สังกัดบริษัท</th>
-                  <th>สถานะ</th>
-                  <th>วันหมดอายุ พ.ร.บ.</th>
-                  <th>วันหมดอายุ ประกันภัย</th>
-                  <th>เลขไมล์</th>
-                </tr>
-              </thead>
-              <tbody id="fleet-overview-tbody">
-                <!-- Rendered by JS -->
-              </tbody>
-            </table>
+          <div id="dashboard-donuts-container" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:18px;">
+            <!-- Rendered dynamically by JS -->
           </div>
         </div>
 
-        <!-- Completed Jobs Archive & Monthly Report -->
-        <div class="card">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
+        <!-- Revenue & Completed Jobs Trend Chart Section -->
+        <div class="card" style="margin-bottom:20px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:14px;">
             <div>
               <div class="card-title" style="margin:0;">
-                <span>📑</span> คลังประวัติงานเสร็จสิ้น & รีพอร์ตรายเดือน (Completed Jobs Archive)
+                <span>📈</span> แนวโน้มรายรับและจำนวนงานเช่าที่เสร็จสิ้น (Completed Jobs Trend)
               </div>
               <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">
-                ประวัติงานที่ส่งมอบและรับคืนสมบูรณ์แล้ว พร้อมเอกสารย้อนหลังและปุ่มส่งออก CSV
+                เปรียบเทียบผลประกอบการย้อนหลังรายเดือนตามรอบดำเนินงาน
               </div>
             </div>
-            <div style="display:flex; gap:10px; align-items:center;">
-              <input type="month" id="report-month-picker" class="form-control" style="width:160px;" onchange="app.loadMonthlyReports()">
-              <a id="btn-export-csv" href="/api/reports/export-csv" target="_blank" class="btn btn-secondary btn-sm">
-                📥 ดาวน์โหลด CSV
-              </a>
+            
+            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+              <div style="display:flex; background:#F4EBE1; padding:3px; border-radius:8px; border:1px solid #E5DFD7;">
+                <button type="button" id="btn-trend-rev" onclick="app.setTrendMetric('rev')" class="btn btn-sm" style="background:#E85826; color:white; font-size:12px; font-weight:700; border-radius:6px; padding:4px 12px; border:none; cursor:pointer;">
+                  📈 รายรับค่าเช่า (THB)
+                </button>
+                <button type="button" id="btn-trend-jobs" onclick="app.setTrendMetric('jobs')" class="btn btn-sm" style="background:transparent; color:#6B7280; font-size:12px; font-weight:700; border-radius:6px; padding:4px 12px; border:none; cursor:pointer;">
+                  📊 จำนวนงานที่เสร็จสิ้น (งาน)
+                </button>
+              </div>
             </div>
           </div>
 
-          <div class="table-responsive">
-            <table class="custom-table">
-              <thead>
-                <tr>
-                  <th>รหัสการจอง</th>
-                  <th>วันที่เสร็จสิ้น</th>
-                  <th>ทะเบียนรถ</th>
-                  <th>ลูกค้า</th>
-                  <th>บริษัท</th>
-                  <th>ประเภท</th>
-                  <th>รายรับสุทธิ</th>
-                  <th>พนักงานส่ง/รับ</th>
-                  <th>ระดับน้ำมัน</th>
-                  <th>สถานะ</th>
-                  <th style="text-align:center;">เอกสารย้อนหลัง</th>
-                </tr>
-              </thead>
-              <tbody id="completed-jobs-tbody">
-                <!-- Rendered by JS -->
-              </tbody>
-            </table>
+          <div id="trend-company-toggles" style="display:flex; gap:18px; margin-bottom:16px; flex-wrap:wrap; font-size:12.5px; font-weight:600; color:#374151;">
+            <!-- Company checkboxes rendered by JS -->
+          </div>
+
+          <div style="position:relative; height:320px; width:100%;">
+            <canvas id="chart-revenue-trend"></canvas>
+          </div>
+        </div>
+
+        <!-- Collapsible Table 1: Fleet Status Table -->
+        <div class="expander-card" id="expander-fleet">
+          <div class="expander-header open" onclick="app.toggleExpander('expander-fleet')">
+            <div class="expander-title">
+              <span>🚘</span> ข้อมูลทะเบียนรถและสถานะ พ.ร.บ. / ประกันภัย (Fleet Status Overview)
+            </div>
+            <div class="expander-indicator">
+              <span id="indicator-expander-fleet">▲ คลิกเพื่อพับเก็บ</span>
+            </div>
+          </div>
+          <div class="expander-body" id="body-expander-fleet" style="display:block;">
+            <div class="table-responsive">
+              <table class="custom-table">
+                <thead>
+                  <tr>
+                    <th>ทะเบียน</th>
+                    <th>ยี่ห้อ / รุ่น</th>
+                    <th>สังกัดบริษัท</th>
+                    <th>สถานะ</th>
+                    <th>วันหมดอายุ พ.ร.บ.</th>
+                    <th>วันหมดอายุ ประกันภัย</th>
+                    <th>เลขไมล์</th>
+                  </tr>
+                </thead>
+                <tbody id="fleet-overview-tbody">
+                  <!-- Rendered by JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Collapsible Table 2: Completed Jobs Archive & Monthly Report -->
+        <div class="expander-card" id="expander-completed">
+          <div class="expander-header open" onclick="app.toggleExpander('expander-completed')">
+            <div class="expander-title">
+              <span>📑</span> คลังประวัติงานเสร็จสิ้น & รีพอร์ตรายเดือน (Completed Jobs Archive)
+            </div>
+            <div class="expander-indicator">
+              <span id="indicator-expander-completed">▲ คลิกเพื่อพับเก็บ</span>
+            </div>
+          </div>
+          <div class="expander-body" id="body-expander-completed" style="display:block;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
+              <div style="font-size:12px; color:var(--text-muted);">
+                ประวัติงานที่ส่งมอบและรับคืนสมบูรณ์แล้ว พร้อมเอกสารย้อนหลังและปุ่มส่งออก CSV
+              </div>
+              <div style="display:flex; gap:10px; align-items:center;">
+                <input type="month" id="report-month-picker" class="form-control" style="width:160px;" onchange="app.loadMonthlyReports()">
+                <a id="btn-export-csv" href="/api/reports/export-csv" target="_blank" class="btn btn-secondary btn-sm">
+                  📥 ดาวน์โหลด CSV
+                </a>
+              </div>
+            </div>
+
+            <div class="table-responsive">
+              <table class="custom-table">
+                <thead>
+                  <tr>
+                    <th>รหัสการจอง</th>
+                    <th>วันที่เสร็จสิ้น</th>
+                    <th>ทะเบียนรถ</th>
+                    <th>ลูกค้า</th>
+                    <th>บริษัท</th>
+                    <th>ประเภท</th>
+                    <th>รายรับสุทธิ</th>
+                    <th>พนักงานส่ง/รับ</th>
+                    <th>ระดับน้ำมัน</th>
+                    <th>สถานะ</th>
+                    <th style="text-align:center;">เอกสารย้อนหลัง</th>
+                  </tr>
+                </thead>
+                <tbody id="completed-jobs-tbody">
+                  <!-- Rendered by JS -->
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </section>
@@ -970,6 +1054,6 @@
   <div class="toast-container" id="toast-container"></div>
 
   <!-- Scripts with cache busting -->
-  <script src="/static/js/app.js?v=2.2"></script>
+  <script src="/static/js/app.js?v=2.3"></script>
 </body>
 </html>

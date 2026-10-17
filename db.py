@@ -121,9 +121,9 @@ def calculate_rental_duration_and_days(start_date, start_time, end_date, end_tim
     return billable_days, extra_hours, rem_minutes, is_over_4hr, explanation
 
 def get_car_fleet_status(car_plate, car_obj, bookings, filter_start_date=None, filter_end_date=None):
-    c_status = car_obj.get("status", "ว่างพร้อมใช้งาน")
+    c_status = str((car_obj or {}).get("status") or "").strip()
     if c_status in ["ซ่อมบำรุง", "ไม่พร้อมใช้งาน", "ระงับการใช้งาน"]:
-        return "maintenance", c_status, "#EF4444", "#FEF2F2", "#FCA5A5"
+        return "maintenance", "สถานะซ่อมบำรุง", "#F97316", "#FFF7ED", "#FDBA74"
         
     chk_s = to_date(filter_start_date)
     chk_e = to_date(filter_end_date)
@@ -165,12 +165,33 @@ def get_car_fleet_status(car_plate, car_obj, bookings, filter_start_date=None, f
                     break
                     
     if is_booked_on_selected_date or is_currently_rented:
-        info_txt = "ติดจอง / กำลังเช่า"
+        info_txt = "ไม่ว่างในวันที่เลือก"
         if booked_b:
-            info_txt = f"ติดจอง ({booked_b.get('customer')}) {format_date_dmy(booked_b.get('start_date'))} - {format_date_dmy(booked_b.get('end_date'))}"
-        return "booked", info_txt, "#D97706", "#FFFBEB", "#FDE68A"
+            info_txt = f"ไม่ว่างในวันที่เลือก ({booked_b.get('customer')}) {format_date_dmy(booked_b.get('start_date'))} - {format_date_dmy(booked_b.get('end_date'))}"
+        return "unavailable", info_txt, "#EF4444", "#FEF2F2", "#FCA5A5"
+
+    # Check for advance bookings in the future
+    has_advance_booking = False
+    adv_b = None
+    today_d = date.today()
+    if c_status == "ติดจอง":
+        has_advance_booking = True
+    elif active_bks:
+        for b in active_bks:
+            b_s = to_date(b.get("start_date"))
+            b_e = to_date(b.get("end_date"))
+            if (b_e and b_e >= today_d) or (b_s and b_s >= today_d):
+                has_advance_booking = True
+                adv_b = b
+                break
+                
+    if has_advance_booking:
+        info_txt = "มีการจองล่วงหน้าไว้"
+        if adv_b:
+            info_txt = f"มีการจองล่วงหน้าไว้ ({adv_b.get('customer')}) {format_date_dmy(adv_b.get('start_date'))} - {format_date_dmy(adv_b.get('end_date'))}"
+        return "reserved", info_txt, "#F59E0B", "#FFFBEB", "#FDE68A"
         
-    return "available", "ว่างพร้อมใช้งาน", "#059669", "#ECFDF5", "#A7F3D0"
+    return "available", "ว่างไม่มีการจอง", "#10B981", "#ECFDF5", "#A7F3D0"
 
 # -------------------------------------------------------------------------
 # INITIAL CARS, CUSTOMERS, BOOKINGS, USERS

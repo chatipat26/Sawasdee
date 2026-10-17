@@ -16,6 +16,13 @@ class App {
     this.uploadedPhotos = [];
     this.currentSelectedBooking = null;
 
+    // Search and Dashboard Charts State
+    this.sidebarSearchKw = "";
+    this.donutCharts = {};
+    this.trendChart = null;
+    this.trendMetric = "rev";
+    this.selectedTrendCompanies = ["Sawasdee Rent A Car", "P.D.P. Co., Ltd.", "Sawasdee Car Rent"];
+
     this.init();
   }
 
@@ -35,6 +42,10 @@ class App {
     const eDate = document.getElementById("filter-end-date");
     if (sDate && !sDate.value) sDate.value = today;
     if (eDate && !eDate.value) eDate.value = next3;
+    const sTime = document.getElementById("filter-start-time");
+    const eTime = document.getElementById("filter-end-time");
+    if (sTime && !sTime.value) sTime.value = "10:00";
+    if (eTime && !eTime.value) eTime.value = "10:00";
   }
 
   updateAuthUI() {
@@ -123,9 +134,86 @@ class App {
     const res = await fetch(url);
     if (res.ok) {
       this.cars = await res.json();
+      this.populateFleetDropdowns();
       this.renderFleetCards();
       this.renderFleetOverviewTable();
+      if (this.activeModule === "dashboard") {
+        this.renderDashboardCharts();
+      }
     }
+  }
+
+  populateFleetDropdowns() {
+    // 1. Group Dropdown
+    const selGroup = document.getElementById("filter-group");
+    if (selGroup) {
+      const curVal = selGroup.value;
+      const groups = Array.from(new Set(this.cars.map(c => (c.car_group || "").trim()).filter(Boolean))).sort();
+      selGroup.innerHTML = '<option value="ทั้งหมด">ทั้งหมด</option>' + 
+        groups.map(g => `<option value="${g}">${g}</option>`).join("");
+      if (curVal && (curVal === "ทั้งหมด" || groups.includes(curVal))) {
+        selGroup.value = curVal;
+      }
+    }
+
+    // 2. Brand Dropdown
+    const selBrand = document.getElementById("filter-brand");
+    if (selBrand) {
+      const curVal = selBrand.value;
+      const brands = Array.from(new Set(this.cars.map(c => (c.brand || "").trim()).filter(Boolean))).sort();
+      selBrand.innerHTML = '<option value="ทั้งหมด">ทั้งหมด</option>' + 
+        brands.map(b => `<option value="${b}">${b}</option>`).join("");
+      if (curVal && (curVal === "ทั้งหมด" || brands.includes(curVal))) {
+        selBrand.value = curVal;
+      }
+    }
+
+    // 3. Company Dropdown
+    const selComp = document.getElementById("filter-company");
+    if (selComp) {
+      const curVal = selComp.value;
+      const companies = Array.from(new Set(this.cars.map(c => (c.company || "").trim()).filter(Boolean))).sort();
+      selComp.innerHTML = '<option value="ทั้งหมด">ทั้งหมด</option>' + 
+        companies.map(co => `<option value="${co}">${co}</option>`).join("");
+      if (curVal && (curVal === "ทั้งหมด" || companies.includes(curVal))) {
+        selComp.value = curVal;
+      }
+    }
+  }
+
+  resetFleetFilters() {
+    const selGroup = document.getElementById("filter-group");
+    const selBrand = document.getElementById("filter-brand");
+    const selComp = document.getElementById("filter-company");
+    const selStatus = document.getElementById("filter-status");
+    const sDate = document.getElementById("filter-start-date");
+    const sTime = document.getElementById("filter-start-time");
+    const eDate = document.getElementById("filter-end-date");
+    const eTime = document.getElementById("filter-end-time");
+    const sbSearch = document.getElementById("sb-search-input");
+
+    if (selGroup) selGroup.value = "ทั้งหมด";
+    if (selBrand) selBrand.value = "ทั้งหมด";
+    if (selComp) selComp.value = "ทั้งหมด";
+    if (selStatus) selStatus.value = "ทั้งหมด";
+
+    const today = new Date().toISOString().split("T")[0];
+    const next3 = new Date(Date.now() + 3 * 86400000).toISOString().split("T")[0];
+    if (sDate) sDate.value = today;
+    if (eDate) eDate.value = next3;
+    if (sTime) sTime.value = "10:00";
+    if (eTime) eTime.value = "10:00";
+    if (sbSearch) sbSearch.value = "";
+    this.sidebarSearchKw = "";
+
+    this.loadCars();
+    this.onFilterChange();
+    this.showToast("🔄 คืนค่าตัวกรองทั้งหมดเรียบร้อย", "info");
+  }
+
+  onDateFilterChange() {
+    this.onFilterChange();
+    this.loadCars();
   }
 
   async loadCustomers() {
@@ -170,6 +258,7 @@ class App {
         document.getElementById("kpi-utilization").textContent = `${kpi.utilization_rate}%`;
         document.getElementById("kpi-total-revenue").textContent = `฿${kpi.total_revenue.toLocaleString('th-TH', {minimumFractionDigits: 2})}`;
       }
+      this.renderDashboardCharts();
       this.loadMonthlyReports();
     } catch (e) {}
   }
@@ -215,7 +304,10 @@ class App {
 
     if (modName === "backoffice") this.loadBackOfficeJobs();
     if (modName === "customers") this.renderCustomersTable();
-    if (modName === "dashboard") this.loadDashboardKPIs();
+    if (modName === "dashboard") {
+      this.loadDashboardKPIs();
+      setTimeout(() => this.renderDashboardCharts(), 150);
+    }
     if (modName === "users") this.loadUsers();
   }
 
@@ -281,22 +373,61 @@ class App {
     const container = document.getElementById("fleet-cards-container");
     if (!container) return;
 
+    const groupFilter = document.getElementById("filter-group")?.value || "ทั้งหมด";
+    const brandFilter = document.getElementById("filter-brand")?.value || "ทั้งหมด";
     const companyFilter = document.getElementById("filter-company")?.value || "ทั้งหมด";
-    const kw = (document.getElementById("filter-search-kw")?.value || "").toLowerCase().trim();
+    const statusFilter = document.getElementById("filter-status")?.value || "ทั้งหมด";
     const dur = this.calcDuration();
+    const kw = (this.sidebarSearchKw || "").toLowerCase().trim();
 
     const filtered = this.cars.filter(c => {
-      if (companyFilter !== "ทั้งหมด" && c.company !== companyFilter) return false;
-      if (kw) {
-        const str = `${c.plate} ${c.brand} ${c.model} ${c.car_group} ${c.fuel_type}`.toLowerCase();
-        if (!str.includes(kw)) return false;
+      // 1. Group filter
+      if (groupFilter !== "ทั้งหมด") {
+        const cg = (c.car_group || "").toLowerCase();
+        if (!cg.includes(groupFilter.toLowerCase())) return false;
       }
+
+      // 2. Brand filter
+      if (brandFilter !== "ทั้งหมด") {
+        if ((c.brand || "").toLowerCase() !== brandFilter.toLowerCase()) return false;
+      }
+
+      // 3. Company filter
+      if (companyFilter !== "ทั้งหมด") {
+        if ((c.company || "").trim() !== companyFilter.trim()) return false;
+      }
+
+      // 4. Status filter (matching app.py exactly)
+      if (statusFilter.startsWith("ว่างไม่มีการจอง")) {
+        if (c.fleet_status_key !== "available") return false;
+      } else if (statusFilter.startsWith("มีการจองล่วงหน้าไว้")) {
+        if (c.fleet_status_key !== "reserved") return false;
+      } else if (statusFilter.startsWith("ไม่ว่างในวันที่เลือก")) {
+        if (c.fleet_status_key !== "unavailable") return false;
+      } else if (statusFilter.startsWith("สถานะซ่อมบำรุง") || statusFilter === "ซ่อมบำรุง") {
+        if (c.fleet_status_key !== "maintenance") return false;
+      } else if (statusFilter.startsWith("ว่างพร้อมใช้งาน")) {
+        if (c.fleet_status_key !== "available" && c.fleet_status_key !== "reserved") return false;
+      } else if (statusFilter === "กำลังเช่า") {
+        if (c.status !== "กำลังเช่า" && c.fleet_status_key !== "unavailable") return false;
+      } else if (statusFilter === "ติดจอง") {
+        if (c.status !== "ติดจอง" && c.fleet_status_key !== "reserved") return false;
+      }
+
+      // 5. Sidebar Search keyword
+      if (kw) {
+        const target = `${c.plate || ''} ${c.brand || ''} ${c.model || ''} ${c.car_group || ''} ${c.company || ''} ${c.color || ''}`.toLowerCase();
+        const targetClean = target.replace(/[- ]/g, '');
+        const kwClean = kw.replace(/[- ]/g, '');
+        if (!target.includes(kw) && !targetClean.includes(kwClean)) return false;
+      }
+
       return true;
     });
 
     const countTxt = document.getElementById("calc-cars-count");
     if (countTxt) {
-      const availCount = filtered.filter(c => c.fleet_status_key === "available").length;
+      const availCount = filtered.filter(c => c.fleet_status_key === "available" || c.fleet_status_key === "reserved").length;
       countTxt.textContent = `พบรถว่างพร้อมให้บริการ: ${availCount} / ${filtered.length} คัน`;
     }
 
@@ -306,7 +437,7 @@ class App {
     }
 
     container.innerHTML = filtered.map(c => {
-      const isAvail = c.fleet_status_key === "available";
+      const isAvail = c.fleet_status_key === "available" || c.fleet_status_key === "reserved";
       const totalPrice = (c.price_day || 1000) * dur.days;
       const defImg = "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&q=80&w=500";
       const carImg = c.image || defImg;
@@ -759,10 +890,13 @@ class App {
     const tbody = document.getElementById("backoffice-jobs-tbody");
     if (!tbody) return;
 
-    const kw = (document.getElementById("bo-search-input")?.value || "").toLowerCase().trim();
+    const boKw = (document.getElementById("bo-search-input")?.value || "").toLowerCase().trim();
+    const sbKw = (this.sidebarSearchKw || "").toLowerCase().trim();
+    const kw = boKw || sbKw;
+
     const filtered = this.backofficeJobs.filter(j => {
       if (kw) {
-        const s = `${j.booking_id} ${j.car_id} ${j.customer} ${j.job_type}`.toLowerCase();
+        const s = `${j.booking_id} ${j.car_id} ${j.customer} ${j.job_type} ${j.worker || ''} ${j.location || ''}`.toLowerCase();
         if (!s.includes(kw)) return false;
       }
       return true;
@@ -998,17 +1132,307 @@ class App {
     `).join("");
   }
 
-  toggleFleetTableCollapse() {
-    const wrap = document.getElementById("fleet-table-wrapper");
-    const icon = document.getElementById("fleet-collapse-icon");
-    if (!wrap) return;
-    if (wrap.style.display === "none") {
-      wrap.style.display = "block";
-      if (icon) icon.textContent = "▲ คลิกเพื่อย่อ";
+  toggleExpander(cardId) {
+    const card = document.getElementById(cardId);
+    if (!card) return;
+    const header = card.querySelector(".expander-header");
+    const body = card.querySelector(".expander-body");
+    const indicator = card.querySelector(".expander-indicator span");
+
+    const isVisible = body && body.style.display !== "none";
+    if (isVisible) {
+      if (body) body.style.display = "none";
+      if (header) header.classList.remove("open");
+      if (indicator) indicator.textContent = "▼ คลิกเพื่อขยาย";
     } else {
-      wrap.style.display = "none";
-      if (icon) icon.textContent = "▼ คลิกเพื่อขยาย";
+      if (body) body.style.display = "block";
+      if (header) header.classList.add("open");
+      if (indicator) indicator.textContent = "▲ คลิกเพื่อพับเก็บ";
     }
+  }
+
+  toggleFleetTableCollapse() {
+    this.toggleExpander("expander-fleet");
+  }
+
+  // --- Dashboard Charts Engine (Chart.js) ---
+  renderDashboardCharts() {
+    this.renderDonutCharts();
+    this.renderTrendChart();
+  }
+
+  renderDonutCharts() {
+    const container = document.getElementById("dashboard-donuts-container");
+    if (!container || !this.cars || this.cars.length === 0) return;
+
+    // Group cars by company
+    const compMap = {};
+    this.cars.forEach(c => {
+      const comp = (c.company || "บจก.สวัสดี เรนทัล (Sawasdee Rental)").trim();
+      if (!compMap[comp]) {
+        compMap[comp] = { total: 0, avail: 0, rent: 0, maint: 0 };
+      }
+      compMap[comp].total++;
+      if (c.fleet_status_key === "maintenance") {
+        compMap[comp].maint++;
+      } else if (c.fleet_status_key === "unavailable") {
+        compMap[comp].rent++;
+      } else {
+        compMap[comp].avail++;
+      }
+    });
+
+    const compIcons = {
+      "บจก.สวัสดี เรนทัล (Sawasdee Rental)": "🏢",
+      "Sawasdee Rent A Car": "🏢",
+      "โตโยต้า ลีสซิ่ง": "🚗",
+      "โตโยต้า ลีสซิ่ง / คุณประสงฆ์": "🚗",
+      "บจก.บี คลิ๊ก ลีส แอนด์ โลจิสติกส์": "🚛",
+      "P.D.P. Co., Ltd.": "🚛",
+      "ซุปเปอร์เจ": "⭐",
+      "Sawasdee Car Rent": "🚙",
+      "บจ.อนันต์": "🏢"
+    };
+
+    const compKeys = Object.keys(compMap);
+    if (compKeys.length === 0) return;
+
+    container.innerHTML = compKeys.map((compName, idx) => {
+      const data = compMap[compName];
+      const icon = compIcons[compName] || "🏢";
+      const canvasId = `donut-chart-canvas-${idx}`;
+      const availPct = data.total > 0 ? ((data.avail / data.total) * 100).toFixed(0) : 0;
+      const rentPct = data.total > 0 ? ((data.rent / data.total) * 100).toFixed(0) : 0;
+      const maintPct = data.total > 0 ? ((data.maint / data.total) * 100).toFixed(0) : 0;
+
+      return `
+        <div class="donut-card">
+          <div class="donut-header">
+            <span>${icon} ${compName}</span>
+            <span style="font-size:12px; font-weight:800; color:#E85826; background:#FFF7ED; padding:2px 8px; border-radius:12px; border:1px solid #FED7AA;">
+              ${data.total} คัน
+            </span>
+          </div>
+          <div class="donut-sub">สัดส่วนสถานะรถภายในองค์กร</div>
+          <div style="position:relative; height:150px; margin-bottom:12px;">
+            <canvas id="${canvasId}"></canvas>
+          </div>
+          <div>
+            <div class="donut-stat-row">
+              <span><span style="color:#10B981; font-size:13px;">●</span> ว่างพร้อมใช้งาน</span>
+              <b>${data.avail} คัน (${availPct}%)</b>
+            </div>
+            <div class="donut-stat-row">
+              <span><span style="color:#3B82F6; font-size:13px;">●</span> กำลังเช่า/ติดจอง</span>
+              <b>${data.rent} คัน (${rentPct}%)</b>
+            </div>
+            <div class="donut-stat-row">
+              <span><span style="color:#F97316; font-size:13px;">●</span> ซ่อมบำรุง</span>
+              <b>${data.maint} คัน (${maintPct}%)</b>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    if (typeof Chart === "undefined") return;
+
+    compKeys.forEach((compName, idx) => {
+      const data = compMap[compName];
+      const canvasId = `donut-chart-canvas-${idx}`;
+      const canvas = document.getElementById(canvasId);
+      if (!canvas) return;
+
+      if (this.donutCharts[canvasId]) {
+        this.donutCharts[canvasId].destroy();
+      }
+
+      this.donutCharts[canvasId] = new Chart(canvas, {
+        type: 'doughnut',
+        data: {
+          labels: ['ว่างพร้อมใช้งาน', 'กำลังเช่า/ติดจอง', 'ซ่อมบำรุง'],
+          datasets: [{
+            data: [data.avail, data.rent, data.maint],
+            backgroundColor: ['#10B981', '#3B82F6', '#F97316'],
+            borderWidth: 2,
+            borderColor: '#FFFFFF'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: '68%',
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: function(ctx) {
+                  const val = ctx.raw || 0;
+                  const total = data.total || 1;
+                  const pct = ((val / total) * 100).toFixed(1);
+                  return ` ${ctx.label}: ${val} คัน (${pct}%)`;
+                }
+              }
+            }
+          }
+        }
+      });
+    });
+  }
+
+  setTrendMetric(metric) {
+    this.trendMetric = metric;
+    const btnRev = document.getElementById("btn-trend-rev");
+    const btnJobs = document.getElementById("btn-trend-jobs");
+
+    if (metric === "rev") {
+      if (btnRev) {
+        btnRev.style.background = "#E85826";
+        btnRev.style.color = "#FFFFFF";
+      }
+      if (btnJobs) {
+        btnJobs.style.background = "transparent";
+        btnJobs.style.color = "#6B7280";
+      }
+    } else {
+      if (btnJobs) {
+        btnJobs.style.background = "#E85826";
+        btnJobs.style.color = "#FFFFFF";
+      }
+      if (btnRev) {
+        btnRev.style.background = "transparent";
+        btnRev.style.color = "#6B7280";
+      }
+    }
+
+    this.renderTrendChart();
+  }
+
+  renderTrendChart() {
+    const canvas = document.getElementById("chart-revenue-trend");
+    if (!canvas || typeof Chart === "undefined") return;
+
+    const months = ["1. พ.ค.", "2. มิ.ย.", "3. ก.ค.", "4. ส.ค.", "5. ก.ย.", "6. ต.ค."];
+    const baseTrend = {
+      "Sawasdee Rent A Car": {
+        rev: [120000, 145000, 160000, 140000, 150000, 190000],
+        jobs: [8, 10, 11, 9, 10, 13],
+        color: "#E85826"
+      },
+      "P.D.P. Co., Ltd.": {
+        rev: [80000, 95000, 110000, 100000, 110000, 135000],
+        jobs: [5, 6, 7, 6, 7, 9],
+        color: "#10B981"
+      },
+      "Sawasdee Car Rent": {
+        rev: [50000, 60000, 75000, 65000, 70000, 90000],
+        jobs: [3, 4, 5, 4, 4, 6],
+        color: "#3B82F6"
+      }
+    };
+
+    // Render company selector checkboxes if empty
+    const togglesContainer = document.getElementById("trend-company-toggles");
+    if (togglesContainer && togglesContainer.children.length === 0) {
+      togglesContainer.innerHTML = Object.keys(baseTrend).map(cName => {
+        const checked = this.selectedTrendCompanies.includes(cName) ? "checked" : "";
+        return `
+          <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+            <input type="checkbox" value="${cName}" ${checked} onchange="app.onTrendCompanyToggle(this)" style="cursor:pointer; accent-color:#E85826;">
+            <span>${cName}</span>
+          </label>
+        `;
+      }).join("");
+    }
+
+    const datasets = [];
+    Object.keys(baseTrend).forEach(cName => {
+      if (!this.selectedTrendCompanies.includes(cName)) return;
+      const compData = baseTrend[cName];
+      const dataArr = this.trendMetric === "rev" ? compData.rev : compData.jobs;
+
+      datasets.push({
+        label: cName,
+        data: dataArr,
+        borderColor: compData.color,
+        backgroundColor: compData.color,
+        fill: false,
+        tension: 0.35,
+        borderWidth: 3,
+        pointRadius: 4,
+        pointHoverRadius: 6
+      });
+    });
+
+    if (this.trendChart) {
+      this.trendChart.destroy();
+    }
+
+    const isRev = this.trendMetric === "rev";
+    this.trendChart = new Chart(canvas, {
+      type: 'line',
+      data: {
+        labels: months,
+        datasets: datasets
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: {
+          mode: 'index',
+          intersect: false
+        },
+        plugins: {
+          legend: {
+            position: 'top',
+            labels: {
+              boxWidth: 14,
+              font: { weight: '600' }
+            }
+          },
+          tooltip: {
+            callbacks: {
+              label: function(ctx) {
+                const val = ctx.raw || 0;
+                if (isRev) {
+                  return ` ${ctx.dataset.label}: ฿${val.toLocaleString()} บาท`;
+                } else {
+                  return ` ${ctx.dataset.label}: ${val} งาน`;
+                }
+              }
+            }
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: {
+              callback: function(val) {
+                if (isRev) {
+                  return '฿' + (val >= 1000 ? (val/1000) + 'k' : val);
+                } else {
+                  return val + ' งาน';
+                }
+              }
+            },
+            grid: { color: '#F3EDE4' }
+          },
+          x: {
+            grid: { display: false }
+          }
+        }
+      }
+    });
+  }
+
+  onTrendCompanyToggle(el) {
+    const val = el.value;
+    if (el.checked) {
+      if (!this.selectedTrendCompanies.includes(val)) this.selectedTrendCompanies.push(val);
+    } else {
+      this.selectedTrendCompanies = this.selectedTrendCompanies.filter(c => c !== val);
+    }
+    this.renderTrendChart();
   }
 
   renderCompletedJobsTable() {
@@ -1244,41 +1668,10 @@ class App {
   }
 
   handleSidebarSearch(kw) {
-    const cleanKw = (kw || "").trim().toLowerCase();
-    if (!cleanKw) {
-      this.renderFleet();
-      this.renderBackOffice();
-      return;
-    }
-
-    const matchedCar = this.cars.find(c =>
-      (c.plate || "").toLowerCase().includes(cleanKw) ||
-      (c.brand || "").toLowerCase().includes(cleanKw) ||
-      (c.model || "").toLowerCase().includes(cleanKw)
-    );
-
-    const matchedBk = this.bookings.find(b =>
-      (b.booking_id || "").toLowerCase().includes(cleanKw) ||
-      (b.car_id || "").toLowerCase().includes(cleanKw) ||
-      (b.customer || "").toLowerCase().includes(cleanKw)
-    );
-
-    if (matchedBk) {
-      this.switchModule("frontoffice");
-      this.switchTab("deposit");
-      const sel = document.getElementById("deposit-select-booking");
-      if (sel) {
-        sel.value = matchedBk.booking_id;
-        this.onSelectDepositBooking(matchedBk.booking_id);
-      }
-    } else if (matchedCar) {
-      this.switchModule("frontoffice");
-      this.switchTab("fleet");
-      const searchBox = document.getElementById("search-plate");
-      if (searchBox) {
-        searchBox.value = matchedCar.plate;
-        this.filterCars();
-      }
+    this.sidebarSearchKw = (kw || "").trim().toLowerCase();
+    this.renderFleetCards();
+    if (this.activeModule === "backoffice") {
+      this.renderBackOfficeJobs();
     }
   }
 
