@@ -2031,7 +2031,19 @@ class App {
   }
 
   openAddCustomerModal() {
+    ["cust-name-in", "cust-phone-in", "cust-pass-in", "cust-lic-in", "cust-wa-in", "cust-home-in", "cust-thai-in"].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = "";
+    });
+    const natEl = document.getElementById("cust-nat-in");
+    if (natEl) natEl.value = "THAI";
+    const dobEl = document.getElementById("cust-dob-in");
+    if (dobEl) dobEl.value = "1990-01-01";
+    const licExpEl = document.getElementById("cust-licexp-in");
+    if (licExpEl) licExpEl.value = "2030-01-01";
+
     this.openModal("modal-add-customer");
+    setTimeout(() => document.getElementById("cust-name-in")?.focus(), 80);
   }
 
   async submitNewCustomer() {
@@ -2065,6 +2077,10 @@ class App {
         this.closeModal("modal-add-customer");
         this.showToast(`🎉 บันทึกข้อมูลลูกค้า '${name}' เรียบร้อย!`, "success");
         await this.loadCustomers();
+        const bookSel = document.getElementById("book-cust-select");
+        if (bookSel) bookSel.value = name;
+        const walkinSel = document.getElementById("walkin-cust-select");
+        if (walkinSel) walkinSel.value = name;
       }
     } catch (e) {
       this.showToast("บันทึกไม่สำเร็จ: " + e.message, "danger");
@@ -3282,7 +3298,11 @@ class App {
   // --- Modal & Toast Helpers ---
   openModal(modalId) {
     const m = document.getElementById(modalId);
-    if (m) m.classList.add("open");
+    if (m) {
+      this.modalZIndex = (this.modalZIndex || 2000) + 10;
+      m.style.zIndex = String(this.modalZIndex);
+      m.classList.add("open");
+    }
   }
 
   closeModal(modalId) {
