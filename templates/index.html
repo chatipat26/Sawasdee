@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sawasdee Rental - ระบบบริหารจัดการรถเช่าระดับพรีเมียม</title>
-  <link rel="stylesheet" href="/static/css/app.css">
+  <link rel="stylesheet" href="/static/css/app.css?v=2.2">
   <link rel="icon" type="image/png" href="/static/sawasdee-logo.png">
 </head>
 <body>
@@ -12,7 +12,7 @@
   <!-- ========================================================================= -->
   <!-- 0. AUTHENTICATION GATE SCREEN (EXCLUSIVE LOGIN SCREEN MATCHING STREAMLIT) -->
   <!-- ========================================================================= -->
-  <div id="auth-gate-screen" class="auth-gate-wrapper">
+  <div id="auth-gate-screen" class="auth-gate-wrapper" style="display:flex;">
     <div class="auth-gate-card">
       <!-- Circular Logo -->
       <div class="auth-gate-logo-circle">
@@ -966,58 +966,10 @@
     </div>
   </div>
 
-  <!-- 4. Login / Register Modal -->
-  <div id="modal-login" class="modal-backdrop">
-    <div class="modal-dialog" style="max-width:420px;">
-      <div class="modal-header">
-        <div class="modal-title" id="auth-title">🔑 เข้าสู่ระบบ Sawasdee Rental</div>
-        <button class="modal-close" onclick="app.closeModal('modal-login')">✕</button>
-      </div>
-
-      <div id="auth-login-box">
-        <div class="form-group" style="margin-bottom:14px;">
-          <label>ชื่อผู้ใช้งาน (Username):</label>
-          <input type="text" id="login-username" class="form-control" placeholder="admin หรือ ชื่อผู้ใช้...">
-        </div>
-        <div class="form-group" style="margin-bottom:18px;">
-          <label>รหัสผ่าน (Password):</label>
-          <input type="password" id="login-password" class="form-control" placeholder="รหัสผ่าน...">
-        </div>
-        <button onclick="app.submitLogin()" class="btn btn-primary" style="width:100%; margin-bottom:12px;">
-          เข้าสู่ระบบ
-        </button>
-        <div style="text-align:center; font-size:12px; color:#64748B;">
-          ยังไม่มีบัญชี? <a href="#" onclick="app.toggleAuthMode('register'); return false;" style="color:#D97706; font-weight:700;">ลงทะเบียนพนักงาน</a>
-        </div>
-      </div>
-
-      <div id="auth-reg-box" style="display:none;">
-        <div class="form-group" style="margin-bottom:12px;">
-          <label>ชื่อผู้ใช้งาน (Username):</label>
-          <input type="text" id="reg-username" class="form-control" placeholder="เช่น somchai">
-        </div>
-        <div class="form-group" style="margin-bottom:12px;">
-          <label>ชื่อ-นามสกุล:</label>
-          <input type="text" id="reg-name" class="form-control" placeholder="เช่น สมชาย ใจดี">
-        </div>
-        <div class="form-group" style="margin-bottom:18px;">
-          <label>รหัสผ่าน:</label>
-          <input type="password" id="reg-password" class="form-control" placeholder="รหัสผ่าน...">
-        </div>
-        <button onclick="app.submitRegister()" class="btn btn-success" style="width:100%; margin-bottom:12px;">
-          ลงทะเบียน
-        </button>
-        <div style="text-align:center; font-size:12px; color:#64748B;">
-          มีบัญชีแล้ว? <a href="#" onclick="app.toggleAuthMode('login'); return false;" style="color:#D97706; font-weight:700;">กลับสู่หน้าเข้าสู่ระบบ</a>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <!-- Toast Notification Container -->
   <div class="toast-container" id="toast-container"></div>
 
-  <!-- Scripts -->
-  <script src="/static/js/app.js"></script>
+  <!-- Scripts with cache busting -->
+  <script src="/static/js/app.js?v=2.2"></script>
 </body>
 </html>
