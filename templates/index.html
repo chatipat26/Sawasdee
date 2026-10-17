@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sawasdee Rental - ระบบบริหารจัดการรถเช่าระดับพรีเมียม</title>
+  <link rel="stylesheet" href="/static/css/app.css">
+  <link rel="icon" type="image/png" href="/static/sawasdee-logo.png">
+</head>
+<body>
+
+  <!-- Top Navigation Header -->
+  <header class="app-header">
+    <div class="brand-section">
+      <img src="/static/sawasdee-logo.png" alt="Sawasdee Rental Logo" class="brand-logo" onerror="this.style.display='none'">
+      <div>
+        <div class="brand-title">SAWASDEE RENTAL</div>
+        <div class="brand-subtitle">Cloud Fleet & Booking Management System</div>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <!-- Live Cloud Sync Pill -->
+      <div class="cloud-pill" onclick="app.manualSync()" title="คลิกเพื่อซิงค์ข้อมูลกับ Supabase Cloud ทันที">
+        <span class="pulse-dot"></span>
+        <span>ซิงค์ Cloud อัตโนมัติ: <b id="sync-time-txt">กำลังเชื่อมต่อ...</b></span>
+        <span style="font-size:11px; margin-left:2px;">🔄</span>
+      </div>
+
+      <!-- Logged-in User Profile -->
+      <div id="user-profile-badge" class="user-badge" style="display:none;">
+        <span>👤</span>
+        <span id="user-display-name">Admin</span>
+        <span id="user-role-tag" class="role-tag">Admin</span>
+        <button onclick="app.logout()" class="btn btn-sm btn-secondary" style="padding:2px 8px; margin-left:4px;" title="ออกจากระบบ">🚪 ออก</button>
+      </div>
+
+      <!-- Login Button (if guest) -->
+      <button id="btn-open-login" onclick="app.openLoginModal()" class="btn btn-sm btn-primary">
+        🔑 เข้าสู่ระบบ
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <div class="app-container">
+    <!-- Sidebar Navigation -->
+    <aside class="app-sidebar">
+      <div style="font-size:11px; font-weight:700; color:#94A3B8; text-transform:uppercase; margin-bottom:8px; padding-left:8px;">
+        โมดูลหลัก (Modules)
+      </div>
+
+      <a class="nav-item active" onclick="app.switchModule('frontoffice')" id="nav-frontoffice">
+        <span>🚗</span> Front Office
+        <span class="nav-badge" id="badge-frontoffice-bks">0</span>
+      </a>
+
+      <a class="nav-item" onclick="app.switchModule('backoffice')" id="nav-backoffice">
+        <span>📋</span> Back Office
+        <span class="nav-badge" id="badge-backoffice-jobs" style="background:#2563EB;">0</span>
+      </a>
+
+      <a class="nav-item" onclick="app.switchModule('customers')" id="nav-customers">
+        <span>👥</span> ฐานข้อมูลลูกค้า
+        <span class="nav-badge" id="badge-customers-count" style="background:#64748B;">0</span>
+      </a>
+
+      <a class="nav-item" onclick="app.switchModule('dashboard')" id="nav-dashboard">
+        <span>📊</span> Dashboard & รายงาน
+      </a>
+
+      <a class="nav-item" onclick="app.switchModule('users')" id="nav-users" style="display:none;">
+        <span>⚙️</span> ผู้ใช้งาน & อนุมัติสิทธิ์
+        <span class="nav-badge" id="badge-pending-users" style="background:#EF4444; display:none;">0</span>
+      </a>
+
+      <div style="margin-top:auto; padding:12px; background:#F8FAFC; border-radius:8px; border:1px solid #E2E8F0; font-size:11.5px; color:#64748B;">
+        <div style="font-weight:700; color:#334155; margin-bottom:4px;">⚡ High-Speed Engine</div>
+        <div>FastAPI + Client Cache ตอบสนองทันทีในระดับมิลลิวินาที ไม่กระตุก</div>
+      </div>
+    </aside>
+
+    <!-- Content Workspace -->
+    <main class="app-content">
+
+      <!-- =================================================================== -->
+      <!-- 1. MODULE: FRONT OFFICE -->
+      <!-- =================================================================== -->
+      <section id="module-frontoffice">
+        <!-- Luxury Overlapping Folder Tabs Bar -->
+        <div class="folder-tabs-wrapper">
+          <div class="workflow-tabs">
+            <button class="tab-btn active" onclick="app.switchTab('fleet')" id="tab-btn-fleet">
+              <span>1.</span> 🚗 เลือกรถยนต์ & จองด่วน
+            </button>
+            <button class="tab-btn" onclick="app.switchTab('deposit')" id="tab-btn-deposit">
+              <span>2.</span> 💳 เงินมัดจำ & การเงิน
+            </button>
+            <button class="tab-btn" onclick="app.switchTab('assign')" id="tab-btn-assign">
+              <span>3.</span> 🚚 ออกใบงานส่ง/รับรถ
+            </button>
+            <button class="tab-btn" onclick="app.switchTab('contract')" id="tab-btn-contract">
+              <span>4.</span> 📝 จัดทำสัญญาเช่า
+            </button>
+            <button class="tab-btn" onclick="app.switchTab('dashboard_bks')" id="tab-btn-dashboard_bks">
+              <span>5.</span> 📋 แผงควบคุมคิวการจอง
+            </button>
+          </div>
+        </div>
+        <div class="folder-shelf-line"></div>
+
+        <!-- TAB 1: FLEET & INSTANT BOOKING -->
+        <div id="subtab-fleet" class="tab-pane">
+          <!-- The Booking Bar (Hero Section) -->
+          <div class="booking-bar">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
+              <div>
+                <h3 style="font-size:17px; font-weight:800; color:#92400E; margin:0;">
+                  ✨ ระบบค้นหาและจองรถยนต์อัจฉริยะ (The Booking Bar)
+                </h3>
+                <div style="font-size:12px; color:#B45309;">
+                  เลือกวัน-เวลา เพื่อเช็คสถานะรถว่างและคำนวณระยะเวลาเช่าตามจริงอัตโนมัติ (เกิน 4 ชม. ปรับเป็น 1 วัน)
+                </div>
+              </div>
+              <button onclick="app.openAddCustomerModal()" class="btn btn-sm btn-primary">
+                ➕ เพิ่มลูกค้าใหม่
+              </button>
+            </div>
+
+            <div class="booking-bar-grid">
+              <div class="form-group">
+                <label>📅 วันที่รับรถ (Start Date)</label>
+                <input type="date" id="filter-start-date" class="form-control" onchange="app.onFilterChange()">
+              </div>
+              <div class="form-group">
+                <label>⏰ เวลารับรถ (Start Time)</label>
+                <input type="time" id="filter-start-time" class="form-control" value="10:00" onchange="app.onFilterChange()">
+              </div>
+              <div class="form-group">
+                <label>📅 วันที่คืนรถ (End Date)</label>
+                <input type="date" id="filter-end-date" class="form-control" onchange="app.onFilterChange()">
+              </div>
+              <div class="form-group">
+                <label>⏰ เวลาคืนรถ (End Time)</label>
+                <input type="time" id="filter-end-time" class="form-control" value="10:00" onchange="app.onFilterChange()">
+              </div>
+              <div class="form-group">
+                <label>🏢 สังกัดบริษัท</label>
+                <select id="filter-company" class="form-control" onchange="app.onFilterChange()">
+                  <option value="ทั้งหมด">ทั้งหมด (All Companies)</option>
+                  <option value="บจก.สวัสดี เรนทัล (Sawasdee Rental)">บจก.สวัสดี เรนทัล</option>
+                  <option value="โตโยต้า ลีสซิ่ง">โตโยต้า ลีสซิ่ง</option>
+                  <option value="บจก.บี คลิ๊ก ลีส แอนด์ โลจิสติกส์">บี คลิ๊ก ลีส</option>
+                  <option value="ซุปเปอร์เจ">ซุปเปอร์เจ</option>
+                  <option value="บจ.อนันต์">บจ.อนันต์</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>🔍 ค้นหา (ยี่ห้อ/รุ่น/ทะเบียน)</label>
+                <input type="text" id="filter-search-kw" class="form-control" placeholder="เช่น Yaris, Cross, 5ขฒ..." oninput="app.onFilterChange()">
+              </div>
+            </div>
+
+            <!-- Calculation result banner -->
+            <div id="booking-bar-calc-banner" style="margin-top:14px; padding:10px 16px; background:#FFFFFF; border-radius:8px; border:1px solid #FDE68A; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+              <div style="font-size:12.5px; color:#475569;">
+                ⏱️ ระยะเวลาเช่าคำนวณ: <b id="calc-duration-text" style="color:#D97706;">1 วัน</b>
+              </div>
+              <div style="font-size:12px; color:#059669; font-weight:600;" id="calc-cars-count">
+                พบรถว่างพร้อมให้บริการ: 0 คัน
+              </div>
+            </div>
+          </div>
+
+          <!-- Fleet Showcase Grid -->
+          <div class="fleet-grid" id="fleet-cards-container">
+            <!-- Rendered by JS -->
+          </div>
+        </div>
+
+        <!-- TAB 2: DEPOSIT & PAYMENT -->
+        <div id="subtab-deposit" class="tab-pane" style="display:none;">
+          <div class="card">
+            <div class="card-title">
+              <span>💳</span> ชำระเงินมัดจำประกันสัญญา & การเงิน (Booking Deposit & Rental Payment)
+            </div>
+            <div style="font-size:12.5px; color:var(--text-muted); margin-bottom:16px;">
+              บันทึกการรับชำระเงินมัดจำ (ค่าเริ่มต้น ฿5,000 เพื่อล็อกคิวรถและออกสัญญา) และรับชำระค่าเช่าคงเหลือ
+            </div>
+
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px; margin-bottom:20px;">
+              <div class="form-group">
+                <label>📌 เลือกรหัสการจอง / ทะเบียนรถที่ต้องการทำรายการ:</label>
+                <select id="deposit-sel-booking" class="form-control" onchange="app.onSelectDepositBooking()">
+                  <option value="">-- กรุณาเลือกรายการจอง --</option>
+                </select>
+              </div>
+              <div id="deposit-booking-summary" style="display:none; background:#FFFBEB; border:1px solid #FDE68A; border-radius:8px; padding:12px 16px;">
+                <!-- Summary of selected booking -->
+              </div>
+            </div>
+
+            <!-- Deposit Action Form -->
+            <div id="deposit-action-section" style="display:none; border-top:1px solid var(--border); padding-top:16px;">
+              <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:16px; margin-bottom:16px;">
+                <div class="form-group">
+                  <label>💵 ยอดเงินมัดจำประกันสัญญา (บาท):</label>
+                  <input type="number" id="deposit-amount-input" class="form-control" value="5000" min="0" step="500">
+                </div>
+                <div class="form-group">
+                  <label>💳 ช่องทางการชำระเงิน:</label>
+                  <select id="deposit-method-input" class="form-control">
+                    <option value="เงินสด">เงินสด</option>
+                    <option value="โอนเงิน / สแกน QR">โอนเงิน / สแกน QR</option>
+                    <option value="บัตรเครดิต">บัตรเครดิต</option>
+                    <option value="PayPal">PayPal</option>
+                  </select>
+                </div>
+                <div class="form-group" style="justify-content:center;">
+                  <label style="display:flex; align-items:center; gap:8px; margin-top:20px; cursor:pointer;">
+                    <input type="checkbox" id="deposit-also-rent" style="width:16px; height:16px;">
+                    <b style="font-size:12.5px; color:#1E3A8A;">รับชำระค่าเช่าเต็มจำนวนพร้อมกันทันที</b>
+                  </label>
+                </div>
+              </div>
+
+              <div style="display:flex; gap:12px; flex-wrap:wrap;">
+                <button onclick="app.submitDeposit()" class="btn btn-primary">
+                  💳 ยืนยันบันทึกรับเงินมัดจำ & ล็อกคิวรถ
+                </button>
+                <button id="btn-settle-rental" onclick="app.submitSettle()" class="btn btn-success" style="display:none;">
+                  🧾 บันทึกชำระค่าเช่าคงเหลือ
+                </button>
+                <button id="btn-dl-dep-receipt" onclick="app.downloadDepositReceipt()" class="btn btn-secondary" style="display:none;">
+                  📥 โหลดใบเสร็จรับเงินมัดจำ (PDF)
+                </button>
+                <button id="btn-dl-rent-receipt" onclick="app.downloadRentalReceipt()" class="btn btn-secondary" style="display:none;">
+                  📥 โหลดใบเสร็จค่าเช่า (PDF)
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 3: DISPATCH & RETURN ASSIGN -->
+        <div id="subtab-assign" class="tab-pane" style="display:none;">
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+            <!-- Column 1: Dispatch Assignment -->
+            <div class="card">
+              <div class="card-title">
+                <span>🚚</span> ออกใบงานส่งรถ (Dispatch Work Order)
+              </div>
+              <div class="form-group" style="margin-bottom:14px;">
+                <label>เลือกรหัสการจองสำหรับส่งมอบรถ:</label>
+                <select id="assign-disp-bk" class="form-control" onchange="app.onSelectAssignDispBooking()">
+                  <option value="">-- เลือกรหัสการจอง --</option>
+                </select>
+              </div>
+              <div id="assign-disp-form" style="display:none;">
+                <div class="form-group" style="margin-bottom:12px;">
+                  <label>👤 เลือกพนักงานจัดส่ง / คนขับรถ:</label>
+                  <select id="assign-disp-worker" class="form-control">
+                    <!-- Approved staff options -->
+                  </select>
+                </div>
+                <div class="form-group" style="margin-bottom:12px;">
+                  <label>📍 สถานที่นัดหมายส่งมอบรถ:</label>
+                  <textarea id="assign-disp-loc" class="form-control" rows="2" placeholder="เช่น สนามบินสุวรรณภูมิ หรือใส่ Google Maps link"></textarea>
+                </div>
+                <div class="form-group" style="margin-bottom:16px;">
+                  <label>⏰ เวลานัดส่งมอบรถ:</label>
+                  <input type="time" id="assign-disp-time" class="form-control" value="10:00">
+                </div>
+                <button onclick="app.submitAssign('Dispatch')" class="btn btn-primary" style="width:100%;">
+                  🚚 บันทึกมอบหมาย & แจ้งเตือน LINE
+                </button>
+              </div>
+            </div>
+
+            <!-- Column 2: Return Assignment -->
+            <div class="card">
+              <div class="card-title">
+                <span>🔙</span> ออกใบงานรับรถคืน (Return Work Order)
+              </div>
+              <div class="form-group" style="margin-bottom:14px;">
+                <label>เลือกรหัสการจองสำหรับรับรถคืน:</label>
+                <select id="assign-ret-bk" class="form-control" onchange="app.onSelectAssignRetBooking()">
+                  <option value="">-- เลือกรหัสการจอง --</option>
+                </select>
+              </div>
+              <div id="assign-ret-form" style="display:none;">
+                <div class="form-group" style="margin-bottom:12px;">
+                  <label>👤 เลือกพนักงานรับรถคืน / คนขับรถ:</label>
+                  <select id="assign-ret-worker" class="form-control">
+                    <!-- Approved staff options -->
+                  </select>
+                </div>
+                <div class="form-group" style="margin-bottom:12px;">
+                  <label>📍 สถานที่นัดหมายรับรถคืน:</label>
+                  <textarea id="assign-ret-loc" class="form-control" rows="2" placeholder="เช่น สถานที่เดิม หรือ โรงแรม..."></textarea>
+                </div>
+                <div class="form-group" style="margin-bottom:16px;">
+                  <label>⏰ เวลานัดรับรถคืน:</label>
+                  <input type="time" id="assign-ret-time" class="form-control" value="10:00">
+                </div>
+                <button onclick="app.submitAssign('Return')" class="btn btn-primary" style="width:100%;">
+                  🔙 บันทึกมอบหมาย & แจ้งเตือน LINE
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 4: CONTRACT FORMULATION -->
+        <div id="subtab-contract" class="tab-pane" style="display:none;">
+          <div class="card">
+            <div class="card-title">
+              <span>📝</span> ศูนย์จัดทำและตรวจสอบสัญญาเช่า (Rental Contract Formulation)
+            </div>
+            <div style="font-size:12.5px; color:var(--text-muted); margin-bottom:16px;">
+              สร้างและดาวน์โหลดสัญญาเช่ารถยนต์ทางการ (Official Rental Agreement PDF) พิกัดมาตรฐานเป๊ะ 100%
+            </div>
+
+            <div class="form-group" style="max-width:400px; margin-bottom:20px;">
+              <label>เลือกรหัสการจองเพื่อออกสัญญา:</label>
+              <select id="contract-sel-bk" class="form-control" onchange="app.onSelectContractBooking()">
+                <option value="">-- เลือกรหัสการจอง --</option>
+              </select>
+            </div>
+
+            <div id="contract-details-card" style="display:none; background:#F8FAFC; border:1px solid #E2E8F0; border-radius:var(--radius-lg); padding:20px; margin-bottom:20px;">
+              <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:16px; margin-bottom:16px;">
+                <div style="background:white; border:1px solid #E2E8F0; border-radius:8px; padding:12px;">
+                  <b style="color:#1E3A8A; font-size:13px;">👤 ข้อมูลผู้เช่า</b>
+                  <div id="contract-cust-info" style="font-size:12px; margin-top:6px; line-height:1.6;">-</div>
+                </div>
+                <div style="background:white; border:1px solid #E2E8F0; border-radius:8px; padding:12px;">
+                  <b style="color:#1E3A8A; font-size:13px;">🚘 ข้อมูลรถยนต์</b>
+                  <div id="contract-car-info" style="font-size:12px; margin-top:6px; line-height:1.6;">-</div>
+                </div>
+                <div style="background:white; border:1px solid #E2E8F0; border-radius:8px; padding:12px;">
+                  <b style="color:#1E3A8A; font-size:13px;">📅 ระยะเวลา & กำหนดการ</b>
+                  <div id="contract-sched-info" style="font-size:12px; margin-top:6px; line-height:1.6;">-</div>
+                </div>
+              </div>
+
+              <!-- Price Box -->
+              <div style="background:#FFF7ED; border:1px solid #FED7AA; border-radius:8px; padding:10px 16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                <span>💰 ค่าเช่า: <b id="contract-net-price">฿0.00</b></span>
+                <span>🛡️ มัดจำ: <b id="contract-dep-status">฿5,000.00</b></span>
+                <span>🧾 ยอดคงเหลือ: <b id="contract-rem-price" style="color:#E85826; font-size:15px;">฿0.00</b></span>
+              </div>
+
+              <!-- Actions -->
+              <div style="margin-top:20px; display:flex; gap:12px; flex-wrap:wrap;">
+                <a id="btn-dl-contract-pdf" href="#" target="_blank" class="btn btn-primary">
+                  📝 พิมพ์ / ดาวน์โหลดสัญญาเช่า (Rental Agreement PDF)
+                </a>
+                <a id="btn-dl-contract-receipt" href="#" target="_blank" class="btn btn-secondary">
+                  🧾 ดาวน์โหลดใบเสร็จ (Receipt PDF)
+                </a>
+                <button onclick="app.markContractIssued()" class="btn btn-success">
+                  ✅ ยืนยันออกสัญญาเรียบร้อย
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 5: BOOKINGS DASHBOARD -->
+        <div id="subtab-dashboard_bks" class="tab-pane" style="display:none;">
+          <div class="card">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
+              <div class="card-title" style="margin:0;">
+                <span>📋</span> แผงควบคุมคิวการจอง & รายการทั้งหมด (Master Bookings List)
+              </div>
+              <div style="display:flex; gap:10px;">
+                <input type="text" id="bks-search-input" class="form-control" placeholder="🔍 ค้นหารหัส, ลูกค้า, ทะเบียน..." style="width:220px;" oninput="app.renderBookingsTable()">
+                <select id="bks-status-filter" class="form-control" style="width:160px;" onchange="app.renderBookingsTable()">
+                  <option value="ทั้งหมด">สถานะ: ทั้งหมด</option>
+                  <option value="รอชำระมัดจำ">รอชำระมัดจำ</option>
+                  <option value="รอส่งมอบ">รอส่งมอบ</option>
+                  <option value="เตรียมส่งมอบ">เตรียมส่งมอบ</option>
+                  <option value="กำลังเช่า">กำลังเช่า</option>
+                  <option value="เตรียมรับคืน">เตรียมรับคืน</option>
+                  <option value="เสร็จสิ้น">เสร็จสิ้น</option>
+                  <option value="ยกเลิก">ยกเลิก</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="table-responsive">
+              <table class="custom-table" id="bookings-master-table">
+                <thead>
+                  <tr>
+                    <th>รหัสการจอง</th>
+                    <th>รถยนต์</th>
+                    <th>ลูกค้า</th>
+                    <th>ระยะเวลาเช่า</th>
+                    <th>ค่าเช่าสุทธิ</th>
+                    <th>สถานะมัดจำ / ค่าเช่า</th>
+                    <th>สถานะงาน</th>
+                    <th style="text-align:center;">จัดการ</th>
+                  </tr>
+                </thead>
+                <tbody id="bookings-table-body">
+                  <!-- Rendered by JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- =================================================================== -->
+      <!-- 2. MODULE: BACK OFFICE (FOR FIELD WORKERS / DRIVERS) -->
+      <!-- =================================================================== -->
+      <section id="module-backoffice" style="display:none;">
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
+            <div>
+              <h2 style="font-size:20px; font-weight:800; color:#1E293B; margin:0;">
+                📋 Back Office - ตารางใบงานสำหรับคนขับและพนักงานรับ-ส่งรถ
+              </h2>
+              <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">
+                Vehicle Dispatch & Return Work Orders Table & Handover Inspection Center
+              </div>
+            </div>
+            <div style="display:flex; gap:8px;">
+              <input type="text" id="bo-search-input" class="form-control" placeholder="🔍 ค้นหาใบงาน..." style="width:180px;" oninput="app.renderBackOfficeJobs()">
+              <button onclick="app.loadBackOfficeJobs()" class="btn btn-secondary btn-sm">🔄 รีเฟรช</button>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="custom-table">
+              <thead>
+                <tr>
+                  <th>ประเภทงาน</th>
+                  <th>รหัสการจอง</th>
+                  <th>ทะเบียนรถ</th>
+                  <th>ลูกค้า & เบอร์โทร</th>
+                  <th>กำหนดวัน-เวลา</th>
+                  <th>พนักงาน</th>
+                  <th>สถานที่นัดหมาย</th>
+                  <th>สถานะ</th>
+                  <th style="text-align:center;">เอกสาร & ส่งงาน</th>
+                </tr>
+              </thead>
+              <tbody id="backoffice-jobs-tbody">
+                <!-- Rendered by JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- =================================================================== -->
+      <!-- 3. MODULE: CUSTOMER DATABASE -->
+      <!-- =================================================================== -->
+      <section id="module-customers" style="display:none;">
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
+            <div>
+              <h2 style="font-size:20px; font-weight:800; color:#1E293B; margin:0;">
+                👥 ฐานข้อมูลลูกค้า (Customer Database)
+              </h2>
+              <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">
+                จัดการข้อมูลลูกค้า ประวัติ บัตรประชาชน/พาสปอร์ต และใบขับขี่
+              </div>
+            </div>
+            <div style="display:flex; gap:10px;">
+              <input type="text" id="cust-search-input" class="form-control" placeholder="🔍 ค้นหาชื่อ, เบอร์โทร..." style="width:200px;" oninput="app.renderCustomersTable()">
+              <button onclick="app.openAddCustomerModal()" class="btn btn-primary">➕ เพิ่มลูกค้าใหม่</button>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="custom-table">
+              <thead>
+                <tr>
+                  <th>ชื่อ-นามสกุล</th>
+                  <th>เบอร์โทร / WhatsApp</th>
+                  <th>Passport / บัตร ปชช.</th>
+                  <th>ใบขับขี่</th>
+                  <th>สัญชาติ</th>
+                  <th>ที่อยู่ในไทย</th>
+                  <th style="text-align:center;">จัดการ</th>
+                </tr>
+              </thead>
+              <tbody id="customers-table-tbody">
+                <!-- Rendered by JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- =================================================================== -->
+      <!-- 4. MODULE: EXECUTIVE DASHBOARD & REPORTS -->
+      <!-- =================================================================== -->
+      <section id="module-dashboard" style="display:none;">
+        <!-- KPI Metric Cards -->
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <div class="kpi-icon" style="background:#EFF6FF; color:#2563EB;">🚗</div>
+            <div>
+              <div class="kpi-value" id="kpi-total-cars">0</div>
+              <div class="kpi-label">รถในฝูงทั้งหมด (Fleet)</div>
+            </div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-icon" style="background:#ECFDF5; color:#059669;">🔑</div>
+            <div>
+              <div class="kpi-value" id="kpi-active-rentals">0</div>
+              <div class="kpi-label">กำลังเช่าอยู่ (Active)</div>
+            </div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-icon" style="background:#FFFBEB; color:#D97706;">📈</div>
+            <div>
+              <div class="kpi-value" id="kpi-utilization">0%</div>
+              <div class="kpi-label">อัตราการใช้รถ (Utilization)</div>
+            </div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-icon" style="background:#FEF2F2; color:#DC2626;">💰</div>
+            <div>
+              <div class="kpi-value" id="kpi-total-revenue">฿0.00</div>
+              <div class="kpi-label">รายรับสะสมรวม (Revenue)</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Expiry Alert Warning Box -->
+        <div class="card" style="background:#FFF7ED; border-color:#FED7AA;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+            <div>
+              <b style="font-size:15px; color:#C2410C;">🚨 ระบบตรวจสอบ พ.ร.บ. / ประกันภัย ครบกำหนด 30 วัน</b>
+              <div style="font-size:12px; color:#9A3412; margin-top:2px;">
+                ระบบตั้งเวลาส่ง Broadcast แจ้งเตือนทาง LINE อัตโนมัติทุกวันเวลา 20:00 น. หรือกดส่งตรวจสอบทันทีได้ที่นี่
+              </div>
+            </div>
+            <button onclick="app.triggerLineExpiryCheck()" class="btn btn-sm btn-primary">
+              📲 ตรวจสอบ & ส่ง LINE ทันที
+            </button>
+          </div>
+        </div>
+
+        <!-- Fleet Status Table (Collapsible) -->
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; cursor:pointer;" onclick="app.toggleFleetTableCollapse()">
+            <div class="card-title" style="margin:0;">
+              <span>🚘</span> ข้อมูลทะเบียนรถและสถานะ พ.ร.บ. / ประกันภัย (Fleet Status Overview)
+            </div>
+            <span id="fleet-collapse-icon" style="font-size:14px; font-weight:700; color:#64748B;">▼ คลิกเพื่อย่อ/ขยาย</span>
+          </div>
+          <div id="fleet-table-wrapper" class="table-responsive">
+            <table class="custom-table">
+              <thead>
+                <tr>
+                  <th>ทะเบียน</th>
+                  <th>ยี่ห้อ / รุ่น</th>
+                  <th>สังกัดบริษัท</th>
+                  <th>สถานะ</th>
+                  <th>วันหมดอายุ พ.ร.บ.</th>
+                  <th>วันหมดอายุ ประกันภัย</th>
+                  <th>เลขไมล์</th>
+                </tr>
+              </thead>
+              <tbody id="fleet-overview-tbody">
+                <!-- Rendered by JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Completed Jobs Archive & Monthly Report -->
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
+            <div>
+              <div class="card-title" style="margin:0;">
+                <span>📑</span> คลังประวัติงานเสร็จสิ้น & รีพอร์ตรายเดือน (Completed Jobs Archive)
+              </div>
+              <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">
+                ประวัติงานที่ส่งมอบและรับคืนสมบูรณ์แล้ว พร้อมเอกสารย้อนหลังและปุ่มส่งออก CSV
+              </div>
+            </div>
+            <div style="display:flex; gap:10px; align-items:center;">
+              <input type="month" id="report-month-picker" class="form-control" style="width:160px;" onchange="app.loadMonthlyReports()">
+              <a id="btn-export-csv" href="/api/reports/export-csv" target="_blank" class="btn btn-secondary btn-sm">
+                📥 ดาวน์โหลด CSV
+              </a>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="custom-table">
+              <thead>
+                <tr>
+                  <th>รหัสการจอง</th>
+                  <th>วันที่เสร็จสิ้น</th>
+                  <th>ทะเบียนรถ</th>
+                  <th>ลูกค้า</th>
+                  <th>บริษัท</th>
+                  <th>ประเภท</th>
+                  <th>รายรับสุทธิ</th>
+                  <th>พนักงานส่ง/รับ</th>
+                  <th>ระดับน้ำมัน</th>
+                  <th>สถานะ</th>
+                  <th style="text-align:center;">เอกสารย้อนหลัง</th>
+                </tr>
+              </thead>
+              <tbody id="completed-jobs-tbody">
+                <!-- Rendered by JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- =================================================================== -->
+      <!-- 5. MODULE: USER ADMINISTRATION (ADMIN ONLY) -->
+      <!-- =================================================================== -->
+      <section id="module-users" style="display:none;">
+        <div class="card">
+          <div class="card-title">
+            <span>⚙️</span> จัดการผู้ใช้งานและอนุมัติสิทธิ์พนักงาน (User Administration)
+          </div>
+          <div style="font-size:12.5px; color:var(--text-muted); margin-bottom:16px;">
+            อนุมัติหรือระงับสิทธิ์บัญชีผู้ใช้ใหม่ เพื่อให้พนักงานสามารถเข้าสู่ระบบและปฏิบัติงานได้
+          </div>
+
+          <div class="table-responsive">
+            <table class="custom-table">
+              <thead>
+                <tr>
+                  <th>ชื่อผู้ใช้ (Username)</th>
+                  <th>ชื่อ-นามสกุล</th>
+                  <th>บทบาท (Role)</th>
+                  <th>สถานะ (Status)</th>
+                  <th style="text-align:center;">การอนุมัติ & สิทธิ์</th>
+                </tr>
+              </thead>
+              <tbody id="users-table-tbody">
+                <!-- Rendered by JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- MODALS -->
+  <!-- ===================================================================== -->
+
+  <!-- 1. Handover / Inspection Modal (Back Office) -->
+  <div id="modal-handover" class="modal-backdrop">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title" id="modal-handover-title">🔍 ตรวจสภาพรถยนต์ & ส่งมอบงาน</div>
+        <button class="modal-close" onclick="app.closeModal('modal-handover')">✕</button>
+      </div>
+
+      <input type="hidden" id="insp-bk-id">
+      <input type="hidden" id="insp-job-type">
+
+      <!-- Fuel Level Selector -->
+      <div class="form-group" style="margin-bottom:16px;">
+        <label>⛽ ระดับน้ำมันในถังเชื้อเพลิง:</label>
+        <select id="insp-fuel-select" class="form-control">
+          <option value="⛽ เต็มถัง (Full - 8/8) [100%]">⛽ เต็มถัง (Full - 8/8) [100%]</option>
+          <option value="⛽ เกือบเต็ม (7/8 ถัง) [87%]">⛽ เกือบเต็ม (7/8 ถัง) [87%]</option>
+          <option value="⛽ 3/4 ถัง (6/8 ถัง) [75%]">⛽ 3/4 ถัง (6/8 ถัง) [75%]</option>
+          <option value="⛽ ครึ่งถัง (1/2 ถัง) [50%]">⛽ ครึ่งถัง (1/2 ถัง) [50%]</option>
+          <option value="⛽ 1/4 ถัง (2/8 ถัง) [25%]">⛽ 1/4 ถัง (2/8 ถัง) [25%]</option>
+          <option value="⛽ 1/8 ถัง [12%]">⛽ 1/8 ถัง [12%]</option>
+          <option value="⚠️ ไฟเตือนน้ำมันขึ้น (Reserve / ใกล้หมด)">⚠️ ไฟเตือนน้ำมันขึ้น (Reserve / ใกล้หมด)</option>
+        </select>
+      </div>
+
+      <!-- Mileage -->
+      <div class="form-group" style="margin-bottom:16px;">
+        <label>🔢 เลขไมล์สะสมปัจจุบัน (กม.):</label>
+        <input type="text" id="insp-mileage-input" class="form-control" placeholder="เช่น 45,200">
+      </div>
+
+      <!-- Checklist -->
+      <div style="margin-bottom:16px;">
+        <label style="font-size:12px; font-weight:700; color:#475569; display:block; margin-bottom:8px;">
+          📋 เช็กลิสต์การตรวจสภาพรถ:
+        </label>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; font-size:12.5px;">
+          <label><input type="checkbox" checked id="chk-body"> ตัวถังและสีสมบูรณ์</label>
+          <label><input type="checkbox" checked id="chk-glass"> กระจกไม่แตกร้าว</label>
+          <label><input type="checkbox" checked id="chk-tires"> ยางและลมยางสมบูรณ์</label>
+          <label><input type="checkbox" checked id="chk-clean"> ห้องโดยสารสะอาด</label>
+          <label><input type="checkbox" checked id="chk-tools"> ยางอะไหล่/แม่แรงครบ</label>
+          <label><input type="checkbox" checked id="chk-docs"> เอกสาร/ป้ายภาษีครบ</label>
+        </div>
+      </div>
+
+      <!-- Inspection Notes -->
+      <div class="form-group" style="margin-bottom:16px;">
+        <label>📝 หมายเหตุสภาพรถ / รอยตำหนิ:</label>
+        <input type="text" id="insp-notes-input" class="form-control" value="ตรวจสภาพรถยนต์เรียบร้อยดี">
+      </div>
+
+      <!-- Photo Upload -->
+      <div class="form-group" style="margin-bottom:20px;">
+        <label>📸 อัปโหลดภาพถ่ายสภาพรถ / เกจ์น้ำมัน (ขึ้น Supabase Storage):</label>
+        <input type="file" id="insp-photo-input" class="form-control" accept="image/*" multiple onchange="app.handlePhotoUpload(this)">
+        <div id="insp-uploaded-photos" style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;"></div>
+      </div>
+
+      <div style="display:flex; justify-content:flex-end; gap:10px;">
+        <button onclick="app.closeModal('modal-handover')" class="btn btn-secondary">ยกเลิก</button>
+        <button onclick="app.submitInspection()" class="btn btn-primary" id="btn-submit-inspection">
+          ✅ ยืนยันบันทึกผล & ปิดงาน
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Add Customer Modal -->
+  <div id="modal-add-customer" class="modal-backdrop">
+    <div class="modal-dialog" style="max-width:700px;">
+      <div class="modal-header">
+        <div class="modal-title">➕ เพิ่มข้อมูลลูกค้าใหม่ (Add New Customer)</div>
+        <button class="modal-close" onclick="app.closeModal('modal-add-customer')">✕</button>
+      </div>
+
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:14px; margin-bottom:16px;">
+        <div class="form-group">
+          <label>ชื่อ-นามสกุล (Full Name)*</label>
+          <input type="text" id="cust-name-in" class="form-control" placeholder="เช่น สมเกียรติ มั่นคง">
+        </div>
+        <div class="form-group">
+          <label>เบอร์โทรศัพท์ (Contact No.)*</label>
+          <input type="text" id="cust-phone-in" class="form-control" placeholder="เช่น 081-234-5678">
+        </div>
+        <div class="form-group">
+          <label>หมายเลขบัตร ปชช. / Passport</label>
+          <input type="text" id="cust-pass-in" class="form-control" placeholder="1100400...">
+        </div>
+        <div class="form-group">
+          <label>หมายเลขใบขับขี่ (Licence No.)</label>
+          <input type="text" id="cust-lic-in" class="form-control" placeholder="6500...">
+        </div>
+        <div class="form-group">
+          <label>สัญชาติ (Nationality)</label>
+          <input type="text" id="cust-nat-in" class="form-control" value="THAI">
+        </div>
+        <div class="form-group">
+          <label>WhatsApp</label>
+          <input type="text" id="cust-wa-in" class="form-control" placeholder="+66...">
+        </div>
+        <div class="form-group">
+          <label>วันเกิด (DOB)</label>
+          <input type="date" id="cust-dob-in" class="form-control" value="1990-01-01">
+        </div>
+        <div class="form-group">
+          <label>วันหมดอายุใบขับขี่</label>
+          <input type="date" id="cust-licexp-in" class="form-control" value="2030-01-01">
+        </div>
+      </div>
+      <div class="form-group" style="margin-bottom:14px;">
+        <label>ที่อยู่ตามภูมิลำเนา (Home Address)</label>
+        <textarea id="cust-home-in" class="form-control" rows="2" placeholder="ที่อยู่ตามบัตร..."></textarea>
+      </div>
+      <div class="form-group" style="margin-bottom:20px;">
+        <label>ที่อยู่ในไทยระหว่างเช่า (Address in Thailand)</label>
+        <textarea id="cust-thai-in" class="form-control" rows="2" placeholder="โรงแรม / คอนโด..."></textarea>
+      </div>
+
+      <div style="display:flex; justify-content:flex-end; gap:10px;">
+        <button onclick="app.closeModal('modal-add-customer')" class="btn btn-secondary">ยกเลิก</button>
+        <button onclick="app.submitNewCustomer()" class="btn btn-primary">💾 บันทึกข้อมูลลูกค้า</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. Instant Booking Modal (from car card click) -->
+  <div id="modal-book-car" class="modal-backdrop">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title">🚗 ยืนยันการจองรถยนต์</div>
+        <button class="modal-close" onclick="app.closeModal('modal-book-car')">✕</button>
+      </div>
+
+      <input type="hidden" id="book-car-plate">
+      <div id="book-car-preview" style="margin-bottom:16px; background:#F8FAFC; padding:12px; border-radius:8px; border:1px solid #E2E8F0;">
+        <!-- preview car specs -->
+      </div>
+
+      <div class="form-group" style="margin-bottom:14px;">
+        <label>👤 เลือกลูกค้าผู้เช่า:</label>
+        <div style="display:flex; gap:8px;">
+          <select id="book-cust-select" class="form-control"></select>
+          <button onclick="app.openAddCustomerModal()" class="btn btn-sm btn-secondary">➕ เพิ่ม</button>
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-bottom:14px;">
+        <label>📋 ประเภทสัญญา:</label>
+        <select id="book-contract-type" class="form-control" onchange="app.recalcBookingModalPrice()">
+          <option value="รายวัน">รายวัน (Daily)</option>
+          <option value="รายสัปดาห์">รายสัปดาห์ (Weekly)</option>
+          <option value="รายเดือน">รายเดือน (Monthly)</option>
+        </select>
+      </div>
+
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:14px;">
+        <div class="form-group">
+          <label>ยอดค่าเช่า (บาท):</label>
+          <input type="number" id="book-price-input" class="form-control" value="1000">
+        </div>
+        <div class="form-group">
+          <label>ส่วนลด (บาท):</label>
+          <input type="number" id="book-discount-input" class="form-control" value="0" oninput="app.recalcBookingModalPrice()">
+        </div>
+      </div>
+
+      <div style="background:#FFF7ED; padding:10px 14px; border-radius:8px; border:1px solid #FED7AA; margin-bottom:20px; display:flex; justify-content:space-between; align-items:center;">
+        <span style="font-size:13px; color:#9A3412;">ยอดค่าเช่าสุทธิ:</span>
+        <b id="book-modal-net-price" style="font-size:18px; color:#D97706;">฿1,000.00</b>
+      </div>
+
+      <div style="display:flex; justify-content:flex-end; gap:10px;">
+        <button onclick="app.closeModal('modal-book-car')" class="btn btn-secondary">ยกเลิก</button>
+        <button onclick="app.submitInstantBooking()" class="btn btn-primary">
+          💳 ยืนยันการจอง & ไปหน้าชำระมัดจำ ➔
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. Login / Register Modal -->
+  <div id="modal-login" class="modal-backdrop">
+    <div class="modal-dialog" style="max-width:420px;">
+      <div class="modal-header">
+        <div class="modal-title" id="auth-title">🔑 เข้าสู่ระบบ Sawasdee Rental</div>
+        <button class="modal-close" onclick="app.closeModal('modal-login')">✕</button>
+      </div>
+
+      <div id="auth-login-box">
+        <div class="form-group" style="margin-bottom:14px;">
+          <label>ชื่อผู้ใช้งาน (Username):</label>
+          <input type="text" id="login-username" class="form-control" placeholder="admin หรือ ชื่อผู้ใช้...">
+        </div>
+        <div class="form-group" style="margin-bottom:18px;">
+          <label>รหัสผ่าน (Password):</label>
+          <input type="password" id="login-password" class="form-control" placeholder="รหัสผ่าน...">
+        </div>
+        <button onclick="app.submitLogin()" class="btn btn-primary" style="width:100%; margin-bottom:12px;">
+          เข้าสู่ระบบ
+        </button>
+        <div style="text-align:center; font-size:12px; color:#64748B;">
+          ยังไม่มีบัญชี? <a href="#" onclick="app.toggleAuthMode('register'); return false;" style="color:#D97706; font-weight:700;">ลงทะเบียนพนักงาน</a>
+        </div>
+      </div>
+
+      <div id="auth-reg-box" style="display:none;">
+        <div class="form-group" style="margin-bottom:12px;">
+          <label>ชื่อผู้ใช้งาน (Username):</label>
+          <input type="text" id="reg-username" class="form-control" placeholder="เช่น somchai">
+        </div>
+        <div class="form-group" style="margin-bottom:12px;">
+          <label>ชื่อ-นามสกุล:</label>
+          <input type="text" id="reg-name" class="form-control" placeholder="เช่น สมชาย ใจดี">
+        </div>
+        <div class="form-group" style="margin-bottom:18px;">
+          <label>รหัสผ่าน:</label>
+          <input type="password" id="reg-password" class="form-control" placeholder="รหัสผ่าน...">
+        </div>
+        <button onclick="app.submitRegister()" class="btn btn-success" style="width:100%; margin-bottom:12px;">
+          ลงทะเบียน
+        </button>
+        <div style="text-align:center; font-size:12px; color:#64748B;">
+          มีบัญชีแล้ว? <a href="#" onclick="app.toggleAuthMode('login'); return false;" style="color:#D97706; font-weight:700;">กลับสู่หน้าเข้าสู่ระบบ</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- Scripts -->
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

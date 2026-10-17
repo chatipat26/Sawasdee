@@ -4,3 +4,7 @@ altair
 pypdf
 reportlab
 supabase
+fastapi
+uvicorn
+requests
+python-multipart
