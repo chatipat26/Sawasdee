@@ -422,8 +422,12 @@ class App {
       this.populateBookingDropdowns();
       this.populateStaffDropdowns();
       const dispSel = document.getElementById("assign-disp-bk");
+      const retSel = document.getElementById("assign-ret-bk");
       if (dispSel && !dispSel.value && this.currentSelectedBooking?.booking_id) {
         dispSel.value = this.currentSelectedBooking.booking_id;
+      }
+      if (retSel && !retSel.value && (dispSel?.value || this.currentSelectedBooking?.booking_id)) {
+        retSel.value = dispSel?.value || this.currentSelectedBooking.booking_id;
       }
       this.onSelectAssignDispBooking();
       this.onSelectAssignRetBooking();
@@ -1107,10 +1111,17 @@ class App {
         this.onSelectDepositBooking();
       }
     } else if (tabName === "assign") {
+      this.confirmedAssignSides = this.confirmedAssignSides || {};
+      this.confirmedAssignSides[bkId] = { Dispatch: false, Return: false };
       const sel = document.getElementById("assign-disp-bk");
       if (sel) {
         sel.value = bkId;
         this.onSelectAssignDispBooking();
+      }
+      const retSel = document.getElementById("assign-ret-bk");
+      if (retSel) {
+        retSel.value = bkId;
+        this.onSelectAssignRetBooking();
       }
     } else if (tabName === "contract") {
       const sel = document.getElementById("contract-sel-bk");
@@ -1130,6 +1141,14 @@ class App {
     }
     if (form) form.style.display = "block";
     this.populateStaffDropdowns();
+
+    // Auto-sync right-side Return Work Order dropdown to the same booking
+    const retSel = document.getElementById("assign-ret-bk");
+    if (retSel && retSel.value !== bkId) {
+      retSel.value = bkId;
+      this.onSelectAssignRetBooking();
+    }
+
     const b = this.bookings.find(x => x.booking_id === bkId);
     if (b) {
       const sDateEl = document.getElementById("assign-disp-start-date");
@@ -1287,11 +1306,31 @@ class App {
       });
       const data = await res.json();
       if (data.success) {
-        this.showToast(`✅ บันทึกมอบหมายงาน ${jobType} และแจ้งเตือน LINE เรียบร้อย!`, "success");
+        this.confirmedAssignSides = this.confirmedAssignSides || {};
+        if (!this.confirmedAssignSides[bkId]) {
+          this.confirmedAssignSides[bkId] = { Dispatch: false, Return: false };
+        }
+        this.confirmedAssignSides[bkId][jobType] = true;
+
         await this.loadBookings();
         await this.loadBackOfficeJobs();
         if (isDisp) this.onSelectAssignDispBooking();
         else this.onSelectAssignRetBooking();
+
+        const updatedBk = this.bookings.find(x => x.booking_id === bkId) || data.booking || {};
+        const wDel = String(updatedBk.worker_delivery || "").trim();
+        const wRet = String(updatedBk.worker_return || "").trim();
+        const hasDel = Boolean(wDel && wDel !== "Wait" && wDel !== "-");
+        const hasRet = Boolean(wRet && wRet !== "Wait" && wRet !== "-");
+        const bothClicked = Boolean(this.confirmedAssignSides[bkId].Dispatch && this.confirmedAssignSides[bkId].Return);
+
+        if (bothClicked || (hasDel && hasRet)) {
+          this.showToast(`🎉 ออกใบงานครบทั้งส่งรถและรับรถคืน (${bkId}) เรียบร้อย! กำลังพาไปหน้าจัดทำสัญญาเช่า...`, "success");
+          await this.goToTabWithBooking("contract", bkId);
+        } else {
+          const nextSideLabel = isDisp ? "ออกใบงานรับรถคืน (ฝั่งขวา)" : "ออกใบงานส่งรถ (ฝั่งซ้าย)";
+          this.showToast(`✅ บันทึกมอบหมายงาน ${isDisp ? 'ส่งรถ' : 'รับรถคืน'} และแจ้งเตือน LINE เรียบร้อย! (กรุณากดยืนยัน ${nextSideLabel} ต่อ)`, "success");
+        }
       }
     } catch (e) {
       this.showToast("เกิดข้อผิดพลาด: " + e.message, "danger");
