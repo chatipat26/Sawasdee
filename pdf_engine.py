@@ -127,33 +127,61 @@ def generate_filled_pdf(template_path, booking_info, customer_info, car_info):
         
         # --- 2. Section 02: RENTER ---
         can.setFont(FONT_REGULAR, 8.5)
-        can.drawString(44, 638, c_name)
-        can.drawString(245, 638, c_nat)
-        can.drawString(335, 638, c_dob)
-        can.drawString(425, 638, c_pass)
+        can.drawString(37, 601, c_name)
+        can.drawString(215, 601, c_nat)
+        can.drawString(393, 601, c_dob)
         
-        can.drawString(44, 597, c_lic)
-        can.drawString(200, 597, c_lic_issue)
-        can.drawString(335, 597, c_lic_exp)
+        can.drawString(37, 573, c_lic)
+        can.drawString(170, 573, c_lic_issue)
+        can.drawString(304, 573, c_lic_exp)
+        can.drawString(437, 573, c_pass)
         
-        can.drawString(44, 558, c_home[:45])
-        can.drawString(44, 547, c_home[45:90] if len(c_home) > 45 else "")
-        can.drawString(275, 558, c_thai[:45])
-        can.drawString(275, 547, c_thai[45:90] if len(c_thai) > 45 else "")
+        # ที่อยู่
+        can.setFont(FONT_REGULAR, 8)
+        can.drawString(37, 544, c_home[:55] if len(c_home) > 55 else c_home)
         
-        can.drawString(44, 508, c_email)
-        can.drawString(200, 508, c_phone)
-        can.drawString(335, 508, c_wa)
+        # ลบขีดแดชเดิมในแม่แบบออกก่อนพิมพ์ที่อยู่ในไทย
+        if c_thai and c_thai != "-":
+            can.setFillColorRGB(1, 1, 1)
+            can.rect(304, 541, 14, 10, fill=1, stroke=0)
+            can.setFillColorRGB(0.15, 0.15, 0.15)
+            can.drawString(304, 544, c_thai[:55] if len(c_thai) > 55 else c_thai)
         
-        # --- 3. Section 03: RENTAL PERIOD & CHARGES ---
-        can.drawString(44, 448, s_date)
-        can.drawString(160, 448, loc_del[:25])
-        can.drawString(275, 448, e_date)
-        can.drawString(390, 448, loc_ret[:25])
+        # ข้อมูลติดต่อ
+        can.setFont(FONT_REGULAR, 8.5)
+        can.drawString(37, 516, c_email)
+        can.drawString(215, 516, c_phone)
+        can.drawString(393, 516, c_wa)
         
-        can.setFont(FONT_BOLD, 10.5)
-        can.setFillColorRGB(0.85, 0.25, 0.1)
-        can.drawString(495, 448, f"THB {price_val}")
+        # --- 3. Section 03: RENTAL PERIOD & DELIVERY ---
+        can.setFont(FONT_REGULAR, 8.5)
+        can.drawString(37, 474, s_date)
+        
+        if loc_del and loc_del != "-":
+            can.setFillColorRGB(1, 1, 1)
+            can.rect(170, 471, 14, 10, fill=1, stroke=0)
+            can.setFillColorRGB(0.15, 0.15, 0.15)
+            can.drawString(170, 474, loc_del[:30])
+            
+        can.drawString(304, 474, e_date)
+        
+        if loc_ret and loc_ret != "-":
+            can.setFillColorRGB(1, 1, 1)
+            can.rect(437, 471, 14, 10, fill=1, stroke=0)
+            can.setFillColorRGB(0.15, 0.15, 0.15)
+            can.drawString(437, 474, loc_ret[:30])
+        
+        # --- 4. Section 04: CHARGES (กล่องขาวในแถบสีส้ม TO BE INVOICED) ---
+        can.setFont(FONT_BOLD, 10)
+        can.setFillColorRGB(0.9, 0.35, 0.15)
+        can.drawString(498, 303, f"฿ {price_val}")
+        
+        # --- 5. Section 05: PAYMENT CONFIRMATION ---
+        can.setFillColorRGB(0.15, 0.15, 0.15)
+        can.setFont(FONT_REGULAR, 8)
+        can.drawString(37, 259, b_id)
+        can.setFont(FONT_BOLD, 8.5)
+        can.drawString(231, 259, f"THB {price_val}")
         
         can.save()
         packet.seek(0)

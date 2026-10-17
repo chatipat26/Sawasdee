@@ -728,6 +728,36 @@ async def export_csv(month: Optional[str] = None):
         headers={"Content-Disposition": f"attachment; filename=completed_jobs_{month or 'all'}.csv"}
     )
 
+def _resolve_cust_and_car(target):
+    cust = store.customers.get(target.get("customer"))
+    if not cust and target.get("customer"):
+        target_cname = str(target.get("customer")).strip().lower()
+        for k, v in store.customers.items():
+            if str(k).strip().lower() == target_cname:
+                cust = v
+                break
+    if not cust:
+        cust = {
+            "full_name": target.get("customer", "-"),
+            "contact_no": target.get("customer_phone", "-"),
+            "passport_id": target.get("customer_id_card", "-")
+        }
+
+    car = store.cars.get(target.get("car_id"))
+    if not car and target.get("car_id"):
+        target_plate = str(target.get("car_id")).strip().lower()
+        for k, v in store.cars.items():
+            if str(k).strip().lower() == target_plate:
+                car = v
+                break
+    if not car:
+        car = {
+            "plate": target.get("car_id", "-"),
+            "brand": target.get("car_brand", ""),
+            "model": target.get("car_model", "")
+        }
+    return cust, car
+
 # -------------------------------------------------------------------------
 # PDF DOCUMENT STREAMING ENDPOINTS
 # -------------------------------------------------------------------------
@@ -739,8 +769,7 @@ async def get_contract_pdf(bk_id: str):
     if not target:
         raise HTTPException(status_code=404, detail="ไม่พบข้อมูลการจอง")
 
-    cust = store.customers.get(target.get("customer"), {})
-    car = store.cars.get(target.get("car_id"), {})
+    cust, car = _resolve_cust_and_car(target)
     pdf_bytes = pdf_engine.generate_filled_pdf("rental_template_blank_v2.pdf", target, cust, car)
 
     target["contract_issued"] = True
@@ -760,8 +789,7 @@ async def get_receipt_pdf(bk_id: str):
     if not target:
         raise HTTPException(status_code=404, detail="ไม่พบข้อมูลการจอง")
 
-    cust = store.customers.get(target.get("customer"), {})
-    car = store.cars.get(target.get("car_id"), {})
+    cust, car = _resolve_cust_and_car(target)
     amt = float(target.get("net_price", 0.0))
     method = target.get("rental_payment_method") or target.get("final_payment_method", "เงินสด")
 
@@ -776,10 +804,11 @@ async def get_receipt_pdf(bk_id: str):
 async def get_deposit_receipt_pdf(bk_id: str):
     target = next((b for b in store.bookings if b.get("booking_id") == bk_id), None)
     if not target:
+        target = next((cj for cj in store.completed_jobs if cj.get("booking_id") == bk_id), None)
+    if not target:
         raise HTTPException(status_code=404, detail="ไม่พบข้อมูลการจอง")
 
-    cust = store.customers.get(target.get("customer"), {})
-    car = store.cars.get(target.get("car_id"), {})
+    cust, car = _resolve_cust_and_car(target)
     amt = float(target.get("deposit_amount", 5000.0))
     method = target.get("deposit_method", "เงินสด")
 
@@ -798,8 +827,7 @@ async def get_job_pdf(bk_id: str):
     if not target:
         raise HTTPException(status_code=404, detail="ไม่พบข้อมูลการจอง")
 
-    cust = store.customers.get(target.get("customer"), {})
-    car = store.cars.get(target.get("car_id"), {})
+    cust, car = _resolve_cust_and_car(target)
     pdf_bytes = pdf_engine.generate_job_pdf(target, cust, car, "Return", target.get("worker_return"), target.get("loc_return"), inspection_data=target)
     return StreamingResponse(
         io.BytesIO(pdf_bytes),
