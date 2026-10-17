@@ -49,9 +49,13 @@ class App {
     const map = {};
     parts.forEach(p => { map[p.type] = p.value; });
     const h = map.hour === "24" ? "00" : map.hour;
+    const dStr = `${map.year}-${map.month}-${map.day}`;
+    const tStr = `${h}:${map.minute}`;
     return {
-      date: `${map.year}-${map.month}-${map.day}`,
-      time: `${h}:${map.minute}`
+      date: dStr,
+      time: tStr,
+      dateStr: dStr,
+      timeStr: tStr
     };
   }
 
@@ -107,6 +111,7 @@ class App {
   async fetchInitialData() {
     try {
       await Promise.all([
+        this.loadUsers(),
         this.loadCars(),
         this.loadCustomers(),
         this.loadBookings(),
@@ -331,7 +336,7 @@ class App {
     if (modName === "users") this.loadUsers();
   }
 
-  switchTab(tabName) {
+  async switchTab(tabName) {
     this.activeTab = tabName;
     document.querySelectorAll(".tab-btn").forEach(el => el.classList.remove("active"));
     const tabBtn = document.getElementById(`tab-btn-${tabName}`);
@@ -342,8 +347,18 @@ class App {
       if (pane) pane.style.display = (t === tabName) ? "block" : "none";
     });
 
-    if (tabName === "contract") {
+    if (!this.users || this.users.length <= 1) {
+      await this.loadUsers();
+    }
+
+    if (tabName === "assign") {
       this.populateBookingDropdowns();
+      this.populateStaffDropdowns();
+      this.onSelectAssignDispBooking();
+      this.onSelectAssignRetBooking();
+    } else if (tabName === "contract") {
+      this.populateBookingDropdowns();
+      this.populateStaffDropdowns();
       this.populateWalkinDropdowns();
       const contractSel = document.getElementById("contract-sel-bk");
       if (contractSel) {
@@ -799,35 +814,78 @@ class App {
   populateStaffDropdowns() {
     const dispW = document.getElementById("assign-disp-worker");
     const retW = document.getElementById("assign-ret-worker");
-    const approved = this.users.filter(u => u.status === "approved");
-    const opts = approved.map(u => `<option value="${u.username}">${u.name || u.username} (${u.role})</option>`).join("");
-    if (dispW) dispW.innerHTML = opts || `<option value="admin">ผู้ดูแลระบบ (admin)</option>`;
-    if (retW) retW.innerHTML = opts || `<option value="admin">ผู้ดูแลระบบ (admin)</option>`;
+    const walkinW = document.getElementById("walkin-worker-select");
+    const approved = (this.users || []).filter(u => !u.status || u.status === "approved");
+    const opts = approved.map(u => {
+      const uname = u.username;
+      const label = (u.name && u.name !== uname) ? `${uname} (${u.name})` : uname;
+      return `<option value="${uname}">${label} [${u.role || 'Staff'}]</option>`;
+    }).join("");
+    const fallback = `<option value="admin">admin (ผู้ดูแลระบบ) [Admin]</option>`;
+
+    [dispW, retW, walkinW].forEach(sel => {
+      if (!sel) return;
+      const cur = sel.value;
+      sel.innerHTML = opts || fallback;
+      if (cur && cur !== "Wait" && cur !== "-" && Array.from(sel.options).some(o => o.value === cur)) {
+        sel.value = cur;
+      } else if (sel.options.length > 0) {
+        sel.selectedIndex = 0;
+      }
+    });
   }
 
   onSelectAssignDispBooking() {
-    const bkId = document.getElementById("assign-disp-bk").value;
+    const bkId = document.getElementById("assign-disp-bk")?.value;
     const form = document.getElementById("assign-disp-form");
-    if (!bkId) { form.style.display = "none"; return; }
-    form.style.display = "block";
+    if (!bkId) {
+      if (form) form.style.display = "none";
+      return;
+    }
+    if (form) form.style.display = "block";
+    this.populateStaffDropdowns();
     const b = this.bookings.find(x => x.booking_id === bkId);
     if (b) {
-      if (b.loc_delivery) document.getElementById("assign-disp-loc").value = b.loc_delivery;
-      if (b.start_time) document.getElementById("assign-disp-time").value = b.start_time;
-      if (b.worker_delivery) document.getElementById("assign-disp-worker").value = b.worker_delivery;
+      const locEl = document.getElementById("assign-disp-loc");
+      const timeEl = document.getElementById("assign-disp-time");
+      const workerEl = document.getElementById("assign-disp-worker");
+      if (locEl) locEl.value = b.loc_delivery || "";
+      if (timeEl) timeEl.value = b.start_time || this.getThaiDateTime(0).time;
+      if (workerEl) {
+        const w = String(b.worker_delivery || "").trim();
+        if (w && w !== "Wait" && w !== "-" && Array.from(workerEl.options).some(o => o.value === w)) {
+          workerEl.value = w;
+        } else if (workerEl.options.length > 0) {
+          workerEl.selectedIndex = 0;
+        }
+      }
     }
   }
 
   onSelectAssignRetBooking() {
-    const bkId = document.getElementById("assign-ret-bk").value;
+    const bkId = document.getElementById("assign-ret-bk")?.value;
     const form = document.getElementById("assign-ret-form");
-    if (!bkId) { form.style.display = "none"; return; }
-    form.style.display = "block";
+    if (!bkId) {
+      if (form) form.style.display = "none";
+      return;
+    }
+    if (form) form.style.display = "block";
+    this.populateStaffDropdowns();
     const b = this.bookings.find(x => x.booking_id === bkId);
     if (b) {
-      if (b.loc_return) document.getElementById("assign-ret-loc").value = b.loc_return;
-      if (b.end_time) document.getElementById("assign-ret-time").value = b.end_time;
-      if (b.worker_return) document.getElementById("assign-ret-worker").value = b.worker_return;
+      const locEl = document.getElementById("assign-ret-loc");
+      const timeEl = document.getElementById("assign-ret-time");
+      const workerEl = document.getElementById("assign-ret-worker");
+      if (locEl) locEl.value = b.loc_return || b.loc_delivery || "";
+      if (timeEl) timeEl.value = b.end_time || this.getThaiDateTime(0).time;
+      if (workerEl) {
+        const w = String(b.worker_return || "").trim();
+        if (w && w !== "Wait" && w !== "-" && Array.from(workerEl.options).some(o => o.value === w)) {
+          workerEl.value = w;
+        } else if (workerEl.options.length > 0) {
+          workerEl.selectedIndex = 0;
+        }
+      }
     }
   }
 

@@ -410,7 +410,11 @@
                 <div class="form-group" style="margin-bottom:12px;">
                   <label>👤 เลือกพนักงานจัดส่ง / คนขับรถ:</label>
                   <select id="assign-disp-worker" class="form-control">
-                    <!-- Approved staff options -->
+                    <option value="admin">admin (ผู้ดูแลระบบ (Admin)) [Admin]</option>
+                    <option value="chaiwat.u">chaiwat.u [Staff]</option>
+                    <option value="sam">sam [Staff]</option>
+                    <option value="sucheeda">sucheeda (uswachoke) [Staff]</option>
+                    <option value="Chatipat">Chatipat (ชาติพัฒน์ ตั้งรุ่งเรืองอยู่) [Staff]</option>
                   </select>
                 </div>
                 <div class="form-group" style="margin-bottom:12px;">
@@ -419,7 +423,7 @@
                 </div>
                 <div class="form-group" style="margin-bottom:16px;">
                   <label>⏰ เวลานัดส่งมอบรถ:</label>
-                  <input type="time" id="assign-disp-time" class="form-control" value="10:00">
+                  <input type="time" id="assign-disp-time" class="form-control">
                 </div>
                 <button onclick="app.submitAssign('Dispatch')" class="btn btn-primary" style="width:100%;">
                   🚚 บันทึกมอบหมาย & แจ้งเตือน LINE
@@ -442,7 +446,11 @@
                 <div class="form-group" style="margin-bottom:12px;">
                   <label>👤 เลือกพนักงานรับรถคืน / คนขับรถ:</label>
                   <select id="assign-ret-worker" class="form-control">
-                    <!-- Approved staff options -->
+                    <option value="admin">admin (ผู้ดูแลระบบ (Admin)) [Admin]</option>
+                    <option value="chaiwat.u">chaiwat.u [Staff]</option>
+                    <option value="sam">sam [Staff]</option>
+                    <option value="sucheeda">sucheeda (uswachoke) [Staff]</option>
+                    <option value="Chatipat">Chatipat (ชาติพัฒน์ ตั้งรุ่งเรืองอยู่) [Staff]</option>
                   </select>
                 </div>
                 <div class="form-group" style="margin-bottom:12px;">
@@ -451,7 +459,7 @@
                 </div>
                 <div class="form-group" style="margin-bottom:16px;">
                   <label>⏰ เวลานัดรับรถคืน:</label>
-                  <input type="time" id="assign-ret-time" class="form-control" value="10:00">
+                  <input type="time" id="assign-ret-time" class="form-control">
                 </div>
                 <button onclick="app.submitAssign('Return')" class="btn btn-primary" style="width:100%;">
                   🔙 บันทึกมอบหมาย & แจ้งเตือน LINE
@@ -1197,6 +1205,6 @@
   <div class="toast-container" id="toast-container"></div>
 
   <!-- Scripts with cache busting -->
-  <script src="/static/js/app.js?v=2.5"></script>
+  <script src="/static/js/app.js?v=2.6"></script>
 </body>
 </html>

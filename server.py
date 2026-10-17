@@ -53,8 +53,8 @@ app.mount("/static", StaticFiles(directory=static_dir), name="static")
 @app.on_event("startup")
 def startup_event():
     print("🚀 Starting SawasdeeRental Web App server...")
-    # Trigger non-blocking async background sync
-    store.sync_from_supabase_async(force=True)
+    # Perform initial synchronous sync so all Supabase tables are immediately available
+    store.sync_from_supabase(force=True)
     start_background_cloud_sync()
     init_expiry_scheduler_thread()
 
@@ -82,6 +82,7 @@ async def get_system_status():
         "total_customers": len(store.customers),
         "total_bookings": len(store.bookings),
         "total_completed": len(store.completed_jobs),
+        "total_users": len(store.users),
         "timestamp": time.time()
     }
 
@@ -193,10 +194,14 @@ async def change_password(payload: Dict[str, Any]):
 
 @app.get("/api/users")
 async def list_users():
+    if not store.initial_sync_done or len(store.users) <= 1:
+        store.sync_from_supabase(force=True)
     users_list = []
     for u in store.users.values():
         u_safe = dict(u)
         u_safe.pop("password", None)
+        if not u_safe.get("status"):
+            u_safe["status"] = "approved"
         users_list.append(u_safe)
     return users_list
 
@@ -228,6 +233,8 @@ async def delete_user(username: str):
 # -------------------------------------------------------------------------
 @app.get("/api/cars")
 async def list_cars(start_date: Optional[str] = None, end_date: Optional[str] = None):
+    if not store.initial_sync_done:
+        store.sync_from_supabase(force=True)
     cars_data = []
     for plate, car in store.cars.items():
         status_key, status_desc, color, bg, border = get_car_fleet_status(
@@ -255,6 +262,8 @@ async def create_or_update_car(payload: Dict[str, Any]):
 # -------------------------------------------------------------------------
 @app.get("/api/customers")
 async def list_customers():
+    if not store.initial_sync_done:
+        store.sync_from_supabase(force=True)
     return list(store.customers.values())
 
 @app.post("/api/customers")
@@ -275,6 +284,8 @@ async def delete_customer(name: str):
 # -------------------------------------------------------------------------
 @app.get("/api/bookings")
 async def list_bookings():
+    if not store.initial_sync_done:
+        store.sync_from_supabase(force=True)
     res = []
     for b in store.bookings:
         b_copy = dict(b)

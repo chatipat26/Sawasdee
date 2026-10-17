@@ -252,7 +252,12 @@ class DataStore:
         self.deleted_booking_ids = set()
         self.last_sync_time = time.time()
         self.is_syncing = False
+        self.initial_sync_done = False
         self.lock = threading.RLock()
+
+    def sync_from_supabase(self, force=False):
+        """Synchronous full sync from Supabase Cloud"""
+        self._sync_task(force=force)
 
     def sync_from_supabase_async(self, force=False):
         """Non-blocking background thread sync"""
@@ -268,15 +273,49 @@ class DataStore:
             if not sb:
                 return
 
-            # 1. Users
+            # 1. Users (from 'users' table + Supabase Auth admin list)
             try:
                 u_res = sb.table("users").select("*").execute()
+                fresh_users = {}
                 if u_res.data:
+                    for u in u_res.data:
+                        un = u.get("username")
+                        if un:
+                            u_copy = dict(u)
+                            if not u_copy.get("status"):
+                                u_copy["status"] = "approved"
+                            if not u_copy.get("role"):
+                                u_copy["role"] = "Admin" if un.lower() == "admin" else "Staff"
+                            fresh_users[un] = u_copy
+
+                # Also merge any accounts from Supabase Auth (e.g., Chatipat)
+                try:
+                    auth_list = sb.auth.admin.list_users()
+                    existing_lower = {k.lower(): k for k in fresh_users.keys()}
+                    for au in auth_list:
+                        meta = au.user_metadata or {}
+                        un = meta.get("username") or (au.email.split("@")[0] if au.email else None)
+                        if un and un.lower() not in existing_lower:
+                            new_u = {
+                                "username": un,
+                                "name": meta.get("name") or un,
+                                "role": meta.get("role") or ("Admin" if un.lower() == "admin" else "Staff"),
+                                "status": meta.get("status") or "approved"
+                            }
+                            fresh_users[un] = new_u
+                            existing_lower[un.lower()] = un
+                            try:
+                                sb.table("users").upsert(new_u).execute()
+                            except Exception:
+                                pass
+                except Exception:
+                    pass
+
+                if fresh_users:
                     with self.lock:
-                        for u in u_res.data:
-                            un = u.get("username")
-                            if un: self.users[un] = u
-            except Exception: pass
+                        self.users = fresh_users
+            except Exception as e:
+                print(f"Users sync error: {e}")
 
             # 2. Bookings
             try:
@@ -292,32 +331,43 @@ class DataStore:
                         fresh_b.append(b_copy)
                     with self.lock:
                         self.bookings = fresh_b
-            except Exception: pass
+            except Exception as e:
+                print(f"Bookings sync error: {e}")
 
             # 3. Cars
             try:
                 c_res = sb.table("cars").select("*").execute()
                 if c_res.data:
-                    with self.lock:
-                        for c in c_res.data:
-                            pl = c.get("plate")
-                            if pl: self.cars[pl] = c
-            except Exception: pass
+                    fresh_cars = {}
+                    for c in c_res.data:
+                        pl = c.get("plate")
+                        if pl:
+                            fresh_cars[pl] = c
+                    if fresh_cars:
+                        with self.lock:
+                            self.cars = fresh_cars
+            except Exception as e:
+                print(f"Cars sync error: {e}")
 
             # 4. Customers
             try:
                 cust_res = sb.table("customers").select("*").execute()
                 if cust_res.data:
-                    with self.lock:
-                        for c in cust_res.data:
-                            fn = c.get("full_name")
-                            if fn: self.customers[fn] = c
-            except Exception: pass
+                    fresh_cust = {}
+                    for c in cust_res.data:
+                        fn = c.get("full_name")
+                        if fn:
+                            fresh_cust[fn] = c
+                    if fresh_cust:
+                        with self.lock:
+                            self.customers.update(fresh_cust)
+            except Exception as e:
+                print(f"Customers sync error: {e}")
 
             # 5. Completed Jobs
             try:
                 cj_res = sb.table("completed_jobs").select("*").order("created_at", desc=True).execute()
-                if cj_res.data:
+                if cj_res.data is not None:
                     fresh_cj = []
                     for cj in cj_res.data:
                         c_copy = dict(cj)
@@ -327,17 +377,20 @@ class DataStore:
                         fresh_cj.append(c_copy)
                     with self.lock:
                         self.completed_jobs = fresh_cj
-            except Exception: pass
+            except Exception as e:
+                print(f"Completed jobs sync error: {e}")
 
             # 6. Financial Records
             try:
                 f_res = sb.table("financial_records").select("*").order("date", desc=True).execute()
-                if f_res.data:
+                if f_res.data is not None:
                     with self.lock:
                         self.financial_records = f_res.data
-            except Exception: pass
+            except Exception as e:
+                print(f"Financial records sync error: {e}")
 
             self.last_sync_time = time.time()
+            self.initial_sync_done = True
         except Exception as e:
             print(f"Sync task exception: {e}")
         finally:
