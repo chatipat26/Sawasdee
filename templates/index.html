@@ -409,8 +409,8 @@
               <div id="assign-disp-form" style="display:none;">
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:12px;">
                   <div class="form-group">
-                    <label>📅 วันที่เริ่มเช่า:</label>
-                    <input type="date" id="assign-disp-start-date" class="form-control">
+                    <label>📅 วันที่เริ่มเช่า (วันส่งมอบ):</label>
+                    <input type="date" id="assign-disp-start-date" class="form-control" onchange="document.getElementById('assign-disp-date').value = this.value">
                   </div>
                   <div class="form-group">
                     <label>📅 กำหนดคืนรถ:</label>
@@ -432,9 +432,15 @@
                   <label>📍 สถานที่นัดหมายส่งมอบรถ:</label>
                   <textarea id="assign-disp-loc" class="form-control" rows="2" placeholder="เช่น สนามบินสุวรรณภูมิ หรือใส่ Google Maps link"></textarea>
                 </div>
-                <div class="form-group" style="margin-bottom:16px;">
-                  <label>⏰ เวลานัดส่งมอบรถ:</label>
-                  <input type="time" id="assign-disp-time" class="form-control">
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:16px;">
+                  <div class="form-group">
+                    <label>📅 วันที่นัดส่งมอบรถ:</label>
+                    <input type="date" id="assign-disp-date" class="form-control" onchange="document.getElementById('assign-disp-start-date').value = this.value">
+                  </div>
+                  <div class="form-group">
+                    <label>⏰ เวลานัดส่งมอบรถ:</label>
+                    <input type="time" id="assign-disp-time" class="form-control">
+                  </div>
                 </div>
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
                   <button onclick="app.submitAssign('Dispatch')" class="btn btn-primary" style="width:100%;">
@@ -465,8 +471,8 @@
                     <input type="date" id="assign-ret-start-date" class="form-control">
                   </div>
                   <div class="form-group">
-                    <label>📅 กำหนดคืนรถ:</label>
-                    <input type="date" id="assign-ret-end-date" class="form-control">
+                    <label>📅 กำหนดคืนรถ (วันรับคืน):</label>
+                    <input type="date" id="assign-ret-end-date" class="form-control" onchange="document.getElementById('assign-ret-date').value = this.value">
                   </div>
                 </div>
                 <div id="assign-ret-status-banner" style="margin-bottom:12px;"></div>
@@ -484,9 +490,15 @@
                   <label>📍 สถานที่นัดหมายรับรถคืน:</label>
                   <textarea id="assign-ret-loc" class="form-control" rows="2" placeholder="เช่น สถานที่เดิม หรือ โรงแรม..."></textarea>
                 </div>
-                <div class="form-group" style="margin-bottom:16px;">
-                  <label>⏰ เวลานัดรับรถคืน:</label>
-                  <input type="time" id="assign-ret-time" class="form-control">
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:16px;">
+                  <div class="form-group">
+                    <label>📅 วันที่นัดรับรถคืน:</label>
+                    <input type="date" id="assign-ret-date" class="form-control" onchange="document.getElementById('assign-ret-end-date').value = this.value">
+                  </div>
+                  <div class="form-group">
+                    <label>⏰ เวลานัดรับรถคืน:</label>
+                    <input type="time" id="assign-ret-time" class="form-control">
+                  </div>
                 </div>
                 <button onclick="app.submitAssign('Return')" class="btn btn-primary" style="width:100%;">
                   🔙 บันทึกมอบหมาย & แจ้งเตือน LINE
@@ -1240,6 +1252,6 @@
   <div class="toast-container" id="toast-container"></div>
 
   <!-- Scripts with cache busting -->
-  <script src="/static/js/app.js?v=2.8"></script>
+  <script src="/static/js/app.js?v=2.9"></script>
 </body>
 </html>

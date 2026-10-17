@@ -693,7 +693,11 @@ class App {
 
     const renderOpts = (bks) => `
       <option value="">-- กรุณาเลือกรายการจอง --</option>
-      ${bks.map(b => `<option value="${b.booking_id}">${b.booking_id} | ${b.car_id} (${b.customer}) [สถานะ: ${b.status}]</option>`).join("")}
+      ${bks.map(b => {
+        const sFmt = b.start_date_formatted || b.start_date || "-";
+        const eFmt = b.end_date_formatted || b.end_date || "-";
+        return `<option value="${b.booking_id}">${b.booking_id} | ${b.car_id} (${b.customer}) 📅 ${sFmt} - ${eFmt} [สถานะ: ${b.status}]</option>`;
+      }).join("")}
     `;
 
     if (depSel) {
@@ -866,14 +870,18 @@ class App {
     if (b) {
       const sDateEl = document.getElementById("assign-disp-start-date");
       const eDateEl = document.getElementById("assign-disp-end-date");
+      const dispDateEl = document.getElementById("assign-disp-date");
       const locEl = document.getElementById("assign-disp-loc");
       const timeEl = document.getElementById("assign-disp-time");
       const workerEl = document.getElementById("assign-disp-worker");
       const bannerEl = document.getElementById("assign-disp-status-banner");
 
       const thNow = this.getThaiDateTime(0);
-      if (sDateEl) sDateEl.value = b.start_date || thNow.date;
-      if (eDateEl) eDateEl.value = b.end_date || thNow.date;
+      const sVal = b.start_date || thNow.date;
+      const eVal = b.end_date || thNow.date;
+      if (sDateEl) sDateEl.value = sVal;
+      if (eDateEl) eDateEl.value = eVal;
+      if (dispDateEl) dispDateEl.value = sVal;
       if (locEl) locEl.value = b.loc_delivery || "";
       if (timeEl) timeEl.value = b.start_time || thNow.time;
       if (workerEl) {
@@ -891,8 +899,14 @@ class App {
         const netP = parseFloat(b.net_price || 0);
         const wDel = String(b.worker_delivery || "").trim();
         const hasDriver = wDel && wDel !== "Wait" && wDel !== "-";
+        const sFmt = b.start_date_formatted || sVal;
+        const eFmt = b.end_date_formatted || eVal;
 
-        let html = "";
+        let html = `
+          <div style="background:#FAF7F2; border:1px solid #E5E7EB; border-radius:8px; padding:8px 12px; margin-bottom:8px; font-size:12.5px; color:#1F2937;">
+            📅 <b>กำหนดส่งมอบรถ:</b> <span style="color:#EA580C; font-weight:700;">${sFmt} (${b.start_time || '10:00'} น.)</span> &nbsp;|&nbsp; <b>กำหนดคืนรถ:</b> <span style="font-weight:700;">${eFmt} (${b.end_time || '10:00'} น.)</span>
+          </div>
+        `;
         if (!isDep) {
           html += `
             <div style="background:#FFFBEB; border:1px solid #F59E0B; border-radius:8px; padding:10px 12px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
@@ -918,7 +932,7 @@ class App {
         if (hasDriver) {
           html += `
             <div style="background:#F0FDF4; border:1px solid #86EFAC; border-radius:8px; padding:8px 12px; font-size:12.5px; color:#166534;">
-              🚚 <b>มอบหมายพนักงานจัดส่งแล้ว:</b> ${wDel} (เวลา ${b.start_time || '10:00'} น.)
+              🚚 <b>มอบหมายพนักงานจัดส่งแล้ว:</b> ${wDel} (วันที่ ${sFmt} เวลา ${b.start_time || '10:00'} น.)
             </div>
           `;
         }
@@ -940,14 +954,18 @@ class App {
     if (b) {
       const sDateEl = document.getElementById("assign-ret-start-date");
       const eDateEl = document.getElementById("assign-ret-end-date");
+      const retDateEl = document.getElementById("assign-ret-date");
       const locEl = document.getElementById("assign-ret-loc");
       const timeEl = document.getElementById("assign-ret-time");
       const workerEl = document.getElementById("assign-ret-worker");
       const bannerEl = document.getElementById("assign-ret-status-banner");
 
       const thNow = this.getThaiDateTime(0);
-      if (sDateEl) sDateEl.value = b.start_date || thNow.date;
-      if (eDateEl) eDateEl.value = b.end_date || thNow.date;
+      const sVal = b.start_date || thNow.date;
+      const eVal = b.end_date || thNow.date;
+      if (sDateEl) sDateEl.value = sVal;
+      if (eDateEl) eDateEl.value = eVal;
+      if (retDateEl) retDateEl.value = eVal;
       if (locEl) locEl.value = b.loc_return || b.loc_delivery || "";
       if (timeEl) timeEl.value = b.end_time || thNow.time;
       if (workerEl) {
@@ -962,11 +980,21 @@ class App {
       if (bannerEl) {
         const wRet = String(b.worker_return || "").trim();
         const hasDriver = wRet && wRet !== "Wait" && wRet !== "-";
-        bannerEl.innerHTML = hasDriver ? `
-          <div style="background:#F0FDF4; border:1px solid #86EFAC; border-radius:8px; padding:8px 12px; font-size:12.5px; color:#166534;">
-            🔙 <b>มอบหมายพนักงานรับรถคืนแล้ว:</b> ${wRet} (เวลา ${b.end_time || '10:00'} น.)
+        const sFmt = b.start_date_formatted || sVal;
+        const eFmt = b.end_date_formatted || eVal;
+        let html = `
+          <div style="background:#FAF7F2; border:1px solid #E5E7EB; border-radius:8px; padding:8px 12px; margin-bottom:8px; font-size:12.5px; color:#1F2937;">
+            📅 <b>กำหนดรับรถคืน:</b> <span style="color:#EA580C; font-weight:700;">${eFmt} (${b.end_time || '10:00'} น.)</span> &nbsp;|&nbsp; <b>วันเริ่มเช่า:</b> <span>${sFmt}</span>
           </div>
-        ` : "";
+        `;
+        if (hasDriver) {
+          html += `
+            <div style="background:#F0FDF4; border:1px solid #86EFAC; border-radius:8px; padding:8px 12px; font-size:12.5px; color:#166534;">
+              🔙 <b>มอบหมายพนักงานรับรถคืนแล้ว:</b> ${wRet} (วันที่ ${eFmt} เวลา ${b.end_time || '10:00'} น.)
+            </div>
+          `;
+        }
+        bannerEl.innerHTML = html;
       }
     }
   }
@@ -977,8 +1005,8 @@ class App {
     const worker = document.getElementById(isDisp ? "assign-disp-worker" : "assign-ret-worker").value;
     const loc = document.getElementById(isDisp ? "assign-disp-loc" : "assign-ret-loc").value;
     const tVal = document.getElementById(isDisp ? "assign-disp-time" : "assign-ret-time").value;
-    const sDate = document.getElementById(isDisp ? "assign-disp-start-date" : "assign-ret-start-date")?.value || "";
-    const eDate = document.getElementById(isDisp ? "assign-disp-end-date" : "assign-ret-end-date")?.value || "";
+    const sDate = (isDisp ? document.getElementById("assign-disp-date")?.value : null) || document.getElementById(isDisp ? "assign-disp-start-date" : "assign-ret-start-date")?.value || "";
+    const eDate = (!isDisp ? document.getElementById("assign-ret-date")?.value : null) || document.getElementById(isDisp ? "assign-disp-end-date" : "assign-ret-end-date")?.value || "";
 
     try {
       const res = await fetch(`/api/bookings/${bkId}/assign`, {

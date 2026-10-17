@@ -64,10 +64,15 @@ def startup_event():
 @app.api_route("/", methods=["GET", "HEAD"], response_class=HTMLResponse)
 async def serve_index():
     index_file = os.path.join(BASE_DIR, "templates", "index.html")
+    no_cache_headers = {
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Pragma": "no-cache",
+        "Expires": "0"
+    }
     if os.path.exists(index_file):
         with open(index_file, "r", encoding="utf-8") as f:
-            return HTMLResponse(content=f.read())
-    return HTMLResponse("<h1>Sawasdee Rental</h1><p>Building client application...</p>")
+            return HTMLResponse(content=f.read(), headers=no_cache_headers)
+    return HTMLResponse("<h1>Sawasdee Rental</h1><p>Building client application...</p>", headers=no_cache_headers)
 
 # -------------------------------------------------------------------------
 # SYSTEM STATUS & SYNC
