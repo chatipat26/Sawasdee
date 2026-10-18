@@ -730,6 +730,119 @@ body::before {
 }
 
 /* =========================================================================
+   APP SPLASH / BRAND LOADING SCREEN
+   ========================================================================= */
+.app-splash-wrapper {
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(circle at center, #FFFFFF 0%, #FBF8F3 60%, #F4EDE2 100%);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 100000;
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.app-splash-wrapper.fade-out {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.app-splash-content {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 440px;
+  padding: 24px;
+  animation: splashPopIn 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes splashPopIn {
+  0% { opacity: 0; transform: scale(0.9) translateY(12px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.app-splash-logo-circle {
+  width: 104px;
+  height: 104px;
+  border-radius: 50%;
+  background: #111111;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20px;
+  box-shadow: 0 10px 30px rgba(232, 88, 38, 0.28), 0 4px 16px rgba(0, 0, 0, 0.22);
+  position: relative;
+  animation: splashLogoPulse 2.4s infinite ease-in-out;
+}
+
+@keyframes splashLogoPulse {
+  0% { transform: scale(1); box-shadow: 0 10px 30px rgba(232, 88, 38, 0.25), 0 4px 16px rgba(0,0,0,0.2); }
+  50% { transform: scale(1.05); box-shadow: 0 16px 45px rgba(232, 88, 38, 0.45), 0 6px 22px rgba(0,0,0,0.28); }
+  100% { transform: scale(1); box-shadow: 0 10px 30px rgba(232, 88, 38, 0.25), 0 4px 16px rgba(0,0,0,0.2); }
+}
+
+.app-splash-logo-circle img {
+  width: 76px;
+  height: auto;
+  object-fit: contain;
+}
+
+.app-splash-title {
+  font-size: 21px;
+  font-weight: 800;
+  letter-spacing: 2.5px;
+  color: #1F2937;
+  margin-bottom: 6px;
+}
+
+.app-splash-subtitle {
+  font-size: 13px;
+  font-weight: 500;
+  color: #6B7280;
+  margin-bottom: 24px;
+}
+
+.app-splash-loader {
+  width: 220px;
+  height: 5px;
+  background: #E5DFD7;
+  border-radius: 999px;
+  overflow: hidden;
+  position: relative;
+  margin-bottom: 14px;
+}
+
+.app-splash-bar {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 45%;
+  background: var(--brand-gradient);
+  border-radius: 999px;
+  animation: splashIndeterminate 1.4s infinite ease-in-out;
+}
+
+@keyframes splashIndeterminate {
+  0% { left: -45%; width: 40%; }
+  50% { left: 30%; width: 60%; }
+  100% { left: 105%; width: 40%; }
+}
+
+.app-splash-status {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #9CA3AF;
+  letter-spacing: 0.3px;
+}
+
+/* =========================================================================
    AUTHENTICATION GATE SCREEN (EXCLUSIVE LOGIN SCREEN MATCHING STREAMLIT)
    ========================================================================= */
 .auth-gate-wrapper {

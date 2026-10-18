@@ -4,14 +4,31 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sawasdee Rental - ระบบบริหารจัดการรถเช่าระดับพรีเมียม</title>
-  <link rel="stylesheet" href="/static/css/app.css?v=2.5">
+  <link rel="stylesheet" href="/static/css/app.css?v=2.6">
   <link rel="icon" type="image/png" href="/static/sawasdee-logo.png">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
 
   <!-- ========================================================================= -->
-  <!-- 0. AUTHENTICATION GATE SCREEN (EXCLUSIVE LOGIN SCREEN MATCHING STREAMLIT) -->
+  <!-- 0. APP SPLASH / BRAND LOADING SCREEN                                      -->
+  <!-- ========================================================================= -->
+  <div id="app-splash-screen" class="app-splash-wrapper">
+    <div class="app-splash-content">
+      <div class="app-splash-logo-circle">
+        <img src="/static/sawasdee-logo.png" alt="Sawasdee Logo" onerror="this.src='/static/sawasdee-logo.png'">
+      </div>
+      <h2 class="app-splash-title">SAWASDEE RENTAL</h2>
+      <p class="app-splash-subtitle">Front Office & Fleet Management System</p>
+      <div class="app-splash-loader">
+        <div class="app-splash-bar"></div>
+      </div>
+      <div id="app-splash-status" class="app-splash-status">กำลังเริ่มต้นระบบความปลอดภัย...</div>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- 1. AUTHENTICATION GATE SCREEN (LOGIN SCREEN)                              -->
   <!-- ========================================================================= -->
   <div id="auth-gate-screen" class="auth-gate-wrapper" style="display:flex;">
     <div class="auth-gate-card">
@@ -22,30 +39,30 @@
 
       <!-- Mode 1: Login -->
       <div id="gate-mode-login" class="auth-gate-box">
-        <!-- Direct 1-Click Access Button (Zero Block) -->
-        <button type="button" onclick="app.enterDirectly()" class="gate-btn-submit" style="background:#16a34a; font-size:15px; padding:12px; margin-bottom:14px; box-shadow:0 4px 14px rgba(22,163,74,0.35); border-radius:8px; cursor:pointer; font-weight:700;">
-          🚀 คลิกเข้าใช้งานระบบทันที (สำหรับเจ้าหน้าที่)
-        </button>
+        <div style="text-align:center; margin-bottom:18px;">
+          <h3 style="font-size:18px; font-weight:800; color:#1F2937; margin-bottom:4px;">🔐 เข้าสู่ระบบ (Authentication)</h3>
+          <p style="font-size:12.5px; color:#6B7280;">กรุณาลงชื่อเข้าใช้งานก่อนเข้าสู่ระบบ Sawasdee Rental</p>
+        </div>
 
         <div class="gate-form-group">
           <label class="gate-label">ชื่อผู้ใช้งาน หรือ อีเมล (Username / Email)</label>
-          <input type="text" id="gate-login-username" class="gate-input" placeholder="เช่น admin หรือ user@email.com" autocomplete="username" onkeydown="if(event.key==='Enter') app.submitGateLogin()">
+          <input type="text" id="gate-login-username" class="gate-input" placeholder="เช่น admin หรือ chaiwat.u" autocomplete="username" onkeydown="if(event.key==='Enter') app.submitGateLogin()">
         </div>
 
         <div class="gate-form-group">
           <label class="gate-label">รหัสผ่าน (Password)</label>
-          <input type="password" id="gate-login-password" class="gate-input" placeholder="กรอกรหัสผ่าน (อย่างน้อย 6 ตัวอักษร)" autocomplete="current-password" onkeydown="if(event.key==='Enter') app.submitGateLogin()">
+          <input type="password" id="gate-login-password" class="gate-input" placeholder="กรอกรหัสผ่าน" autocomplete="current-password" onkeydown="if(event.key==='Enter') app.submitGateLogin()">
         </div>
 
         <div id="gate-login-alert" class="gate-alert"></div>
 
         <button id="btn-gate-submit-login" onclick="app.submitGateLogin()" class="gate-btn-submit">
-          ⚡ เข้าสู่ระบบ (Supabase Auth)
+          ⚡ เข้าสู่ระบบ (Login)
         </button>
 
         <!-- Quick 1-Click Login Shortcuts for Staff & Admin -->
-        <div style="margin-top:14px; padding-top:12px; border-top:1px dashed #cbd5e1; text-align:center;">
-          <div style="font-size:12px; color:#64748b; margin-bottom:8px; font-weight:500;">🚀 เข้าสู่ระบบด่วน 1-คลิก (สำหรับเจ้าหน้าที่):</div>
+        <div style="margin-top:16px; padding-top:14px; border-top:1px dashed #cbd5e1; text-align:center;">
+          <div style="font-size:12px; color:#64748b; margin-bottom:8px; font-weight:600;">⚡ เลือกล็อกอินด่วนสำหรับเจ้าหน้าที่:</div>
           <div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
             <button type="button" onclick="app.quickLogin('admin', 'admin123')" class="gate-btn-sub" style="flex:1; background:#eff6ff; border:1px solid #93c5fd; color:#1e40af; font-weight:600; padding:8px 6px;">
               👑 Admin
@@ -53,7 +70,7 @@
             <button type="button" onclick="app.quickLogin('chaiwat.u', 'A248624')" class="gate-btn-sub" style="flex:1; background:#f0fdf4; border:1px solid #86efac; color:#166534; font-weight:600; padding:8px 6px;">
               👷 chaiwat.u
             </button>
-            <button type="button" onclick="app.quickLogin('Chatipat', '')" class="gate-btn-sub" style="flex:1; background:#fdf4ff; border:1px solid #f0abfc; color:#86198f; font-weight:600; padding:8px 6px;">
+            <button type="button" onclick="app.quickLogin('Chatipat', 'admin123')" class="gate-btn-sub" style="flex:1; background:#fdf4ff; border:1px solid #f0abfc; color:#86198f; font-weight:600; padding:8px 6px;">
               👤 Chatipat
             </button>
           </div>
@@ -1590,6 +1607,6 @@
   <div class="toast-container" id="toast-container"></div>
 
   <!-- Scripts with cache busting -->
-  <script src="/static/js/app.js?v=4.7"></script>
+  <script src="/static/js/app.js?v=4.8"></script>
 </body>
 </html>

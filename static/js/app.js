@@ -6,15 +6,10 @@ class App {
   constructor() {
     let savedUser = null;
     try {
-      const authV = localStorage.getItem("sawasdee_auth_v");
-      if (authV !== "4.7") {
-        // Clear legacy auto-admin session so authentication screen is properly presented
-        localStorage.removeItem("sawasdee_user");
-        localStorage.setItem("sawasdee_auth_v", "4.7");
-        savedUser = null;
-      } else {
-        savedUser = JSON.parse(localStorage.getItem("sawasdee_user") || "null");
-      }
+      // Clear legacy persistent localStorage user so new visits always require login
+      localStorage.removeItem("sawasdee_user");
+      // Use sessionStorage so credentials persist only within active browser session/tab
+      savedUser = JSON.parse(sessionStorage.getItem("sawasdee_user") || "null");
     } catch (e) {
       savedUser = null;
     }
@@ -45,9 +40,22 @@ class App {
     this.initGlobalEnterKeyNavigation();
     this.setupDatePickers();
     this.updateAuthUI();
+
+    const splash = document.getElementById("app-splash-screen");
+    const splashStatus = document.getElementById("app-splash-status");
+
     if (this.user) {
+      if (splashStatus) splashStatus.textContent = "กำลังโหลดข้อมูลระบบ...";
       await this.fetchInitialData();
       this.startLiveSyncPoller();
+      if (splash) {
+        setTimeout(() => splash.classList.add("fade-out"), 300);
+      }
+    } else {
+      // Always stop at login screen when entering without active session
+      if (splash) {
+        setTimeout(() => splash.classList.add("fade-out"), 450);
+      }
     }
   }
 
@@ -4001,7 +4009,8 @@ class App {
       }
 
       this.user = data.user;
-      localStorage.setItem("sawasdee_user", JSON.stringify(this.user));
+      sessionStorage.setItem("sawasdee_user", JSON.stringify(this.user));
+      localStorage.removeItem("sawasdee_user");
       this.updateAuthUI();
       this.showToast(`เข้าสู่ระบบสำเร็จในฐานะ: ${this.user.name || this.user.username} ☁️`, "success");
 
@@ -4013,25 +4022,9 @@ class App {
     } finally {
       if (btn) {
         btn.disabled = false;
-        btn.textContent = "⚡ เข้าสู่ระบบ (Supabase Auth)";
+        btn.textContent = "⚡ เข้าสู่ระบบ (Login)";
       }
     }
-  }
-
-  async enterDirectly() {
-    this.user = {
-      username: "admin",
-      name: "ผู้ดูแลระบบ (Admin)",
-      role: "Admin",
-      status: "approved"
-    };
-    try {
-      localStorage.setItem("sawasdee_user", JSON.stringify(this.user));
-    } catch (e) {}
-    this.updateAuthUI();
-    this.showToast("เข้าสู่ระบบในฐานะ Admin เรียบร้อย! 🚀", "success");
-    await this.fetchInitialData();
-    this.startLiveSyncPoller();
   }
 
   async quickLogin(username, password) {
@@ -4039,8 +4032,12 @@ class App {
     const uInput = document.getElementById("gate-login-username");
     const pInput = document.getElementById("gate-login-password");
     if (uInput) uInput.value = username;
-    if (pInput) pInput.value = password;
-    await this.submitGateLogin();
+    if (pInput) pInput.value = password || "";
+    if (password) {
+      await this.submitGateLogin();
+    } else if (pInput) {
+      pInput.focus();
+    }
   }
 
   async submitGateRegister() {
@@ -4126,6 +4123,7 @@ class App {
 
   logout() {
     this.user = null;
+    sessionStorage.removeItem("sawasdee_user");
     localStorage.removeItem("sawasdee_user");
     this.updateAuthUI();
     this.showToast("ออกจากระบบเรียบร้อย", "info");
