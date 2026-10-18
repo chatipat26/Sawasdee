@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sawasdee Rental - ระบบบริหารจัดการรถเช่าระดับพรีเมียม</title>
-  <link rel="stylesheet" href="/static/css/app.css?v=2.6">
+  <link rel="stylesheet" href="/static/css/app.css?v=2.7">
   <link rel="icon" type="image/png" href="/static/sawasdee-logo.png">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -59,22 +59,6 @@
         <button id="btn-gate-submit-login" onclick="app.submitGateLogin()" class="gate-btn-submit">
           ⚡ เข้าสู่ระบบ (Login)
         </button>
-
-        <!-- Quick 1-Click Login Shortcuts for Staff & Admin -->
-        <div style="margin-top:16px; padding-top:14px; border-top:1px dashed #cbd5e1; text-align:center;">
-          <div style="font-size:12px; color:#64748b; margin-bottom:8px; font-weight:600;">⚡ เลือกล็อกอินด่วนสำหรับเจ้าหน้าที่:</div>
-          <div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
-            <button type="button" onclick="app.quickLogin('admin', 'admin123')" class="gate-btn-sub" style="flex:1; background:#eff6ff; border:1px solid #93c5fd; color:#1e40af; font-weight:600; padding:8px 6px;">
-              👑 Admin
-            </button>
-            <button type="button" onclick="app.quickLogin('chaiwat.u', 'A248624')" class="gate-btn-sub" style="flex:1; background:#f0fdf4; border:1px solid #86efac; color:#166534; font-weight:600; padding:8px 6px;">
-              👷 chaiwat.u
-            </button>
-            <button type="button" onclick="app.quickLogin('Chatipat', 'admin123')" class="gate-btn-sub" style="flex:1; background:#fdf4ff; border:1px solid #f0abfc; color:#86198f; font-weight:600; padding:8px 6px;">
-              👤 Chatipat
-            </button>
-          </div>
-        </div>
 
         <div class="gate-sub-actions">
           <button type="button" onclick="app.setGateMode('register')" class="gate-btn-sub">📝 สมัครสมาชิก</button>
@@ -1607,6 +1591,6 @@
   <div class="toast-container" id="toast-container"></div>
 
   <!-- Scripts with cache busting -->
-  <script src="/static/js/app.js?v=4.8"></script>
+  <script src="/static/js/app.js?v=4.9"></script>
 </body>
 </html>
