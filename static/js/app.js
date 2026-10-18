@@ -204,6 +204,22 @@ class App {
     const eTime = document.getElementById("filter-end-time");
     if (sTime) sTime.value = thNow.time;
     if (eTime) eTime.value = thNow.time;
+
+    // Enforce min date to prevent backdated entries
+    const wSDate = document.getElementById("walkin-start-date");
+    const wEDate = document.getElementById("walkin-end-date");
+    if (wSDate) {
+      wSDate.min = thNow.date;
+      if (!wSDate.value) wSDate.value = thNow.date;
+    }
+    if (wEDate) {
+      wEDate.min = thNow.date;
+      if (!wEDate.value) wEDate.value = thNext3.date;
+    }
+    const aDispDate = document.getElementById("assign-disp-date");
+    const aDispSDate = document.getElementById("assign-disp-start-date");
+    if (aDispDate) aDispDate.min = thNow.date;
+    if (aDispSDate) aDispSDate.min = thNow.date;
   }
 
   updateAuthUI() {
@@ -1747,7 +1763,7 @@ class App {
     }
   }
 
-  async submitAssign(jobType) {
+  async submitAssign(jobType, actionType = "prepare") {
     const isDisp = jobType === "Dispatch";
     const bkId = document.getElementById(isDisp ? "assign-disp-bk" : "assign-ret-bk").value;
     const worker = document.getElementById(isDisp ? "assign-disp-worker" : "assign-ret-worker").value;
@@ -1756,12 +1772,20 @@ class App {
     const sDate = (isDisp ? document.getElementById("assign-disp-date")?.value : null) || document.getElementById(isDisp ? "assign-disp-start-date" : "assign-ret-start-date")?.value || "";
     const eDate = (!isDisp ? document.getElementById("assign-ret-date")?.value : null) || document.getElementById(isDisp ? "assign-disp-end-date" : "assign-ret-end-date")?.value || "";
 
+    const thNow = this.getThaiDateTime(0);
+    if (isDisp && sDate && sDate < thNow.dateStr && actionType !== "handover") {
+      if (!confirm(`⚠️ วันที่ส่งมอบ (${sDate}) เป็นวันย้อนหลังก่อนวันปัจจุบัน (${thNow.dateStr})\nคุณต้องการดำเนินการต่อหรือไม่?`)) {
+        return;
+      }
+    }
+
     try {
       const res = await fetch(`/api/bookings/${bkId}/assign`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           job_type: jobType,
+          action_type: actionType === "handover" ? "handover_now" : (actionType === "complete" ? "complete_now" : "assign"),
           worker: worker,
           location: loc,
           time: tVal,
@@ -1778,23 +1802,18 @@ class App {
         this.confirmedAssignSides[bkId][jobType] = true;
 
         await this.loadBookings();
+        await this.loadCars();
         await this.loadBackOfficeJobs();
         if (isDisp) this.onSelectAssignDispBooking();
         else this.onSelectAssignRetBooking();
 
-        const updatedBk = this.bookings.find(x => x.booking_id === bkId) || data.booking || {};
-        const wDel = String(updatedBk.worker_delivery || "").trim();
-        const wRet = String(updatedBk.worker_return || "").trim();
-        const hasDel = Boolean(wDel && wDel !== "Wait" && wDel !== "-");
-        const hasRet = Boolean(wRet && wRet !== "Wait" && wRet !== "-");
-        const bothClicked = Boolean(this.confirmedAssignSides[bkId].Dispatch && this.confirmedAssignSides[bkId].Return);
-
-        if (bothClicked || (hasDel && hasRet)) {
-          this.showToast(`🎉 ออกใบงานครบทั้งส่งรถและรับรถคืน (${bkId}) เรียบร้อย! กำลังพาไปหน้าจัดทำสัญญาเช่า...`, "success");
-          await this.goToTabWithBooking("contract", bkId);
+        if (actionType === "handover") {
+          this.showToast(`🎉 ส่งมอบรถ ${bkId} เรียบร้อย! เปลี่ยนสถานะเป็น "กำลังเช่า" 🚗💨`, "success");
+        } else if (actionType === "complete") {
+          this.showToast(`🏁 รับรถคืน ${bkId} เรียบร้อย! เปลี่ยนสถานะเป็น "เสร็จสิ้น" และปล่อยรถว่างแล้ว 🎉`, "success");
         } else {
           const nextSideLabel = isDisp ? "ออกใบงานรับรถคืน (ฝั่งขวา)" : "ออกใบงานส่งรถ (ฝั่งซ้าย)";
-          this.showToast(`✅ บันทึกมอบหมายงาน ${isDisp ? 'ส่งรถ' : 'รับรถคืน'} และแจ้งเตือน LINE เรียบร้อย! (กรุณากดยืนยัน ${nextSideLabel} ต่อ)`, "success");
+          this.showToast(`✅ บันทึกเตรียมนัดหมาย ${isDisp ? 'ส่งรถ' : 'รับรถคืน'} (${data.booking?.status || 'เตรียมส่งมอบ'}) เรียบร้อย! (กรุณากดยืนยัน ${nextSideLabel} ต่อ)`, "success");
         }
       }
     } catch (e) {
@@ -1879,20 +1898,24 @@ class App {
       const curEDate = b.end_date || this.getThaiDateTime(3).dateStr;
       const curETime = b.end_time || thNow.timeStr;
       const curLoc = b.loc_delivery || 'หน้าร้าน / สาขา';
+      const isBackdated = curSDate < thNow.dateStr;
 
       schedEl.innerHTML = `
         <div style="display:flex; flex-direction:column; gap:6px;">
           <div>
             • <b>เริ่มสัญญา (Pick-up เวลาไทย):</b>
             <div style="display:flex; gap:6px; margin-top:3px;">
-              <input type="date" id="contract-edit-start-date" class="form-control" style="padding:4px 8px; font-size:12.5px;" value="${curSDate}">
+              <input type="date" id="contract-edit-start-date" class="form-control" style="padding:4px 8px; font-size:12.5px; border-color:${isBackdated ? '#EF4444' : '#CBD5E1'};" value="${curSDate}" min="${thNow.dateStr}" onchange="app.onContractStartDateChange(this.value)">
               <input type="time" id="contract-edit-start-time" class="form-control" style="padding:4px 8px; font-size:12.5px; max-width:115px;" value="${curSTime}">
+            </div>
+            <div id="contract-start-date-warn" style="display:${isBackdated ? 'block' : 'none'}; color:#DC2626; font-size:11.5px; font-weight:600; margin-top:4px; background:#FEF2F2; padding:6px 10px; border-radius:6px; border:1px solid #FCA5A5;">
+              ⚠️ ป้องกันการลงสัญญาย้อนหลัง: วันที่เริ่มสัญญา (${curSDate}) เป็นวันที่ในอดีต (วันนี้คือ ${thNow.dateStr}) ไม่อนุญาตให้บันทึกสัญญาย้อนหลัง กรุณาแก้ไขวันเริ่มสัญญาเป็นวันนี้หรือวันในอนาคต
             </div>
           </div>
           <div>
             • <b>สิ้นสุดสัญญา (Return เวลาไทย):</b>
             <div style="display:flex; gap:6px; margin-top:3px;">
-              <input type="date" id="contract-edit-end-date" class="form-control" style="padding:4px 8px; font-size:12.5px;" value="${curEDate}">
+              <input type="date" id="contract-edit-end-date" class="form-control" style="padding:4px 8px; font-size:12.5px;" value="${curEDate}" min="${curSDate > thNow.dateStr ? curSDate : thNow.dateStr}">
               <input type="time" id="contract-edit-end-time" class="form-control" style="padding:4px 8px; font-size:12.5px; max-width:115px;" value="${curETime}">
             </div>
           </div>
@@ -1901,13 +1924,22 @@ class App {
             <input type="text" id="contract-edit-loc" class="form-control" style="padding:4px 8px; font-size:12.5px; margin-top:3px;" value="${curLoc}">
           </div>
           <div>• <b>พนักงานส่งมอบ:</b> ${b.worker_delivery || 'ยังไม่ได้มอบหมาย'}</div>
-          <div style="display:flex; gap:6px; margin-top:4px; flex-wrap:wrap;">
-            <button type="button" onclick="app.setContractToCurrentThaiTime()" class="btn btn-outline btn-sm" style="font-size:11.5px; padding:4px 10px;">
-              🕒 ใช้เวลาไทยปัจจุบัน
+          <div>• <b>สถานะการจองปัจจุบัน:</b> <span class="badge ${b.status === 'กำลังเช่า' ? 'badge-primary' : (b.status === 'เสร็จสิ้น' ? 'badge-success' : 'badge-info')}">${b.status}</span></div>
+          <div style="display:flex; gap:6px; margin-top:6px; flex-wrap:wrap;">
+            <button type="button" onclick="app.setContractToCurrentThaiTime()" class="btn btn-outline btn-sm" style="font-size:11.5px; padding:4px 10px;" title="ปรับวันและเวลาให้ตรงกับปัจจุบัน">
+              🕒 ใช้วัน-เวลาปัจจุบัน
             </button>
             <button type="button" onclick="app.saveContractSchedule()" class="btn btn-primary btn-sm" style="font-size:11.5px; padding:4px 10px;">
               💾 บันทึกวัน-เวลาสัญญา
             </button>
+            ${['รอส่งมอบ', 'เตรียมส่งมอบ'].includes(b.status) ? `
+            <button type="button" onclick="app.quickConfirmHandover('${b.booking_id}')" class="btn btn-success btn-sm" style="font-size:11.5px; padding:4px 10px; font-weight:600;" title="ส่งมอบรถให้ลูกค้าแล้ว ➔ ปรับสถานะเป็น กำลังเช่า">
+              🚚 ส่งมอบรถแล้ว (กำลังเช่า) ➔
+            </button>` : ''}
+            ${['กำลังเช่า', 'เตรียมรับคืน'].includes(b.status) ? `
+            <button type="button" onclick="app.quickConfirmReturn('${b.booking_id}')" class="btn btn-warning btn-sm" style="font-size:11.5px; padding:4px 10px; font-weight:600; color:#1E293B;" title="ลูกค้านำรถมาคืนแล้ว ➔ ปรับสถานะเป็น เสร็จสิ้น">
+              🏁 รับคืนแล้ว (เสร็จสิ้น) ➔
+            </button>` : ''}
           </div>
         </div>
       `;
@@ -1956,10 +1988,40 @@ class App {
     }
   }
 
+  onContractStartDateChange(val) {
+    const thNow = this.getThaiDateTime(0);
+    const warnEl = document.getElementById("contract-start-date-warn");
+    const sDateInput = document.getElementById("contract-edit-start-date");
+    const eDateInput = document.getElementById("contract-edit-end-date");
+
+    if (eDateInput && val) {
+      eDateInput.min = val;
+      if (eDateInput.value && eDateInput.value < val) {
+        eDateInput.value = val;
+      }
+    }
+
+    if (val && val < thNow.dateStr) {
+      if (sDateInput) sDateInput.style.borderColor = "#EF4444";
+      if (warnEl) {
+        warnEl.style.display = "block";
+        warnEl.innerHTML = `⚠️ ป้องกันการลงสัญญาย้อนหลัง: วันที่เริ่มสัญญา (${val}) เป็นวันที่ในอดีต (วันนี้คือ ${thNow.dateStr}) ไม่อนุญาตให้บันทึกสัญญาย้อนหลัง กรุณาแก้ไขวันเริ่มสัญญาเป็นวันนี้หรือวันในอนาคต`;
+      }
+    } else {
+      if (sDateInput) sDateInput.style.borderColor = "#CBD5E1";
+      if (warnEl) warnEl.style.display = "none";
+    }
+  }
+
   async setContractToCurrentThaiTime() {
     const thNow = this.getThaiDateTime(0);
+    const sDateEl = document.getElementById("contract-edit-start-date");
     const sTimeEl = document.getElementById("contract-edit-start-time");
     const eTimeEl = document.getElementById("contract-edit-end-time");
+    if (sDateEl) {
+      sDateEl.value = thNow.dateStr;
+      this.onContractStartDateChange(thNow.dateStr);
+    }
     if (sTimeEl) sTimeEl.value = thNow.timeStr;
     if (eTimeEl) eTimeEl.value = thNow.timeStr;
     await this.saveContractSchedule();
@@ -1973,6 +2035,25 @@ class App {
     const eDate = document.getElementById("contract-edit-end-date")?.value;
     const eTime = document.getElementById("contract-edit-end-time")?.value;
     const loc = document.getElementById("contract-edit-loc")?.value;
+
+    const thNow = this.getThaiDateTime(0);
+
+    // Validation: prevent backdated contract start date
+    if (sDate && sDate < thNow.dateStr) {
+      alert(`⚠️ ป้องกันการลงสัญญาเช่าย้อนหลัง!\n\nไม่สามารถบันทึกวันเริ่มสัญญาเป็นวันที่ในอดีตได้ (${sDate})\nวันที่ปัจจุบันของระบบคือ: ${thNow.dateStr}\n\nกรุณาเลือกวันเริ่มสัญญาเป็นวันนี้หรือวันในอนาคต`);
+      const sDateEl = document.getElementById("contract-edit-start-date");
+      if (sDateEl) {
+        sDateEl.value = thNow.dateStr;
+        this.onContractStartDateChange(thNow.dateStr);
+        sDateEl.focus();
+      }
+      return;
+    }
+
+    if (eDate && sDate && eDate < sDate) {
+      alert(`⚠️ วันสิ้นสุดสัญญา (${eDate}) ต้องไม่เกิดขึ้นก่อนวันเริ่มสัญญา (${sDate})`);
+      return;
+    }
 
     const payload = {};
     if (sDate) payload.start_date = sDate;
@@ -1988,6 +2069,9 @@ class App {
         body: JSON.stringify(payload)
       });
       const data = await res.json();
+      if (!res.ok || data.detail) {
+        throw new Error(data.detail || "บันทึกไม่สำเร็จ");
+      }
       if (data.success) {
         if (!silent) {
           this.showToast("✅ บันทึกวัน-เวลาสัญญาเช่า (เวลาประเทศไทย) เรียบร้อย!", "success");
@@ -1997,6 +2081,75 @@ class App {
       }
     } catch (e) {
       if (!silent) this.showToast("เกิดข้อผิดพลาด: " + e.message, "danger");
+      else alert("เกิดข้อผิดพลาด: " + e.message);
+    }
+  }
+
+  async quickConfirmHandover(bkId) {
+    if (!bkId) return;
+    const b = (this.bookings || []).find(x => x.booking_id === bkId);
+    const carPlate = b ? b.car_id : "";
+    const custName = b ? b.customer : "";
+    
+    if (!confirm(`🚚 ยืนยันการส่งมอบรถ ${carPlate} ให้คุณ ${custName} เรียบร้อยแล้ว?\n\nระบบจะปรับสถานะรายการจองเป็น "กำลังเช่า" และปรับสถานะรถเป็น "กำลังเช่า" ทันที`)) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/bookings/${bkId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "กำลังเช่า" })
+      });
+      const data = await res.json();
+      if (data.success) {
+        this.showToast(`🎉 ส่งมอบรถ ${carPlate} สำเร็จ! สถานะเปลี่ยนเป็น "กำลังเช่า" 🚗💨`, "success");
+        await this.loadBookings();
+        await this.loadCars();
+        if (this.activeTab === "contract") this.onSelectContractBooking();
+        if (this.activeTab === "assign") {
+          this.onSelectAssignDispBooking();
+          this.onSelectAssignRetBooking();
+        }
+      } else {
+        throw new Error(data.detail || "อัปเดตสถานะไม่สำเร็จ");
+      }
+    } catch (e) {
+      this.showToast("เกิดข้อผิดพลาด: " + e.message, "danger");
+    }
+  }
+
+  async quickConfirmReturn(bkId) {
+    if (!bkId) return;
+    const b = (this.bookings || []).find(x => x.booking_id === bkId);
+    const carPlate = b ? b.car_id : "";
+    const custName = b ? b.customer : "";
+
+    if (!confirm(`🏁 ยืนยันการรับคืนรถ ${carPlate} จากคุณ ${custName} เรียบร้อยแล้ว?\n\nระบบจะปรับสถานะรายการจองเป็น "เสร็จสิ้น" และปล่อยรถคันนี้กลับมา "ว่างพร้อมใช้งาน" ทันที`)) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/bookings/${bkId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "เสร็จสิ้น" })
+      });
+      const data = await res.json();
+      if (data.success) {
+        this.showToast(`🏁 รับคืนรถ ${carPlate} เรียบร้อย! สถานะเป็น "เสร็จสิ้น" และรถว่างพร้อมใช้งานแล้ว 🎉`, "success");
+        await this.loadBookings();
+        await this.loadCars();
+        if (this.activeTab === "contract") this.onSelectContractBooking();
+        if (this.activeTab === "assign") {
+          this.onSelectAssignDispBooking();
+          this.onSelectAssignRetBooking();
+        }
+      } else {
+        throw new Error(data.detail || "อัปเดตสถานะไม่สำเร็จ");
+      }
+    } catch (e) {
+      this.showToast("เกิดข้อผิดพลาด: " + e.message, "danger");
     }
   }
 
@@ -2365,7 +2518,24 @@ class App {
             ${depBadge} ${rentBadge}
           </td>
           <td>
-            <span class="badge badge-info">${b.status}</span>
+            <div style="display:flex; flex-direction:column; align-items:flex-start; gap:4px;">
+              <span class="badge ${
+                b.status === 'กำลังเช่า' ? 'badge-primary' : 
+                (b.status === 'เสร็จสิ้น' ? 'badge-success' : 
+                (b.status === 'ยกเลิก' ? 'badge-danger' : 
+                (b.status === 'เตรียมส่งมอบ' ? 'badge-warning' : 'badge-info')))
+              }">${b.status}</span>
+              ${['รอส่งมอบ', 'เตรียมส่งมอบ'].includes(b.status) ? `
+                <button type="button" onclick="app.quickConfirmHandover('${b.booking_id}')" class="btn btn-sm btn-success" style="font-size:11px; padding:2px 8px; white-space:nowrap; border-radius:4px; font-weight:600;" title="ส่งมอบรถแล้ว ➔ ปรับสถานะเป็น กำลังเช่า">
+                  🚚 ส่งมอบรถแล้ว
+                </button>
+              ` : ''}
+              ${['กำลังเช่า', 'เตรียมรับคืน'].includes(b.status) ? `
+                <button type="button" onclick="app.quickConfirmReturn('${b.booking_id}')" class="btn btn-sm btn-warning" style="font-size:11px; padding:2px 8px; white-space:nowrap; color:#1E293B; border-radius:4px; font-weight:600;" title="ลูกค้านำรถมาคืนแล้ว ➔ ปรับสถานะเป็น เสร็จสิ้น">
+                  🏁 รับคืนแล้ว
+                </button>
+              ` : ''}
+            </div>
           </td>
           <td style="text-align:center; white-space:nowrap;">
             <a href="/api/pdf/contract/${b.booking_id}" target="_blank" class="btn btn-sm btn-secondary" title="สัญญาเช่า (Rental Agreement PDF)">📝</a>

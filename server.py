@@ -638,7 +638,22 @@ async def update_booking(bk_id: str, payload: Dict[str, Any]):
             target[k] = to_date(v)
         else:
             target[k] = v
-            
+
+    # When status is updated to "กำลังเช่า", update car status and dispatch_closed
+    if target.get("status") == "กำลังเช่า":
+        target["dispatch_closed"] = True
+        car_id = target.get("car_id")
+        if car_id in store.cars:
+            store.cars[car_id]["status"] = "กำลังเช่า"
+            store.async_sync_car(car_id, store.cars[car_id])
+    elif target.get("status") == "เสร็จสิ้น":
+        target["dispatch_closed"] = True
+        target["return_closed"] = True
+        car_id = target.get("car_id")
+        if car_id in store.cars:
+            store.cars[car_id]["status"] = "ว่างพร้อมใช้งาน"
+            store.async_sync_car(car_id, store.cars[car_id])
+
     store.async_sync_booking(target)
     return {"success": True, "booking": target}
 
@@ -773,17 +788,33 @@ async def assign_worker(bk_id: str, payload: Dict[str, Any]):
     if e_date_val:
         target["end_date"] = to_date(e_date_val)
 
+    action_type = payload.get("action_type", "assign")
+
     if job_type == "Dispatch":
         target["worker_delivery"] = worker
         target["loc_delivery"] = location
         target["start_time"] = time_val
-        if target.get("status") in ["รอส่งมอบ", "รอชำระมัดจำ"]:
+        if action_type == "handover_now":
+            target["status"] = "กำลังเช่า"
+            target["dispatch_closed"] = True
+            car_id = target.get("car_id")
+            if car_id in store.cars:
+                store.cars[car_id]["status"] = "กำลังเช่า"
+                store.async_sync_car(car_id, store.cars[car_id])
+        elif target.get("status") in ["รอส่งมอบ", "รอชำระมัดจำ"]:
             target["status"] = "เตรียมส่งมอบ"
     else:
         target["worker_return"] = worker
         target["loc_return"] = location
         target["end_time"] = time_val
-        if target.get("status") == "กำลังเช่า":
+        if action_type == "complete_now":
+            target["status"] = "เสร็จสิ้น"
+            target["return_closed"] = True
+            car_id = target.get("car_id")
+            if car_id in store.cars:
+                store.cars[car_id]["status"] = "ว่างพร้อมใช้งาน"
+                store.async_sync_car(car_id, store.cars[car_id])
+        elif target.get("status") == "กำลังเช่า":
             target["status"] = "เตรียมรับคืน"
 
     store.async_sync_booking(target)

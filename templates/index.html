@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sawasdee Rental - ระบบบริหารจัดการรถเช่าระดับพรีเมียม</title>
-  <link rel="stylesheet" href="/static/css/app.css?v=2.8">
+  <link rel="stylesheet" href="/static/css/app.css?v=2.9">
   <link rel="icon" type="image/png" href="/static/sawasdee-logo.png">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -473,11 +473,16 @@
                     <input type="time" id="assign-disp-time" class="form-control">
                   </div>
                 </div>
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-                  <button onclick="app.submitAssign('Dispatch')" class="btn btn-primary" style="width:100%;">
-                    🚚 บันทึกมอบหมาย & แจ้งเตือน LINE
-                  </button>
-                  <button onclick="app.goToTabWithBooking('contract', document.getElementById('assign-disp-bk').value)" class="btn btn-secondary" style="width:100%; background:#FAF7F2; border:1px solid #CBD5E1; color:#374151; font-weight:700;">
+                <div style="display:flex; flex-direction:column; gap:8px;">
+                  <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                    <button type="button" onclick="app.submitAssign('Dispatch', 'prepare')" class="btn btn-secondary" style="width:100%; font-weight:700;" title="บันทึกข้อมูลเตรียมนัดหมาย (สถานะ: เตรียมส่งมอบ)">
+                      📋 นัดหมาย (เตรียมส่งมอบ)
+                    </button>
+                    <button type="button" onclick="app.submitAssign('Dispatch', 'handover')" class="btn btn-primary" style="width:100%; background:#16a34a; border-color:#16a34a; font-weight:700;" title="ส่งมอบรถให้ลูกค้าจริงแล้ว (สถานะ: กำลังเช่า)">
+                      🚚 ส่งมอบรถแล้ว (กำลังเช่า) ➔
+                    </button>
+                  </div>
+                  <button type="button" onclick="app.goToTabWithBooking('contract', document.getElementById('assign-disp-bk').value)" class="btn btn-secondary" style="width:100%; background:#FAF7F2; border:1px solid #CBD5E1; color:#374151; font-weight:700;">
                     📝 ไปหน้าทำสัญญา ➔
                   </button>
                 </div>
@@ -531,9 +536,14 @@
                     <input type="time" id="assign-ret-time" class="form-control">
                   </div>
                 </div>
-                <button onclick="app.submitAssign('Return')" class="btn btn-primary" style="width:100%;">
-                  🔙 บันทึกมอบหมาย & แจ้งเตือน LINE
-                </button>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                  <button type="button" onclick="app.submitAssign('Return', 'prepare')" class="btn btn-secondary" style="width:100%; font-weight:700;" title="บันทึกเตรียมนัดหมายรับรถคืน (สถานะ: เตรียมรับคืน)">
+                    📋 นัดรับคืน (เตรียมรับคืน)
+                  </button>
+                  <button type="button" onclick="app.submitAssign('Return', 'complete')" class="btn btn-warning" style="width:100%; background:#f59e0b; border-color:#d97706; font-weight:700; color:#1F2937;" title="ลูกค้านำรถกลับมาคืนและปิดงาน (สถานะ: เสร็จสิ้น)">
+                    🏁 รับคืนแล้ว (เสร็จสิ้น) ➔
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -1591,6 +1601,6 @@
   <div class="toast-container" id="toast-container"></div>
 
   <!-- Scripts with cache busting -->
-  <script src="/static/js/app.js?v=5.0"></script>
+  <script src="/static/js/app.js?v=5.1"></script>
 </body>
 </html>
