@@ -4027,19 +4027,6 @@ class App {
     }
   }
 
-  async quickLogin(username, password) {
-    this.setGateMode("login");
-    const uInput = document.getElementById("gate-login-username");
-    const pInput = document.getElementById("gate-login-password");
-    if (uInput) uInput.value = username;
-    if (pInput) pInput.value = password || "";
-    if (password) {
-      await this.submitGateLogin();
-    } else if (pInput) {
-      pInput.focus();
-    }
-  }
-
   async submitGateRegister() {
     const un = (document.getElementById("gate-reg-username")?.value || "").trim();
     const fn = (document.getElementById("gate-reg-fullname")?.value || "").trim();
