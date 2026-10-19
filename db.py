@@ -404,6 +404,21 @@ class DataStore:
                         b_copy = dict(b)
                         if b_copy.get("start_date"): b_copy["start_date"] = to_date(b_copy["start_date"])
                         if b_copy.get("end_date"): b_copy["end_date"] = to_date(b_copy["end_date"])
+                        # Reconstruct payment slip and ref metadata from extension_history if stored
+                        for item in b_copy.get("extension_history", []) or []:
+                            if isinstance(item, dict) and item.get("type") == "payment_meta":
+                                if item.get("deposit_ref") and not b_copy.get("deposit_ref"):
+                                    b_copy["deposit_ref"] = item["deposit_ref"]
+                                if item.get("deposit_slip") and not b_copy.get("deposit_slip"):
+                                    b_copy["deposit_slip"] = item["deposit_slip"]
+                                if item.get("rental_ref") and not b_copy.get("rental_ref"):
+                                    b_copy["rental_ref"] = item["rental_ref"]
+                                if item.get("rental_slip") and not b_copy.get("rental_slip"):
+                                    b_copy["rental_slip"] = item["rental_slip"]
+                                if item.get("deposit_method") and not b_copy.get("deposit_method"):
+                                    b_copy["deposit_method"] = item["deposit_method"]
+                                if item.get("deposit_date") and not b_copy.get("deposit_date"):
+                                    b_copy["deposit_date"] = item["deposit_date"]
                         fresh_b.append(b_copy)
                     with self.lock:
                         self.bookings = fresh_b
@@ -526,6 +541,22 @@ class DataStore:
                 row = dict(b_obj)
                 if "start_date" in row and row["start_date"]: row["start_date"] = str(row["start_date"])
                 if "end_date" in row and row["end_date"]: row["end_date"] = str(row["end_date"])
+
+                # Persist payment metadata inside extension_history JSONB column
+                ext_list = list(row.get("extension_history") or [])
+                meta_item = {
+                    "type": "payment_meta",
+                    "deposit_ref": row.get("deposit_ref", ""),
+                    "deposit_slip": row.get("deposit_slip", ""),
+                    "rental_ref": row.get("rental_ref", ""),
+                    "rental_slip": row.get("rental_slip", ""),
+                    "deposit_method": row.get("deposit_method", ""),
+                    "deposit_date": row.get("deposit_date", "")
+                }
+                ext_list = [x for x in ext_list if not (isinstance(x, dict) and x.get("type") == "payment_meta")]
+                ext_list.append(meta_item)
+                row["extension_history"] = ext_list
+
                 VALID_COLS = {
                     'booking_id', 'car_id', 'customer', 'start_date', 'end_date',
                     'start_time', 'end_time', 'contract_type', 'base_price', 'discount',

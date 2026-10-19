@@ -24,6 +24,7 @@ from line_service import (
     notify_line_work_order,
     notify_line_maintenance,
     notify_line_close_maintenance,
+    notify_line_deposit,
     check_and_send_expiry_alerts,
     init_expiry_scheduler_thread
 )
@@ -583,8 +584,12 @@ async def create_booking(payload: Dict[str, Any]):
         "net_price": net_price,
         "deposit_amount": deposit_amount,
         "deposit_paid": deposit_paid,
+        "deposit_ref": payload.get("deposit_ref", "") or payload.get("payment_ref", ""),
+        "deposit_slip": payload.get("deposit_slip", "") or payload.get("slip_url", ""),
         "rental_paid": rental_paid,
         "remaining_rental": 0.0 if rental_paid else net_price,
+        "rental_ref": payload.get("rental_ref", ""),
+        "rental_slip": payload.get("rental_slip", ""),
         "created_by": payload.get("created_by", "admin"),
         "status": "รอส่งมอบ" if deposit_paid else "รอชำระมัดจำ",
         "dispatch_closed": False,
@@ -682,7 +687,9 @@ async def record_deposit(bk_id: str, payload: Dict[str, Any]):
         raise HTTPException(status_code=404, detail="ไม่พบรายการจอง")
 
     dep_amount = float(payload.get("deposit_amount", 5000.0))
-    dep_method = str(payload.get("payment_method", "เงินสด"))
+    dep_method = str(payload.get("payment_method", "โอนเงิน / สแกน QR"))
+    dep_ref = str(payload.get("payment_ref") or payload.get("deposit_ref") or "").strip()
+    dep_slip = str(payload.get("slip_url") or payload.get("deposit_slip") or "").strip()
     also_pay_rental = bool(payload.get("also_pay_rental", False))
     net_p = float(target.get("net_price", 0.0))
 
@@ -691,6 +698,8 @@ async def record_deposit(bk_id: str, payload: Dict[str, Any]):
     target["deposit_amount"] = dep_amount
     target["deposit_date"] = th_today
     target["deposit_method"] = dep_method
+    target["deposit_ref"] = dep_ref
+    target["deposit_slip"] = dep_slip
 
     if also_pay_rental:
         target["rental_paid"] = True
@@ -698,6 +707,8 @@ async def record_deposit(bk_id: str, payload: Dict[str, Any]):
         target["is_fully_paid"] = True
         target["rental_payment_date"] = th_today
         target["rental_payment_method"] = dep_method
+        target["rental_ref"] = dep_ref
+        target["rental_slip"] = dep_slip
     else:
         target["remaining_rental"] = net_p
 
@@ -713,6 +724,9 @@ async def record_deposit(bk_id: str, payload: Dict[str, Any]):
 
     # Record financial: Deposit
     car_comp = store.cars.get(car_id, {}).get("company", "Sawasdee Rent A Car")
+    dep_detail = f"รับเงินมัดจำประกันสัญญาตอนจองรถ ({dep_method})"
+    if dep_ref:
+        dep_detail += f" [Ref/สลิป: {dep_ref}]"
     f_dep = {
         "company": car_comp,
         "type": "รายรับ",
@@ -720,11 +734,14 @@ async def record_deposit(bk_id: str, payload: Dict[str, Any]):
         "amount": dep_amount,
         "ref": bk_id,
         "date": th_today,
-        "detail": f"รับเงินมัดจำประกันสัญญาตอนจองรถ ({dep_method})"
+        "detail": dep_detail
     }
     store.async_sync_financial(f_dep)
 
     if also_pay_rental:
+        rent_detail = f"ชำระค่าเช่ารถพร้อมมัดจำ {car_id} ({dep_method})"
+        if dep_ref:
+            rent_detail += f" [Ref/สลิป: {dep_ref}]"
         f_rent = {
             "company": car_comp,
             "type": "รายรับ",
@@ -732,9 +749,15 @@ async def record_deposit(bk_id: str, payload: Dict[str, Any]):
             "amount": net_p,
             "ref": bk_id,
             "date": th_today,
-            "detail": f"ชำระค่าเช่ารถพร้อมมัดจำ {car_id} ({dep_method})"
+            "detail": rent_detail
         }
         store.async_sync_financial(f_rent)
+
+    # Trigger LINE notification for deposit payment & slip
+    try:
+        notify_line_deposit(target, dep_amount, dep_method, dep_ref, dep_slip, also_pay_rental)
+    except Exception as line_err:
+        print(f"Error sending LINE deposit notification: {line_err}")
 
     return {"success": True, "booking": target}
 
@@ -744,7 +767,9 @@ async def settle_rental(bk_id: str, payload: Dict[str, Any]):
     if not target:
         raise HTTPException(status_code=404, detail="ไม่พบรายการจอง")
 
-    settle_method = str(payload.get("payment_method", "เงินสด"))
+    settle_method = str(payload.get("payment_method", "โอนเงิน / สแกน QR"))
+    settle_ref = str(payload.get("payment_ref") or payload.get("rental_ref") or "").strip()
+    settle_slip = str(payload.get("slip_url") or payload.get("rental_slip") or "").strip()
     net_p = float(target.get("net_price", 0.0))
 
     th_today = now_th().date().isoformat()
@@ -753,11 +778,18 @@ async def settle_rental(bk_id: str, payload: Dict[str, Any]):
     target["is_fully_paid"] = True
     target["rental_payment_date"] = th_today
     target["rental_payment_method"] = settle_method
+    if settle_ref:
+        target["rental_ref"] = settle_ref
+    if settle_slip:
+        target["rental_slip"] = settle_slip
 
     store.async_sync_booking(target)
 
     car_id = target.get("car_id")
     car_comp = store.cars.get(car_id, {}).get("company", "Sawasdee Rent A Car")
+    rent_detail = f"ชำระค่าเช่ารถคงเหลือ {car_id} ({settle_method})"
+    if settle_ref:
+        rent_detail += f" [Ref/สลิป: {settle_ref}]"
     f_rent = {
         "company": car_comp,
         "type": "รายรับ",
@@ -765,10 +797,30 @@ async def settle_rental(bk_id: str, payload: Dict[str, Any]):
         "amount": net_p,
         "ref": bk_id,
         "date": th_today,
-        "detail": f"ชำระค่าเช่ารถคงเหลือ {car_id} ({settle_method})"
+        "detail": rent_detail
     }
     store.async_sync_financial(f_rent)
 
+    return {"success": True, "booking": target}
+
+@app.post("/api/bookings/{bk_id}/payment-slip")
+async def update_payment_slip(bk_id: str, payload: Dict[str, Any]):
+    target = next((b for b in store.bookings if b.get("booking_id") == bk_id), None)
+    if not target:
+        raise HTTPException(status_code=404, detail="ไม่พบรายการจอง")
+
+    if "payment_ref" in payload or "deposit_ref" in payload:
+        ref_val = str(payload.get("payment_ref") or payload.get("deposit_ref") or "").strip()
+        target["deposit_ref"] = ref_val
+    if "slip_url" in payload or "deposit_slip" in payload:
+        slip_val = str(payload.get("slip_url") or payload.get("deposit_slip") or "").strip()
+        target["deposit_slip"] = slip_val
+    if "rental_ref" in payload:
+        target["rental_ref"] = str(payload.get("rental_ref") or "").strip()
+    if "rental_slip" in payload:
+        target["rental_slip"] = str(payload.get("rental_slip") or "").strip()
+
+    store.async_sync_booking(target)
     return {"success": True, "booking": target}
 
 # -------------------------------------------------------------------------
@@ -1324,8 +1376,9 @@ async def get_receipt_pdf(bk_id: str):
     cust, car = _resolve_cust_and_car(target)
     amt = float(target.get("net_price", 0.0))
     method = target.get("rental_payment_method") or target.get("final_payment_method", "เงินสด")
+    ref_no = target.get("rental_ref") or target.get("deposit_ref")
 
-    pdf_bytes = pdf_engine.generate_receipt_bytes(f"REC{bk_id}", target, cust, car, amt, method, "ค่าเช่ารถยนต์ (Vehicle Rental Fee)")
+    pdf_bytes = pdf_engine.generate_receipt_bytes(f"REC{bk_id}", target, cust, car, amt, method, "ค่าเช่ารถยนต์ (Vehicle Rental Fee)", ref_no=ref_no)
     return StreamingResponse(
         io.BytesIO(pdf_bytes),
         media_type="application/pdf",
@@ -1343,8 +1396,9 @@ async def get_deposit_receipt_pdf(bk_id: str):
     cust, car = _resolve_cust_and_car(target)
     amt = float(target.get("deposit_amount", 5000.0))
     method = target.get("deposit_method", "เงินสด")
+    ref_no = target.get("deposit_ref")
 
-    pdf_bytes = pdf_engine.generate_receipt_bytes(f"DEP{bk_id}", target, cust, car, amt, method, "เงินมัดจำประกันสัญญา (Security Deposit)")
+    pdf_bytes = pdf_engine.generate_receipt_bytes(f"DEP{bk_id}", target, cust, car, amt, method, "เงินมัดจำประกันสัญญา (Security Deposit)", ref_no=ref_no)
     return StreamingResponse(
         io.BytesIO(pdf_bytes),
         media_type="application/pdf",

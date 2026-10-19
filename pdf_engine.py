@@ -252,7 +252,7 @@ def generate_pdf_bytes(booking_info=None, customer_info=None, car_info=None):
     doc.build(elements)
     return pdf_buffer.getvalue()
 
-def generate_receipt_bytes(receipt_no, booking_info, customer_info, car_info, amount, method, item_desc="ค่าเช่ารถยนต์ (Vehicle Rental Fee)"):
+def generate_receipt_bytes(receipt_no, booking_info, customer_info, car_info, amount, method, item_desc="ค่าเช่ารถยนต์ (Vehicle Rental Fee)", ref_no=None):
     """Generate official receipt PDF"""
     pdf_buffer = io.BytesIO()
     doc = SimpleDocTemplate(pdf_buffer, pagesize=A4, rightMargin=40, leftMargin=40, topMargin=40, bottomMargin=40)
@@ -282,9 +282,11 @@ def generate_receipt_bytes(receipt_no, booking_info, customer_info, car_info, am
         ["Customer Name (ชื่อลูกค้า):", c_name],
         ["Vehicle (รถยนต์):", car_name],
         ["Description (รายการ):", item_desc],
-        ["Payment Method (ช่องทางชำระ):", method],
-        ["Amount Received (ยอดเงินที่รับชำระ):", f"THB {float(amount):,.2f}"]
+        ["Payment Method (ช่องทางชำระ):", method]
     ]
+    if ref_no:
+        data.append(["Slip / Ref No. (เลขอ้างอิงสลิป/รายการ):", str(ref_no)])
+    data.append(["Amount Received (ยอดเงินที่รับชำระ):", f"THB {float(amount):,.2f}"])
     t = Table(data, colWidths=[200, 300])
     t.setStyle(TableStyle([
         ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#FFFFFF')),

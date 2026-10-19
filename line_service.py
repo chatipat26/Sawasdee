@@ -284,6 +284,44 @@ def notify_line_close_maintenance(record: dict, car: dict = None):
     except Exception as e:
         print(f"Error notifying LINE close maintenance: {e}")
 
+def notify_line_deposit(booking_obj: dict, amount: float, method: str, ref: str = "", slip_url: str = "", also_rent: bool = False):
+    """
+    แจ้งเตือนผ่าน LINE เมื่อบันทึกรับเงินมัดจำ / ชำระค่าเช่า
+    ระบุข้อมูลลูกค้า ทะเบียน ยอดเงิน ช่องทาง เลข Ref สลิป และสถานะการแนบสลิป
+    """
+    if not booking_obj:
+        return
+    try:
+        bk_id = booking_obj.get("booking_id", "-")
+        car_plate = booking_obj.get("car_id", "-")
+        cust_name = booking_obj.get("customer", "-")
+
+        title = "💳 แจ้งเตือน: บันทึกรับเงินมัดจำ & ชำระค่าเช่า" if also_rent else "💳 แจ้งเตือน: บันทึกรับเงินมัดจำประกันสัญญา"
+
+        lines = [
+            f"🔔 {title}",
+            "────────────────────",
+            f"📋 เลขที่การจอง: {bk_id}",
+            f"🚗 ทะเบียนรถ: {car_plate}",
+            f"👤 ลูกค้า: {cust_name}",
+            f"💵 ยอดเงินมัดจำ: ฿{float(amount):,.2f}",
+            f"💳 ช่องทางชำระ: {method}"
+        ]
+        if ref:
+            lines.append(f"🧾 เลขที่ Ref / สลิป: {ref}")
+        if also_rent:
+            net_p = float(booking_obj.get("net_price", 0.0))
+            lines.append(f"💰 ชำระค่าเช่าสุทธิ: ฿{net_p:,.2f} (ชำระเต็มจำนวน)")
+        if slip_url:
+            lines.append("📎 หลักฐานการโอน: แนบรูปสลิปเรียบร้อยแล้ว")
+        lines.extend([
+            "────────────────────",
+            "ระบบบริหารจัดการ SawasdeeRental"
+        ])
+        send_line_push_async("\n".join(lines))
+    except Exception as e:
+        print(f"Error notifying LINE deposit: {e}")
+
 def check_and_send_expiry_alerts(cars_dict=None, target_days=(30, 31, 7, 0)):
     try:
         from check_expiry_alert import check_expiring_cars, build_alert_message

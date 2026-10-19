@@ -379,7 +379,7 @@
 
             <!-- Deposit Action Form -->
             <div id="deposit-action-section" style="display:none; border-top:1px solid var(--border); padding-top:16px;">
-              <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:16px; margin-bottom:16px;">
+              <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:16px; margin-bottom:14px;">
                 <div class="form-group">
                   <label>💵 ยอดเงินมัดจำประกันสัญญา (บาท):</label>
                   <input type="number" id="deposit-amount-input" class="form-control" value="5000" min="0" step="500">
@@ -387,23 +387,58 @@
                 <div class="form-group">
                   <label>💳 ช่องทางการชำระเงิน:</label>
                   <select id="deposit-method-input" class="form-control">
-                    <option value="เงินสด">เงินสด</option>
                     <option value="โอนเงิน / สแกน QR">โอนเงิน / สแกน QR</option>
                     <option value="บัตรเครดิต">บัตรเครดิต</option>
+                    <option value="เงินสด">เงินสด</option>
                     <option value="PayPal">PayPal</option>
                   </select>
                 </div>
-                <div class="form-group" style="justify-content:center;">
-                  <label style="display:flex; align-items:center; gap:8px; margin-top:20px; cursor:pointer;">
-                    <input type="checkbox" id="deposit-also-rent" style="width:16px; height:16px;">
-                    <b style="font-size:12.5px; color:#1E3A8A;">รับชำระค่าเช่าเต็มจำนวนพร้อมกันทันที</b>
-                  </label>
+                <div class="form-group">
+                  <label>🧾 เลข Ref สลิปโอนเงิน / รายการสลิปบัตร:</label>
+                  <input type="text" id="deposit-ref-input" class="form-control" placeholder="เช่น 2026101912345678 / App Ref / EDC Trace No.">
+                  <small style="font-size:11px; color:#64748B;">ระบุเลขอ้างอิงจากสลิปธนาคาร หรือสลิปรูดบัตรเพื่อใช้เป็นหลักฐาน</small>
                 </div>
+                <div class="form-group">
+                  <label>📎 แนบรูปสลิปหลักฐานการชำระเงิน:</label>
+                  <div style="display:flex; align-items:center; gap:8px;">
+                    <input type="file" id="deposit-slip-file" accept="image/*,application/pdf" style="display:none;" onchange="app.onDepositSlipSelected(this)">
+                    <button type="button" onclick="document.getElementById('deposit-slip-file').click()" class="btn btn-secondary" style="font-size:12.5px; padding:6px 12px; display:inline-flex; align-items:center; gap:6px; background:#F8FAFC; border:1px solid #CBD5E1; color:#334155; white-space:nowrap;">
+                      📁 เลือกไฟล์สลิป...
+                    </button>
+                    <span id="deposit-slip-status" style="font-size:12px; color:#64748B;">ยังไม่ได้แนบสลิป</span>
+                  </div>
+                  <input type="hidden" id="deposit-slip-url">
+                </div>
+              </div>
+
+              <!-- Uploaded Slip Preview Card -->
+              <div id="deposit-slip-preview-box" style="display:none; margin-bottom:14px; align-items:center; gap:12px; background:#F8FAFC; border:1px solid #CBD5E1; border-radius:8px; padding:8px 12px;">
+                <a id="deposit-slip-preview-link" href="#" target="_blank" title="คลิกเพื่อดูรูปสลิปขนาดใหญ่">
+                  <img id="deposit-slip-preview-img" src="" alt="สลิป" style="width:52px; height:52px; object-fit:cover; border-radius:6px; border:1px solid #94A3B8; cursor:pointer;">
+                </a>
+                <div style="flex:1; overflow:hidden;">
+                  <span id="deposit-slip-preview-name" style="font-size:12.5px; font-weight:700; color:#1E293B; display:block; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">สลิปหลักฐานการชำระเงิน</span>
+                  <div style="display:flex; gap:10px; align-items:center; margin-top:2px;">
+                    <a id="deposit-slip-open-btn" href="#" target="_blank" style="font-size:12px; color:#2563EB; font-weight:700; text-decoration:none;">🔍 ดูรูปสลิปเต็ม</a>
+                    <span style="color:#CBD5E1;">|</span>
+                    <button type="button" onclick="app.clearDepositSlip(true)" class="btn btn-sm btn-danger" style="padding:1px 6px; font-size:11px;">🗑️ ลบสลิปนี้</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-group" style="margin-bottom:16px;">
+                <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                  <input type="checkbox" id="deposit-also-rent" style="width:16px; height:16px;">
+                  <b style="font-size:12.5px; color:#1E3A8A;">รับชำระค่าเช่าเต็มจำนวนพร้อมกันทันที</b>
+                </label>
               </div>
 
               <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
                 <button onclick="app.submitDeposit()" class="btn btn-primary">
                   💳 ยืนยันบันทึกรับเงินมัดจำ & ล็อกคิวรถ
+                </button>
+                <button id="btn-save-slip-only" onclick="app.submitUpdateSlipOnly()" class="btn btn-secondary" style="display:none; background:#EFF6FF; border:1px solid #93C5FD; color:#1D4ED8; font-weight:700;" title="อัปเดตสลิปและเลข Ref เพิ่มเติม">
+                  💾 อัปเดตสลิป & เลข Ref
                 </button>
                 <button id="btn-settle-rental" onclick="app.submitSettle()" class="btn btn-success" style="display:none;">
                   🧾 บันทึกชำระค่าเช่าคงเหลือ
@@ -1957,6 +1992,6 @@
   <div class="toast-container" id="toast-container"></div>
 
   <!-- Scripts with cache busting -->
-  <script src="/static/js/app.js?v=5.4"></script>
+  <script src="/static/js/app.js?v=5.5"></script>
 </body>
 </html>
