@@ -3453,94 +3453,129 @@ class App {
   }
 
   openRenewalOrderModal(plate, mode = "both") {
-    const car = (this.cars || []).find(c => c.plate === plate);
-    if (!car) {
-      this.showToast("ไม่พบข้อมูลรถยนต์", "danger");
-      return;
-    }
-
-    const modalTitleEl = document.getElementById("modal-mnt-title");
-    if (modalTitleEl) {
-      modalTitleEl.textContent = "📋 ออกใบงานมอบหมายต่อทะเบียนภาษี / พ.ร.บ. / ประกันภัย";
-    }
-
-    // Populate car select in modal
-    const carSel = document.getElementById("mnt-car-select");
-    if (carSel) {
-      const opts = (this.cars || []).map(c => `<option value="${c.plate}">${c.plate} - ${c.brand || ''} ${c.model || ''} (${c.color || ''}) [${c.status}]</option>`);
-      carSel.innerHTML = opts.join("");
-      carSel.value = plate;
-    }
-
-    document.getElementById("mnt-form-id").value = "";
-    document.getElementById("mnt-car-plate").value = plate;
-    document.getElementById("mnt-car-info-title").textContent = `🚘 ${car.plate} — ${car.brand || ''} ${car.model || ''} (${car.company || ''})`;
-    document.getElementById("mnt-car-act").textContent = car.act_expiry || "-";
-    document.getElementById("mnt-car-ins").textContent = car.ins_expiry || "-";
-    document.getElementById("mnt-mileage").value = car.mileage || "15,000";
-
-    let orderType = "ต่อทะเบียนภาษี และ พ.ร.บ.";
-    let serviceDesc = "";
-    let garageName = "สำนักงานขนส่งกรุงเทพมหานครพื้นที่ 5 (จตุจักร)";
-    let garagePhone = "02-271-8888";
-    let garageLoc = "กรมการขนส่งทางบก จตุจักร กทม.";
-    let costEst = 1500;
-
-    if (mode === "act") {
-      orderType = "ต่อทะเบียนภาษี และ พ.ร.บ.";
-      serviceDesc = `1. ตรวจสอบเอกสาร และ ชำระภาษีรถยนต์ประจำปี\n2. ต่ออายุ พ.ร.บ. คุ้มครองผู้ประสบภัยจากรถ (วันหมดอายุเดิม: ${car.act_expiry || '-'})\n3. รับป้ายวงกลมแสดงการเสียภาษีและสำเนากรมธรรม์ พ.ร.บ.`;
-      garageName = "สำนักงานขนส่งกรุงเทพมหานครพื้นที่ 5 (จตุจักร)";
-      garagePhone = "02-271-8888";
-      garageLoc = "กรมการขนส่งทางบก จตุจักร กทม.";
-      costEst = 1500;
-    } else if (mode === "ins") {
-      orderType = "ต่อประกันภัยรถยนต์";
-      serviceDesc = `1. ต่ออายุกรมธรรม์ประกันภัยรถยนต์ประจำปี (วันหมดอายุเดิม: ${car.ins_expiry || '-'})\n2. ดำเนินการออกกรมธรรม์ความคุ้มครองฉบับใหม่ พร้อมขอใบเสร็จรับเงิน`;
-      garageName = "บริษัทประกันภัยรถยนต์ (ตามกรมธรรม์เดิม)";
-      garagePhone = "02-123-4567";
-      garageLoc = "สำนักงานใหญ่ / ตัวแทนประกันภัย";
-      costEst = 15000;
-    } else {
-      orderType = "ต่อทะเบียนภาษี พ.ร.บ. และ ประกันภัย (แพ็กคู่)";
-      serviceDesc = `1. ชำระภาษีรถยนต์ประจำปี + ต่ออายุ พ.ร.บ. (วันหมดอายุเดิม: ${car.act_expiry || '-'})\n2. ต่ออายุกรมธรรม์ประกันภัยรถยนต์ประจำปี (วันหมดอายุเดิม: ${car.ins_expiry || '-'})\n3. รับป้ายวงกลมภาษีและกรมธรรม์ประกันภัยฉบับใหม่`;
-      garageName = "สำนักงานขนส่ง และ บริษัทประกันภัย";
-      garagePhone = "02-271-8888";
-      garageLoc = "สำนักงานขนส่งทางบก / ตัวแทนประกัน";
-      costEst = 16500;
-    }
-
-    const typeSelect = document.getElementById("mnt-order-type");
-    if (typeSelect) {
-      let exists = Array.from(typeSelect.options).some(o => o.value === orderType);
-      if (!exists) {
-        const opt = document.createElement("option");
-        opt.value = orderType;
-        opt.textContent = `🔄 ${orderType}`;
-        typeSelect.appendChild(opt);
+    try {
+      const car = (this.cars || []).find(c => c.plate === plate);
+      if (!car) {
+        this.showToast("ไม่พบข้อมูลรถยนต์ " + plate, "danger");
+        return;
       }
-      typeSelect.value = orderType;
+
+      const modalTitleEl = document.getElementById("modal-mnt-title");
+      if (modalTitleEl) {
+        modalTitleEl.textContent = "📋 ออกใบงานมอบหมายต่อทะเบียนภาษี / พ.ร.บ. / ประกันภัย";
+      }
+
+      // 1. Populate car select in modal and select target plate
+      const carSel = document.getElementById("mnt-car-select");
+      if (carSel) {
+        const opts = (this.cars || []).map(c => `<option value="${c.plate}">${c.plate} - ${c.brand || ''} ${c.model || ''} (${c.color || ''}) [${c.status}]</option>`);
+        carSel.innerHTML = opts.join("");
+        carSel.value = plate;
+      }
+
+      // 2. Populate worker select
+      const workerSel = document.getElementById("mnt-assigned-worker");
+      if (workerSel) {
+        const userList = (this.users || []).filter(u => u.status === "approved" || !u.status);
+        const opts = userList.length > 0
+          ? userList.map(u => `<option value="${u.username}">${u.username} (${u.name || u.username}) [${u.role || 'Staff'}]</option>`)
+          : [
+              '<option value="admin">admin (ผู้ดูแลระบบ (Admin)) [Admin]</option>',
+              '<option value="chaiwat.u">chaiwat.u [Staff]</option>',
+              '<option value="sam">sam [Staff]</option>',
+              '<option value="sucheeda">sucheeda [Staff]</option>',
+              '<option value="Chatipat">Chatipat [Staff]</option>'
+            ];
+        workerSel.innerHTML = opts.join("");
+        if (this.user?.username && Array.from(workerSel.options).some(o => o.value === this.user.username)) {
+          workerSel.value = this.user.username;
+        }
+      }
+
+      // 3. Update car details pill & mileage
+      this.onMaintenanceCarSelected(plate);
+
+      // 4. Set order type and service description
+      let orderType = "ต่อทะเบียนภาษี และ พ.ร.บ.";
+      let serviceDesc = "";
+      let garageName = "สำนักงานขนส่งกรุงเทพมหานครพื้นที่ 5 (จตุจักร)";
+      let garagePhone = "02-271-8888";
+      let garageLoc = "กรมการขนส่งทางบก จตุจักร กทม.";
+      let costEst = 1500;
+
+      if (mode === "act") {
+        orderType = "ต่อทะเบียนภาษี และ พ.ร.บ.";
+        serviceDesc = `1. ตรวจสอบเอกสาร และ ชำระภาษีรถยนต์ประจำปี\n2. ต่ออายุ พ.ร.บ. คุ้มครองผู้ประสบภัยจากรถ (วันหมดอายุเดิม: ${car.act_expiry || '-'})\n3. รับป้ายวงกลมแสดงการเสียภาษีและสำเนากรมธรรม์ พ.ร.บ.`;
+        garageName = "สำนักงานขนส่งกรุงเทพมหานครพื้นที่ 5 (จตุจักร)";
+        garagePhone = "02-271-8888";
+        garageLoc = "กรมการขนส่งทางบก จตุจักร กทม.";
+        costEst = 1500;
+      } else if (mode === "ins") {
+        orderType = "ต่อประกันภัยรถยนต์";
+        serviceDesc = `1. ต่ออายุกรมธรรม์ประกันภัยรถยนต์ประจำปี (วันหมดอายุเดิม: ${car.ins_expiry || '-'})\n2. ดำเนินการออกกรมธรรม์ความคุ้มครองฉบับใหม่ พร้อมขอใบเสร็จรับเงิน`;
+        garageName = "บริษัทประกันภัยรถยนต์ (ตามกรมธรรม์เดิม)";
+        garagePhone = "02-123-4567";
+        garageLoc = "สำนักงานใหญ่ / ตัวแทนประกันภัย";
+        costEst = 15000;
+      } else {
+        orderType = "ต่อทะเบียนภาษี พ.ร.บ. และ ประกันภัย (แพ็กคู่)";
+        serviceDesc = `1. ชำระภาษีรถยนต์ประจำปี + ต่ออายุ พ.ร.บ. (วันหมดอายุเดิม: ${car.act_expiry || '-'})\n2. ต่ออายุกรมธรรม์ประกันภัยรถยนต์ประจำปี (วันหมดอายุเดิม: ${car.ins_expiry || '-'})\n3. รับป้ายวงกลมภาษีและกรมธรรม์ประกันภัยฉบับใหม่`;
+        garageName = "สำนักงานขนส่ง และ บริษัทประกันภัย";
+        garagePhone = "02-271-8888";
+        garageLoc = "สำนักงานขนส่งทางบก / ตัวแทนประกัน";
+        costEst = 16500;
+      }
+
+      const typeSelect = document.getElementById("mnt-order-type");
+      if (typeSelect) {
+        let exists = Array.from(typeSelect.options).some(o => o.value === orderType);
+        if (!exists) {
+          const opt = document.createElement("option");
+          opt.value = orderType;
+          opt.textContent = `🔄 ${orderType}`;
+          typeSelect.appendChild(opt);
+        }
+        typeSelect.value = orderType;
+      }
+
+      const formIdEl = document.getElementById("mnt-form-id");
+      if (formIdEl) formIdEl.value = "";
+      const itemsEl = document.getElementById("mnt-service-items");
+      if (itemsEl) itemsEl.value = serviceDesc;
+      const costEl = document.getElementById("mnt-cost");
+      if (costEl) costEl.value = costEst;
+      const centerEl = document.getElementById("mnt-service-center");
+      if (centerEl) centerEl.value = garageName;
+      const phoneEl = document.getElementById("mnt-service-phone");
+      if (phoneEl) phoneEl.value = garagePhone;
+      const locEl = document.getElementById("mnt-service-loc");
+      if (locEl) locEl.value = garageLoc;
+
+      const todayStr = new Date().toISOString().split("T")[0];
+      const tmrw = new Date();
+      tmrw.setDate(tmrw.getDate() + 1);
+      const tmrwStr = tmrw.toISOString().split("T")[0];
+
+      const schedDate = document.getElementById("mnt-sched-date");
+      if (schedDate) schedDate.value = todayStr;
+      const schedTime = document.getElementById("mnt-sched-time");
+      if (schedTime) schedTime.value = "09:00";
+      const expDate = document.getElementById("mnt-exp-date");
+      if (expDate) expDate.value = tmrwStr;
+      const expTime = document.getElementById("mnt-exp-time");
+      if (expTime) expTime.value = "17:00";
+
+      const notesEl = document.getElementById("mnt-notes");
+      if (notesEl) notesEl.value = `มอบหมายพนักงานไปดำเนินการต่อทะเบียน/ประกันภัย ทะเบียน ${car.plate} (เลขตัวถัง: ${car.chassis_no || '-'})`;
+      const updateCarCheck = document.getElementById("mnt-update-car-status");
+      if (updateCarCheck) updateCarCheck.checked = true;
+
+      // Open Modal
+      this.openModal("modal-new-maintenance");
+    } catch (err) {
+      console.error("Error opening renewal modal:", err);
+      alert("เกิดข้อผิดพลาดในการเปิดหน้าต่างใบงาน: " + err.message);
     }
-
-    document.getElementById("mnt-service-items").value = serviceDesc;
-    document.getElementById("mnt-cost").value = costEst;
-    document.getElementById("mnt-service-center").value = garageName;
-    document.getElementById("mnt-service-phone").value = garagePhone;
-    document.getElementById("mnt-service-loc").value = garageLoc;
-
-    const todayStr = new Date().toISOString().split("T")[0];
-    const tmrw = new Date();
-    tmrw.setDate(tmrw.getDate() + 1);
-    const tmrwStr = tmrw.toISOString().split("T")[0];
-
-    document.getElementById("mnt-sched-date").value = todayStr;
-    document.getElementById("mnt-sched-time").value = "09:00";
-    document.getElementById("mnt-exp-date").value = tmrwStr;
-    document.getElementById("mnt-exp-time").value = "17:00";
-    document.getElementById("mnt-notes").value = `มอบหมายพนักงานไปดำเนินการต่อทะเบียน/ประกันภัย ทะเบียน ${car.plate} (เลขตัวถัง: ${car.chassis_no || '-'})`;
-    document.getElementById("mnt-update-car-status").checked = true;
-
-    this.populateWorkerSelect("mnt-assigned-worker");
-    this.openModal("modal-new-maintenance");
   }
 
   async quickRenewCarExpiry(plate, field) {
