@@ -784,6 +784,64 @@ def notify_line_work_order(booking_obj, job_type="Dispatch", worker_name="", loc
     except Exception as e:
         print(f"Error in notify_line_work_order: {e}")
 
+def notify_line_maintenance(record: dict):
+    """
+    แจ้งเตือนผ่าน LINE เมื่อออกใบงานซ่อมบำรุง / ต่อทะเบียน-ประกัน
+    แสดง: รายการซ่อม, วันที่นัดรับคืน, ชื่ออู่, ผู้รับผิดชอบ, ราคาค่าซ่อม
+    """
+    if not record:
+        return
+    try:
+        mnt_id = record.get("id", "-")
+        car_plate = record.get("car_id", "-")
+        car_brand = str(record.get("car_brand", "")).strip()
+        car_model = str(record.get("car_model", "")).strip()
+        car_name = f"{car_brand} {car_model}".strip()
+        car_display = f"{car_name} (ทะเบียน {car_plate})" if car_name else f"ทะเบียน {car_plate}"
+        
+        order_type = record.get("order_type", "ซ่อมบำรุงทั่วไป / เช็คระยะ")
+        is_renewal = any(k in str(order_type) for k in ["ต่อทะเบียน", "พ.ร.บ.", "พรบ", "ประกัน", "ภาษี"])
+        title = "📄 ออกใบงานต่อทะเบียน/พรบ./ประกัน" if is_renewal else "🛠️ ออกใบงานซ่อมบำรุงรถยนต์"
+        
+        service_items = str(record.get("service_items", "-")).strip()
+        garage = record.get("service_center") or "-"
+        garage_phone = record.get("service_center_phone") or "-"
+        garage_display = f"{garage} (โทร: {garage_phone})" if (garage_phone and str(garage_phone).strip() not in ["", "-"]) else garage
+            
+        worker = record.get("assigned_worker") or "รอมอบหมาย"
+        sched_d = format_date_dmy(record.get("schedule_date"))
+        sched_t = record.get("schedule_time", "09:00")
+        exp_d = format_date_dmy(record.get("expected_finish_date"))
+        exp_t = record.get("expected_finish_time", "17:00")
+        
+        cost_val = float(record.get("cost", 0) or 0)
+        cost_str = f"{cost_val:,.2f} บาท" if cost_val > 0 else "ประเมินตามบิลจริง"
+        
+        notes = record.get("notes", "")
+        
+        lines = [
+            f"🔔 {title}",
+            "────────────────────",
+            f"📋 เลขที่ใบงาน: {mnt_id}",
+            f"🚗 ทะเบียนรถ: {car_display}",
+            f"🔧 ประเภทงาน: {order_type}",
+            f"📝 รายการซ่อม: {service_items}",
+            f"🏁 วันที่นัดรับคืน: {exp_d} (เวลา {exp_t} น.)",
+            f"🏢 ชื่ออู่/ศูนย์บริการ: {garage_display}",
+            f"👤 ผู้รับผิดชอบ: {worker}",
+            f"💰 ราคาค่าซ่อม: {cost_str}",
+            f"📅 วันที่ส่งซ่อม/นัดหมาย: {sched_d} (เวลา {sched_t} น.)"
+        ]
+        if notes and str(notes).strip() not in ["", "-"]:
+            lines.append(f"📌 หมายเหตุ: {notes}")
+        lines.extend([
+            "────────────────────",
+            "ระบบบริหารจัดการ SawasdeeRental"
+        ])
+        send_line_push_async("\n".join(lines))
+    except Exception as e:
+        print(f"Error in notify_line_maintenance: {e}")
+
 # -------------------------------------------------------------------------
 # LINE DAILY EXPIRY NOTIFICATION (พ.ร.บ. & ประกันภัย ล่วงหน้า 30 วัน, 7 วัน, วันหมดอายุ เวลา 20:00 น.)
 # -------------------------------------------------------------------------

@@ -22,6 +22,8 @@ import pdf_engine
 from line_service import (
     send_line_broadcast_message,
     notify_line_work_order,
+    notify_line_maintenance,
+    notify_line_close_maintenance,
     check_and_send_expiry_alerts,
     init_expiry_scheduler_thread
 )
@@ -1087,14 +1089,11 @@ async def create_maintenance(payload: Dict[str, Any]):
         
     store.async_sync_maintenance(record)
     
-    def _send_line_bg():
-        try:
-            line_msg = f"🔔 [ออกใบงานใหม่] {order_type}\n🚘 ทะเบียน: {car_id} ({record['car_brand']} {record['car_model']})\n🏢 อู่/ศูนย์/หน่วยงาน: {service_center}\n👤 ผู้รับผิดชอบ: {assigned_worker}\n📅 วันนัดหมาย: {sched_d} ({sched_t} น.)\n💰 งบประมาณ: {cost_val:,.2f} บาท\nเลขที่ใบงาน: {mnt_id}"
-            send_line_broadcast_message(line_msg)
-        except Exception:
-            pass
-    import threading
-    threading.Thread(target=_send_line_bg, daemon=True).start()
+    # Notify via LINE with all required maintenance details
+    try:
+        notify_line_maintenance(record)
+    except Exception as e:
+        print(f"Error notifying line maintenance: {e}")
         
     return {"success": True, "maintenance": record}
 
@@ -1141,6 +1140,12 @@ async def close_maintenance(mnt_id: str, payload: Dict[str, Any]):
     if not closed:
         raise HTTPException(status_code=404, detail="ไม่พบใบงานซ่อมบำรุงที่ต้องการปิดงาน")
         
+    # Notify via LINE that maintenance / renewal is closed
+    try:
+        notify_line_close_maintenance(closed, store.cars.get(closed.get("car_id")))
+    except Exception as e:
+        print(f"Error notifying line close maintenance: {e}")
+
     return {"success": True, "maintenance": closed, "car": store.cars.get(closed.get("car_id"))}
 
 @app.delete("/api/maintenance/{mnt_id}")
