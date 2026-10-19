@@ -400,3 +400,153 @@ def generate_job_pdf(booking_info, customer_info, car_info, job_type="Dispatch",
     
     doc.build(elements)
     return pdf_buffer.getvalue()
+
+def generate_maintenance_job_pdf(maintenance_record, car_info=None):
+    """Generate professional fleet maintenance & service work order PDF"""
+    pdf_buffer = io.BytesIO()
+    doc = SimpleDocTemplate(pdf_buffer, pagesize=A4, rightMargin=36, leftMargin=36, topMargin=36, bottomMargin=36)
+    elements = []
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle('MntTitleStyle', parent=styles['Heading1'], fontSize=15, leading=19, textColor=colors.HexColor('#1F2937'), alignment=1, fontName=FONT_BOLD)
+    sub_style = ParagraphStyle('MntSubStyle', parent=styles['Normal'], fontSize=9, leading=13, textColor=colors.HexColor('#555555'), alignment=1, fontName=FONT_REGULAR)
+    cell_style = ParagraphStyle('MntCellStyle', parent=styles['Normal'], fontSize=8.5, leading=12, textColor=colors.HexColor('#2D2D2D'), fontName=FONT_REGULAR)
+    cell_bold = ParagraphStyle('MntCellBold', parent=styles['Normal'], fontSize=8.5, leading=12, textColor=colors.HexColor('#1F2937'), fontName=FONT_BOLD)
+
+    rec = maintenance_record or {}
+    car = car_info or {}
+    th_now = now_th()
+
+    order_type = str(rec.get("order_type", "ซ่อมบำรุงทั่วไป / เช็คระยะ"))
+    is_renewal = any(k in order_type for k in ["ต่อทะเบียน", "พ.ร.บ.", "พรบ", "ประกัน"])
+    
+    if is_renewal:
+        doc_title = "VEHICLE TAX & INSURANCE RENEWAL WORK ORDER"
+        doc_subtitle = "(ใบสั่งงานต่อทะเบียน ภาษี พ.ร.บ. และประกันภัยรถยนต์)"
+    else:
+        doc_title = "FLEET MAINTENANCE & SERVICE WORK ORDER"
+        doc_subtitle = "(ใบสั่งงานซ่อมบำรุงและตรวจเช็คสภาพรถยนต์)"
+
+    elements.append(Paragraph("SAWASDEE CAR RENTAL CO., LTD. (บริษัท สวัสดี เรนทัล จำกัด)", title_style))
+    elements.append(Paragraph(f"<b>{doc_title}</b>", title_style))
+    elements.append(Paragraph(doc_subtitle, ParagraphStyle('MntSub2', parent=sub_style, fontSize=11, fontName=FONT_BOLD, textColor=colors.HexColor('#C2410C'))))
+    elements.append(Spacer(1, 4))
+    
+    mnt_id = rec.get("id", "-")
+    created_at = rec.get("created_at") or th_now.strftime("%d/%m/%Y %H:%M")
+    created_by = rec.get("created_by") or "Admin"
+    elements.append(Paragraph(f"เลขที่ใบงาน (Work Order No.): <b>{mnt_id}</b> | วันที่ออกเอกสาร: <b>{created_at} น.</b> | ผู้สั่งงาน: <b>{created_by}</b>", sub_style))
+    elements.append(Spacer(1, 14))
+
+    # 1. Car & Service Info Table
+    car_plate = rec.get("car_id") or car.get("plate", "-")
+    car_name = f"{car.get('brand', rec.get('car_brand', ''))} {car.get('model', rec.get('car_model', ''))}".strip() or "-"
+    car_color = car.get("color", rec.get("car_color", "-"))
+    mileage_val = rec.get("current_mileage") or car.get("mileage", "-")
+    chassis = car.get("chassis_no", "-")
+    comp = car.get("company", "บจก.สวัสดี เรนทัล (Sawasdee Rental)")
+
+    sched_s = f"{format_date_dmy(rec.get('schedule_date'))} ({rec.get('schedule_time', '09:00')} น.)"
+    sched_e = f"{format_date_dmy(rec.get('expected_finish_date'))} ({rec.get('expected_finish_time', '17:00')} น.)"
+
+    cost_val = float(rec.get("cost", 0))
+    cost_str = f"{cost_val:,.2f} บาท" if cost_val > 0 else "ตามใบแจ้งหนี้จริง"
+
+    sec1_data = [
+        [Paragraph("<b>ข้อมูลรถยนต์ (Vehicle):</b>", cell_bold), Paragraph(f"<b>{car_name}</b> (สี: {car_color})", cell_style), Paragraph("<b>ทะเบียน (Plate No.):</b>", cell_bold), Paragraph(f"<b>{car_plate}</b>", cell_bold)],
+        [Paragraph("<b>เลขตัวถัง (Chassis No.):</b>", cell_bold), Paragraph(str(chassis), cell_style), Paragraph("<b>เลขไมล์ปัจจุบัน (Mileage):</b>", cell_bold), Paragraph(f"{mileage_val} กม.", cell_style)],
+        [Paragraph("<b>กรรมสิทธิ์ / เจ้าของ:</b>", cell_bold), Paragraph(str(comp), cell_style), Paragraph("<b>ประเภทงาน (Job Type):</b>", cell_bold), Paragraph(f"<b>{order_type}</b>", cell_bold)],
+        [Paragraph("<b>อู่ / ศูนย์บริการ (Vendor):</b>", cell_bold), Paragraph(f"<b>{rec.get('service_center', '-')}</b>", cell_bold), Paragraph("<b>เบอร์โทรอู่ / ศูนย์:</b>", cell_bold), Paragraph(str(rec.get('service_center_phone', '-')), cell_style)],
+        [Paragraph("<b>สถานที่นัดหมาย / พิกัด:</b>", cell_bold), Paragraph(str(rec.get('service_location', '-')), cell_style), Paragraph("<b>พนักงานผู้รับผิดชอบ:</b>", cell_bold), Paragraph(f"<b>{rec.get('assigned_worker', '-')}</b>", cell_bold)],
+        [Paragraph("<b>กำหนดวันส่งมอบ / นัดหมาย:</b>", cell_bold), Paragraph(sched_s, cell_style), Paragraph("<b>กำหนดวันแล้วเสร็จ:</b>", cell_bold), Paragraph(sched_e, cell_style)],
+        [Paragraph("<b>งบประมาณ / ค่าซ่อมบำรุง:</b>", cell_bold), Paragraph(f"<b>{cost_str}</b>", cell_bold), Paragraph("<b>สถานะใบงาน (Status):</b>", cell_bold), Paragraph(f"<b>{rec.get('status', 'รอดำเนินการ')}</b>", cell_bold)],
+    ]
+    t1 = Table(sec1_data, colWidths=[130, 160, 115, 115])
+    t1.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#FFFFFF')),
+        ('BACKGROUND', (0,0), (0,-1), colors.HexColor('#FAF7F2')),
+        ('BACKGROUND', (2,0), (2,-1), colors.HexColor('#FAF7F2')),
+        ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#E0D5C7')),
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ('TOPPADDING', (0,0), (-1,-1), 4),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 4),
+        ('LEFTPADDING', (0,0), (-1,-1), 6),
+        ('RIGHTPADDING', (0,0), (-1,-1), 6),
+    ]))
+    elements.append(t1)
+    elements.append(Spacer(1, 14))
+
+    # 2. Repair / Service Items List
+    elements.append(Paragraph("<b>รายการงานซ่อมบำรุง / รายการที่ต้องดำเนินการ (REPAIR & SERVICE ITEMS):</b>", ParagraphStyle('ItemsHeader', parent=styles['Normal'], fontSize=10, fontName=FONT_BOLD, textColor=colors.HexColor('#1F2937'))))
+    elements.append(Spacer(1, 5))
+
+    raw_items = str(rec.get("service_items", "-")).replace("\r\n", "\n").replace("\r", "\n")
+    item_lines = [l.strip().lstrip("-•*").strip() for l in raw_items.split("\n") if l.strip()]
+    if not item_lines:
+        item_lines = [raw_items]
+
+    item_rows = [
+        [Paragraph("<b>ลำดับ</b>", cell_bold), Paragraph("<b>รายการตรวจเช็ค / ซ่อมบำรุง / ต่อทะเบียน-ประกัน</b>", cell_bold), Paragraph("<b>ผลการตรวจ / ดำเนินการ</b>", cell_bold)]
+    ]
+    for idx, it in enumerate(item_lines, 1):
+        item_rows.append([
+            Paragraph(f"<center>{idx}</center>", cell_style),
+            Paragraph(it, cell_style),
+            Paragraph("[  ] ดำเนินการเรียบร้อย", cell_style)
+        ])
+
+    while len(item_rows) < 6:
+        item_rows.append([
+            Paragraph(f"<center>{len(item_rows)}</center>", cell_style),
+            Paragraph("____________________________________________________________", cell_style),
+            Paragraph("[  ] ดำเนินการเรียบร้อย", cell_style)
+        ])
+
+    t2 = Table(item_rows, colWidths=[35, 345, 140])
+    t2.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#F3EDE4')),
+        ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#E0D5C7')),
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ('TOPPADDING', (0,0), (-1,-1), 4),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 4),
+        ('LEFTPADDING', (0,0), (-1,-1), 6),
+        ('RIGHTPADDING', (0,0), (-1,-1), 6),
+    ]))
+    elements.append(t2)
+    elements.append(Spacer(1, 12))
+
+    # 3. Notes & Instructions
+    notes_txt = rec.get("notes") or "กรุณาตรวจสอบสภาพรถก่อนและหลังเข้ารับบริการ พร้อมขอใบกำกับภาษี/ใบเสร็จรับเงินฉบับเต็ม"
+    notes_box = [
+        [Paragraph(f"<b>หมายเหตุ / คำสั่งการพิเศษ:</b> {notes_txt}", cell_style)]
+    ]
+    t3 = Table(notes_box, colWidths=[520])
+    t3.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#FFFBEB')),
+        ('BOX', (0,0), (-1,-1), 0.5, colors.HexColor('#FDE68A')),
+        ('TOPPADDING', (0,0), (-1,-1), 6),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 6),
+        ('LEFTPADDING', (0,0), (-1,-1), 8),
+        ('RIGHTPADDING', (0,0), (-1,-1), 8),
+    ]))
+    elements.append(t3)
+    elements.append(Spacer(1, 24))
+
+    # 4. Signatures
+    sig_data = [
+        [
+            Paragraph("<center>_______________________________<br/>( <b>" + str(created_by) + "</b> )<br/>ผู้สั่งงาน / ผู้อนุมัติซ่อมบำรุง</center>", cell_style),
+            Paragraph("<center>_______________________________<br/>( <b>" + str(rec.get('assigned_worker', '........................')) + "</b> )<br/>พนักงานผู้รับผิดชอบงาน</center>", cell_style),
+            Paragraph("<center>_______________________________<br/>( .................................................... )<br/>ศูนย์บริการ / อู่ผู้รับงาน</center>", cell_style)
+        ]
+    ]
+    t_sig = Table(sig_data, colWidths=[173, 173, 174])
+    t_sig.setStyle(TableStyle([
+        ('VALIGN', (0,0), (-1,-1), 'TOP'),
+        ('TOPPADDING', (0,0), (-1,-1), 4),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 4),
+    ]))
+    elements.append(t_sig)
+
+    doc.build(elements)
+    return pdf_buffer.getvalue()
+

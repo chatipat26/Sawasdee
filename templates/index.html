@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sawasdee Rental - ระบบบริหารจัดการรถเช่าระดับพรีเมียม</title>
-  <link rel="stylesheet" href="/static/css/app.css?v=2.9">
+  <link rel="stylesheet" href="/static/css/app.css?v=3.0">
   <link rel="icon" type="image/png" href="/static/sawasdee-logo.png">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -206,6 +206,11 @@
         <a class="nav-item" onclick="app.switchModule('backoffice')" id="nav-backoffice">
           <span>📋</span> Back Office (ตารางใบงาน)
           <span class="nav-badge" id="badge-backoffice-jobs" style="background:#2563EB;">0</span>
+        </a>
+
+        <a class="nav-item" onclick="app.switchModule('maintenance')" id="nav-maintenance">
+          <span>🛠️</span> ซ่อมบำรุง & บริการ
+          <span class="nav-badge" id="badge-maintenance-jobs" style="background:#F97316;">0</span>
         </a>
 
         <a class="nav-item" onclick="app.switchModule('dashboard')" id="nav-dashboard">
@@ -819,6 +824,120 @@
                 </tr>
               </thead>
               <tbody id="backoffice-jobs-tbody">
+                <!-- Rendered by JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- =================================================================== -->
+      <!-- 2.5 MODULE: MAINTENANCE & VEHICLE SERVICE WORK ORDERS                -->
+      <!-- =================================================================== -->
+      <section id="module-maintenance" style="display:none;">
+        <div class="card" style="margin-bottom:14px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+            <div>
+              <h2 style="font-size:19px; font-weight:800; color:#1F2937; margin:0; display:flex; align-items:center; gap:8px;">
+                🛠️ โมดุลซ่อมบำรุง & บริการ (Fleet Maintenance & Service Center)
+              </h2>
+              <div style="font-size:12px; color:#6B7280; margin-top:3px;">
+                ศูนย์จัดการงานซ่อมบำรุง ตรวจเช็คสภาพ ออกใบงานให้พนักงาน และต่อทะเบียนภาษี-พรบ.-ประกันภัยรถยนต์
+              </div>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+              <button onclick="app.openNewMaintenanceModal()" class="btn btn-sm btn-primary" style="background:#EA580C; border-color:#C2410C;">
+                ➕ ออกใบงานซ่อมบำรุงใหม่
+              </button>
+              <button onclick="app.openNewMaintenanceModal(null, 'renewal')" class="btn btn-sm" style="background:#059669; color:white; border-color:#047857; font-weight:700;">
+                📄 ออกใบงานต่อทะเบียน-พรบ.-ประกัน
+              </button>
+              <button onclick="app.loadMaintenanceRecords()" class="btn btn-secondary btn-sm" style="padding:6px 12px; font-size:12px;">
+                🔄 รีเฟรช
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4 KPI Stat Cards for Maintenance -->
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap:12px; margin-bottom:14px;">
+          <div class="card" style="padding:14px; border-left: 4px solid #EA580C; margin-bottom:0;">
+            <div style="font-size:11.5px; font-weight:700; color:#64748B;">🚗 กำลังซ่อมบำรุงในอู่/ศูนย์</div>
+            <div style="font-size:22px; font-weight:800; color:#EA580C; margin-top:4px;" id="mnt-kpi-in-progress">0 <span style="font-size:13px; font-weight:500; color:#64748B;">คัน</span></div>
+          </div>
+          <div class="card" style="padding:14px; border-left: 4px solid #F59E0B; margin-bottom:0;">
+            <div style="font-size:11.5px; font-weight:700; color:#64748B;">⏳ ใบงานรอดำเนินการ</div>
+            <div style="font-size:22px; font-weight:800; color:#D97706; margin-top:4px;" id="mnt-kpi-pending">0 <span style="font-size:13px; font-weight:500; color:#64748B;">รายการ</span></div>
+          </div>
+          <div class="card" style="padding:14px; border-left: 4px solid #10B981; margin-bottom:0;">
+            <div style="font-size:11.5px; font-weight:700; color:#64748B;">💰 รวมค่าซ่อมบำรุงและบริการ</div>
+            <div style="font-size:22px; font-weight:800; color:#059669; margin-top:4px;" id="mnt-kpi-total-cost">฿0</div>
+          </div>
+          <div class="card" style="padding:14px; border-left: 4px solid #3B82F6; margin-bottom:0;">
+            <div style="font-size:11.5px; font-weight:700; color:#64748B;">🛡️ งานต่อทะเบียน / พรบ. / ประกัน</div>
+            <div style="font-size:22px; font-weight:800; color:#2563EB; margin-top:4px;" id="mnt-kpi-renewals">0 <span style="font-size:13px; font-weight:500; color:#64748B;">รายการ</span></div>
+          </div>
+        </div>
+
+        <!-- Filter & Search Controls -->
+        <div class="card" style="margin-bottom:14px; padding:14px;">
+          <div style="display:grid; grid-template-columns: 2fr 1.5fr 1fr 1fr; gap:10px; align-items:center;">
+            <div>
+              <label style="font-size:11px; font-weight:700; color:#475569; display:block; margin-bottom:3px;">🔍 ค้นหา (ทะเบียน / เลขใบงาน / อู่ / รายการซ่อม):</label>
+              <input type="text" id="mnt-search-input" class="form-control" placeholder="พิมพ์ค้นหา..." oninput="app.renderMaintenanceRecords()" style="font-size:12px; padding:7px 10px;">
+            </div>
+            <div>
+              <label style="font-size:11px; font-weight:700; color:#475569; display:block; margin-bottom:3px;">📋 กรองประเภทงาน:</label>
+              <select id="mnt-filter-type" class="form-control" onchange="app.renderMaintenanceRecords()" style="font-size:12px; padding:7px 10px;">
+                <option value="ทั้งหมด">ทั้งหมด</option>
+                <option value="ซ่อมบำรุง">ซ่อมบำรุงทั่วไป / เช็คระยะ</option>
+                <option value="เครื่องยนต์">ซ่อมเครื่องยนต์ / ช่วงล่าง</option>
+                <option value="ตัวถัง">เคาะพ่นสี / ตัวถัง</option>
+                <option value="ต่อทะเบียน">ต่อทะเบียนภาษี / พ.ร.บ.</option>
+                <option value="ประกันภัย">ต่อประกันภัยรถยนต์</option>
+                <option value="ตรวจสภาพ">ตรวจสภาพรถ ตรอ.</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size:11px; font-weight:700; color:#475569; display:block; margin-bottom:3px;">🚦 กรองสถานะ:</label>
+              <select id="mnt-filter-status" class="form-control" onchange="app.renderMaintenanceRecords()" style="font-size:12px; padding:7px 10px;">
+                <option value="ทั้งหมด">ทั้งหมด</option>
+                <option value="กำลังซ่อมบำรุง">กำลังซ่อมบำรุง</option>
+                <option value="รอดำเนินการ">รอดำเนินการ</option>
+                <option value="เสร็จสิ้น">เสร็จสิ้น</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size:11px; font-weight:700; color:#475569; display:block; margin-bottom:3px;">🚘 เลือกรถ:</label>
+              <select id="mnt-filter-car" class="form-control" onchange="app.renderMaintenanceRecords()" style="font-size:12px; padding:7px 10px;">
+                <option value="ทั้งหมด">ทุกคัน</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Table of Maintenance Records -->
+        <div class="card">
+          <div class="card-title" style="font-size:15px; color:#1F2937; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
+            <span>📋 รายการประวัติการซ่อมบำรุงและบริการทั้งหมด (<span id="mnt-table-count">0</span> รายการ)</span>
+          </div>
+          <div class="table-responsive">
+            <table class="custom-table">
+              <thead>
+                <tr>
+                  <th>เลขที่ใบงาน</th>
+                  <th>ทะเบียน & รถยนต์</th>
+                  <th>ประเภทงาน</th>
+                  <th>รายการซ่อม / รายการบริการ</th>
+                  <th>ค่าซ่อมบำรุง (฿)</th>
+                  <th>อู่ / ศูนย์บริการ</th>
+                  <th>พนักงานผู้รับผิดชอบ</th>
+                  <th>กำหนดการ</th>
+                  <th>สถานะ</th>
+                  <th style="text-align:center;">ออกใบงาน & ปิดงาน</th>
+                </tr>
+              </thead>
+              <tbody id="maintenance-records-tbody">
                 <!-- Rendered by JS -->
               </tbody>
             </table>
@@ -1597,10 +1716,218 @@
     </div>
   </div>
 
+  <!-- ===================================================================== -->
+  <!-- MODAL: CREATE / ISSUE MAINTENANCE & RENEWAL WORK ORDER               -->
+  <!-- ===================================================================== -->
+  <div class="modal-backdrop" id="modal-new-maintenance">
+    <div class="modal-box" style="max-width: 680px; max-height: 90vh; overflow-y: auto;">
+      <div class="modal-header">
+        <div class="modal-title" id="modal-mnt-title">🛠️ ออกใบงานซ่อมบำรุง / ต่อทะเบียน-ประกัน</div>
+        <button class="modal-close" onclick="app.closeModal('modal-new-maintenance')">✕</button>
+      </div>
+
+      <input type="hidden" id="mnt-form-id" value="">
+
+      <!-- Vehicle Selection & Info Banner -->
+      <div style="background:#FFF7ED; border:1px solid #FFEDD5; border-radius:10px; padding:12px 14px; margin-bottom:14px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+          <div style="flex:1; min-width:240px;">
+            <label style="font-size:11.5px; font-weight:700; color:#9A3412; display:block; margin-bottom:4px;">🚘 เลือกรถยนต์ที่ต้องการดำเนินการ:</label>
+            <select id="mnt-car-select" class="form-control" onchange="app.onMaintenanceCarSelected(this.value)" style="font-weight:700; font-size:13px; color:#1F2937;">
+              <!-- Populated by JS -->
+            </select>
+          </div>
+          <div id="mnt-car-expiry-pill" style="font-size:11.5px; color:#C2410C; background:white; border:1px solid #FDBA74; padding:5px 10px; border-radius:8px;">
+            📅 พ.ร.บ.: <span id="mnt-car-act">-</span> | ประกัน: <span id="mnt-car-ins">-</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Job Type Selection -->
+      <div class="form-group" style="margin-bottom:12px;">
+        <label style="font-weight:700;">📋 ประเภทใบงาน (Work Order Type):</label>
+        <select id="mnt-order-type" class="form-control" onchange="app.onMaintenanceTypeChange(this.value)" style="font-weight:700;">
+          <option value="ซ่อมบำรุงทั่วไป / เช็คระยะ">🔧 ซ่อมบำรุงทั่วไป / เช็คระยะ (General Maintenance / Service)</option>
+          <option value="ซ่อมเครื่องยนต์ / ช่วงล่าง / ระบบไฟ">⚙️ ซ่อมเครื่องยนต์ / ช่วงล่าง / ระบบไฟ (Mechanical & Electrical)</option>
+          <option value="ซ่อมเคาะพ่นสี / ตัวถัง">🎨 ซ่อมเคาะพ่นสี / ตัวถัง (Body & Paint)</option>
+          <option value="ต่อทะเบียนภาษี และ พ.ร.บ.">📄 ต่อทะเบียนภาษี และ พ.ร.บ. (Tax & Compulsory Motor Insurance)</option>
+          <option value="ต่อประกันภัยรถยนต์">🛡️ ต่อประกันภัยรถยนต์ (Car Insurance Renewal)</option>
+          <option value="ตรวจสภาพรถยนต์ ตรอ.">🔍 ตรวจสภาพรถยนต์ ตรอ. (Vehicle Inspection)</option>
+        </select>
+      </div>
+
+      <!-- Quick Preset Tag Buttons for Service Items -->
+      <div style="margin-bottom:8px;">
+        <label style="font-size:11.5px; font-weight:700; color:#475569; display:block; margin-bottom:4px;">⚡ รายการบริการด่วน (คลิกเพื่อเพิ่มข้อความ):</label>
+        <div style="display:flex; flex-wrap:wrap; gap:5px;" id="mnt-quick-tags-container">
+          <button type="button" onclick="app.appendMntItem('เปลี่ยนถ่ายน้ำมันเครื่องสังเคราะห์แท้ + ไส้กรอง')" class="btn btn-sm" style="font-size:11px; padding:3px 8px; background:#F1F5F9; border:1px solid #CBD5E1; color:#334155;">+ ถ่ายน้ำมันเครื่อง</button>
+          <button type="button" onclick="app.appendMntItem('ตรวจเช็คระบบเบรก & เปลี่ยนผ้าเบรก')" class="btn btn-sm" style="font-size:11px; padding:3px 8px; background:#F1F5F9; border:1px solid #CBD5E1; color:#334155;">+ ระบบเบรก</button>
+          <button type="button" onclick="app.appendMntItem('สลับยาง & ถ่วงล้อ 4 เส้น')" class="btn btn-sm" style="font-size:11px; padding:3px 8px; background:#F1F5F9; border:1px solid #CBD5E1; color:#334155;">+ สลับยาง</button>
+          <button type="button" onclick="app.appendMntItem('เช็คระยะ 20,000 / 40,000 กม.')" class="btn btn-sm" style="font-size:11px; padding:3px 8px; background:#F1F5F9; border:1px solid #CBD5E1; color:#334155;">+ เช็คระยะ</button>
+          <button type="button" onclick="app.appendMntItem('ต่อภาษีประจำปี + พ.ร.บ. คุ้มครองผู้ประสบภัยจากรถ')" class="btn btn-sm" style="font-size:11px; padding:3px 8px; background:#EFF6FF; border:1px solid #BFDBFE; color:#1D4ED8;">+ ต่อภาษี+พรบ.</button>
+          <button type="button" onclick="app.appendMntItem('ต่อเบี้ยประกันภัยรถยนต์ชั้น 1')" class="btn btn-sm" style="font-size:11px; padding:3px 8px; background:#EFF6FF; border:1px solid #BFDBFE; color:#1D4ED8;">+ ต่อประกันชั้น 1</button>
+          <button type="button" onclick="app.appendMntItem('ตรวจสภาพ ตรอ.')" class="btn btn-sm" style="font-size:11px; padding:3px 8px; background:#ECFDF5; border:1px solid #A7F3D0; color:#047857;">+ ตรวจสภาพ ตรอ.</button>
+        </div>
+      </div>
+
+      <!-- Service Items Textarea -->
+      <div class="form-group" style="margin-bottom:12px;">
+        <label style="font-weight:700;">📝 รายการซ่อม / รายการบริการ (ระบุรายละเอียด):</label>
+        <textarea id="mnt-service-items" class="form-control" rows="3" placeholder="เช่น 1. เปลี่ยนถ่ายน้ำมันเครื่อง 2. เปลี่ยนผ้าเบรกหน้า 3. สลับยาง-ถ่วงล้อ..."></textarea>
+      </div>
+
+      <!-- Cost & Mileage Grid -->
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:12px;">
+        <div class="form-group">
+          <label style="font-weight:700;">💰 ค่าซ่อมบำรุง / งบประมาณ (THB):</label>
+          <input type="number" id="mnt-cost" class="form-control" placeholder="0" min="0" step="50" style="font-weight:700; color:#B45309;">
+        </div>
+        <div class="form-group">
+          <label style="font-weight:700;">⏱️ เลขไมล์ปัจจุบัน (กม.):</label>
+          <input type="text" id="mnt-mileage" class="form-control" placeholder="เช่น 25,400">
+        </div>
+      </div>
+
+      <!-- Garage / Service Center Info with Presets -->
+      <div class="form-group" style="margin-bottom:8px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+          <label style="font-weight:700;">🏢 อู่หรือศูนย์บริการที่ทำการซ่อมบำรุง:</label>
+          <div style="font-size:11px; color:#64748B;">
+            แนะนำ:
+            <a href="javascript:void(0)" onclick="app.fillMntGarage('ศูนย์บริการ โตโยต้า บัสส์ วิภาวดี', '02-555-9999', 'ถ.วิภาวดีรังสิต แขวงลาดยาว จตุจักร กทม.')" style="color:#EA580C; margin-right:4px;">โตโยต้า บัสส์</a> |
+            <a href="javascript:void(0)" onclick="app.fillMntGarage('ศูนย์บริการ ฮอนด้า พระราม 3', '02-294-0000', 'ถ.พระราม 3 บางคอแหลม กทม.')" style="color:#EA580C; margin-right:4px;">ฮอนด้า พระราม 3</a> |
+            <a href="javascript:void(0)" onclick="app.fillMntGarage('ค็อกพิท (Cockpit) สาขาเกษตร-นวมินทร์', '02-940-1111', 'ถ.ประเสริฐมนูกิจ')" style="color:#EA580C; margin-right:4px;">ค็อกพิท</a> |
+            <a href="javascript:void(0)" onclick="app.fillMntGarage('สำนักงานขนส่งกรุงเทพมหานครพื้นที่ 5 (จตุจักร)', '02-271-8888', 'กรมการขนส่งทางบก จตุจักร กทม.')" style="color:#2563EB;">ขนส่ง จตุจักร</a>
+          </div>
+        </div>
+        <input type="text" id="mnt-service-center" class="form-control" placeholder="ชื่อศูนย์บริการ / อู่ซ่อม / หน่วยงาน...">
+      </div>
+
+      <!-- Garage Phone & Location -->
+      <div style="display:grid; grid-template-columns: 1fr 2fr; gap:12px; margin-bottom:12px;">
+        <div class="form-group">
+          <label style="font-size:12px; font-weight:700;">📞 เบอร์โทรศัพท์อู่/ศูนย์:</label>
+          <input type="text" id="mnt-service-phone" class="form-control" placeholder="เช่น 02-xxx-xxxx">
+        </div>
+        <div class="form-group">
+          <label style="font-size:12px; font-weight:700;">📍 สถานที่นัดหมาย / พิกัดอู่:</label>
+          <input type="text" id="mnt-service-loc" class="form-control" placeholder="ที่อยู่อู่ หรือ ลิงก์ Google Maps">
+        </div>
+      </div>
+
+      <!-- Assigned Worker -->
+      <div class="form-group" style="margin-bottom:12px;">
+        <label style="font-weight:700;">👤 พนักงานผู้รับผิดชอบงาน (Assigned Staff):</label>
+        <select id="mnt-assigned-worker" class="form-control" style="font-weight:700;">
+          <!-- Populated by JS from users list -->
+        </select>
+      </div>
+
+      <!-- Schedule Dates and Times -->
+      <div style="display:grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap:8px; margin-bottom:14px;">
+        <div class="form-group">
+          <label style="font-size:11.5px; font-weight:700;">📅 วันที่ส่งซ่อม/นัด:</label>
+          <input type="date" id="mnt-sched-date" class="form-control">
+        </div>
+        <div class="form-group">
+          <label style="font-size:11.5px; font-weight:700;">⏰ เวลานัด:</label>
+          <input type="time" id="mnt-sched-time" class="form-control" value="09:00">
+        </div>
+        <div class="form-group">
+          <label style="font-size:11.5px; font-weight:700;">📅 กำหนดเสร็จ:</label>
+          <input type="date" id="mnt-exp-date" class="form-control">
+        </div>
+        <div class="form-group">
+          <label style="font-size:11.5px; font-weight:700;">⏰ เวลาเสร็จ:</label>
+          <input type="time" id="mnt-exp-time" class="form-control" value="17:00">
+        </div>
+      </div>
+
+      <!-- Additional Notes -->
+      <div class="form-group" style="margin-bottom:14px;">
+        <label style="font-size:12px; font-weight:700;">📝 หมายเหตุเพิ่มเติม / คำสั่งพิเศษ:</label>
+        <input type="text" id="mnt-notes" class="form-control" placeholder="เช่น ขอใบเสร็จฉบับเต็ม / เคลมประกัน / เปลี่ยนอะไหล่แท้">
+      </div>
+
+      <!-- Checkbox: Auto change car status to maintenance -->
+      <div style="background:#FAF7F2; border:1px solid #E5E7EB; border-radius:8px; padding:10px 12px; margin-bottom:16px;">
+        <label style="display:flex; align-items:center; gap:8px; font-size:12.5px; font-weight:700; color:#1F2937; cursor:pointer;">
+          <input type="checkbox" id="mnt-update-car-status" checked style="width:16px; height:16px; accent-color:#EA580C;">
+          <span>🔒 ปรับสถานะรถเป็น 'สถานะซ่อมบำรุง' อัตโนมัติ (ป้องกันการถูกจองซ้ำซ้อนระหว่างซ่อม)</span>
+        </label>
+      </div>
+
+      <!-- Action Buttons -->
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
+        <button type="button" onclick="app.closeModal('modal-new-maintenance')" class="btn btn-secondary">ยกเลิก</button>
+        <div style="display:flex; gap:8px;">
+          <button type="button" onclick="app.submitMaintenanceOrder(false)" class="btn btn-primary" style="background:#EA580C; border-color:#C2410C;">
+            💾 บันทึกใบงาน
+          </button>
+          <button type="button" onclick="app.submitMaintenanceOrder(true)" class="btn" style="background:#0284C7; color:white; border-color:#0369A1; font-weight:700;">
+            🖨️ บันทึก & เปิดใบงาน PDF ทันที
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL: CLOSE MAINTENANCE WORK ORDER (INSPECTION & RETURN CAR)        -->
+  <!-- ===================================================================== -->
+  <div class="modal-backdrop" id="modal-close-maintenance">
+    <div class="modal-box" style="max-width: 520px;">
+      <div class="modal-header">
+        <div class="modal-title">🏁 ตรวจรับรถยนต์กลับ & ปิดงานซ่อมบำรุง</div>
+        <button class="modal-close" onclick="app.closeModal('modal-close-maintenance')">✕</button>
+      </div>
+
+      <input type="hidden" id="close-mnt-id" value="">
+
+      <div style="background:#F0FDF4; border:1px solid #BBF7D0; border-radius:10px; padding:12px 14px; margin-bottom:14px;">
+        <div style="font-size:14px; font-weight:800; color:#166534;" id="close-mnt-car-title">🚘 -</div>
+        <div style="font-size:12px; color:#15803D; margin-top:3px;" id="close-mnt-summary-txt">ใบงาน: - | อู่: -</div>
+      </div>
+
+      <div class="form-group" style="margin-bottom:12px;">
+        <label style="font-weight:700;">💰 ค่าซ่อมบำรุงจริงที่ชำระ (บาท):</label>
+        <input type="number" id="close-mnt-actual-cost" class="form-control" placeholder="0" min="0" step="50" style="font-weight:700; color:#059669; font-size:15px;">
+      </div>
+
+      <div class="form-group" style="margin-bottom:12px;">
+        <label style="font-weight:700;">⏱️ เลขไมล์หลังตรวจรับเสร็จสิ้น (กม.):</label>
+        <input type="text" id="close-mnt-mileage" class="form-control" placeholder="เช่น 25,450">
+      </div>
+
+      <div class="form-group" style="margin-bottom:14px;">
+        <label style="font-weight:700;">📝 ผลการซ่อมบำรุง / บันทึกการตรวจรับสภาพ:</label>
+        <textarea id="close-mnt-notes" class="form-control" rows="3" placeholder="เช่น ซ่อมเปลี่ยนถ่ายของเหลวเรียบร้อยดี ทดสอบขับขี่ปกติ พร้อมนำกลับมาให้บริการ"></textarea>
+      </div>
+
+      <div style="background:#FAF7F2; border:1px solid #E5E7EB; border-radius:8px; padding:10px 12px; margin-bottom:16px;">
+        <label style="display:flex; align-items:center; gap:8px; font-size:12.5px; font-weight:700; color:#1F2937; cursor:pointer;">
+          <input type="checkbox" id="close-mnt-restore-car" checked style="width:16px; height:16px; accent-color:#10B981;">
+          <span>🟢 ปลดสถานะรถยนต์กลับเป็น 'ว่างพร้อมใช้งาน' ทันที</span>
+        </label>
+        <label style="display:flex; align-items:center; gap:8px; font-size:12.5px; font-weight:700; color:#1F2937; cursor:pointer; margin-top:6px;">
+          <input type="checkbox" id="close-mnt-record-expense" checked style="width:16px; height:16px; accent-color:#10B981;">
+          <span>💵 บันทึกค่าใช้จ่ายลงบัญชีรายจ่ายระบบการเงินอัตโนมัติ</span>
+        </label>
+      </div>
+
+      <div style="display:flex; justify-content:flex-end; gap:10px;">
+        <button type="button" onclick="app.closeModal('modal-close-maintenance')" class="btn btn-secondary">ยกเลิก</button>
+        <button type="button" onclick="app.submitCloseMaintenance()" class="btn btn-success" style="font-weight:700;">
+          🏁 ยืนยันตรวจรับรถ & ปิดงาน
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Toast Notification Container -->
   <div class="toast-container" id="toast-container"></div>
 
   <!-- Scripts with cache busting -->
-  <script src="/static/js/app.js?v=5.1"></script>
+  <script src="/static/js/app.js?v=5.2"></script>
 </body>
 </html>

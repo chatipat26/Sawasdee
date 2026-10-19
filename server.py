@@ -82,7 +82,8 @@ async def get_system_status():
     bk_sig = ",".join(sorted(f"{b.get('booking_id','')}:{b.get('status','')}:{b.get('deposit_paid','')}:{b.get('rental_paid','')}" for b in store.bookings))
     cj_sig = str(len(store.completed_jobs))
     car_sig = ",".join(sorted(f"{p}:{c.get('status','')}:{c.get('act_expiry','')}:{c.get('ins_expiry','')}" for p, c in store.cars.items()))
-    data_sig = f"{len(store.bookings)}|{bk_sig}|{cj_sig}|{len(store.customers)}|{len(store.financial_records)}|{hash(car_sig)}"
+    mnt_sig = ",".join(sorted(f"{m.get('id','')}:{m.get('status','')}:{m.get('cost','')}" for m in store.maintenance_records))
+    data_sig = f"{len(store.bookings)}|{bk_sig}|{cj_sig}|{len(store.customers)}|{len(store.financial_records)}|{len(store.maintenance_records)}|{hash(mnt_sig)}|{hash(car_sig)}"
     return {
         "status": "online",
         "last_sync_time": store.last_sync_time,
@@ -92,6 +93,7 @@ async def get_system_status():
         "total_bookings": len(store.bookings),
         "total_completed": len(store.completed_jobs),
         "total_users": len(store.users),
+        "total_maintenance": len(store.maintenance_records),
         "data_signature": data_sig,
         "timestamp": time.time()
     }
@@ -893,6 +895,37 @@ async def list_backoffice_jobs():
                 "net_price": b.get("net_price", 0)
             })
 
+    # 3. Maintenance & Renewal Work Orders
+    for m in store.maintenance_records:
+        m_stat = m.get("status", "รอดำเนินการ")
+        if m_stat in ["ยกเลิก", "เสร็จสิ้น"]:
+            continue
+        m_type = m.get("order_type", "ซ่อมบำรุงทั่วไป / เช็คระยะ")
+        is_renewal = any(k in m_type for k in ["ต่อทะเบียน", "พ.ร.บ.", "พรบ", "ประกัน"])
+        j_type = "Renewal" if is_renewal else "Maintenance"
+        j_label = "📄 ต่อทะเบียน/พรบ./ประกัน" if is_renewal else "🛠️ ซ่อมบำรุง (Maintenance)"
+        
+        jobs.append({
+            "job_type": j_type,
+            "job_type_label": j_label,
+            "booking_id": m.get("id"),
+            "car_id": m.get("car_id"),
+            "customer": f"🏢 {m.get('service_center', '-')}",
+            "customer_phone": m.get("service_center_phone") or "-",
+            "schedule": f"นัด: {format_date_dmy(m.get('schedule_date'))} ({m.get('schedule_time', '09:00')}) ➔ รับ: {format_date_dmy(m.get('expected_finish_date'))}",
+            "worker": m.get("assigned_worker") or "Wait",
+            "location": m.get("service_location") or m.get("service_center") or "-",
+            "status": m_stat,
+            "is_locked": False,
+            "deposit_paid": True,
+            "rental_paid": True,
+            "net_price": float(m.get("cost", 0)),
+            "service_items": m.get("service_items", "-"),
+            "is_maintenance": True,
+            "maintenance_id": m.get("id"),
+            "order_type": m_type
+        })
+
     jobs.sort(key=lambda x: (x["booking_id"], x["job_type"] == "Dispatch"), reverse=True)
     return jobs
 
@@ -953,6 +986,182 @@ async def upload_photo(file: UploadFile = File(...)):
     if not url:
         raise HTTPException(status_code=500, detail="อัปโหลดรูปภาพไม่สำเร็จ")
     return {"success": True, "url": url, "filename": safe_fn}
+
+# -------------------------------------------------------------------------
+# FLEET MAINTENANCE & SERVICE WORK ORDERS
+# -------------------------------------------------------------------------
+@app.get("/api/maintenance")
+async def list_maintenance(
+    car_id: Optional[str] = None,
+    status: Optional[str] = None,
+    order_type: Optional[str] = None,
+    search: Optional[str] = None
+):
+    records = list(store.maintenance_records)
+    if car_id and car_id != "ทั้งหมด":
+        records = [r for r in records if r.get("car_id") == car_id]
+    if status and status != "ทั้งหมด":
+        records = [r for r in records if r.get("status") == status]
+    if order_type and order_type != "ทั้งหมด":
+        records = [r for r in records if order_type in str(r.get("order_type", ""))]
+    if search:
+        kw = search.lower().strip()
+        records = [
+            r for r in records
+            if kw in str(r.get("id", "")).lower()
+            or kw in str(r.get("car_id", "")).lower()
+            or kw in str(r.get("car_brand", "")).lower()
+            or kw in str(r.get("car_model", "")).lower()
+            or kw in str(r.get("service_center", "")).lower()
+            or kw in str(r.get("service_items", "")).lower()
+            or kw in str(r.get("assigned_worker", "")).lower()
+        ]
+    return records
+
+@app.post("/api/maintenance")
+async def create_maintenance(payload: Dict[str, Any]):
+    car_id = str(payload.get("car_id", "")).strip()
+    if not car_id:
+        raise HTTPException(status_code=400, detail="กรุณาระบุทะเบียนรถ")
+    
+    car = store.cars.get(car_id, {})
+    now_str = now_th().strftime("%y%m%d%H%M%S")
+    mnt_id = f"MNT{now_str}"
+    
+    cost_val = 0.0
+    try:
+        cost_val = float(payload.get("cost", 0) or 0)
+    except Exception:
+        pass
+        
+    sched_d = payload.get("schedule_date") or date.today().strftime("%Y-%m-%d")
+    sched_t = payload.get("schedule_time") or "09:00"
+    exp_d = payload.get("expected_finish_date") or sched_d
+    exp_t = payload.get("expected_finish_time") or "17:00"
+    
+    order_type = payload.get("order_type") or "ซ่อมบำรุงทั่วไป / เช็คระยะ"
+    service_items = payload.get("service_items") or "-"
+    service_center = payload.get("service_center") or "-"
+    service_center_phone = payload.get("service_center_phone") or "-"
+    service_location = payload.get("service_location") or "-"
+    assigned_worker = payload.get("assigned_worker") or "admin"
+    current_mileage = payload.get("current_mileage") or car.get("mileage", "-")
+    notes = payload.get("notes") or ""
+    update_car_status = bool(payload.get("update_car_status", True))
+    created_by = payload.get("created_by") or "admin"
+    
+    record = {
+        "id": mnt_id,
+        "car_id": car_id,
+        "car_brand": car.get("brand", payload.get("car_brand", "")),
+        "car_model": car.get("model", payload.get("car_model", "")),
+        "car_color": car.get("color", payload.get("car_color", "")),
+        "order_type": order_type,
+        "service_items": service_items,
+        "cost": cost_val,
+        "actual_cost": 0.0,
+        "service_center": service_center,
+        "service_center_phone": service_center_phone,
+        "service_location": service_location,
+        "assigned_worker": assigned_worker,
+        "schedule_date": sched_d,
+        "schedule_time": sched_t,
+        "expected_finish_date": exp_d,
+        "expected_finish_time": exp_t,
+        "status": "กำลังซ่อมบำรุง" if update_car_status else "รอดำเนินการ",
+        "current_mileage": current_mileage,
+        "notes": notes,
+        "completion_notes": "",
+        "update_car_status": update_car_status,
+        "created_by": created_by,
+        "created_at": now_th().strftime("%Y-%m-%d %H:%M:%S"),
+        "completed_at": None
+    }
+    
+    if update_car_status and car_id in store.cars:
+        store.cars[car_id]["status"] = "ซ่อมบำรุง"
+        store.async_sync_car(car_id, store.cars[car_id])
+        
+    store.async_sync_maintenance(record)
+    
+    def _send_line_bg():
+        try:
+            line_msg = f"🔔 [ออกใบงานใหม่] {order_type}\n🚘 ทะเบียน: {car_id} ({record['car_brand']} {record['car_model']})\n🏢 อู่/ศูนย์: {service_center}\n👤 ผู้รับผิดชอบ: {assigned_worker}\n📅 วันนัดหมาย: {sched_d} ({sched_t} น.)\n💰 งบประมาณ: {cost_val:,.2f} บาท\nเลขที่ใบงาน: {mnt_id}"
+            send_line_broadcast_message(line_msg)
+        except Exception:
+            pass
+    import threading
+    threading.Thread(target=_send_line_bg, daemon=True).start()
+        
+    return {"success": True, "maintenance": record}
+
+@app.get("/api/maintenance/{mnt_id}")
+async def get_maintenance(mnt_id: str):
+    target = next((m for m in store.maintenance_records if m.get("id") == mnt_id), None)
+    if not target:
+        raise HTTPException(status_code=404, detail="ไม่พบข้อมูลใบงานซ่อมบำรุง")
+    return target
+
+@app.put("/api/maintenance/{mnt_id}")
+async def update_maintenance(mnt_id: str, payload: Dict[str, Any]):
+    target = next((m for m in store.maintenance_records if m.get("id") == mnt_id), None)
+    if not target:
+        raise HTTPException(status_code=404, detail="ไม่พบข้อมูลใบงานซ่อมบำรุง")
+    
+    for k, v in payload.items():
+        if k not in ["id", "created_at"]:
+            target[k] = v
+            
+    store.async_sync_maintenance(target)
+    return {"success": True, "maintenance": target}
+
+@app.post("/api/maintenance/{mnt_id}/close")
+async def close_maintenance(mnt_id: str, payload: Dict[str, Any]):
+    actual_cost = payload.get("actual_cost")
+    notes = payload.get("completion_notes", "")
+    new_mileage = payload.get("mileage")
+    recorded_by = payload.get("recorded_by", "admin")
+    
+    closed = store.close_maintenance_record(
+        mnt_id,
+        actual_cost=actual_cost,
+        completion_notes=notes,
+        new_mileage=new_mileage,
+        recorded_by=recorded_by
+    )
+    if not closed:
+        raise HTTPException(status_code=404, detail="ไม่พบใบงานซ่อมบำรุงที่ต้องการปิดงาน")
+        
+    return {"success": True, "maintenance": closed}
+
+@app.delete("/api/maintenance/{mnt_id}")
+async def delete_maintenance(mnt_id: str):
+    target = next((m for m in store.maintenance_records if m.get("id") == mnt_id), None)
+    if not target:
+        raise HTTPException(status_code=404, detail="ไม่พบข้อมูลใบงานซ่อมบำรุง")
+        
+    car_id = target.get("car_id")
+    if car_id and car_id in store.cars:
+        if store.cars[car_id].get("status") in ["ซ่อมบำรุง", "สถานะซ่อมบำรุง"]:
+            store.cars[car_id]["status"] = "ว่างพร้อมใช้งาน"
+            store.async_sync_car(car_id, store.cars[car_id])
+            
+    store.async_delete_maintenance(mnt_id)
+    return {"success": True, "message": "ลบใบงานสำเร็จ"}
+
+@app.get("/api/pdf/maintenance/{mnt_id}")
+async def get_maintenance_pdf(mnt_id: str):
+    target = next((m for m in store.maintenance_records if m.get("id") == mnt_id), None)
+    if not target:
+        raise HTTPException(status_code=404, detail="ไม่พบข้อมูลใบงานซ่อมบำรุง")
+        
+    car = store.cars.get(target.get("car_id"), {})
+    pdf_bytes = pdf_engine.generate_maintenance_job_pdf(target, car)
+    return StreamingResponse(
+        io.BytesIO(pdf_bytes),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"inline; filename=WorkOrder_{mnt_id}.pdf"}
+    )
 
 # -------------------------------------------------------------------------
 # EXECUTIVE DASHBOARD & REPORTS

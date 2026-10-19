@@ -21,6 +21,7 @@ class App {
     this.backofficeJobs = [];
     this.completedJobs = [];
     this.users = [];
+    this.maintenanceRecords = [];
     this.activeModule = "frontoffice";
     this.activeTab = "fleet";
     this.uploadedPhotos = [];
@@ -267,6 +268,7 @@ class App {
         this.loadCustomers().catch(e => console.error("loadCustomers err:", e)),
         this.loadBookings().catch(e => console.error("loadBookings err:", e)),
         this.loadBackOfficeJobs().catch(e => console.error("loadBackOfficeJobs err:", e)),
+        this.loadMaintenanceRecords().catch(e => console.error("loadMaintenance err:", e)),
         this.loadDashboardKPIs().catch(e => console.error("loadDashboardKPIs err:", e))
       ]);
       this.onFilterChange();
@@ -543,12 +545,13 @@ class App {
     const navBtn = document.getElementById(`nav-${modName}`);
     if (navBtn) navBtn.classList.add("active");
 
-    ["frontoffice", "backoffice", "customers", "dashboard", "users"].forEach(m => {
+    ["frontoffice", "backoffice", "maintenance", "customers", "dashboard", "users"].forEach(m => {
       const sec = document.getElementById(`module-${m}`);
       if (sec) sec.style.display = (m === modName) ? "block" : "none";
     });
 
     if (modName === "backoffice") this.loadBackOfficeJobs();
+    if (modName === "maintenance") this.loadMaintenanceRecords();
     if (modName === "customers") this.renderCustomersTable();
     if (modName === "dashboard") {
       this.loadDashboardKPIs();
@@ -807,11 +810,14 @@ class App {
                 <div class="car-title">${c.brand} ${c.model}</div>
                 <div class="car-plate">🚘 ${c.plate}</div>
               </div>
-              <div style="display:flex; gap:5px; align-items:center;">
-                <button type="button" onclick="app.openEditCarModal('${safePlate}')" class="btn btn-sm btn-secondary" style="padding:4px 8px; font-size:11.5px; background:#FAF7F2; border:1px solid #D1D5DB; color:#374151; white-space:nowrap; border-radius:6px;" title="แก้ไขรายละเอียดรถและรูปรถ">
+              <div style="display:flex; gap:4px; align-items:center;">
+                <button type="button" onclick="app.openNewMaintenanceModal('${safePlate}')" class="btn btn-sm" style="padding:4px 7px; font-size:11px; background:#FFF7ED; border:1px solid #FDBA74; color:#C2410C; white-space:nowrap; border-radius:6px; font-weight:700; cursor:pointer;" title="แจ้งซ่อมบำรุง / ออกใบงานต่อทะเบียน-ประกัน">
+                  🛠️ ซ่อมบำรุง
+                </button>
+                <button type="button" onclick="app.openEditCarModal('${safePlate}')" class="btn btn-sm btn-secondary" style="padding:4px 7px; font-size:11px; background:#FAF7F2; border:1px solid #D1D5DB; color:#374151; white-space:nowrap; border-radius:6px;" title="แก้ไขรายละเอียดรถและรูปรถ">
                   ✏️ แก้ไขรถ
                 </button>
-                <button type="button" onclick="app.deleteCarByPlate('${safePlate}')" class="btn btn-sm btn-danger" style="padding:4px 8px; font-size:11.5px; background:#FEE2E2; border:1px solid #FCA5A5; color:#DC2626; white-space:nowrap; border-radius:6px; cursor:pointer;" title="ลบข้อมูลรถยนต์คันนี้ออกจากระบบ">
+                <button type="button" onclick="app.deleteCarByPlate('${safePlate}')" class="btn btn-sm btn-danger" style="padding:4px 7px; font-size:11px; background:#FEE2E2; border:1px solid #FCA5A5; color:#DC2626; white-space:nowrap; border-radius:6px; cursor:pointer;" title="ลบข้อมูลรถยนต์คันนี้ออกจากระบบ">
                   🗑️ ลบ
                 </button>
               </div>
@@ -2588,7 +2594,38 @@ class App {
 
     tbody.innerHTML = filtered.map(j => {
       const isDisp = j.job_type === "Dispatch";
-      const typeBadge = isDisp ? '<span class="badge badge-info">🚚 ส่งมอบรถ (Dispatch)</span>' : '<span class="badge badge-warning">🔙 รับรถคืน (Return)</span>';
+      const isMnt = j.is_maintenance || j.job_type === "Maintenance" || j.job_type === "Renewal";
+      let typeBadge = '';
+      if (j.job_type === "Maintenance") {
+        typeBadge = '<span class="badge" style="background:#FFF7ED; color:#C2410C; border:1px solid #FDBA74; font-weight:700;">🛠️ ซ่อมบำรุง</span>';
+      } else if (j.job_type === "Renewal") {
+        typeBadge = '<span class="badge" style="background:#F0FDF4; color:#15803D; border:1px solid #BBF7D0; font-weight:700;">📄 ต่อทะเบียน/พรบ./ประกัน</span>';
+      } else if (isDisp) {
+        typeBadge = '<span class="badge badge-info">🚚 ส่งมอบรถ (Dispatch)</span>';
+      } else {
+        typeBadge = '<span class="badge badge-warning">🔙 รับรถคืน (Return)</span>';
+      }
+
+      let actionButtons = '';
+      if (isMnt) {
+        actionButtons = `
+          <a href="/api/pdf/maintenance/${j.booking_id}" target="_blank" class="btn btn-sm btn-secondary" title="พิมพ์ใบงาน PDF">📋</a>
+          <button onclick="app.openCloseMaintenanceModal('${j.booking_id}')" class="btn btn-sm btn-success" style="font-weight:700;" title="ตรวจรับรถ & ปิดงาน">
+            🏁 ปิดงานซ่อม
+          </button>
+        `;
+      } else {
+        actionButtons = `
+          <a href="/api/pdf/job/${j.booking_id}" target="_blank" class="btn btn-sm btn-secondary" title="ใบตรวจสภาพ PDF">📋</a>
+          <button onclick="app.openHandoverModal('${j.booking_id}', '${j.job_type}')" class="btn btn-sm btn-primary" ${j.is_locked ? 'disabled title="ต้องปิดงานส่งมอบก่อน"' : ''}>
+            🔍 ตรวจรับส่ง & ปิดงาน
+          </button>
+        `;
+      }
+
+      const statusBadge = (j.status === "กำลังซ่อมบำรุง")
+        ? '<span class="badge" style="background:#FFF7ED; color:#C2410C; border:1px solid #FDBA74;">🛠️ กำลังซ่อมบำรุง</span>'
+        : `<span class="badge badge-gray">${j.status}</span>`;
 
       return `
         <tr>
@@ -2604,12 +2641,9 @@ class App {
           <td style="max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${j.location}">
             ${j.location.startsWith("http") ? `<a href="${j.location}" target="_blank" style="color:#2563EB;">📍 แผนที่นัดหมาย</a>` : j.location}
           </td>
-          <td><span class="badge badge-gray">${j.status}</span></td>
+          <td>${statusBadge}</td>
           <td style="text-align:center; white-space:nowrap;">
-            <a href="/api/pdf/job/${j.booking_id}" target="_blank" class="btn btn-sm btn-secondary" title="ใบตรวจสภาพ PDF">📋</a>
-            <button onclick="app.openHandoverModal('${j.booking_id}', '${j.job_type}')" class="btn btn-sm btn-primary" ${j.is_locked ? 'disabled title="ต้องปิดงานส่งมอบก่อน"' : ''}>
-              🔍 ตรวจรับส่ง & ปิดงาน
-            </button>
+            ${actionButtons}
           </td>
         </tr>
       `;
@@ -4284,6 +4318,427 @@ class App {
     localStorage.removeItem("sawasdee_user");
     this.updateAuthUI();
     this.showToast("ออกจากระบบเรียบร้อย", "info");
+  }
+
+  // --- Maintenance & Service Module Methods ---
+  formatDateDmy(dateVal) {
+    if (!dateVal) return "-";
+    try {
+      const s = String(dateVal).split("T")[0];
+      if (s.includes("-")) {
+        const parts = s.split("-");
+        if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+      }
+      return s;
+    } catch (e) {
+      return String(dateVal);
+    }
+  }
+
+  async loadMaintenanceRecords() {
+    try {
+      const res = await fetch("/api/maintenance");
+      if (res.ok) {
+        this.maintenanceRecords = await res.json();
+        const badge = document.getElementById("badge-maintenance-jobs");
+        const activeCount = this.maintenanceRecords.filter(m => m.status !== "เสร็จสิ้น" && m.status !== "ยกเลิก").length;
+        if (badge) badge.textContent = activeCount;
+        this.populateMaintenanceDropdowns();
+        this.renderMaintenanceRecords();
+      }
+    } catch (e) {
+      console.error("loadMaintenanceRecords error:", e);
+    }
+  }
+
+  populateMaintenanceDropdowns() {
+    const carSel = document.getElementById("mnt-filter-car");
+    if (carSel) {
+      const cur = carSel.value;
+      const opts = ['<option value="ทั้งหมด">ทุกคัน</option>'];
+      (this.cars || []).forEach(c => {
+        opts.push(`<option value="${c.plate}">${c.plate} - ${c.brand || ''} ${c.model || ''}</option>`);
+      });
+      carSel.innerHTML = opts.join("");
+      if (cur) carSel.value = cur;
+    }
+  }
+
+  renderMaintenanceRecords() {
+    const tbody = document.getElementById("maintenance-records-tbody");
+    if (!tbody) return;
+
+    const kw = (document.getElementById("mnt-search-input")?.value || "").toLowerCase().trim();
+    const typeFilter = document.getElementById("mnt-filter-type")?.value || "ทั้งหมด";
+    const statusFilter = document.getElementById("mnt-filter-status")?.value || "ทั้งหมด";
+    const carFilter = document.getElementById("mnt-filter-car")?.value || "ทั้งหมด";
+
+    // KPIs calculation
+    const allRecords = this.maintenanceRecords || [];
+    const inProg = allRecords.filter(m => m.status === "กำลังซ่อมบำรุง").length;
+    const pending = allRecords.filter(m => m.status === "รอดำเนินการ").length;
+    const totalCost = allRecords.reduce((sum, m) => sum + Number(m.actual_cost || m.cost || 0), 0);
+    const renewals = allRecords.filter(m => {
+      const t = String(m.order_type || "");
+      return t.includes("ต่อทะเบียน") || t.includes("พ.ร.บ.") || t.includes("พรบ") || t.includes("ประกัน");
+    }).length;
+
+    const elInProg = document.getElementById("mnt-kpi-in-progress");
+    if (elInProg) elInProg.innerHTML = `${inProg} <span style="font-size:13px; font-weight:500; color:#64748B;">คัน</span>`;
+    const elPending = document.getElementById("mnt-kpi-pending");
+    if (elPending) elPending.innerHTML = `${pending} <span style="font-size:13px; font-weight:500; color:#64748B;">รายการ</span>`;
+    const elCost = document.getElementById("mnt-kpi-total-cost");
+    if (elCost) elCost.textContent = `฿${totalCost.toLocaleString()}`;
+    const elRen = document.getElementById("mnt-kpi-renewals");
+    if (elRen) elRen.innerHTML = `${renewals} <span style="font-size:13px; font-weight:500; color:#64748B;">รายการ</span>`;
+
+    // Filter records
+    const filtered = allRecords.filter(m => {
+      if (carFilter !== "ทั้งหมด" && m.car_id !== carFilter) return false;
+      if (statusFilter !== "ทั้งหมด" && m.status !== statusFilter) return false;
+      if (typeFilter !== "ทั้งหมด") {
+        if (!String(m.order_type || "").includes(typeFilter)) return false;
+      }
+      if (kw) {
+        const s = `${m.id || ''} ${m.car_id || ''} ${m.car_brand || ''} ${m.car_model || ''} ${m.service_center || ''} ${m.service_items || ''} ${m.assigned_worker || ''} ${m.notes || ''}`.toLowerCase();
+        if (!s.includes(kw)) return false;
+      }
+      return true;
+    });
+
+    const countTxt = document.getElementById("mnt-table-count");
+    if (countTxt) countTxt.textContent = filtered.length;
+
+    if (filtered.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding:32px; color:#64748B;">🔍 ไม่พบรายการใบงานซ่อมบำรุงตามเงื่อนไขที่เลือก</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = filtered.map(m => {
+      const isRenewal = String(m.order_type || "").includes("ต่อทะเบียน") || String(m.order_type || "").includes("พ.ร.บ.") || String(m.order_type || "").includes("ประกัน");
+      let typeBadge = '';
+      if (isRenewal) {
+        typeBadge = '<span class="badge" style="background:#F0FDF4; color:#15803D; border:1px solid #BBF7D0; font-weight:700;">📄 ' + m.order_type + '</span>';
+      } else {
+        typeBadge = '<span class="badge" style="background:#FFF7ED; color:#C2410C; border:1px solid #FDBA74; font-weight:700;">🛠️ ' + m.order_type + '</span>';
+      }
+
+      let statusBadge = '';
+      if (m.status === "เสร็จสิ้น") {
+        statusBadge = '<span class="badge badge-success">✅ เสร็จสิ้น</span>';
+      } else if (m.status === "กำลังซ่อมบำรุง") {
+        statusBadge = '<span class="badge" style="background:#FFF7ED; color:#C2410C; border:1px solid #FDBA74;">🛠️ กำลังซ่อมบำรุง</span>';
+      } else {
+        statusBadge = '<span class="badge badge-warning">⏳ รอดำเนินการ</span>';
+      }
+
+      const costDisp = Number(m.actual_cost || m.cost || 0);
+      const schedStr = `${this.formatDateDmy(m.schedule_date)} ➔ ${this.formatDateDmy(m.expected_finish_date)}`;
+
+      return `
+        <tr>
+          <td><b style="color:#C2410C;">${m.id}</b></td>
+          <td>
+            <b style="font-size:13px; color:#1F2937;">🚘 ${m.car_id}</b><br/>
+            <span style="font-size:11.5px; color:#64748B;">${m.car_brand || ''} ${m.car_model || ''} (${m.car_color || '-'})</span>
+          </td>
+          <td>${typeBadge}</td>
+          <td style="max-width:200px; white-space:pre-wrap; font-size:12px; line-height:1.4;">${m.service_items || '-'}</td>
+          <td><b style="color:#047857; font-size:13px;">฿${costDisp.toLocaleString()}</b></td>
+          <td>
+            <b style="color:#1F2937; font-size:12.5px;">🏢 ${m.service_center || '-'}</b><br/>
+            ${m.service_center_phone && m.service_center_phone !== '-' ? `<a href="tel:${m.service_center_phone}" style="color:#2563EB; font-size:11.5px; text-decoration:none;">📞 ${m.service_center_phone}</a>` : ''}
+          </td>
+          <td><span style="font-weight:600; color:#334155; font-size:12px;">👤 ${m.assigned_worker || '-'}</span></td>
+          <td style="font-size:11.5px; color:#475569;">${schedStr}</td>
+          <td>${statusBadge}</td>
+          <td style="text-align:center; white-space:nowrap;">
+            <a href="/api/pdf/maintenance/${m.id}" target="_blank" class="btn btn-sm btn-secondary" title="พิมพ์ใบสั่งงาน PDF">📋</a>
+            ${m.status !== "เสร็จสิ้น" ? `
+              <button onclick="app.openCloseMaintenanceModal('${m.id}')" class="btn btn-sm btn-success" style="font-weight:700;" title="ตรวจรับรถ & ปิดงาน">
+                🏁 ปิดงาน
+              </button>
+            ` : ''}
+            <button onclick="app.openEditMaintenanceModal('${m.id}')" class="btn btn-sm btn-secondary" title="แก้ไขใบงาน">✏️</button>
+            <button onclick="app.deleteMaintenanceRecord('${m.id}')" class="btn btn-sm btn-danger" title="ลบใบงาน">🗑️</button>
+          </td>
+        </tr>
+      `;
+    }).join("");
+  }
+
+  openNewMaintenanceModal(targetPlate = null, defaultType = null) {
+    const carSel = document.getElementById("mnt-car-select");
+    if (carSel) {
+      const opts = (this.cars || []).map(c => `<option value="${c.plate}">${c.plate} - ${c.brand || ''} ${c.model || ''} (${c.color || ''}) [${c.status}]</option>`);
+      carSel.innerHTML = opts.join("");
+      if (targetPlate && this.cars.some(c => c.plate === targetPlate)) {
+        carSel.value = targetPlate;
+      }
+    }
+
+    const workerSel = document.getElementById("mnt-assigned-worker");
+    if (workerSel) {
+      const userList = (this.users || []).filter(u => u.status === "approved" || !u.status);
+      const opts = userList.length > 0
+        ? userList.map(u => `<option value="${u.username}">${u.username} (${u.name || u.username}) [${u.role || 'Staff'}]</option>`)
+        : [
+            '<option value="admin">admin (ผู้ดูแลระบบ (Admin)) [Admin]</option>',
+            '<option value="chaiwat.u">chaiwat.u [Staff]</option>',
+            '<option value="sam">sam [Staff]</option>',
+            '<option value="sucheeda">sucheeda [Staff]</option>',
+            '<option value="Chatipat">Chatipat [Staff]</option>'
+          ];
+      workerSel.innerHTML = opts.join("");
+    }
+
+    const chosenPlate = targetPlate || (carSel ? carSel.value : (this.cars[0]?.plate || ""));
+    this.onMaintenanceCarSelected(chosenPlate);
+
+    const typeSel = document.getElementById("mnt-order-type");
+    if (typeSel) {
+      if (defaultType === "renewal") {
+        typeSel.value = "ต่อทะเบียนภาษี และ พ.ร.บ.";
+      } else {
+        typeSel.value = "ซ่อมบำรุงทั่วไป / เช็คระยะ";
+      }
+      this.onMaintenanceTypeChange(typeSel.value);
+    }
+
+    const todayStr = new Date().toISOString().split("T")[0];
+    const tomorrow = new Date(Date.now() + 86400000).toISOString().split("T")[0];
+
+    const schedDate = document.getElementById("mnt-sched-date");
+    if (schedDate) schedDate.value = todayStr;
+    const expDate = document.getElementById("mnt-exp-date");
+    if (expDate) expDate.value = tomorrow;
+
+    document.getElementById("mnt-form-id").value = "";
+    document.getElementById("mnt-cost").value = "";
+    document.getElementById("mnt-notes").value = "";
+    document.getElementById("mnt-update-car-status").checked = true;
+
+    document.getElementById("modal-mnt-title").textContent = "🛠️ ออกใบงานซ่อมบำรุง / ต่อทะเบียน-ประกัน";
+    this.openModal("modal-new-maintenance");
+  }
+
+  openEditMaintenanceModal(mntId) {
+    const rec = (this.maintenanceRecords || []).find(m => m.id === mntId);
+    if (!rec) return;
+
+    this.openNewMaintenanceModal(rec.car_id);
+
+    document.getElementById("modal-mnt-title").textContent = `✏️ แก้ไขใบงานซ่อมบำรุง (${mntId})`;
+    document.getElementById("mnt-form-id").value = mntId;
+    document.getElementById("mnt-order-type").value = rec.order_type || "ซ่อมบำรุงทั่วไป / เช็คระยะ";
+    document.getElementById("mnt-service-items").value = rec.service_items || "";
+    document.getElementById("mnt-cost").value = rec.cost || "";
+    document.getElementById("mnt-mileage").value = rec.current_mileage || "";
+    document.getElementById("mnt-service-center").value = rec.service_center || "";
+    document.getElementById("mnt-service-phone").value = rec.service_center_phone || "";
+    document.getElementById("mnt-service-loc").value = rec.service_location || "";
+    document.getElementById("mnt-assigned-worker").value = rec.assigned_worker || "admin";
+    document.getElementById("mnt-sched-date").value = rec.schedule_date || "";
+    document.getElementById("mnt-sched-time").value = rec.schedule_time || "09:00";
+    document.getElementById("mnt-exp-date").value = rec.expected_finish_date || "";
+    document.getElementById("mnt-exp-time").value = rec.expected_finish_time || "17:00";
+    document.getElementById("mnt-notes").value = rec.notes || "";
+    document.getElementById("mnt-update-car-status").checked = Boolean(rec.update_car_status);
+  }
+
+  onMaintenanceCarSelected(plate) {
+    const car = (this.cars || []).find(c => c.plate === plate);
+    if (!car) return;
+
+    const actEl = document.getElementById("mnt-car-act");
+    if (actEl) actEl.textContent = car.act_expiry || "-";
+    const insEl = document.getElementById("mnt-car-ins");
+    if (insEl) insEl.textContent = car.ins_expiry || "-";
+    const mileEl = document.getElementById("mnt-mileage");
+    if (mileEl) mileEl.value = car.mileage || "";
+  }
+
+  onMaintenanceTypeChange(typeVal) {
+    const itemArea = document.getElementById("mnt-service-items");
+    const garageInput = document.getElementById("mnt-service-center");
+    if (!itemArea) return;
+
+    if (typeVal.includes("ต่อทะเบียน") && (!itemArea.value || itemArea.value.includes("น้ำมันเครื่อง"))) {
+      itemArea.value = "1. ตรวจสภาพรถยนต์ ตรอ.\n2. ยื่นต่อภาษีประจำปี ณ กรมการขนส่งทางบก\n3. จัดทำ พ.ร.บ. คุ้มครองผู้ประสบภัยจากรถ";
+      if (garageInput && !garageInput.value) {
+        garageInput.value = "สำนักงานขนส่งกรุงเทพมหานครพื้นที่ 5 (จตุจักร) / ตรอ.วิภาวดี";
+      }
+    } else if (typeVal.includes("ประกัน") && (!itemArea.value || itemArea.value.includes("น้ำมันเครื่อง"))) {
+      itemArea.value = "1. ตรวจสอบเบี้ยประกันภัยรถยนต์ประจำปี\n2. ต่ออายุความคุ้มครองกรมธรรม์ประกันภัยรถยนต์ (ชั้น 1)";
+    }
+  }
+
+  appendMntItem(text) {
+    const textarea = document.getElementById("mnt-service-items");
+    if (!textarea) return;
+    if (textarea.value.trim()) {
+      textarea.value = textarea.value.trim() + "\n- " + text;
+    } else {
+      textarea.value = "- " + text;
+    }
+  }
+
+  fillMntGarage(name, phone, loc) {
+    const n = document.getElementById("mnt-service-center");
+    if (n) n.value = name;
+    const p = document.getElementById("mnt-service-phone");
+    if (p) p.value = phone;
+    const l = document.getElementById("mnt-service-loc");
+    if (l) l.value = loc;
+  }
+
+  async submitMaintenanceOrder(openPdf = false) {
+    const mntId = document.getElementById("mnt-form-id").value;
+    const carId = document.getElementById("mnt-car-select").value;
+    const orderType = document.getElementById("mnt-order-type").value;
+    const serviceItems = document.getElementById("mnt-service-items").value.trim();
+    const cost = document.getElementById("mnt-cost").value;
+    const mileage = document.getElementById("mnt-mileage").value.trim();
+    const serviceCenter = document.getElementById("mnt-service-center").value.trim();
+    const servicePhone = document.getElementById("mnt-service-phone").value.trim();
+    const serviceLoc = document.getElementById("mnt-service-loc").value.trim();
+    const worker = document.getElementById("mnt-assigned-worker").value;
+    const schedDate = document.getElementById("mnt-sched-date").value;
+    const schedTime = document.getElementById("mnt-sched-time").value;
+    const expDate = document.getElementById("mnt-exp-date").value;
+    const expTime = document.getElementById("mnt-exp-time").value;
+    const notes = document.getElementById("mnt-notes").value.trim();
+    const updateCar = document.getElementById("mnt-update-car-status").checked;
+
+    if (!carId) {
+      alert("กรุณาเลือกรถยนต์ที่ต้องการดำเนินการ");
+      return;
+    }
+    if (!serviceItems) {
+      alert("กรุณาระบุรายการซ่อมหรือรายการบริการ");
+      return;
+    }
+
+    const payload = {
+      car_id: carId,
+      order_type: orderType,
+      service_items: serviceItems,
+      cost: cost ? parseFloat(cost) : 0,
+      current_mileage: mileage,
+      service_center: serviceCenter || "ศูนย์บริการมาตรฐาน",
+      service_center_phone: servicePhone || "-",
+      service_location: serviceLoc || "-",
+      assigned_worker: worker || "admin",
+      schedule_date: schedDate,
+      schedule_time: schedTime,
+      expected_finish_date: expDate,
+      expected_finish_time: expTime,
+      notes: notes,
+      update_car_status: updateCar,
+      created_by: this.user?.name || this.user?.username || "Admin"
+    };
+
+    try {
+      let res;
+      if (mntId) {
+        res = await fetch(`/api/maintenance/${mntId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+      } else {
+        res = await fetch("/api/maintenance", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+      }
+
+      const data = await res.json();
+      if (data.success) {
+        this.closeModal("modal-new-maintenance");
+        const orderId = data.maintenance?.id || mntId;
+        this.showToast(`🎉 ออกใบงาน ${orderId} สำเร็จเรียบร้อย!`, "success");
+        await this.loadMaintenanceRecords();
+        await this.loadCars();
+        await this.loadBackOfficeJobs();
+
+        if (openPdf && orderId) {
+          window.open(`/api/pdf/maintenance/${orderId}`, "_blank");
+        }
+      } else {
+        alert(data.detail || "บันทึกใบงานไม่สำเร็จ");
+      }
+    } catch (e) {
+      alert("เกิดข้อผิดพลาด: " + e.message);
+    }
+  }
+
+  openCloseMaintenanceModal(mntId) {
+    const rec = (this.maintenanceRecords || []).find(m => m.id === mntId);
+    if (!rec) return;
+
+    document.getElementById("close-mnt-id").value = mntId;
+    document.getElementById("close-mnt-car-title").textContent = `🚘 ${rec.car_id} (${rec.car_brand || ''} ${rec.car_model || ''})`;
+    document.getElementById("close-mnt-summary-txt").textContent = `ใบงาน: ${mntId} | ประเภท: ${rec.order_type} | อู่: ${rec.service_center}`;
+    document.getElementById("close-mnt-actual-cost").value = rec.actual_cost || rec.cost || "";
+    document.getElementById("close-mnt-mileage").value = rec.current_mileage || "";
+    document.getElementById("close-mnt-notes").value = rec.completion_notes || "ตรวจรับรถเรียบร้อย สภาพสมบูรณ์พร้อมใช้งาน";
+    document.getElementById("close-mnt-restore-car").checked = true;
+    document.getElementById("close-mnt-record-expense").checked = true;
+
+    this.openModal("modal-close-maintenance");
+  }
+
+  async submitCloseMaintenance() {
+    const mntId = document.getElementById("close-mnt-id").value;
+    const actualCost = document.getElementById("close-mnt-actual-cost").value;
+    const mileage = document.getElementById("close-mnt-mileage").value.trim();
+    const notes = document.getElementById("close-mnt-notes").value.trim();
+
+    if (!mntId) return;
+
+    try {
+      const res = await fetch(`/api/maintenance/${mntId}/close`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          actual_cost: actualCost ? parseFloat(actualCost) : 0,
+          mileage: mileage,
+          completion_notes: notes,
+          recorded_by: this.user?.name || this.user?.username || "Admin"
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        this.closeModal("modal-close-maintenance");
+        this.showToast(`🏁 ตรวจรับรถและปิดงาน ${mntId} สำเร็จ!`, "success");
+        await this.loadMaintenanceRecords();
+        await this.loadCars();
+        await this.loadBackOfficeJobs();
+        await this.loadDashboardKPIs();
+      } else {
+        alert(data.detail || "ปิดงานไม่สำเร็จ");
+      }
+    } catch (e) {
+      alert("เกิดข้อผิดพลาด: " + e.message);
+    }
+  }
+
+  async deleteMaintenanceRecord(mntId) {
+    if (!confirm(`ยืนยันการลบใบงานซ่อมบำรุง ${mntId} ใช่หรือไม่?`)) return;
+    try {
+      const res = await fetch(`/api/maintenance/${mntId}`, { method: "DELETE" });
+      const data = await res.json();
+      if (data.success) {
+        this.showToast(`ลบใบงาน ${mntId} เรียบร้อย`, "info");
+        await this.loadMaintenanceRecords();
+        await this.loadCars();
+        await this.loadBackOfficeJobs();
+      }
+    } catch (e) {
+      alert("เกิดข้อผิดพลาด: " + e.message);
+    }
   }
 
   // --- Modal & Toast Helpers ---

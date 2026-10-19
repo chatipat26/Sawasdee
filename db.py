@@ -4,6 +4,7 @@ import base64
 import time
 import threading
 import re
+import json
 from datetime import datetime, date, time as d_time, timedelta
 from supabase import create_client
 
@@ -217,6 +218,63 @@ DEFAULT_CARS = {
     "2ขห 9175": {"plate": "2ขห 9175", "brand": "Toyota", "model": "Veloz", "color": "แดง (Red)", "car_group": "รถตู้ (Van)", "engine_cc": "1500", "fuel_type": "เบนซิน", "company": "บจก.สวัสดี เรนทัล (Sawasdee Rental)", "price_day": 1500, "price_week": 9000, "price_month": 26000, "status": "ว่างพร้อมใช้งาน", "chassis_no": "MHFAB1BY800015213", "act_expiry": "08/06/2025", "ins_expiry": "08/06/2025", "mileage": "15,000", "image": "https://images.unsplash.com/photo-1541899481282-d53bffe3c35d?auto=format&fit=crop&q=80&w=500"}
 }
 
+DEFAULT_MAINTENANCE_RECORDS = [
+    {
+        "id": "MNT261015001",
+        "car_id": "4ขฉ 8681",
+        "car_brand": "Toyota",
+        "car_model": "Corolla Cross",
+        "car_color": "แดง-ดำ",
+        "order_type": "ซ่อมบำรุงทั่วไป / เช็คระยะ",
+        "service_items": "เปลี่ยนถ่ายน้ำมันเครื่องสังเคราะห์แท้ 0W-20, เปลี่ยนไส้กรองน้ำมันเครื่อง, ตรวจเช็คระบบเบรก 4 ล้อ, สลับยาง-ถ่วงล้อ",
+        "cost": 3450.0,
+        "actual_cost": 3450.0,
+        "service_center": "ศูนย์บริการ โตโยต้า บัสส์ วิภาวดี",
+        "service_center_phone": "02-555-9999",
+        "service_location": "ถ.วิภาวดีรังสิต แขวงลาดยาว เขตจตุจักร กรุงเทพฯ",
+        "assigned_worker": "chaiwat.u",
+        "schedule_date": "2026-10-15",
+        "schedule_time": "09:00",
+        "expected_finish_date": "2026-10-16",
+        "expected_finish_time": "16:30",
+        "status": "เสร็จสิ้น",
+        "current_mileage": "30,120",
+        "notes": "เช็คระยะตามกำหนด 30,000 กม.",
+        "completion_notes": "ตรวจเช็คสภาพสมบูรณ์ทุกจุด เปลี่ยนถ่ายน้ำมันเครื่องเรียบร้อย รถพร้อมใช้งาน",
+        "update_car_status": True,
+        "created_by": "admin",
+        "created_at": "2026-10-15 08:30:00",
+        "completed_at": "2026-10-16 16:30:00"
+    },
+    {
+        "id": "MNT261018002",
+        "car_id": "1ขธ 2151",
+        "car_brand": "Toyota",
+        "car_model": "Corolla Cross",
+        "car_color": "ขาว (White)",
+        "order_type": "ต่อทะเบียนภาษี / พ.ร.บ.",
+        "service_items": "ตรวจสภาพรถยนต์ (ตรอ.), ต่อภาษีประจำปี ขนส่งทางบก, ต่อ พ.ร.บ. คุ้มครองผู้ประสบภัยจากรถ",
+        "cost": 1850.0,
+        "actual_cost": 0.0,
+        "service_center": "สำนักงานขนส่งกรุงเทพมหานครพื้นที่ 5 (จตุจักร) / ตรอ.วิภาวดี",
+        "service_center_phone": "02-271-8888",
+        "service_location": "กรมการขนส่งทางบก จตุจักร กทม.",
+        "assigned_worker": "sam",
+        "schedule_date": "2026-10-18",
+        "schedule_time": "10:00",
+        "expected_finish_date": "2026-10-20",
+        "expected_finish_time": "15:00",
+        "status": "กำลังซ่อมบำรุง",
+        "current_mileage": "28,500",
+        "notes": "ภาษีและ พรบ. กำลังจะหมดอายุ นำเล่มทะเบียนไปยื่นต่อภาษีประจำปี",
+        "completion_notes": "",
+        "update_car_status": True,
+        "created_by": "admin",
+        "created_at": "2026-10-18 09:15:00",
+        "completed_at": None
+    }
+]
+
 DEFAULT_USERS = {
     "admin": {
         "username": "admin",
@@ -250,6 +308,8 @@ class DataStore:
         self.completed_jobs = []
         self.financial_records = []
         self.users = dict(DEFAULT_USERS)
+        self.maintenance_file = os.path.join(BASE_DIR, "data_maintenance.json")
+        self.maintenance_records = []
         self.deleted_booking_ids = {
             "MRC261017104446", "MRC261017071034", "MRC261017102938", "MRC261017101804",
             "MRC261017104728", "MRC261017105734", "MRC261014110200", "MRC261014174658",
@@ -262,6 +322,7 @@ class DataStore:
         self.is_syncing = False
         self.initial_sync_done = False
         self.lock = threading.RLock()
+        self.load_local_maintenance()
 
     def sync_from_supabase(self, force=False):
         """Synchronous full sync from Supabase Cloud"""
@@ -437,6 +498,16 @@ class DataStore:
                         self.financial_records = f_res.data
             except Exception as e:
                 print(f"Financial records sync error: {e}")
+
+            # 7. Maintenance Records (if Supabase table exists)
+            try:
+                m_res = sb.table("maintenance_records").select("*").order("schedule_date", desc=True).execute()
+                if m_res.data is not None and len(m_res.data) > 0:
+                    with self.lock:
+                        self.maintenance_records = m_res.data
+                    self.save_local_maintenance()
+            except Exception:
+                pass
 
             self.last_sync_time = time.time()
             self.initial_sync_done = True
@@ -614,6 +685,105 @@ class DataStore:
             except Exception as e:
                 print(f"sb_delete_user error: {e}")
         threading.Thread(target=_task, daemon=True).start()
+
+    def load_local_maintenance(self):
+        try:
+            if os.path.exists(self.maintenance_file):
+                with open(self.maintenance_file, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    if isinstance(data, list) and len(data) > 0:
+                        self.maintenance_records = data
+                        return
+        except Exception as e:
+            print(f"Error loading local maintenance: {e}")
+        # Default sample records
+        self.maintenance_records = list(DEFAULT_MAINTENANCE_RECORDS)
+        self.save_local_maintenance()
+
+    def save_local_maintenance(self):
+        try:
+            with open(self.maintenance_file, "w", encoding="utf-8") as f:
+                json.dump(self.maintenance_records, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            print(f"Error saving local maintenance: {e}")
+
+    def async_sync_maintenance(self, m_dict):
+        m_id = m_dict.get("id")
+        with self.lock:
+            existing_idx = next((i for i, x in enumerate(self.maintenance_records) if x.get("id") == m_id), None)
+            if existing_idx is not None:
+                self.maintenance_records[existing_idx] = m_dict
+            else:
+                self.maintenance_records.insert(0, m_dict)
+        self.save_local_maintenance()
+        def _task():
+            sb = get_supabase_client()
+            if not sb: return
+            try:
+                sb.table("maintenance_records").upsert(m_dict).execute()
+            except Exception as e:
+                pass
+        threading.Thread(target=_task, daemon=True).start()
+
+    def async_delete_maintenance(self, mnt_id):
+        with self.lock:
+            self.maintenance_records = [x for x in self.maintenance_records if x.get("id") != mnt_id]
+        self.save_local_maintenance()
+        def _task():
+            sb = get_supabase_client()
+            if not sb: return
+            try:
+                sb.table("maintenance_records").delete().eq("id", mnt_id).execute()
+            except Exception:
+                pass
+        threading.Thread(target=_task, daemon=True).start()
+
+    def close_maintenance_record(self, mnt_id, actual_cost=None, completion_notes="", new_mileage=None, recorded_by="admin"):
+        with self.lock:
+            rec = next((x for x in self.maintenance_records if x.get("id") == mnt_id), None)
+            if not rec:
+                return None
+            
+            rec["status"] = "เสร็จสิ้น"
+            rec["completed_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            if actual_cost is not None and str(actual_cost).strip() != "":
+                try:
+                    rec["actual_cost"] = float(actual_cost)
+                except Exception:
+                    pass
+            else:
+                rec["actual_cost"] = float(rec.get("cost", 0))
+                
+            if completion_notes:
+                rec["completion_notes"] = completion_notes
+                
+            car_plate = rec.get("car_id")
+            if car_plate and car_plate in self.cars:
+                car = self.cars[car_plate]
+                if car.get("status") in ["สถานะซ่อมบำรุง", "ซ่อมบำรุง", "ไม่พร้อมใช้งาน"]:
+                    car["status"] = "ว่างพร้อมใช้งาน"
+                if new_mileage and str(new_mileage).strip():
+                    car["mileage"] = str(new_mileage).strip()
+                self.async_sync_car(car_plate, car)
+                
+            # Record financial expense
+            final_cost = float(rec.get("actual_cost") or rec.get("cost", 0))
+            if final_cost > 0:
+                is_renewal = any(k in str(rec.get("order_type", "")) for k in ["ต่อทะเบียน", "พ.ร.บ.", "พรบ", "ประกัน"])
+                cat = "ค่าต่อทะเบียน/พรบ./ประกัน" if is_renewal else "ค่าซ่อมบำรุงและดูแลรักษารถ"
+                f_item = {
+                    "company": (self.cars.get(car_plate) or {}).get("company", "บจก.สวัสดี เรนทัล (Sawasdee Rental)"),
+                    "type": "รายจ่าย",
+                    "category": cat,
+                    "amount": final_cost,
+                    "ref": mnt_id,
+                    "date": datetime.now().strftime("%Y-%m-%d"),
+                    "detail": f"{rec.get('order_type')} {car_plate} - {rec.get('service_items', '')} ({rec.get('service_center', '')})"
+                }
+                self.async_sync_financial(f_item)
+                
+            self.async_sync_maintenance(rec)
+            return rec
 
     def upload_photo(self, filename, file_bytes, content_type="image/jpeg"):
         import base64
