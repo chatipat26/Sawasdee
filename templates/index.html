@@ -1752,6 +1752,7 @@
           <option value="ซ่อมเคาะพ่นสี / ตัวถัง">🎨 ซ่อมเคาะพ่นสี / ตัวถัง (Body & Paint)</option>
           <option value="ต่อทะเบียนภาษี และ พ.ร.บ.">📄 ต่อทะเบียนภาษี และ พ.ร.บ. (Tax & Compulsory Motor Insurance)</option>
           <option value="ต่อประกันภัยรถยนต์">🛡️ ต่อประกันภัยรถยนต์ (Car Insurance Renewal)</option>
+          <option value="ต่อทะเบียนภาษี พ.ร.บ. และ ประกันภัย (แพ็กคู่)">🔄 ต่อทะเบียนภาษี พ.ร.บ. และ ประกันภัย (แพ็กคู่)</option>
           <option value="ตรวจสภาพรถยนต์ ตรอ.">🔍 ตรวจสภาพรถยนต์ ตรอ. (Vehicle Inspection)</option>
         </select>
       </div>
@@ -1889,8 +1890,36 @@
         <div style="font-size:12px; color:#15803D; margin-top:3px;" id="close-mnt-summary-txt">ใบงาน: - | อู่: -</div>
       </div>
 
+      <!-- Renewal Specific Section (shown when closing renewal work orders) -->
+      <div id="close-mnt-renewal-section" style="display:none; background:#EFF6FF; border:1px solid #BFDBFE; border-radius:10px; padding:12px 14px; margin-bottom:14px;">
+        <div style="font-size:13px; font-weight:800; color:#1D4ED8; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
+          <span>🛡️</span> <span>ระบุวันหมดอายุรอบใหม่หลังต่อเสร็จสิ้น (New Expiry Dates):</span>
+        </div>
+        
+        <div id="close-mnt-act-wrapper" class="form-group" style="margin-bottom:10px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:3px;">
+            <label style="font-size:12px; font-weight:700; color:#1E3A8A;">📅 วันหมดอายุ พ.ร.บ. รอบใหม่:</label>
+            <span id="close-mnt-act-current" style="font-size:11px; color:#6B7280;">(เดิม: -)</span>
+          </div>
+          <input type="date" id="close-mnt-act-expiry" class="form-control" style="font-weight:700; color:#1E40AF; background:white;">
+        </div>
+
+        <div id="close-mnt-ins-wrapper" class="form-group" style="margin-bottom:10px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:3px;">
+            <label style="font-size:12px; font-weight:700; color:#1E3A8A;">📑 วันหมดอายุ ประกันภัย รอบใหม่:</label>
+            <span id="close-mnt-ins-current" style="font-size:11px; color:#6B7280;">(เดิม: -)</span>
+          </div>
+          <input type="date" id="close-mnt-ins-expiry" class="form-control" style="font-weight:700; color:#1E40AF; background:white;">
+        </div>
+
+        <div class="form-group" style="margin-bottom:0;">
+          <label style="font-size:12px; font-weight:700; color:#1E3A8A;">📄 เลขที่กรมธรรม์ / เลขที่ใบเสร็จภาษี:</label>
+          <input type="text" id="close-mnt-policy-no" class="form-control" placeholder="เช่น BKI-2026-99881 หรือ ป้ายภาษีปี 2570" style="background:white;">
+        </div>
+      </div>
+
       <div class="form-group" style="margin-bottom:12px;">
-        <label style="font-weight:700;">💰 ค่าซ่อมบำรุงจริงที่ชำระ (บาท):</label>
+        <label style="font-weight:700;">💰 ค่าซ่อมบำรุง/ค่าต่ออายุจริงที่ชำระ (บาท):</label>
         <input type="number" id="close-mnt-actual-cost" class="form-control" placeholder="0" min="0" step="50" style="font-weight:700; color:#059669; font-size:15px;">
       </div>
 
@@ -1917,7 +1946,7 @@
 
       <div style="display:flex; justify-content:flex-end; gap:10px;">
         <button type="button" onclick="app.closeModal('modal-close-maintenance')" class="btn btn-secondary">ยกเลิก</button>
-        <button type="button" onclick="app.submitCloseMaintenance()" class="btn btn-success" style="font-weight:700;">
+        <button type="button" onclick="app.submitCloseMaintenance()" id="close-mnt-submit-btn" class="btn btn-success" style="font-weight:700;">
           🏁 ยืนยันตรวจรับรถ & ปิดงาน
         </button>
       </div>
@@ -1928,6 +1957,6 @@
   <div class="toast-container" id="toast-container"></div>
 
   <!-- Scripts with cache busting -->
-  <script src="/static/js/app.js?v=5.2"></script>
+  <script src="/static/js/app.js?v=5.3"></script>
 </body>
 </html>

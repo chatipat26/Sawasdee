@@ -1050,6 +1050,9 @@ async def create_maintenance(payload: Dict[str, Any]):
     update_car_status = bool(payload.get("update_car_status", True))
     created_by = payload.get("created_by") or "admin"
     
+    is_renewal = any(k in order_type for k in ["ต่อทะเบียน", "พ.ร.บ.", "พรบ", "ประกัน", "ภาษี"])
+    init_status = "กำลังต่อภาษี/ประกัน" if is_renewal else ("กำลังซ่อมบำรุง" if update_car_status else "รอดำเนินการ")
+    
     record = {
         "id": mnt_id,
         "car_id": car_id,
@@ -1068,7 +1071,7 @@ async def create_maintenance(payload: Dict[str, Any]):
         "schedule_time": sched_t,
         "expected_finish_date": exp_d,
         "expected_finish_time": exp_t,
-        "status": "กำลังซ่อมบำรุง" if update_car_status else "รอดำเนินการ",
+        "status": init_status,
         "current_mileage": current_mileage,
         "notes": notes,
         "completion_notes": "",
@@ -1079,14 +1082,14 @@ async def create_maintenance(payload: Dict[str, Any]):
     }
     
     if update_car_status and car_id in store.cars:
-        store.cars[car_id]["status"] = "ซ่อมบำรุง"
+        store.cars[car_id]["status"] = "ต่อทะเบียน/ประกัน" if is_renewal else "ซ่อมบำรุง"
         store.async_sync_car(car_id, store.cars[car_id])
         
     store.async_sync_maintenance(record)
     
     def _send_line_bg():
         try:
-            line_msg = f"🔔 [ออกใบงานใหม่] {order_type}\n🚘 ทะเบียน: {car_id} ({record['car_brand']} {record['car_model']})\n🏢 อู่/ศูนย์: {service_center}\n👤 ผู้รับผิดชอบ: {assigned_worker}\n📅 วันนัดหมาย: {sched_d} ({sched_t} น.)\n💰 งบประมาณ: {cost_val:,.2f} บาท\nเลขที่ใบงาน: {mnt_id}"
+            line_msg = f"🔔 [ออกใบงานใหม่] {order_type}\n🚘 ทะเบียน: {car_id} ({record['car_brand']} {record['car_model']})\n🏢 อู่/ศูนย์/หน่วยงาน: {service_center}\n👤 ผู้รับผิดชอบ: {assigned_worker}\n📅 วันนัดหมาย: {sched_d} ({sched_t} น.)\n💰 งบประมาณ: {cost_val:,.2f} บาท\nเลขที่ใบงาน: {mnt_id}"
             send_line_broadcast_message(line_msg)
         except Exception:
             pass
@@ -1121,18 +1124,24 @@ async def close_maintenance(mnt_id: str, payload: Dict[str, Any]):
     notes = payload.get("completion_notes", "")
     new_mileage = payload.get("mileage")
     recorded_by = payload.get("recorded_by", "admin")
+    new_act_expiry = payload.get("new_act_expiry")
+    new_ins_expiry = payload.get("new_ins_expiry")
+    policy_no = payload.get("policy_no")
     
     closed = store.close_maintenance_record(
         mnt_id,
         actual_cost=actual_cost,
         completion_notes=notes,
         new_mileage=new_mileage,
-        recorded_by=recorded_by
+        recorded_by=recorded_by,
+        new_act_expiry=new_act_expiry,
+        new_ins_expiry=new_ins_expiry,
+        policy_no=policy_no
     )
     if not closed:
         raise HTTPException(status_code=404, detail="ไม่พบใบงานซ่อมบำรุงที่ต้องการปิดงาน")
         
-    return {"success": True, "maintenance": closed}
+    return {"success": True, "maintenance": closed, "car": store.cars.get(closed.get("car_id"))}
 
 @app.delete("/api/maintenance/{mnt_id}")
 async def delete_maintenance(mnt_id: str):

@@ -126,6 +126,8 @@ def get_car_fleet_status(car_plate, car_obj, bookings, filter_start_date=None, f
     c_status = str((car_obj or {}).get("status") or "").strip()
     if c_status in ["ซ่อมบำรุง", "ไม่พร้อมใช้งาน", "ระงับการใช้งาน"]:
         return "maintenance", "สถานะซ่อมบำรุง", "#F97316", "#FFF7ED", "#FDBA74"
+    if c_status in ["ต่อทะเบียน/ประกัน", "ต่อภาษี/ประกัน", "รอต่อทะเบียน"]:
+        return "renewal", "กำลังต่อภาษี/ประกัน", "#D97706", "#FEF3C7", "#FCD34D"
         
     chk_s = to_date(filter_start_date)
     chk_e = to_date(filter_end_date)
@@ -738,7 +740,7 @@ class DataStore:
                 pass
         threading.Thread(target=_task, daemon=True).start()
 
-    def close_maintenance_record(self, mnt_id, actual_cost=None, completion_notes="", new_mileage=None, recorded_by="admin"):
+    def close_maintenance_record(self, mnt_id, actual_cost=None, completion_notes="", new_mileage=None, recorded_by="admin", new_act_expiry=None, new_ins_expiry=None, policy_no=None):
         with self.lock:
             rec = next((x for x in self.maintenance_records if x.get("id") == mnt_id), None)
             if not rec:
@@ -756,14 +758,24 @@ class DataStore:
                 
             if completion_notes:
                 rec["completion_notes"] = completion_notes
+            if policy_no and str(policy_no).strip():
+                rec["policy_no"] = str(policy_no).strip()
+            if new_act_expiry and str(new_act_expiry).strip():
+                rec["new_act_expiry"] = str(new_act_expiry).strip()
+            if new_ins_expiry and str(new_ins_expiry).strip():
+                rec["new_ins_expiry"] = str(new_ins_expiry).strip()
                 
             car_plate = rec.get("car_id")
             if car_plate and car_plate in self.cars:
                 car = self.cars[car_plate]
-                if car.get("status") in ["สถานะซ่อมบำรุง", "ซ่อมบำรุง", "ไม่พร้อมใช้งาน"]:
+                if car.get("status") in ["สถานะซ่อมบำรุง", "ซ่อมบำรุง", "ไม่พร้อมใช้งาน", "ต่อทะเบียน/ประกัน", "ต่อภาษี/ประกัน", "รอต่อทะเบียน"]:
                     car["status"] = "ว่างพร้อมใช้งาน"
                 if new_mileage and str(new_mileage).strip():
                     car["mileage"] = str(new_mileage).strip()
+                if new_act_expiry and str(new_act_expiry).strip() and str(new_act_expiry).strip() != "-":
+                    car["act_expiry"] = str(new_act_expiry).strip()
+                if new_ins_expiry and str(new_ins_expiry).strip() and str(new_ins_expiry).strip() != "-":
+                    car["ins_expiry"] = str(new_ins_expiry).strip()
                 self.async_sync_car(car_plate, car)
                 
             # Record financial expense
