@@ -945,13 +945,13 @@ store = DataStore()
 
 def start_background_cloud_sync():
     def _loop():
-        # Wait 2 seconds before first loop
-        time.sleep(2)
+        # Wait 5 seconds before first loop
+        time.sleep(5)
         while True:
             try:
                 store.sync_from_supabase_async()
             except Exception as e:
                 print(f"Background cloud sync loop error: {e}")
-            time.sleep(8)
+            time.sleep(120)
     t = threading.Thread(target=_loop, daemon=True, name="SupabaseBackgroundSync")
     t.start()
