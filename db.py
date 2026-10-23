@@ -32,6 +32,17 @@ def get_supabase_client():
     global _sb_client
     if _sb_client is not None:
         return _sb_client
+    # Prefer a direct PostgreSQL connection (Dokploy Postgres container) when DATABASE_URL is set.
+    # PgClient mimics the supabase-py query API, so the rest of the code works unchanged.
+    db_url = os.environ.get("DATABASE_URL")
+    if db_url:
+        try:
+            from pg_client import PgClient
+            _sb_client = PgClient(db_url)
+            return _sb_client
+        except Exception as e:
+            print(f"PostgreSQL client init error: {e}")
+            return None
     try:
         url, key = get_supabase_credentials()
         _sb_client = create_client(url, key)
