@@ -8,6 +8,20 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 import pandas as pd
+import re
+
+def convert_gdrive_url(url: str) -> str:
+    """Convert Google Drive share link to direct image view URL to save server storage."""
+    if not url or not isinstance(url, str):
+        return url
+    u = url.strip()
+    m = re.search(r'drive\.google\.com/file/d/([a-zA-Z0-9_-]+)', u)
+    if m:
+        return f"https://lh3.googleusercontent.com/d/{m.group(1)}"
+    m = re.search(r'drive\.google\.com/(?:open|uc)\?(?:[^&]*&)*id=([a-zA-Z0-9_-]+)', u)
+    if m:
+        return f"https://lh3.googleusercontent.com/d/{m.group(1)}"
+    return u
 
 from db import (
     store,
@@ -585,11 +599,11 @@ async def create_booking(payload: Dict[str, Any]):
         "deposit_amount": deposit_amount,
         "deposit_paid": deposit_paid,
         "deposit_ref": payload.get("deposit_ref", "") or payload.get("payment_ref", ""),
-        "deposit_slip": payload.get("deposit_slip", "") or payload.get("slip_url", ""),
+        "deposit_slip": convert_gdrive_url(payload.get("deposit_slip", "") or payload.get("slip_url", "")),
         "rental_paid": rental_paid,
         "remaining_rental": 0.0 if rental_paid else net_price,
         "rental_ref": payload.get("rental_ref", ""),
-        "rental_slip": payload.get("rental_slip", ""),
+        "rental_slip": convert_gdrive_url(payload.get("rental_slip", "")),
         "created_by": payload.get("created_by", "admin"),
         "status": "รอส่งมอบ" if deposit_paid else "รอชำระมัดจำ",
         "dispatch_closed": False,
@@ -689,7 +703,7 @@ async def record_deposit(bk_id: str, payload: Dict[str, Any]):
     dep_amount = float(payload.get("deposit_amount", 5000.0))
     dep_method = str(payload.get("payment_method", "โอนเงิน / สแกน QR"))
     dep_ref = str(payload.get("payment_ref") or payload.get("deposit_ref") or "").strip()
-    dep_slip = str(payload.get("slip_url") or payload.get("deposit_slip") or "").strip()
+    dep_slip = convert_gdrive_url(str(payload.get("slip_url") or payload.get("deposit_slip") or "").strip())
     also_pay_rental = bool(payload.get("also_pay_rental", False))
     net_p = float(target.get("net_price", 0.0))
 
@@ -769,7 +783,7 @@ async def settle_rental(bk_id: str, payload: Dict[str, Any]):
 
     settle_method = str(payload.get("payment_method", "โอนเงิน / สแกน QR"))
     settle_ref = str(payload.get("payment_ref") or payload.get("rental_ref") or "").strip()
-    settle_slip = str(payload.get("slip_url") or payload.get("rental_slip") or "").strip()
+    settle_slip = convert_gdrive_url(str(payload.get("slip_url") or payload.get("rental_slip") or "").strip())
     net_p = float(target.get("net_price", 0.0))
 
     th_today = now_th().date().isoformat()
@@ -814,11 +828,11 @@ async def update_payment_slip(bk_id: str, payload: Dict[str, Any]):
         target["deposit_ref"] = ref_val
     if "slip_url" in payload or "deposit_slip" in payload:
         slip_val = str(payload.get("slip_url") or payload.get("deposit_slip") or "").strip()
-        target["deposit_slip"] = slip_val
+        target["deposit_slip"] = convert_gdrive_url(slip_val)
     if "rental_ref" in payload:
         target["rental_ref"] = str(payload.get("rental_ref") or "").strip()
     if "rental_slip" in payload:
-        target["rental_slip"] = str(payload.get("rental_slip") or "").strip()
+        target["rental_slip"] = convert_gdrive_url(str(payload.get("rental_slip") or "").strip())
 
     store.async_sync_booking(target)
     return {"success": True, "booking": target}
