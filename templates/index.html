@@ -1152,19 +1152,20 @@
         <div class="expander-card" id="expander-fleet">
           <div class="expander-header open" onclick="app.toggleExpander('expander-fleet')">
             <div class="expander-title">
-              <span>🚘</span> ข้อมูลทะเบียนรถและสถานะ พ.ร.บ. / ประกันภัย (Fleet Status Overview)
+              <span>🚘</span> <span id="title-expander-fleet">ฐานข้อมูลทะเบียนรถ, ภาษี, พ.ร.บ., ประกันภัย และเช็คระยะ (Fleet Database Overview)</span>
             </div>
             <div class="expander-indicator">
               <span id="indicator-expander-fleet">▲ คลิกเพื่อพับเก็บ</span>
             </div>
           </div>
           <div class="expander-body" id="body-expander-fleet" style="display:block;">
-            <!-- Sort & Filter Toolbar (Directly above the table, no redundant yellow box) -->
+            <!-- Sort & Filter Toolbar -->
             <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px; background:#F8FAFC; padding:10px 14px; border-radius:10px; border:1px solid #E2E8F0;">
               <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
                 <span style="font-size:12.5px; font-weight:700; color:#334155;">🔽 เรียงลำดับตาราง:</span>
-                <select id="dash-fleet-sort-select" class="form-control" style="width:auto; min-width:260px; padding:5px 10px; font-size:12.5px; font-weight:600;" onchange="app.renderFleetOverviewTable()">
-                  <option value="expiry_asc" selected>⏳ วันหมดอายุ พ.ร.บ. & ประกันภัย ใกล้หมดก่อน (ค่าเริ่มต้น)</option>
+                <select id="dash-fleet-sort-select" class="form-control" style="width:auto; min-width:270px; padding:5px 10px; font-size:12.5px; font-weight:600;" onchange="app.renderFleetOverviewTable()">
+                  <option value="expiry_asc" selected>⏳ วันหมดอายุ ภาษี / พ.ร.บ. / ประกัน ใกล้หมดก่อน (ค่าเริ่มต้น)</option>
+                  <option value="tax_asc">🏷️ วันหมดอายุ ภาษีรถยนต์ ใกล้หมดก่อน</option>
                   <option value="act_asc">🛡️ วันหมดอายุ พ.ร.บ. ใกล้หมดก่อน</option>
                   <option value="ins_asc">📑 วันหมดอายุ ประกันภัย ใกล้หมดก่อน</option>
                   <option value="plate_asc">🚘 เลขทะเบียนรถ (ก-ฮ / 0-9)</option>
@@ -1172,7 +1173,10 @@
                 <div id="dash-fleet-expiry-summary" style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;"></div>
               </div>
               <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-                <input type="text" id="dash-fleet-search-input" class="form-control" style="width:220px; padding:5px 10px; font-size:12.5px;" placeholder="🔍 ค้นหาทะเบียน / รุ่น / บริษัท..." oninput="app.renderFleetOverviewTable()">
+                <input type="text" id="dash-fleet-search-input" class="form-control" style="width:260px; padding:5px 10px; font-size:12.5px;" placeholder="🔍 ค้นหาทะเบียน / เลขถัง / รุ่น / ประกัน / หมายเหตุ..." oninput="app.renderFleetOverviewTable()">
+                <button type="button" onclick="app.openEditCarModal('')" class="btn btn-sm btn-primary" style="padding:5px 10px; font-size:12px;">
+                  ➕ เพิ่มรถใหม่
+                </button>
               </div>
             </div>
 
@@ -1180,14 +1184,16 @@
               <table class="custom-table">
                 <thead>
                   <tr>
-                    <th>ทะเบียน</th>
-                    <th>ยี่ห้อ / รุ่น</th>
-                    <th>สี</th>
-                    <th>กรรมสิทธิ์ / บริษัท</th>
+                    <th>ทะเบียน / ปีจด</th>
+                    <th>ยี่ห้อ / รุ่น / สี</th>
+                    <th>หมายเลขตัวถัง (VIN)</th>
+                    <th>เจ้าของ / ผู้รับผลประโยชน์</th>
                     <th>สถานะ</th>
-                    <th>วันหมดอายุ พ.ร.บ. (กดอัปเดต)</th>
-                    <th>วันหมดอายุ ประกันภัย (กดอัปเดต)</th>
-                    <th>เลขไมล์</th>
+                    <th>วันหมดอายุ ภาษี</th>
+                    <th>วันหมดอายุ พ.ร.บ.</th>
+                    <th>วันหมดอายุ ประกันภัย & บ.ประกัน</th>
+                    <th>เช็คระยะ / เลขไมล์</th>
+                    <th>หมายเหตุ / สัญญาเช่าซื้อ</th>
                     <th style="text-align:center;">จัดการ</th>
                   </tr>
                 </thead>
@@ -1198,7 +1204,67 @@
             </div>
             <div style="font-size:12px; color:#64748B; margin-top:10px; display:flex; align-items:center; gap:6px;">
               <span>💡</span>
-              <span>เมื่อกดปุ่ม <b>🔄 (+1 ปี)</b> หรือ <b>🔄 ต่อคู่</b> ในตาราง ระบบจะต่ออายุให้ 1 ปีและเลื่อนลำดับรถคันนั้นลงไปตามวันหมดอายุใหม่ในตารางโดยอัตโนมัติ (หรือคลิก <b>🔍</b> เพื่อข้ามไปดูรายละเอียดรถในหน้า 'เลือกรถยนต์')</span>
+              <span>ระบบตรวจสอบและป้องกันรถซ้ำอัตโนมัติ (ทั้งเลขทะเบียนและเลขตัวถัง VIN) สามารถคลิก <b>✏️</b> เพื่อแก้ไขวันหมดอายุภาษี/พ.ร.บ./ประกันภัย หรือกด <b>📋 ออกใบงาน</b> เพื่อมอบหมายพนักงานได้ทันที</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Collapsible Table 1.5: HP / Leasing Schedule & Property Insurance -->
+        <div class="expander-card" id="expander-hp-leasing">
+          <div class="expander-header open" onclick="app.toggleExpander('expander-hp-leasing')">
+            <div class="expander-title">
+              <span>🏦</span> <span id="title-expander-hp">ตารางผ่อนชำระค่างวดรถยนต์ (HP / Leasing — 14 สัญญา) & กรมธรรม์ประกันภัยทรัพย์สิน (4 รายการ)</span>
+            </div>
+            <div class="expander-indicator">
+              <span id="indicator-expander-hp-leasing">▲ คลิกเพื่อพับเก็บ</span>
+            </div>
+          </div>
+          <div class="expander-body" id="body-expander-hp-leasing" style="display:block;">
+            <div id="hp-leasing-summary-cards" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(185px, 1fr)); gap:10px; margin-bottom:14px;">
+              <!-- Rendered by JS -->
+            </div>
+            <div class="table-responsive" style="margin-bottom:18px;">
+              <table class="custom-table">
+                <thead>
+                  <tr>
+                    <th style="text-align:center;">ลำดับ</th>
+                    <th>รุ่นรถยนต์</th>
+                    <th>ทะเบียน / เลขถัง</th>
+                    <th>เลขที่สัญญา</th>
+                    <th>วันดาวน์ / เงินดาวน์</th>
+                    <th>งวดแรก / กำหนดชำระ</th>
+                    <th style="text-align:right;">ค่างวด/เดือน</th>
+                    <th style="text-align:center;">จำนวนงวด</th>
+                    <th style="text-align:right;">ชำระแล้ว (บาท)</th>
+                    <th style="text-align:right;">คงเหลือ (บาท)</th>
+                    <th style="text-align:right;">ราคารถรวมดาวน์</th>
+                  </tr>
+                </thead>
+                <tbody id="hp-leasing-tbody">
+                  <!-- Rendered by JS -->
+                </tbody>
+              </table>
+            </div>
+
+            <div style="font-size:13.5px; font-weight:800; color:#1E293B; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
+              <span>🏠</span> กรมธรรม์ประกันภัยทรัพย์สินและประกันอุบัติเหตุส่วนบุคคล
+            </div>
+            <div class="table-responsive">
+              <table class="custom-table">
+                <thead>
+                  <tr>
+                    <th>รหัส</th>
+                    <th>รายการกรมธรรม์ / ทรัพย์สิน</th>
+                    <th>ผู้เอาประกัน / เจ้าของ</th>
+                    <th>บริษัทประกันภัย</th>
+                    <th>วันหมดอายุ</th>
+                    <th>หมายเหตุ</th>
+                  </tr>
+                </thead>
+                <tbody id="property-insurance-tbody">
+                  <!-- Rendered by JS -->
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
@@ -1664,10 +1730,17 @@
         </div>
       </div>
 
-      <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:12px; margin-bottom:18px;">
+      <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:12px; margin-bottom:12px;">
         <div class="form-group">
-          <label>🔑 เลขตัวถัง (VIN)</label>
-          <input type="text" id="edit-car-vin" class="form-control" placeholder="-">
+          <label>🔑 เลขตัวถัง (VIN)*</label>
+          <input type="text" id="edit-car-vin" class="form-control" placeholder="-" oninput="app.checkDuplicateChassis(this.value)">
+          <div id="edit-car-vin-warn" style="display:none; font-size:11px; color:#DC2626; font-weight:600; margin-top:4px;">
+            ⚠️ เลขตัวถังนี้ซ้ำกับรถคันอื่นในระบบ
+          </div>
+        </div>
+        <div class="form-group">
+          <label>🏷️ วันหมดอายุ ภาษี</label>
+          <input type="text" id="edit-car-tax" class="form-control" placeholder="DD/MM/YYYY">
         </div>
         <div class="form-group">
           <label>📅 วันหมดอายุ พ.ร.บ.</label>
@@ -1676,6 +1749,36 @@
         <div class="form-group">
           <label>📅 วันหมดอายุ ประกันภัย</label>
           <input type="text" id="edit-car-ins" class="form-control" placeholder="DD/MM/YYYY">
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:12px; margin-bottom:12px;">
+        <div class="form-group">
+          <label>🛡️ บริษัทประกันภัย</label>
+          <input type="text" id="edit-car-ins-comp" class="form-control" placeholder="เช่น คุ้มภัยโตเกียวมารีน">
+        </div>
+        <div class="form-group">
+          <label>👤 เจ้าของรถ (Owner)</label>
+          <input type="text" id="edit-car-owner" class="form-control" placeholder="เช่น SWD, บีคลิ๊ก">
+        </div>
+        <div class="form-group">
+          <label>🏛️ ผู้รับผลประโยชน์</label>
+          <input type="text" id="edit-car-beneficiary" class="form-control" placeholder="เช่น สวัสดี เรนทัล">
+        </div>
+        <div class="form-group">
+          <label>📆 จดทะเบียนปี (พ.ศ.)</label>
+          <input type="text" id="edit-car-reg-year" class="form-control" placeholder="เช่น 2567">
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; margin-bottom:12px;">
+        <div class="form-group">
+          <label>🔧 วันที่เช็คระยะล่าสุด</label>
+          <input type="text" id="edit-car-last-srv" class="form-control" placeholder="DD/MM/YYYY หรือ -">
+        </div>
+        <div class="form-group">
+          <label>⏭️ กำหนดเช็คระยะครั้งต่อไป</label>
+          <input type="text" id="edit-car-next-srv" class="form-control" placeholder="DD/MM/YYYY หรือ เลขไมล์">
         </div>
         <div class="form-group">
           <label>🚦 สถานะรถยนต์*</label>
@@ -1687,6 +1790,11 @@
             <option value="ติดจอง">ติดจอง</option>
           </select>
         </div>
+      </div>
+
+      <div class="form-group" style="margin-bottom:16px;">
+        <label>📝 หมายเหตุ / ข้อมูลเพิ่มเติม (Notes)</label>
+        <input type="text" id="edit-car-notes" class="form-control" placeholder="เช่น มีเล่มทะเบียน, ผู้เช่าประจำ, ประวัติเคลม...">
       </div>
 
       <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-top:16px;">
@@ -1992,6 +2100,6 @@
   <div class="toast-container" id="toast-container"></div>
 
   <!-- Scripts with cache busting -->
-  <script src="/static/js/app.js?v=5.5"></script>
+  <script src="/static/js/app.js?v=5.6"></script>
 </body>
 </html>

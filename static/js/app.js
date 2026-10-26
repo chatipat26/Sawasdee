@@ -269,7 +269,8 @@ class App {
         this.loadBookings().catch(e => console.error("loadBookings err:", e)),
         this.loadBackOfficeJobs().catch(e => console.error("loadBackOfficeJobs err:", e)),
         this.loadMaintenanceRecords().catch(e => console.error("loadMaintenance err:", e)),
-        this.loadDashboardKPIs().catch(e => console.error("loadDashboardKPIs err:", e))
+        this.loadDashboardKPIs().catch(e => console.error("loadDashboardKPIs err:", e)),
+        this.loadHpLeasingData().catch(e => console.error("loadHpLeasing err:", e))
       ]);
       this.onFilterChange();
     } catch (e) {
@@ -763,9 +764,9 @@ class App {
         if (c.status !== "ติดจอง" && c.fleet_status_key !== "reserved") return false;
       }
 
-      // 5. Sidebar Search keyword
+      // 5. Sidebar Search keyword (supports plate, brand, model, VIN/chassis, owner, beneficiary, insurance, notes)
       if (kw) {
-        const target = `${c.plate || ''} ${c.brand || ''} ${c.model || ''} ${c.car_group || ''} ${c.company || ''} ${c.color || ''}`.toLowerCase();
+        const target = `${c.plate || ''} ${c.brand || ''} ${c.model || ''} ${c.car_group || ''} ${c.company || ''} ${c.color || ''} ${c.chassis_no || ''} ${c.ins_company || ''} ${c.owner || ''} ${c.beneficiary || ''} ${c.notes || ''}`.toLowerCase();
         const targetClean = target.replace(/[- ]/g, '');
         const kwClean = kw.replace(/[- ]/g, '');
         if (!target.includes(kw) && !targetClean.includes(kwClean)) return false;
@@ -827,6 +828,8 @@ class App {
               <span>⛽ ${c.fuel_type || 'เบนซิน'}</span>
               <span>⚙️ ${c.engine_cc || '1500'} cc</span>
               <span>🏢 ${c.company || 'Sawasdee'}</span>
+              ${c.chassis_no && c.chassis_no !== '-' ? `<span title="หมายเลขตัวถัง (VIN)">🔑 ${c.chassis_no}</span>` : ''}
+              ${c.ins_company && c.ins_company !== '-' ? `<span title="บริษัทประกันภัย">🛡️ ${c.ins_company}</span>` : ''}
             </div>
             <div class="car-pricing">
               <div>
@@ -923,6 +926,33 @@ class App {
     }
   }
 
+  checkDuplicateChassis(val) {
+    const origPlate = (document.getElementById("edit-car-original-plate")?.value || "").trim();
+    const warnEl = document.getElementById("edit-car-vin-warn");
+    const cleanVin = String(val || "").trim().toUpperCase();
+    if (!cleanVin || cleanVin === "-" || cleanVin.length < 8) {
+      if (warnEl) warnEl.style.display = "none";
+      return false;
+    }
+    const origClean = this.normalizePlate(origPlate);
+    const dup = this.cars.find(c => {
+      const cClean = this.normalizePlate(c.plate);
+      if (origClean && cClean === origClean) return false;
+      const existingVin = String(c.chassis_no || "").trim().toUpperCase();
+      return existingVin && existingVin === cleanVin;
+    });
+    if (dup) {
+      if (warnEl) {
+        warnEl.textContent = `⚠️ เลขตัวถัง '${cleanVin}' ซ้ำกับ '${dup.brand} ${dup.model}' (ทะเบียน ${dup.plate})`;
+        warnEl.style.display = "block";
+      }
+      return true;
+    } else {
+      if (warnEl) warnEl.style.display = "none";
+      return false;
+    }
+  }
+
   openEditCarModal(plate) {
     const isNew = !plate;
     const car = (!isNew && this.cars.find(c => c.plate === plate)) || {};
@@ -940,6 +970,8 @@ class App {
 
     const warnEl = document.getElementById("edit-car-plate-warn");
     if (warnEl) warnEl.style.display = "none";
+    const vinWarnEl = document.getElementById("edit-car-vin-warn");
+    if (vinWarnEl) vinWarnEl.style.display = "none";
 
     const delBtn = document.getElementById("btn-modal-car-delete");
     if (delBtn) delBtn.style.display = isNew ? "none" : "inline-flex";
@@ -970,15 +1002,23 @@ class App {
     setVal("edit-car-group", car.car_group || "รถเก๋ง (Sedan/Hatchback)");
     setVal("edit-car-fuel", car.fuel_type || "เบนซิน");
     setVal("edit-car-cc", car.engine_cc || "1200");
-    setVal("edit-car-company", car.company || "Sawasdee Rent A Car");
+    setVal("edit-car-company", car.company || "บจก.สวัสดี เรนทัล (Sawasdee Rental)");
     setVal("edit-car-color", car.color || "");
-    setVal("edit-car-mileage", car.mileage || "0");
+    setVal("edit-car-mileage", car.mileage || "15,000");
     setVal("edit-car-pday", car.price_day !== undefined ? car.price_day : 1000);
     setVal("edit-car-pweek", car.price_week !== undefined ? car.price_week : 6000);
     setVal("edit-car-pmonth", car.price_month !== undefined ? car.price_month : 20000);
     setVal("edit-car-vin", car.chassis_no || "-");
+    setVal("edit-car-tax", car.tax_expiry || "-");
     setVal("edit-car-act", car.act_expiry || "-");
     setVal("edit-car-ins", car.ins_expiry || "-");
+    setVal("edit-car-ins-comp", car.ins_company || "-");
+    setVal("edit-car-owner", car.owner || "-");
+    setVal("edit-car-beneficiary", car.beneficiary || car.company || "-");
+    setVal("edit-car-reg-year", car.reg_year || "-");
+    setVal("edit-car-last-srv", car.last_service_date || "-");
+    setVal("edit-car-next-srv", car.next_service || "-");
+    setVal("edit-car-notes", car.notes || "");
     setVal("edit-car-status", car.status || "ว่างพร้อมใช้งาน");
 
     this.openModal("modal-edit-car");
@@ -1033,6 +1073,18 @@ class App {
       return;
     }
 
+    const vinVal = (document.getElementById("edit-car-vin")?.value || "-").trim();
+    if (this.checkDuplicateChassis(vinVal)) {
+      alert(`⚠️ ไม่สามารถบันทึกได้!\nเลขตัวถัง (VIN) '${vinVal}' ซ้ำกับรถคันอื่นที่มีอยู่ในระบบแล้ว กรุณาตรวจสอบอีกครั้ง`);
+      this.showToast(`⚠️ เลขตัวถัง (VIN) '${vinVal}' ซ้ำกับรถคันอื่นในระบบแล้ว`, "danger");
+      const vinEl = document.getElementById("edit-car-vin");
+      if (vinEl) {
+        vinEl.focus();
+        vinEl.select();
+      }
+      return;
+    }
+
     const existing = this.cars.find(c => c.plate === (origPlate || plate)) || {};
     const imgUrl = (document.getElementById("edit-car-image-url")?.value || "").trim() || existing.image || "";
 
@@ -1050,9 +1102,17 @@ class App {
       price_day: parseInt(document.getElementById("edit-car-pday")?.value || "1000", 10),
       price_week: parseInt(document.getElementById("edit-car-pweek")?.value || "6000", 10),
       price_month: parseInt(document.getElementById("edit-car-pmonth")?.value || "20000", 10),
-      chassis_no: (document.getElementById("edit-car-vin")?.value || "-").trim(),
+      chassis_no: vinVal,
+      tax_expiry: (document.getElementById("edit-car-tax")?.value || "-").trim(),
       act_expiry: (document.getElementById("edit-car-act")?.value || "-").trim(),
       ins_expiry: (document.getElementById("edit-car-ins")?.value || "-").trim(),
+      ins_company: (document.getElementById("edit-car-ins-comp")?.value || "-").trim(),
+      owner: (document.getElementById("edit-car-owner")?.value || "-").trim(),
+      beneficiary: (document.getElementById("edit-car-beneficiary")?.value || "-").trim(),
+      reg_year: (document.getElementById("edit-car-reg-year")?.value || "-").trim(),
+      last_service_date: (document.getElementById("edit-car-last-srv")?.value || "-").trim(),
+      next_service: (document.getElementById("edit-car-next-srv")?.value || "-").trim(),
+      notes: (document.getElementById("edit-car-notes")?.value || "").trim(),
       status: document.getElementById("edit-car-status")?.value || "ว่างพร้อมใช้งาน",
       image: imgUrl
     };
@@ -3357,29 +3417,29 @@ class App {
   formatExpiryStatusCell(plate, field, rawStr) {
     const info = this.parseExpiryDateInfo(rawStr);
     const safePlate = String(plate || "").replace(/'/g, "\\'");
-    const labelType = field === "act_expiry" ? "พ.ร.บ." : "ประกันภัย";
-    const mode = field === "act_expiry" ? "act" : "ins";
+    const labelType = field === "tax_expiry" ? "ภาษี" : (field === "act_expiry" ? "พ.ร.บ." : "ประกันภัย");
+    const mode = field === "ins_expiry" ? "ins" : "act";
 
-    let badgeHtml = `<span style="color:#64748B;">${info.formatted}</span>`;
+    let badgeHtml = `<span style="color:#64748B; font-size:11.5px;">${info.formatted}</span>`;
     if (info.valid) {
       if (info.daysLeft < 0) {
         badgeHtml = `
-          <span style="display:inline-flex; align-items:center; gap:4px; font-weight:700; color:#991B1B; background:#FEE2E2; border:1px solid #FECACA; padding:2px 8px; border-radius:12px; font-size:11.5px;">
-            🔴 ${info.formatted} (หมดอายุ ${Math.abs(info.daysLeft)} วัน)
+          <span style="display:inline-flex; align-items:center; gap:4px; font-weight:700; color:#991B1B; background:#FEE2E2; border:1px solid #FECACA; padding:2px 8px; border-radius:12px; font-size:11.5px; white-space:nowrap;">
+            🔴 ${info.formatted} (ขาด ${Math.abs(info.daysLeft)} วัน)
           </span>`;
       } else if (info.daysLeft === 0) {
         badgeHtml = `
-          <span style="display:inline-flex; align-items:center; gap:4px; font-weight:700; color:#991B1B; background:#FEE2E2; border:1px solid #FECACA; padding:2px 8px; border-radius:12px; font-size:11.5px;">
-            🔴 ${info.formatted} (หมดอายุวันนี้!)
+          <span style="display:inline-flex; align-items:center; gap:4px; font-weight:700; color:#991B1B; background:#FEE2E2; border:1px solid #FECACA; padding:2px 8px; border-radius:12px; font-size:11.5px; white-space:nowrap;">
+            🔴 ${info.formatted} (วันนี้!)
           </span>`;
       } else if (info.daysLeft <= 30) {
         badgeHtml = `
-          <span style="display:inline-flex; align-items:center; gap:4px; font-weight:700; color:#B45309; background:#FEF3C7; border:1px solid #FDE68A; padding:2px 8px; border-radius:12px; font-size:11.5px;">
+          <span style="display:inline-flex; align-items:center; gap:4px; font-weight:700; color:#B45309; background:#FEF3C7; border:1px solid #FDE68A; padding:2px 8px; border-radius:12px; font-size:11.5px; white-space:nowrap;">
             🟡 ${info.formatted} (เหลือ ${info.daysLeft} วัน)
           </span>`;
       } else {
         badgeHtml = `
-          <span style="display:inline-flex; align-items:center; gap:4px; font-weight:600; color:#065F46; background:#ECFDF5; border:1px solid #A7F3D0; padding:2px 8px; border-radius:12px; font-size:11.5px;">
+          <span style="display:inline-flex; align-items:center; gap:4px; font-weight:600; color:#065F46; background:#ECFDF5; border:1px solid #A7F3D0; padding:2px 8px; border-radius:12px; font-size:11.5px; white-space:nowrap;">
             🟢 ${info.formatted}
           </span>`;
       }
@@ -3391,7 +3451,7 @@ class App {
       m.status !== "เสร็จสิ้น" &&
       m.status !== "ยกเลิก" &&
       (
-        (field === "act_expiry" && (String(m.order_type).includes("พ.ร.บ.") || String(m.order_type).includes("ต่อทะเบียน") || String(m.order_type).includes("แพ็กคู่"))) ||
+        ((field === "act_expiry" || field === "tax_expiry") && (String(m.order_type).includes("พ.ร.บ.") || String(m.order_type).includes("ต่อทะเบียน") || String(m.order_type).includes("แพ็กคู่"))) ||
         (field === "ins_expiry" && (String(m.order_type).includes("ประกัน") || String(m.order_type).includes("แพ็กคู่")))
       )
     );
@@ -3401,7 +3461,15 @@ class App {
       actionBtnHtml = `
         <div style="display:inline-flex; align-items:center; gap:4px;">
           <button type="button" onclick="app.openCloseMaintenanceModal('${activeMnt.id}')" title="พนักงานต่อเสร็จแล้ว: คลิกเพื่อระบุวันหมดอายุใหม่ & ส่งงาน" style="background:#ECFDF5; color:#047857; border:1px solid #10B981; border-radius:6px; padding:2px 7px; font-size:11px; font-weight:800; cursor:pointer; display:inline-flex; align-items:center; gap:2px;">
-            🏁 ส่งงาน/อัปเดตวัน
+            🏁 ส่งงาน
+          </button>
+        </div>
+      `;
+    } else if (field === "tax_expiry") {
+      actionBtnHtml = `
+        <div style="display:inline-flex; align-items:center; gap:3px;">
+          <button type="button" onclick="app.openExpiryModal('${safePlate}', 'tax_expiry')" title="ระบุ/แก้ไขวันหมดอายุภาษีโดยตรง" style="background:#F8FAFC; color:#64748B; border:1px solid #CBD5E1; border-radius:6px; padding:2px 5px; font-size:11px; cursor:pointer;">
+            ✏️
           </button>
         </div>
       `;
@@ -3419,7 +3487,7 @@ class App {
     }
 
     return `
-      <div style="display:flex; flex-direction:column; gap:4px;">
+      <div style="display:flex; flex-direction:column; gap:3px;">
         <div style="display:flex; align-items:center; justify-content:space-between; gap:6px; flex-wrap:nowrap;">
           <div>${badgeHtml}</div>
           <div style="flex-shrink:0;">${actionBtnHtml}</div>
@@ -3446,10 +3514,26 @@ class App {
     let warningCount = 0;
     let normalCount = 0;
 
+    // Duplicate check across current fleet
+    const seenNormPlates = new Set();
+    const seenChassis = new Set();
+    let dupCount = 0;
+    (this.cars || []).forEach(c => {
+      const np = this.normalizePlate(c.plate);
+      if (seenNormPlates.has(np)) dupCount++;
+      seenNormPlates.add(np);
+      const ch = String(c.chassis_no || "").trim().toUpperCase();
+      if (ch && ch !== "-" && ch.length >= 8) {
+        if (seenChassis.has(ch)) dupCount++;
+        seenChassis.add(ch);
+      }
+    });
+
     const enrichedCars = scopedCars.map(c => {
+      const taxInfo = this.parseExpiryDateInfo(c.tax_expiry);
       const actInfo = this.parseExpiryDateInfo(c.act_expiry);
       const insInfo = this.parseExpiryDateInfo(c.ins_expiry);
-      const minDays = Math.min(actInfo.daysLeft, insInfo.daysLeft);
+      const minDays = Math.min(actInfo.daysLeft, insInfo.daysLeft, taxInfo.daysLeft);
       const maxDays = Math.max(actInfo.daysLeft, insInfo.daysLeft);
 
       if (minDays < 0) expiredCount++;
@@ -3458,12 +3542,18 @@ class App {
 
       return {
         car: c,
+        taxInfo,
         actInfo,
         insInfo,
         minDays,
         maxDays
       };
     });
+
+    const titleEl = document.getElementById("title-expander-fleet");
+    if (titleEl) {
+      titleEl.textContent = `ฐานข้อมูลทะเบียนรถ, ภาษี, พ.ร.บ., ประกันภัย และเช็คระยะ (Fleet Database — ${scopedCars.length} คัน)`;
+    }
 
     if (summaryEl) {
       summaryEl.innerHTML = `
@@ -3476,21 +3566,27 @@ class App {
         <span style="background:#ECFDF5; color:#065F46; border:1px solid #A7F3D0; padding:3px 9px; border-radius:12px; font-size:11.5px; font-weight:700;">
           🟢 ปกติ: ${normalCount} คัน
         </span>
+        <span style="background:#EFF6FF; color:#1E40AF; border:1px solid #BFDBFE; padding:3px 9px; border-radius:12px; font-size:11.5px; font-weight:700;" title="ตรวจสอบทะเบียนซ้ำและเลขตัวถังซ้ำอัตโนมัติ">
+          ${dupCount === 0 ? '🛡️ ไม่พบรถซ้ำ (0 คัน)' : `⚠️ พบรถซ้ำ (${dupCount} คัน)`}
+        </span>
       `;
     }
 
     // 2. Filter by search keyword (local search or sidebar search)
     let filtered = enrichedCars.filter(item => {
       const c = item.car;
-      const target = `${c.plate || ''} ${c.brand || ''} ${c.model || ''} ${c.company || ''} ${c.color || ''} ${c.status || ''} ${c.act_expiry || ''} ${c.ins_expiry || ''}`.toLowerCase();
+      const target = `${c.plate || ''} ${c.brand || ''} ${c.model || ''} ${c.company || ''} ${c.owner || ''} ${c.beneficiary || ''} ${c.color || ''} ${c.chassis_no || ''} ${c.ins_company || ''} ${c.reg_year || ''} ${c.notes || ''} ${c.status || ''} ${c.tax_expiry || ''} ${c.act_expiry || ''} ${c.ins_expiry || ''} ${c.hp_contract_no || ''}`.toLowerCase();
       if (localKw && !target.includes(localKw)) return false;
       if (sbKw && !target.includes(sbKw)) return false;
       return true;
     });
 
-    // 3. Sort according to selected sort mode (Default: earliest expiry of ACT & Insurance first)
+    // 3. Sort according to selected sort mode
     filtered.sort((a, b) => {
-      if (sortMode === "act_asc") {
+      if (sortMode === "tax_asc") {
+        if (a.taxInfo.daysLeft !== b.taxInfo.daysLeft) return a.taxInfo.daysLeft - b.taxInfo.daysLeft;
+        return String(a.car.plate || "").localeCompare(String(b.car.plate || ""), "th");
+      } else if (sortMode === "act_asc") {
         if (a.actInfo.daysLeft !== b.actInfo.daysLeft) return a.actInfo.daysLeft - b.actInfo.daysLeft;
         if (a.insInfo.daysLeft !== b.insInfo.daysLeft) return a.insInfo.daysLeft - b.insInfo.daysLeft;
         return String(a.car.plate || "").localeCompare(String(b.car.plate || ""), "th");
@@ -3501,7 +3597,6 @@ class App {
       } else if (sortMode === "plate_asc") {
         return String(a.car.plate || "").localeCompare(String(b.car.plate || ""), "th");
       } else {
-        // Default: expiry_asc (earliest expiry date first; if tied on minDays, compare maxDays so updating 1 column immediately drops it below cars where both are unrenewed)
         if (a.minDays !== b.minDays) return a.minDays - b.minDays;
         if (a.maxDays !== b.maxDays) return a.maxDays - b.maxDays;
         return String(a.car.plate || "").localeCompare(String(b.car.plate || ""), "th");
@@ -3509,7 +3604,7 @@ class App {
     });
 
     if (filtered.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:28px; color:#64748B;">ไม่พบข้อมูลรถยนต์ที่ค้นหา</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="11" style="text-align:center; padding:28px; color:#64748B;">ไม่พบข้อมูลรถยนต์ที่ค้นหา</td></tr>`;
       return;
     }
 
@@ -3518,7 +3613,6 @@ class App {
       const safePlate = String(c.plate || "").replace(/'/g, "\\'");
       const rowBg = item.minDays < 0 ? "background:#FEF2F2;" : (item.minDays <= 30 ? "background:#FFFBEB;" : "");
 
-      // Check if this car has an active renewal work order (ACT, Insurance, or Both)
       const activePairMnt = (this.maintenanceRecords || []).find(m =>
         m.car_id === c.plate &&
         m.status !== "เสร็จสิ้น" &&
@@ -3536,25 +3630,73 @@ class App {
       } else {
         renewBtnHtml = `
           <button type="button" onclick="app.openRenewalOrderModal('${safePlate}', 'both')" class="btn btn-sm" style="padding:3px 7px; font-size:11px; font-weight:700; background:#FFF7ED; color:#EA580C; border:1px solid #FDBA74;" title="ออกใบงานต่ออายุทั้ง พ.ร.บ. และ ประกันภัย มอบหมายพนักงาน (ขึ้นหน้าตารางงาน)">
-            📋 ออกใบงานต่อคู่
+            📋 ต่อคู่
           </button>
         `;
       }
 
+      const regYearBadge = c.reg_year && c.reg_year !== "-"
+        ? `<div style="font-size:10.5px; color:#64748B;">ปีจด: <b>${c.reg_year}</b></div>`
+        : "";
+
+      const ownerTxt = c.owner && c.owner !== "-" ? c.owner : (c.company || "-");
+      const benTxt = c.beneficiary && c.beneficiary !== "-" && c.beneficiary !== ownerTxt
+        ? `<div style="font-size:10.5px; color:#64748B;">ผู้รับผลประโยชน์: ${c.beneficiary}</div>`
+        : "";
+
+      const insCompBadge = c.ins_company && c.ins_company !== "-"
+        ? `<div style="font-size:10.5px; color:#0369A1; font-weight:700; margin-top:2px;">🛡️ ${c.ins_company}</div>`
+        : "";
+
+      const srvInfo = [];
+      if (c.last_service_date && c.last_service_date !== "-") srvInfo.push(`ล่าสุด: ${c.last_service_date}`);
+      if (c.next_service && c.next_service !== "-") srvInfo.push(`ถัดไป: ${c.next_service}`);
+      const srvHtml = srvInfo.length > 0
+        ? `<div style="font-size:10.5px; color:#475569;">🔧 ${srvInfo.join(" | ")}</div>`
+        : "";
+
+      const hpBadge = c.hp_contract_no
+        ? `<div style="font-size:10.5px; color:#7C3AED; font-weight:700;">🏦 สัญญา: ${c.hp_contract_no}${c.hp_installment ? ` (฿${Number(c.hp_installment).toLocaleString()}/ด.)` : ''}</div>`
+        : "";
+
+      const notesShort = c.notes
+        ? `<div style="font-size:11px; color:#334155; max-width:210px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${String(c.notes).replace(/"/g, '&quot;')}">${c.notes}</div>`
+        : `<span style="color:#94A3B8; font-size:11px;">-</span>`;
+
       return `
         <tr style="${rowBg} transition: background 0.25s ease;">
-          <td style="white-space:nowrap;"><b>🚘 ${c.plate}</b></td>
-          <td><b>${c.brand || ''}</b> ${c.model || ''}</td>
-          <td>${c.color || '-'}</td>
-          <td>${c.company || 'Sawasdee'}</td>
+          <td style="white-space:nowrap;">
+            <b>🚘 ${c.plate}</b>
+            ${regYearBadge}
+          </td>
+          <td>
+            <b>${c.brand || ''}</b> ${c.model || ''}
+            <div style="font-size:11px; color:#64748B;">🎨 ${c.color || '-'}</div>
+          </td>
+          <td style="font-family:monospace; font-size:11.5px; color:#1E293B; white-space:nowrap;">${c.chassis_no || '-'}</td>
+          <td>
+            <div style="font-weight:700; font-size:12px; color:#1E293B;">${ownerTxt}</div>
+            ${benTxt}
+          </td>
           <td>
             <span class="badge" style="background:${c.status_bg}; color:${c.status_color}; border:1px solid ${c.status_border};">
               ${c.fleet_status_desc || c.status}
             </span>
           </td>
+          <td>${this.formatExpiryStatusCell(c.plate, 'tax_expiry', c.tax_expiry)}</td>
           <td>${this.formatExpiryStatusCell(c.plate, 'act_expiry', c.act_expiry)}</td>
-          <td>${this.formatExpiryStatusCell(c.plate, 'ins_expiry', c.ins_expiry)}</td>
-          <td style="white-space:nowrap;">${c.mileage || '15,000'} km</td>
+          <td>
+            ${this.formatExpiryStatusCell(c.plate, 'ins_expiry', c.ins_expiry)}
+            ${insCompBadge}
+          </td>
+          <td style="white-space:nowrap;">
+            <div style="font-weight:700; font-size:12px;">${c.mileage || '15,000'} km</div>
+            ${srvHtml}
+          </td>
+          <td>
+            ${hpBadge}
+            ${notesShort}
+          </td>
           <td style="text-align:center; white-space:nowrap;">
             ${renewBtnHtml}
             <button type="button" onclick="app.openEditCarModal('${safePlate}')" class="btn btn-sm btn-secondary" style="padding:3px 7px; font-size:11.5px;" title="แก้ไขรายละเอียดรถและรูปรถ">
@@ -3570,6 +3712,96 @@ class App {
         </tr>
       `;
     }).join("");
+  }
+
+  async loadHpLeasingData() {
+    try {
+      const res = await fetch("/api/hp-leasing");
+      if (res.ok) {
+        this.hpLeasingData = await res.json();
+        this.renderHpLeasingTable();
+      }
+    } catch (e) {
+      console.error("loadHpLeasingData error:", e);
+    }
+  }
+
+  renderHpLeasingTable() {
+    const data = this.hpLeasingData || {};
+    const contracts = data.contracts || [];
+    const summary = data.summary || {};
+    const propIns = data.property_insurance || [];
+
+    const cardsEl = document.getElementById("hp-leasing-summary-cards");
+    if (cardsEl && summary.total_contracts) {
+      cardsEl.innerHTML = `
+        <div style="background:#FFFFFF; border:1px solid #E2E8F0; border-radius:10px; padding:10px 12px;">
+          <div style="font-size:11.5px; color:#64748B; font-weight:600;">📋 จำนวนสัญญาเช่าซื้อ</div>
+          <div style="font-size:18px; font-weight:800; color:#1E293B; margin-top:2px;">${summary.total_contracts} สัญญา</div>
+        </div>
+        <div style="background:#FFFFFF; border:1px solid #E2E8F0; border-radius:10px; padding:10px 12px;">
+          <div style="font-size:11.5px; color:#64748B; font-weight:600;">💳 ค่างวดต่อเดือนรวม</div>
+          <div style="font-size:18px; font-weight:800; color:#EA580C; margin-top:2px;">฿${Number(summary.total_monthly_installment || 0).toLocaleString('th-TH', {minimumFractionDigits: 2})}</div>
+        </div>
+        <div style="background:#FFFFFF; border:1px solid #E2E8F0; border-radius:10px; padding:10px 12px;">
+          <div style="font-size:11.5px; color:#64748B; font-weight:600;">✅ ชำระค่างวดแล้วรวม</div>
+          <div style="font-size:18px; font-weight:800; color:#10B981; margin-top:2px;">฿${Number(summary.total_paid_amount || 0).toLocaleString('th-TH', {minimumFractionDigits: 2})}</div>
+        </div>
+        <div style="background:#FFFFFF; border:1px solid #E2E8F0; border-radius:10px; padding:10px 12px;">
+          <div style="font-size:11.5px; color:#64748B; font-weight:600;">⏳ ยอดคงเหลือผ่อนชำระ</div>
+          <div style="font-size:18px; font-weight:800; color:#DC2626; margin-top:2px;">฿${Number(summary.total_remaining_amount || 0).toLocaleString('th-TH', {minimumFractionDigits: 2})}</div>
+        </div>
+        <div style="background:#FFFFFF; border:1px solid #E2E8F0; border-radius:10px; padding:10px 12px;">
+          <div style="font-size:11.5px; color:#64748B; font-weight:600;">🏦 ราคารถรวมเงินดาวน์</div>
+          <div style="font-size:18px; font-weight:800; color:#3B82F6; margin-top:2px;">฿${Number(summary.total_car_price || 0).toLocaleString('th-TH', {minimumFractionDigits: 2})}</div>
+        </div>
+      `;
+    }
+
+    const hpTbody = document.getElementById("hp-leasing-tbody");
+    if (hpTbody) {
+      hpTbody.innerHTML = contracts.map(item => `
+        <tr>
+          <td style="text-align:center; font-weight:700;">${item.no}</td>
+          <td><b>${item.model}</b></td>
+          <td>
+            <div><b>🚘 ${item.plate}</b></div>
+            <div style="font-family:monospace; font-size:11px; color:#64748B;">${item.chassis_no || '-'}</div>
+          </td>
+          <td><span class="badge badge-info">${item.contract_no}</span></td>
+          <td>
+            <div style="font-size:11.5px; color:#64748B;">📅 ${item.down_payment_date}</div>
+            <div style="font-weight:700;">฿${Number(item.down_payment || 0).toLocaleString('th-TH', {minimumFractionDigits: 2})}</div>
+          </td>
+          <td>
+            <div style="font-size:11.5px;">เริ่ม: ${item.first_payment_date}</div>
+            <div style="font-size:11px; color:#B45309; font-weight:700;">${item.due_day}</div>
+          </td>
+          <td style="text-align:right; font-weight:700; color:#EA580C;">฿${Number(item.installment || 0).toLocaleString('th-TH', {minimumFractionDigits: 2})}</td>
+          <td style="text-align:center;">
+            <span style="font-weight:700; color:#047857;">${item.paid_months}</span> / ${item.total_months} งวด
+            <div style="font-size:10.5px; color:#64748B;">(เหลือ ${item.remaining_months} งวด)</div>
+          </td>
+          <td style="text-align:right; font-weight:700; color:#059669;">฿${Number(item.paid_amount || 0).toLocaleString('th-TH', {minimumFractionDigits: 2})}</td>
+          <td style="text-align:right; font-weight:700; color:#DC2626;">฿${Number(item.remaining_amount || 0).toLocaleString('th-TH', {minimumFractionDigits: 2})}</td>
+          <td style="text-align:right; font-weight:700; color:#1E293B;">฿${Number(item.total_car_price || 0).toLocaleString('th-TH', {minimumFractionDigits: 2})}</td>
+        </tr>
+      `).join("");
+    }
+
+    const propTbody = document.getElementById("property-insurance-tbody");
+    if (propTbody) {
+      propTbody.innerHTML = propIns.map(p => `
+        <tr>
+          <td><span class="badge badge-gray">${p.id}</span></td>
+          <td><b>${p.title}</b></td>
+          <td>${p.owner}</td>
+          <td><span style="color:#0369A1; font-weight:700;">🛡️ ${p.ins_company}</span></td>
+          <td><b>📅 ${p.expiry_date}</b></td>
+          <td style="font-size:12px; color:#475569;">${p.notes || '-'}</td>
+        </tr>
+      `).join("");
+    }
   }
 
   computeRenewedDateStr(rawStr) {
@@ -3762,7 +3994,7 @@ class App {
     const car = (this.cars || []).find(c => c.plate === plate);
     if (!car) return;
 
-    const labelType = field === "act_expiry" ? "พ.ร.บ." : "ประกันภัย";
+    const labelType = field === "tax_expiry" ? "ภาษีรถยนต์" : (field === "act_expiry" ? "พ.ร.บ." : "ประกันภัย");
     const currVal = car[field] || "-";
     const info = this.parseExpiryDateInfo(currVal);
 
@@ -3823,7 +4055,7 @@ class App {
 
     const parsed = this.parseExpiryDateInfo(rawNew);
     const finalDateStr = parsed.valid ? parsed.formatted : rawNew;
-    const labelType = field === "act_expiry" ? "พ.ร.บ." : "ประกันภัย";
+    const labelType = field === "tax_expiry" ? "ภาษีรถยนต์" : (field === "act_expiry" ? "พ.ร.บ." : "ประกันภัย");
 
     this.closeModal("modal-update-expiry");
     await this.saveCarExpiryUpdate(plate, field, finalDateStr, labelType);

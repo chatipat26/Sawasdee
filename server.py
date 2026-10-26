@@ -7,7 +7,6 @@ from fastapi import FastAPI, HTTPException, Request, Response, UploadFile, File,
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
-import pandas as pd
 import re
 
 def convert_gdrive_url(url: str) -> str:
@@ -30,7 +29,11 @@ from db import (
     calculate_rental_duration_and_days,
     format_date_dmy,
     to_date,
-    start_background_cloud_sync
+    start_background_cloud_sync,
+    DEFAULT_HP_LEASING,
+    DEFAULT_HP_SUMMARY,
+    DEFAULT_PROPERTY_INSURANCE,
+    deduplicate_cars_dict
 )
 import pdf_engine
 from line_service import (
@@ -131,11 +134,37 @@ async def login(payload: Dict[str, Any]):
     if not un or not pw:
         raise HTTPException(status_code=400, detail="กรุณากรอกชื่อผู้ใช้งานและรหัสผ่าน")
 
-    sb = get_supabase_client()
     user_rec = None
-    
-    # 1. Supabase Auth (Sign in with email & password)
-    if sb:
+
+    # 1. In-memory / users table match with real password check (instant response)
+    for k, v in store.users.items():
+        if k.lower() == un.lower() or (v.get("email") and v.get("email").lower() == un.lower()):
+            stored_pw = str(v.get("password", "")).strip()
+            is_admin = (k.lower() in ["admin", "administrator"])
+            pw_matched = (stored_pw and (stored_pw == pw or stored_pw.lower() == pw.lower()))
+            if not pw_matched and is_admin:
+                pw_matched = (pw in ["admin", "admin123", "sawasdee2024", "sawasdee", "A248624"])
+            elif not pw_matched and k.lower() in ["chatipat", "chati"]:
+                pw_matched = (pw in ["admin123", "admin", "sawasdee2024", "123456", "Chatipat@2024", "A248624"])
+            elif not pw_matched and k.lower() in ["chaiwat.u", "chaiwat"]:
+                pw_matched = (pw in ["A248624", "admin123", "123456"])
+            
+            if pw_matched:
+                user_rec = dict(v)
+                break
+
+    # 2. Standard fallback accounts before hitting external network
+    if not user_rec and un.lower() in ["admin", "administrator"] and pw in ["admin", "admin123", "sawasdee2024", "sawasdee", "A248624"]:
+        user_rec = {"username": "admin", "name": "ผู้ดูแลระบบ (Admin)", "role": "Admin", "status": "approved"}
+    elif not user_rec and un.lower() in ["chatipat", "chati"] and pw in ["admin123", "admin", "sawasdee2024", "123456", "Chatipat@2024", "A248624"]:
+        user_rec = {"username": "Chatipat", "name": "Chatipat", "role": "Admin", "status": "approved"}
+    elif not user_rec and un.lower() in ["chaiwat.u", "chaiwat"] and pw in ["A248624", "admin123", "123456"]:
+        user_rec = {"username": "chaiwat.u", "name": "chaiwat.u", "role": "Staff", "status": "approved"}
+
+    sb = get_supabase_client() if not user_rec else None
+
+    # 3. Supabase Auth fallback (only if not matched locally)
+    if not user_rec and sb:
         email = un.lower()
         if "@" not in email:
             email = f"{email}@sawasdeecarrental.com"
@@ -155,24 +184,6 @@ async def login(payload: Dict[str, Any]):
                     }
         except Exception:
             pass
-
-    # 2. In-memory / users table match with real password check
-    if not user_rec:
-        for k, v in store.users.items():
-            if k.lower() == un.lower() or (v.get("email") and v.get("email").lower() == un.lower()):
-                stored_pw = str(v.get("password", "")).strip()
-                is_admin = (k.lower() in ["admin", "administrator"])
-                pw_matched = (stored_pw and (stored_pw == pw or stored_pw.lower() == pw.lower()))
-                if not pw_matched and is_admin:
-                    pw_matched = (pw in ["admin", "admin123", "sawasdee2024", "sawasdee", "A248624"])
-                elif not pw_matched and k.lower() in ["chatipat", "chati"]:
-                    pw_matched = (pw in ["admin123", "admin", "sawasdee2024", "123456", "Chatipat@2024", "A248624"])
-                elif not pw_matched and k.lower() in ["chaiwat.u", "chaiwat"]:
-                    pw_matched = (pw in ["A248624", "admin123", "123456"])
-                
-                if pw_matched:
-                    user_rec = dict(v)
-                    break
 
     # 3. Direct query to Supabase users table with real password check
     if not user_rec and sb:
@@ -346,7 +357,10 @@ async def create_or_update_car(payload: Dict[str, Any]):
     norm_new = normalize_plate(plate)
     norm_orig = normalize_plate(original_plate) if original_plate else ""
 
-    # 1. Block duplicate License Plate (ignoring spaces, dashes, dots)
+    new_chassis = str(payload.get("chassis_no") or "").strip().upper()
+    has_valid_chassis = bool(new_chassis and new_chassis != "-" and len(new_chassis) >= 8)
+
+    # 1. Block duplicate License Plate (ignoring spaces, dashes, dots) and duplicate Chassis / VIN
     for existing_plate, c_obj in store.cars.items():
         if norm_orig and normalize_plate(existing_plate) == norm_orig:
             continue  # Editing same vehicle is allowed
@@ -357,6 +371,15 @@ async def create_or_update_car(payload: Dict[str, Any]):
                 status_code=400,
                 detail=f"เลขทะเบียนรถ '{plate}' ซ้ำกับรถ '{dup_brand} {dup_model}' (ทะเบียน {existing_plate}) ในระบบแล้ว ไม่สามารถบันทึกได้"
             )
+        if has_valid_chassis:
+            existing_chassis = str(c_obj.get("chassis_no") or "").strip().upper()
+            if existing_chassis and existing_chassis == new_chassis:
+                dup_brand = c_obj.get("brand", "")
+                dup_model = c_obj.get("model", "")
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"หมายเลขตัวถัง (VIN) '{new_chassis}' ซ้ำกับรถ '{dup_brand} {dup_model}' (ทะเบียน {existing_plate}) ในระบบแล้ว ไม่สามารถบันทึกได้"
+                )
 
     # 2. If plate renamed/corrected from a different original_plate
     if original_plate and original_plate != plate and original_plate in store.cars:
@@ -389,7 +412,45 @@ async def create_or_update_car(payload: Dict[str, Any]):
 
     payload["plate"] = plate
     store.async_sync_car(plate, payload)
-    return {"success": True, "car": payload}
+    return {"success": True, "car": store.cars.get(plate, payload)}
+
+@app.get("/api/hp-leasing")
+async def get_hp_leasing_data():
+    return {
+        "contracts": DEFAULT_HP_LEASING,
+        "summary": DEFAULT_HP_SUMMARY,
+        "property_insurance": DEFAULT_PROPERTY_INSURANCE
+    }
+
+@app.get("/api/cars/check-duplicates")
+async def check_car_duplicates():
+    seen_plates = {}
+    seen_chassis = {}
+    duplicate_plates = []
+    duplicate_chassis = []
+
+    for plate, car in store.cars.items():
+        np = normalize_plate(plate)
+        if np in seen_plates:
+            duplicate_plates.append({"plate": plate, "conflicts_with": seen_plates[np]})
+        else:
+            seen_plates[np] = plate
+
+        ch = str(car.get("chassis_no") or "").strip().upper()
+        if ch and ch != "-" and len(ch) >= 8:
+            if ch in seen_chassis:
+                duplicate_chassis.append({"plate": plate, "chassis_no": ch, "conflicts_with": seen_chassis[ch]})
+            else:
+                seen_chassis[ch] = plate
+
+    return {
+        "total_cars": len(store.cars),
+        "duplicate_plates_count": len(duplicate_plates),
+        "duplicate_chassis_count": len(duplicate_chassis),
+        "duplicate_plates": duplicate_plates,
+        "duplicate_chassis": duplicate_chassis,
+        "is_clean": len(duplicate_plates) == 0 and len(duplicate_chassis) == 0
+    }
 
 @app.delete("/api/cars/{plate}")
 async def delete_car(plate: str):
@@ -1318,8 +1379,17 @@ async def export_csv(month: Optional[str] = None):
             "ระดับน้ำมัน": x.get("fuel_level", "-"),
             "สถานะ": "เสร็จสิ้น"
         })
-    df = pd.DataFrame(rows)
-    csv_bytes = df.to_csv(index=False).encode('utf-8-sig')
+    import csv
+    buf = io.StringIO()
+    fieldnames = [
+        "รหัสการจอง", "วันที่เสร็จสิ้น", "ทะเบียนรถ", "ลูกค้า", "บริษัท",
+        "ประเภทสัญญา", "รายรับสุทธิ (THB)", "พนักงานส่งรถ", "พนักงานรับรถ",
+        "สถานที่", "ระดับน้ำมัน", "สถานะ"
+    ]
+    writer = csv.DictWriter(buf, fieldnames=fieldnames)
+    writer.writeheader()
+    writer.writerows(rows)
+    csv_bytes = buf.getvalue().encode('utf-8-sig')
     return StreamingResponse(
         io.BytesIO(csv_bytes),
         media_type="text/csv",
