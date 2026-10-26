@@ -4702,11 +4702,23 @@ class App {
 
     tbody.innerHTML = this.users.map(u => {
       const isPending = u.status === "pending";
+      const lineId = (u.line_user_id || "").trim();
+      const shortLineId = lineId.length > 14 ? `${lineId.slice(0, 8)}...${lineId.slice(-4)}` : lineId;
+      const lineBadge = lineId
+        ? `<span class="badge badge-success" title="${lineId}">🟢 ผูกแล้ว (${shortLineId})</span>`
+        : `<span class="badge badge-gray">⚪ ยังไม่ได้ผูก LINE ID</span>`;
       return `
         <tr>
           <td><b>${u.username}</b></td>
           <td>${u.name || '-'}</td>
           <td><span class="badge badge-info">${u.role || 'Staff'}</span></td>
+          <td>
+            <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+              ${lineBadge}
+              <button onclick="app.editUserLineId('${u.username}', '${lineId}')" class="btn btn-sm btn-secondary" style="padding:2px 8px; font-size:11px;">🔗 ตั้งค่า LINE ID</button>
+              ${lineId ? `<button onclick="app.testUserLinePush('${u.username}')" class="btn btn-sm btn-primary" style="padding:2px 8px; font-size:11px;" title="ทดสอบยิงข้อความตรงหาผู้ใช้นี้">📨 ทดสอบ</button>` : ''}
+            </div>
+          </td>
           <td>
             <span class="badge ${isPending ? 'badge-danger' : 'badge-success'}">
               ${isPending ? '⏳ รออนุมัติ' : '✅ ใช้งานได้'}
@@ -4719,6 +4731,43 @@ class App {
         </tr>
       `;
     }).join("");
+  }
+
+  async editUserLineId(un, currentId = "") {
+    const input = prompt(`กรอกรหัส LINE User ID ของ "${un}" (เช่น Uxxxxxxxx...)
+(เว้นว่างเพื่อยกเลิกการผูก LINE ID):`, currentId || "");
+    if (input === null) return;
+    try {
+      const res = await fetch(`/api/users/${encodeURIComponent(un)}/line-id`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ line_user_id: input.trim() })
+      });
+      const data = await res.json();
+      if (data.success) {
+        this.showToast(`✅ บันทึก LINE User ID สำหรับ ${un} เรียบร้อย`, "success");
+        await this.loadUsers();
+      } else {
+        throw new Error(data.detail || "บันทึกไม่สำเร็จ");
+      }
+    } catch (e) {
+      this.showToast("เกิดข้อผิดพลาด: " + e.message, "danger");
+    }
+  }
+
+  async testUserLinePush(un) {
+    try {
+      this.showToast(`📲 กำลังส่งข้อความทดสอบหา ${un}...`, "info");
+      const res = await fetch(`/api/users/${encodeURIComponent(un)}/test-line`, { method: "POST" });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        this.showToast(`✅ ส่งข้อความ LINE ตรงหา ${un} สำเร็จ! (ใช้เพียง 1 ข้อความ)`, "success");
+      } else {
+        throw new Error(data.detail || "ส่งข้อความไม่สำเร็จ กรุณาตรวจสอบ LINE User ID");
+      }
+    } catch (e) {
+      this.showToast("ส่งไม่สำเร็จ: " + e.message, "danger");
+    }
   }
 
   async approveUser(un) {

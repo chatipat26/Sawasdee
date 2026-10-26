@@ -227,12 +227,21 @@ class PgClient:
         self._conn = None
         self._lock = threading.RLock()
         self._pk_cache = {}
+        self._schema_checked = False
         self.auth = _Unsupported("auth")
         self.storage = _Unsupported("storage")
 
     def _connection(self):
         if self._conn is None or self._conn.closed:
             self._conn = psycopg.connect(self._dsn, autocommit=True, row_factory=dict_row)
+            if not self._schema_checked:
+                self._schema_checked = True
+                try:
+                    with self._conn.cursor() as cur:
+                        cur.execute("ALTER TABLE IF EXISTS public.users ADD COLUMN IF NOT EXISTS line_user_id TEXT;")
+                        cur.execute("ALTER TABLE IF EXISTS public.customers ADD COLUMN IF NOT EXISTS line_user_id TEXT;")
+                except Exception as e:
+                    print(f"Schema check note: {e}")
         return self._conn
 
     def run(self, statements):

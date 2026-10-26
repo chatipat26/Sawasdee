@@ -87,11 +87,15 @@ def check_expiring_cars(cars_list, target_days=(30, 31, 7, 0), check_date=None):
         model_name = f"{brand} {model}".strip() if (brand or model) else "ไม่ระบุรุ่น"
         company = car.get("company", "").strip()
 
-        # ตรวจสอบทั้ง พ.ร.บ. และ ประกันภัย
+        # ตรวจสอบทั้ง พ.ร.บ., ประกันภัย และ ภาษีรถยนต์
+        act_raw = car.get("act_expiry")
+        tax_raw = car.get("tax_expiry")
         checks = [
-            ("พ.ร.บ.", car.get("act_expiry")),
+            ("พ.ร.บ.", act_raw),
             ("ประกันภัย", car.get("ins_expiry"))
         ]
+        if tax_raw and str(tax_raw).strip() != str(act_raw or "").strip():
+            checks.append(("ภาษีรถยนต์", tax_raw))
 
         for doc_type, expiry_raw in checks:
             exp_date = parse_date(expiry_raw)
@@ -154,17 +158,19 @@ def build_alert_message(expiring_items):
     return "\n".join(lines)
 
 
-def send_line_broadcast(message, channel_access_token):
-    """ส่งข้อความ Broadcast ไปยังพนักงานทุกคนผ่าน LINE Messaging API"""
+def send_line_broadcast(message, channel_access_token, to_user_id=None):
+    """ส่งข้อความ Direct Push ตรงไปยังแอดมิน (หรือผู้รับที่ระบุ) เพื่อประหยัดโควต้าข้อความ LINE"""
     if not message or not channel_access_token:
         return False
 
+    target_uid = to_user_id or os.environ.get("LINE_TARGET_USER_ID", "Ub7b6353ba826c0ba5c3d9fac3531ef77")
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {channel_access_token}"
     }
 
     payload = {
+        "to": target_uid,
         "messages": [
             {
                 "type": "text",
@@ -174,15 +180,15 @@ def send_line_broadcast(message, channel_access_token):
     }
 
     try:
-        res = requests.post(LINE_BROADCAST_URL, headers=headers, json=payload, timeout=10)
+        res = requests.post("https://api.line.me/v2/bot/message/push", headers=headers, json=payload, timeout=10)
         if res.status_code == 200:
-            print("✅ ส่งข้อความ Broadcast แจ้งเตือนสำเร็จ (HTTP 200 OK)")
+            print(f"✅ ส่งข้อความแจ้งเตือนตรงถึงแอดมิน ({target_uid}) สำเร็จ (HTTP 200 OK)")
             return True
         else:
-            print(f"⚠️ LINE Broadcast Error: HTTP {res.status_code} - {res.text}")
+            print(f"⚠️ LINE Push Error: HTTP {res.status_code} - {res.text}")
             return False
     except Exception as e:
-        print(f"❌ เกิดข้อผิดพลาดขณะส่ง LINE Broadcast: {e}")
+        print(f"❌ เกิดข้อผิดพลาดขณะส่ง LINE Push: {e}")
         return False
 
 

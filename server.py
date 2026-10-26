@@ -38,10 +38,17 @@ from db import (
 import pdf_engine
 from line_service import (
     send_line_broadcast_message,
+    send_line_push_message,
+    send_line_reply_message,
+    send_line_to_admin_async,
+    send_line_to_worker_async,
+    resolve_worker_line_id,
+    get_admin_line_id,
     notify_line_work_order,
     notify_line_maintenance,
     notify_line_close_maintenance,
     notify_line_deposit,
+    notify_line_expense,
     check_and_send_expiry_alerts,
     init_expiry_scheduler_thread
 )
@@ -240,14 +247,19 @@ async def login(payload: Dict[str, Any]):
             "user": user_rec
         }
 
+    canon_un = user_rec.get("username", un)
+    if canon_un not in store.users:
+        store.async_sync_user(canon_un, user_rec)
+
     return {
         "success": True,
         "is_pending": False,
         "user": {
-            "username": user_rec.get("username", un),
-            "name": user_rec.get("name") or user_rec.get("username", un),
+            "username": canon_un,
+            "name": user_rec.get("name") or canon_un,
             "role": user_rec.get("role", "Staff"),
-            "status": user_rec.get("status", "approved")
+            "status": user_rec.get("status", "approved"),
+            "line_user_id": user_rec.get("line_user_id", "")
         }
     }
 
@@ -319,6 +331,38 @@ async def delete_user(username: str):
         raise HTTPException(status_code=400, detail="ไม่สามารถลบบัญชีผู้ดูแลระบบหลัก (admin) ได้")
     store.async_delete_user(username)
     return {"success": True}
+
+@app.put("/api/users/{username}/line-id")
+@app.post("/api/users/{username}/line-id")
+async def update_user_line_id(username: str, payload: Dict[str, Any]):
+    if username not in store.users:
+        raise HTTPException(status_code=404, detail="ไม่พบผู้ใช้นี้ในระบบ")
+    line_uid = str(payload.get("line_user_id") or "").strip()
+    store.users[username]["line_user_id"] = line_uid
+    if "role" in payload and payload["role"] in ("Admin", "Staff"):
+        store.users[username]["role"] = payload["role"]
+    if "name" in payload and str(payload["name"]).strip():
+        store.users[username]["name"] = str(payload["name"]).strip()
+    store.async_sync_user(username, store.users[username])
+    return {"success": True, "username": username, "line_user_id": line_uid}
+
+@app.post("/api/users/{username}/test-line")
+async def test_user_line_push(username: str):
+    if username not in store.users:
+        raise HTTPException(status_code=404, detail="ไม่พบผู้ใช้นี้ในระบบ")
+    u = store.users[username]
+    line_uid = resolve_worker_line_id(username)
+    if not line_uid:
+        raise HTTPException(status_code=400, detail=f"ผู้ใช้ '{username}' ยังไม่ได้ผูก LINE User ID")
+    msg = "\n".join([
+        "✅ ทดสอบระบบแจ้งเตือนตรง (Direct Push)",
+        "────────────────────",
+        f"👤 ผู้ใช้งาน: {username} ({u.get('name', username)})",
+        f"🏷️ บทบาท: {u.get('role', 'Staff')}",
+        "📲 สถานะ: เชื่อมต่อ LINE สำเร็จ พร้อมรับแจ้งเตือนใบงานเฉพาะของคุณโดยตรง"
+    ])
+    ok = send_line_push_message(msg, to_user_id=line_uid)
+    return {"success": ok, "to_user_id": line_uid}
 
 # -------------------------------------------------------------------------
 # CARS FLEET
@@ -875,6 +919,11 @@ async def settle_rental(bk_id: str, payload: Dict[str, Any]):
         "detail": rent_detail
     }
     store.async_sync_financial(f_rent)
+
+    try:
+        notify_line_deposit(target, net_p, settle_method, settle_ref, settle_slip, also_rent=True, is_settle_only=True)
+    except Exception as line_err:
+        print(f"Error sending LINE settle notification: {line_err}")
 
     return {"success": True, "booking": target}
 
@@ -1506,18 +1555,79 @@ async def get_job_pdf(bk_id: str):
     )
 
 # -------------------------------------------------------------------------
-# LINE MESSAGING
+# LINE MESSAGING (DIRECT PUSH & AUTO-LINK WEBHOOK)
 # -------------------------------------------------------------------------
 @app.post("/api/line/broadcast")
 async def trigger_line_broadcast(payload: Dict[str, Any]):
     msg = payload.get("message", "ทดสอบการส่งข้อความจากระบบ Sawasdee Rental")
-    success = send_line_broadcast_message(msg)
-    return {"success": success}
+    to_uid = payload.get("to_user_id")
+    worker = payload.get("worker_name")
+    if worker and not to_uid:
+        to_uid = resolve_worker_line_id(worker)
+    success = send_line_push_message(msg, to_user_id=to_uid or get_admin_line_id())
+    return {"success": success, "to_user_id": to_uid or get_admin_line_id()}
 
 @app.post("/api/line/check-expiry")
-async def trigger_expiry_alert_check():
-    res = check_and_send_expiry_alerts(store.cars, target_days=(30, 31, 7, 0))
+async def trigger_expiry_alert_check(payload: Optional[Dict[str, Any]] = None):
+    mode = (payload or {}).get("recipient_mode")
+    res = check_and_send_expiry_alerts(store.cars, target_days=(30, 31, 7, 0), recipient_mode=mode)
     return res
+
+@app.post("/api/line/webhook")
+@app.post("/webhook/line")
+async def line_bot_webhook(request: Request):
+    """
+    Webhook สำหรับผูกบัญชี LINE ของพนักงานอัตโนมัติ (ใช้ replyToken ฟรี 0 โควต้า):
+    - พนักงานพิมพ์ชื่อผู้ใช้ (Username) เช่น 'chaiwat.u' ส่งมาในแชท LINE OA
+    - ระบบจะบันทึก line_user_id คู่กับ username ลงฐานข้อมูลทันที
+    """
+    try:
+        body = await request.json()
+    except Exception:
+        return {"status": "ok"}
+
+    events = body.get("events") or []
+    for ev in events:
+        ev_type = ev.get("type")
+        source = ev.get("source") or {}
+        line_uid = source.get("userId")
+        reply_token = ev.get("replyToken")
+
+        if ev_type == "message" and ev.get("message", {}).get("type") == "text" and line_uid:
+            raw_text = str(ev.get("message", {}).get("text") or "").strip()
+            clean_text = raw_text.replace("ผูกบัญชี", "").replace("link", "").strip()
+            matched_user = None
+
+            for uname, u_obj in store.users.items():
+                if uname.lower() == clean_text.lower() or str(u_obj.get("name") or "").strip().lower() == clean_text.lower():
+                    matched_user = u_obj
+                    break
+
+            if matched_user:
+                uname = matched_user.get("username")
+                matched_user["line_user_id"] = line_uid
+                store.async_sync_user(uname, matched_user)
+                if reply_token:
+                    send_line_reply_message(
+                        reply_token,
+                        "\n".join([
+                            "✅ ผูกบัญชีสำเร็จ!",
+                            f"👤 ชื่อผู้ใช้: {uname} ({matched_user.get('name', uname)})",
+                            f"📲 LINE ID: {line_uid}",
+                            "ระบบจะส่งใบงานส่งรถ/รับรถ/ซ่อมบำรุง ที่คุณเป็นผู้รับผิดชอบมาที่แชทนี้โดยตรงครับ"
+                        ])
+                    )
+            elif reply_token:
+                send_line_reply_message(
+                    reply_token,
+                    "\n".join([
+                        "📲 รหัส LINE User ID ของคุณคือ:",
+                        line_uid,
+                        "",
+                        "💡 พิมพ์ชื่อผู้ใช้งาน (Username) ของคุณในระบบ (เช่น chaiwat.u) ส่งมาในแชทนี้เพื่อผูกบัญชีรับใบงานอัตโนมัติ หรือคัดลอกรหัสข้างต้นไปใส่ในหน้าจัดการผู้ใช้งานได้เลยครับ"
+                    ])
+                )
+    return {"status": "ok"}
 
 if __name__ == "__main__":
     import uvicorn

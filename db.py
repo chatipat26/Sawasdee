@@ -723,7 +723,8 @@ DEFAULT_USERS = {
         "name": "ผู้ดูแลระบบ (Admin)",
         "role": "Admin",
         "status": "approved",
-        "password": "admin"
+        "password": "admin",
+        "line_user_id": os.environ.get("LINE_TARGET_USER_ID", "Ub7b6353ba826c0ba5c3d9fac3531ef77")
     }
 }
 
@@ -749,8 +750,9 @@ class DataStore:
         self.bookings = []
         self.completed_jobs = []
         self.financial_records = []
-        self.users = dict(DEFAULT_USERS)
+        self.users = {k: dict(v) for k, v in DEFAULT_USERS.items()}
         self.cars_file = os.path.join(BASE_DIR, "data_cars.json")
+        self.users_file = os.path.join(BASE_DIR, "data_users.json")
         self.maintenance_file = os.path.join(BASE_DIR, "data_maintenance.json")
         self.maintenance_records = []
         self.deleted_booking_ids = {
@@ -766,7 +768,37 @@ class DataStore:
         self.initial_sync_done = False
         self.lock = threading.RLock()
         self.load_local_cars()
+        self.load_local_users()
         self.load_local_maintenance()
+
+    def load_local_users(self):
+        merged = {k: dict(v) for k, v in DEFAULT_USERS.items()}
+        try:
+            if os.path.exists(self.users_file):
+                with open(self.users_file, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    if isinstance(data, dict):
+                        for k, v in data.items():
+                            if not isinstance(v, dict):
+                                continue
+                            if k in merged:
+                                merged[k].update(v)
+                            else:
+                                merged[k] = dict(v)
+        except Exception as e:
+            print(f"Error loading local users: {e}")
+        with self.lock:
+            self.users = merged
+        self.save_local_users()
+
+    def save_local_users(self):
+        try:
+            with self.lock:
+                payload = dict(self.users)
+            with open(self.users_file, "w", encoding="utf-8") as f:
+                json.dump(payload, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            print(f"Error saving local users: {e}")
 
     def load_local_cars(self):
         merged = {k: dict(v) for k, v in DEFAULT_CARS.items()}
@@ -862,7 +894,19 @@ class DataStore:
 
                 if fresh_users:
                     with self.lock:
-                        self.users = fresh_users
+                        merged_u = {k: dict(v) for k, v in self.users.items()}
+                        for un, u_data in fresh_users.items():
+                            if un in merged_u:
+                                existing_line_id = merged_u[un].get("line_user_id")
+                                merged_u[un].update({fk: fv for fk, fv in u_data.items() if fv is not None})
+                                if existing_line_id and not merged_u[un].get("line_user_id"):
+                                    merged_u[un]["line_user_id"] = existing_line_id
+                            else:
+                                merged_u[un] = dict(u_data)
+                        if "admin" in merged_u and not merged_u["admin"].get("line_user_id"):
+                            merged_u["admin"]["line_user_id"] = os.environ.get("LINE_TARGET_USER_ID", "Ub7b6353ba826c0ba5c3d9fac3531ef77")
+                        self.users = merged_u
+                    self.save_local_users()
             except Exception as e:
                 print(f"Users sync error: {e}")
 
@@ -1193,21 +1237,30 @@ class DataStore:
 
     def async_sync_user(self, username, u_dict):
         with self.lock:
-            self.users[username] = u_dict
+            existing = dict(self.users.get(username, {}))
+            existing.update(u_dict)
+            existing["username"] = username
+            self.users[username] = existing
+        self.save_local_users()
         def _task():
             sb = get_supabase_client()
             if not sb: return
+            row = dict(existing)
+            row["username"] = username
             try:
-                row = dict(u_dict)
-                row["username"] = username
                 sb.table("users").upsert(row).execute()
             except Exception as e:
-                print(f"sb_sync_user error: {e}")
+                try:
+                    fallback_row = {k: v for k, v in row.items() if k in ("username", "password", "name", "role", "status", "created_at")}
+                    sb.table("users").upsert(fallback_row).execute()
+                except Exception as e2:
+                    print(f"sb_sync_user error: {e2}")
         threading.Thread(target=_task, daemon=True).start()
 
     def async_delete_user(self, username):
         with self.lock:
             self.users.pop(username, None)
+        self.save_local_users()
         def _task():
             sb = get_supabase_client()
             if not sb: return

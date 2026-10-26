@@ -1363,10 +1363,17 @@
       <section id="module-users" style="display:none;">
         <div class="card">
           <div class="card-title">
-            <span>⚙️</span> จัดการผู้ใช้งานและอนุมัติสิทธิ์พนักงาน (User Administration)
+            <span>⚙️</span> จัดการผู้ใช้งานและอนุมัติสิทธิ์พนักงาน & ผูกแจ้งเตือน LINE รายบุคคล
           </div>
-          <div style="font-size:12.5px; color:var(--text-muted); margin-bottom:16px;">
-            อนุมัติหรือระงับสิทธิ์บัญชีผู้ใช้ใหม่ เพื่อให้พนักงานสามารถเข้าสู่ระบบและปฏิบัติงานได้
+          <div style="font-size:12.5px; color:var(--text-muted); margin-bottom:12px;">
+            อนุมัติหรือระงับสิทธิ์บัญชีผู้ใช้ และตั้งค่า LINE User ID ของพนักงานแต่ละคนเพื่อส่งใบงานตรงหาเจ้าของงานเท่านั้น (ประหยัดโควต้าข้อความ LINE)
+          </div>
+
+          <div style="background:#F0FDF4; border:1px solid #BBF7D0; border-radius:10px; padding:12px 16px; margin-bottom:16px; font-size:12.5px; color:#166534; line-height:1.6;">
+            <b>📲 กฎการส่งแจ้งเตือน LINE แบบประหยัดข้อความ (Direct Push 1:1 — ปิด Broadcast อัตโนมัติ):</b><br/>
+            • <b>🚚 ใบงานรับรถ / ส่งรถ / 🛠️ ใบงานซ่อมบำรุง:</b> ยิงตรงหา <b>"เจ้าของงาน (ผู้รับผิดชอบใบงาน)"</b> เท่านั้น<br/>
+            • <b>💳 เก็บเงินมัดจำ & ค่าเช่า / 💸 บันทึกค่าใช้จ่าย / 📅 แจ้งเตือนวันหมดอายุ:</b> ยิงตรงเข้า <b>"แอดมิน (Admin)"</b> เท่านั้น (วันหมดอายุรองรับสลับเป็นยิงหาลูกค้าในอนาคต)<br/>
+            • <b>🔗 วิธีผูก LINE พนักงาน:</b> ให้พนักงานแอด LINE OA ของร้านแล้วพิมพ์ <code>ชื่อผู้ใช้ (Username)</code> ส่งเข้าแชทบอท (ผูกอัตโนมัติฟรี) หรือกดปุ่ม <b>"🔗 ตั้งค่า LINE ID"</b> ในตารางด้านล่าง
           </div>
 
           <div class="table-responsive">
@@ -1376,8 +1383,9 @@
                   <th>ชื่อผู้ใช้ (Username)</th>
                   <th>ชื่อ-นามสกุล</th>
                   <th>บทบาท (Role)</th>
+                  <th>📲 LINE User ID (รับใบงานตรง)</th>
                   <th>สถานะ (Status)</th>
-                  <th style="text-align:center;">การอนุมัติ & สิทธิ์</th>
+                  <th style="text-align:center;">การอนุมัติ & จัดการ</th>
                 </tr>
               </thead>
               <tbody id="users-table-tbody">
