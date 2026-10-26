@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  waha:
+    image: devlikeapro/waha
+    container_name: waha
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - WHATSAPP_DEFAULT_ENGINE=NOWEB
+      - WAHA_ZIPPA_PORT=3000
+      - WAHA_LOG_LEVEL=info
+      - WAHA_PRINT_QR=True
+    volumes:
+      - waha_sessions:/app/.sessions
+
+volumes:
+  waha_sessions:
