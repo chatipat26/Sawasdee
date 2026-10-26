@@ -4862,11 +4862,20 @@ class App {
   async submitGateRegister() {
     const un = (document.getElementById("gate-reg-username")?.value || "").trim();
     const fn = (document.getElementById("gate-reg-fullname")?.value || "").trim();
+    const lineId = (document.getElementById("gate-reg-line-id")?.value || "").trim();
     const p1 = (document.getElementById("gate-reg-password")?.value || "").trim();
     const p2 = (document.getElementById("gate-reg-password2")?.value || "").trim();
 
     if (!un) {
-      this.showGateAlert("reg", "error", "กรุณากรอกชื่อผู้ใช้งาน");
+      this.showGateAlert("reg", "error", "กรุณากรอกชื่อผู้ใช้งาน (Username)");
+      return;
+    }
+    if (!fn) {
+      this.showGateAlert("reg", "error", "กรุณากรอกชื่อ-นามสกุลจริง");
+      return;
+    }
+    if (!lineId) {
+      this.showGateAlert("reg", "error", "กรุณากรอกไอดีไลน์ (LINE ID / LINE User ID) เพื่อใช้รับแจ้งเตือนใบงาน");
       return;
     }
     if (p1 !== p2) {
@@ -4882,7 +4891,7 @@ class App {
       const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: un, name: fn, password: p1 })
+        body: JSON.stringify({ username: un, name: fn, line_user_id: lineId, password: p1 })
       });
       const data = await res.json();
       if (!res.ok) {

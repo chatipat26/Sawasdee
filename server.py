@@ -268,8 +268,11 @@ async def register(payload: Dict[str, Any]):
     un = str(payload.get("username", "")).strip().lower()
     fn = str(payload.get("name", "")).strip()
     pw = str(payload.get("password", "")).strip()
+    line_id = str(payload.get("line_user_id") or payload.get("line_id") or "").strip()
     if not un or not pw:
         raise HTTPException(status_code=400, detail="กรุณากรอกชื่อผู้ใช้งานและรหัสผ่าน")
+    if not line_id:
+        raise HTTPException(status_code=400, detail="กรุณากรอกไอดีไลน์ (LINE ID / LINE User ID) เพื่อใช้รับแจ้งเตือนใบงาน")
     if un in store.users:
         raise HTTPException(status_code=400, detail="ชื่อผู้ใช้นี้มีในระบบแล้ว")
 
@@ -279,6 +282,7 @@ async def register(payload: Dict[str, Any]):
         "password": pw,
         "role": "Staff",
         "status": "pending",
+        "line_user_id": line_id,
         "created_at": datetime.utcnow().isoformat()
     }
     store.async_sync_user(un, new_u)
@@ -1599,7 +1603,12 @@ async def line_bot_webhook(request: Request):
             matched_user = None
 
             for uname, u_obj in store.users.items():
-                if uname.lower() == clean_text.lower() or str(u_obj.get("name") or "").strip().lower() == clean_text.lower():
+                u_line = str(u_obj.get("line_user_id") or "").strip().lower()
+                if (
+                    uname.lower() == clean_text.lower()
+                    or str(u_obj.get("name") or "").strip().lower() == clean_text.lower()
+                    or (u_line and u_line == clean_text.lower())
+                ):
                     matched_user = u_obj
                     break
 

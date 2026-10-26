@@ -68,27 +68,35 @@
 
       <!-- Mode 2: Register -->
       <div id="gate-mode-register" class="auth-gate-box" style="display:none;">
-        <h4 class="gate-form-title">📝 สมัครสมาชิกพนักงานใหม่ (Supabase Cloud)</h4>
-        <p class="gate-form-desc">เมื่อสมัครสมาชิกแล้ว ข้อมูลจะถูกบันทึกลง Supabase Auth และส่งให้ Admin อนุมัติก่อนใช้งาน</p>
+        <h4 class="gate-form-title">📝 สมัครสมาชิกพนักงานใหม่</h4>
+        <p class="gate-form-desc">กรอกข้อมูลและไอดีไลน์ให้ครบถ้วน เพื่อใช้รับแจ้งเตือนใบงานและรอ Admin อนุมัติเข้าใช้งาน</p>
 
         <div class="gate-form-group">
-          <label class="gate-label">ชื่อผู้ใช้งาน / ชื่อพนักงาน (Username)</label>
-          <input type="text" id="gate-reg-username" class="gate-input" placeholder="เช่น somchai">
+          <label class="gate-label">ชื่อผู้ใช้งาน / ชื่อพนักงาน (Username) <span style="color:#DC2626;">*</span></label>
+          <input type="text" id="gate-reg-username" class="gate-input" placeholder="เช่น somchai" required>
         </div>
 
         <div class="gate-form-group">
-          <label class="gate-label">ชื่อ-นามสกุลจริง (Full Name)</label>
-          <input type="text" id="gate-reg-fullname" class="gate-input" placeholder="เช่น สมชาย ใจดี">
+          <label class="gate-label">ชื่อ-นามสกุลจริง (Full Name) <span style="color:#DC2626;">*</span></label>
+          <input type="text" id="gate-reg-fullname" class="gate-input" placeholder="เช่น สมชาย ใจดี" required>
         </div>
 
         <div class="gate-form-group">
-          <label class="gate-label">รหัสผ่าน (อย่างน้อย 6 ตัวอักษร)</label>
-          <input type="password" id="gate-reg-password" class="gate-input" placeholder="รหัสผ่าน...">
+          <label class="gate-label">📲 ไอดีไลน์ / LINE User ID (บังคับกรอกเพื่อรับแจ้งเตือนใบงาน) <span style="color:#DC2626;">*</span></label>
+          <input type="text" id="gate-reg-line-id" class="gate-input" placeholder="เช่น somchai99 หรือ Uxxxxxxxx..." required>
+          <small style="display:block; font-size:11px; color:#64748B; margin-top:4px; line-height:1.35;">
+            💡 กรอกไอดีไลน์ของคุณ หรือทักแชทบอท LINE OA ของร้านเพื่อรับรหัส <code>U...</code> มาวางเพื่อให้ระบบยิงใบงานตรงหาคุณได้ทันที
+          </small>
         </div>
 
         <div class="gate-form-group">
-          <label class="gate-label">ยืนยันรหัสผ่าน</label>
-          <input type="password" id="gate-reg-password2" class="gate-input" placeholder="พิมพ์รหัสผ่านซ้ำอีกครั้ง">
+          <label class="gate-label">รหัสผ่าน (อย่างน้อย 6 ตัวอักษร) <span style="color:#DC2626;">*</span></label>
+          <input type="password" id="gate-reg-password" class="gate-input" placeholder="รหัสผ่าน..." required>
+        </div>
+
+        <div class="gate-form-group">
+          <label class="gate-label">ยืนยันรหัสผ่าน <span style="color:#DC2626;">*</span></label>
+          <input type="password" id="gate-reg-password2" class="gate-input" placeholder="พิมพ์รหัสผ่านซ้ำอีกครั้ง" required>
         </div>
 
         <div id="gate-reg-alert" class="gate-alert"></div>
