@@ -5487,6 +5487,416 @@ class App {
       setTimeout(() => toast.remove(), 300);
     }, 4000);
   }
+
+  // =========================================================================
+  // EXECUTIVE DASHBOARD INTERACTIVE KPI ACTIONS (MODALS & NAVIGATION)
+  // =========================================================================
+
+  // Action for Card 2: Jump to Front Office -> Car Selection (Fleet Showcase)
+  onClickKpiFleetCard() {
+    this.switchModule("frontoffice");
+    this.switchTab("fleet");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    this.showToast("🚗 ข้ามมายังหน้าเลือกรถ & จองคิว (Fleet Showcase) เรียบร้อย", "info");
+  }
+
+  // Action for Card 1: Open Active Rentals Modal (Cars with Customers)
+  openActiveRentalsModal() {
+    const scopeVal = document.getElementById("dash-company-scope")?.value || "ทั้งหมด";
+    const compFilter = document.getElementById("active-rentals-company-filter");
+    if (compFilter && scopeVal) {
+      compFilter.value = scopeVal;
+    }
+    const searchInp = document.getElementById("active-rentals-search");
+    if (searchInp) searchInp.value = "";
+    const statFilter = document.getElementById("active-rentals-status-filter");
+    if (statFilter) statFilter.value = "ทั้งหมด";
+
+    this.renderActiveRentalsTable();
+    this.openModal("modal-active-rentals");
+  }
+
+  renderActiveRentalsTable() {
+    const tbody = document.getElementById("active-rentals-tbody");
+    if (!tbody) return;
+
+    const kw = (document.getElementById("active-rentals-search")?.value || "").toLowerCase().trim();
+    const compFilter = document.getElementById("active-rentals-company-filter")?.value || "ทั้งหมด";
+    const statusFilter = document.getElementById("active-rentals-status-filter")?.value || "ทั้งหมด";
+
+    // 1. Gather all active bookings where status is not completed or cancelled
+    const activeBks = (this.bookings || []).filter(b => {
+      const st = String(b.status || "");
+      return !["เสร็จสิ้น", "ยกเลิก"].includes(st);
+    });
+
+    const activeRows = [];
+    const accountedPlates = new Set();
+
+    activeBks.forEach(b => {
+      const car = (this.cars || []).find(c => c.plate === b.car_id) || {};
+      const cust = (this.customers || []).find(c => c.full_name === b.customer) || {};
+      const company = car.company || b.company || "Sawasdee Rent A Car";
+
+      if (!this.matchesCompanyScope(company, compFilter)) return;
+      if (statusFilter !== "ทั้งหมด" && !String(b.status).includes(statusFilter)) return;
+
+      if (kw) {
+        const str = `${b.car_id || ''} ${car.brand || ''} ${car.model || ''} ${b.customer || ''} ${cust.contact_no || ''} ${b.status || ''} ${company}`.toLowerCase();
+        if (!str.includes(kw)) return;
+      }
+
+      accountedPlates.add(b.car_id);
+      activeRows.push({
+        type: "booking",
+        booking_id: b.booking_id,
+        car_id: b.car_id,
+        car_brand: car.brand || b.car_brand || "",
+        car_model: car.model || b.car_model || "",
+        car_color: car.color || "",
+        company: company,
+        customer: b.customer,
+        customer_phone: cust.contact_no || b.customer_phone || "-",
+        customer_nat: cust.nationality || "THAI",
+        start_date: b.start_date_formatted || b.start_date,
+        start_time: b.start_time || "10:00",
+        end_date: b.end_date_formatted || b.end_date,
+        end_time: b.end_time || "10:00",
+        status: b.status || "กำลังเช่า",
+        net_price: parseFloat(b.net_price || 0),
+        deposit_paid: Boolean(b.deposit_paid),
+        deposit_amount: parseFloat(b.deposit_amount || 5000),
+        worker: b.worker_delivery || b.worker_return || "-",
+        location: b.loc_delivery || b.loc_return || "-"
+      });
+    });
+
+    // 2. Also check if any cars in this.cars have status 'กำลังเช่า', 'ติดจอง' or 'ซ่อมบำรุง' not yet in activeRows
+    (this.cars || []).forEach(c => {
+      if (accountedPlates.has(c.plate)) return;
+      const isMaint = c.fleet_status_key === "maintenance" || c.status === "ซ่อมบำรุง";
+      const isRent = c.fleet_status_key === "unavailable" || ["กำลังเช่า", "ติดจอง", "เตรียมส่งมอบ", "เตรียมรับคืน", "รอส่งมอบ"].includes(c.status);
+
+      if (!isMaint && !isRent) return;
+      if (!this.matchesCompanyScope(c.company, compFilter)) return;
+      if (statusFilter !== "ทั้งหมด" && !String(c.status).includes(statusFilter)) return;
+
+      if (kw) {
+        const str = `${c.plate || ''} ${c.brand || ''} ${c.model || ''} ${c.status || ''} ${c.company || ''}`.toLowerCase();
+        if (!str.includes(kw)) return;
+      }
+
+      activeRows.push({
+        type: isMaint ? "maintenance" : "car_status",
+        booking_id: "-",
+        car_id: c.plate,
+        car_brand: c.brand || "",
+        car_model: c.model || "",
+        car_color: c.color || "",
+        company: c.company || "Sawasdee Rent A Car",
+        customer: isMaint ? "ศูนย์บริการ/อู่ซ่อมบำรุง" : "ลูกค้าประจำ (สัญญาเดิม)",
+        customer_phone: "-",
+        customer_nat: "-",
+        start_date: "-",
+        start_time: "-",
+        end_date: "-",
+        end_time: "-",
+        status: c.status || (isMaint ? "ซ่อมบำรุง" : "กำลังเช่า"),
+        net_price: 0,
+        deposit_paid: true,
+        deposit_amount: 0,
+        worker: "-",
+        location: "-"
+      });
+    });
+
+    // Update count badge
+    const badge = document.getElementById("active-rentals-count-badge");
+    if (badge) badge.textContent = `${activeRows.length} คัน`;
+
+    if (activeRows.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:32px; color:#64748B;">🔍 ไม่พบรายการรถที่กำลังเช่าหรือติดจองตามเงื่อนไขที่เลือก</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = activeRows.map((r, idx) => {
+      let statusBadge = '<span class="badge badge-info">' + r.status + '</span>';
+      if (r.status === "กำลังเช่า") {
+        statusBadge = '<span class="badge" style="background:#ECFDF5; color:#065F46; border:1px solid #A7F3D0; font-weight:700;">🔑 กำลังเช่า</span>';
+      } else if (r.status === "เตรียมรับคืน") {
+        statusBadge = '<span class="badge" style="background:#EFF6FF; color:#1D4ED8; border:1px solid #BFDBFE; font-weight:700;">🔙 เตรียมรับคืน</span>';
+      } else if (r.status === "เตรียมส่งมอบ" || r.status === "รอส่งมอบ") {
+        statusBadge = '<span class="badge" style="background:#FFF7ED; color:#C2410C; border:1px solid #FDBA74; font-weight:700;">🚚 เตรียมส่งมอบ</span>';
+      } else if (r.status === "ติดจอง") {
+        statusBadge = '<span class="badge" style="background:#FEF3C7; color:#92400E; border:1px solid #FDE68A; font-weight:700;">📌 ติดจอง</span>';
+      } else if (r.status === "ซ่อมบำรุง") {
+        statusBadge = '<span class="badge" style="background:#FEF2F2; color:#991B1B; border:1px solid #FECACA; font-weight:700;">🛠️ ซ่อมบำรุง</span>';
+      }
+
+      const depositBadge = r.deposit_paid
+        ? `<span style="font-size:11px; color:#047857; font-weight:700;">🟢 มัดจำแล้ว</span>`
+        : `<span style="font-size:11px; color:#DC2626; font-weight:700;">🔴 รอมัดจำ</span>`;
+
+      const rentalDatesDisplay = (r.start_date !== "-" && r.end_date !== "-")
+        ? `
+          <div style="font-size:12px; font-weight:700; color:#1F2937;">
+            ${r.start_date} (${r.start_time}) ➔ ${r.end_date} (${r.end_time})
+          </div>
+          <div style="font-size:11px; color:#64748B;">รหัสจอง: <b>${r.booking_id}</b></div>
+        `
+        : `<span style="color:#64748B; font-size:12px;">ไม่ได้ระบุช่วงวันสัญญา</span>`;
+
+      const phoneLink = (r.customer_phone && r.customer_phone !== "-")
+        ? `<a href="tel:${r.customer_phone}" style="color:#2563EB; font-size:11.5px; text-decoration:none;">📞 ${r.customer_phone}</a>`
+        : `<span style="color:#94A3B8; font-size:11px;">-</span>`;
+
+      return `
+        <tr>
+          <td style="text-align:center; font-weight:700; color:#64748B;">${idx + 1}</td>
+          <td>
+            <b style="font-size:13.5px; color:#1F2937;">🚘 ${r.car_id}</b><br/>
+            <span style="font-size:11.5px; color:#475569;">${r.car_brand} ${r.car_model} (${r.car_color || '-'})</span><br/>
+            <span style="font-size:10.5px; color:#94A3B8;">🏢 ${r.company}</span>
+          </td>
+          <td>
+            <b style="font-size:12.5px; color:#1F2937;">👤 ${r.customer}</b><br/>
+            ${phoneLink}
+          </td>
+          <td>${rentalDatesDisplay}</td>
+          <td>${statusBadge}</td>
+          <td>
+            <div style="font-size:11.5px; color:#334155;">📍 ${r.location}</div>
+            <div style="font-size:11px; color:#64748B;">👤 ช่าง/คนส่ง: <b>${r.worker}</b></div>
+          </td>
+          <td style="text-align:right;">
+            <b style="font-size:13.5px; color:#EA580C;">฿${r.net_price.toLocaleString('th-TH', { minimumFractionDigits: 2 })}</b><br/>
+            ${depositBadge}
+          </td>
+          <td style="text-align:center; white-space:nowrap;">
+            ${r.booking_id !== '-' ? `
+              <button onclick="app.closeModal('modal-active-rentals'); app.goToTabWithBooking('assign', '${r.booking_id}')" class="btn btn-sm btn-primary" style="padding:2px 8px; font-size:11px;" title="ไปที่ใบงานนี้">
+                📋 ดูใบงาน
+              </button>
+            ` : `
+              <button onclick="app.closeModal('modal-active-rentals'); app.jumpToCarInFrontOffice('${r.car_id}')" class="btn btn-sm btn-secondary" style="padding:2px 8px; font-size:11px;">
+                🚗 ดูรถ
+              </button>
+            `}
+          </td>
+        </tr>
+      `;
+    }).join("");
+  }
+
+  // Action for Card 3: Open Car Profitability Modal (Ranked from highest net profit to lowest)
+  openCarProfitabilityModal() {
+    const scopeVal = document.getElementById("dash-company-scope")?.value || "ทั้งหมด";
+    const compFilter = document.getElementById("prof-company-filter");
+    if (compFilter && scopeVal) {
+      compFilter.value = scopeVal;
+    }
+    const searchInp = document.getElementById("prof-search-input");
+    if (searchInp) searchInp.value = "";
+    const sortSel = document.getElementById("prof-sort-select");
+    if (sortSel) sortSel.value = "profit_desc";
+
+    this.renderCarProfitabilityTable();
+    this.openModal("modal-car-profitability");
+  }
+
+  calculateCarProfitabilityList() {
+    const revByCar = {};
+    const rentalsByCar = {};
+    const completedBids = new Set();
+
+    (this.completedJobs || []).forEach(j => {
+      const pl = j.car_id;
+      if (pl) {
+        const netP = parseFloat(j.net_price || 0);
+        const late = parseFloat(j.late_fee || 0);
+        revByCar[pl] = (revByCar[pl] || 0) + netP + late;
+        rentalsByCar[pl] = (rentalsByCar[pl] || 0) + 1;
+      }
+      if (j.booking_id) completedBids.add(j.booking_id);
+    });
+
+    (this.bookings || []).forEach(b => {
+      const pl = b.car_id;
+      const bid = b.booking_id;
+      if (pl && !completedBids.has(bid)) {
+        if (b.rental_paid || ["กำลังเช่า", "เตรียมรับคืน", "รอส่งมอบ", "เตรียมส่งมอบ"].includes(b.status)) {
+          const netP = parseFloat(b.net_price || 0);
+          revByCar[pl] = (revByCar[pl] || 0) + netP;
+          rentalsByCar[pl] = (rentalsByCar[pl] || 0) + 1;
+        }
+      }
+    });
+
+    const expByCar = {};
+    const mntIds = new Set();
+    (this.maintenanceRecords || []).forEach(m => {
+      const pl = m.car_id;
+      if (pl) {
+        const cVal = parseFloat(m.actual_cost || m.cost || 0);
+        expByCar[pl] = (expByCar[pl] || 0) + cVal;
+      }
+      if (m.id) mntIds.add(m.id);
+    });
+
+    // In case rawKpiData or financial_records has standalone expenses
+    const finRecords = this.rawKpiData?.financial_records || [];
+    finRecords.forEach(f => {
+      const fType = f.type;
+      const fAmt = parseFloat(f.amount || 0);
+      const fRef = String(f.ref || "");
+      const fDet = String(f.detail || "");
+
+      let matchedPl = null;
+      for (const c of (this.cars || [])) {
+        if (c.plate === fRef || fDet.includes(c.plate)) {
+          matchedPl = c.plate;
+          break;
+        }
+      }
+
+      if (matchedPl) {
+        if (fType === "รายรับ" && f.category === "ค่าเช่ารถ" && !completedBids.has(fRef)) {
+          revByCar[matchedPl] = (revByCar[matchedPl] || 0) + fAmt;
+        } else if (fType === "รายจ่าย" && !mntIds.has(fRef)) {
+          expByCar[matchedPl] = (expByCar[matchedPl] || 0) + fAmt;
+        }
+      }
+    });
+
+    const list = (this.cars || []).map(c => {
+      const gross = Math.round((revByCar[c.plate] || 0) * 100) / 100;
+      const exp = Math.round((expByCar[c.plate] || 0) * 100) / 100;
+      const net = Math.round((gross - exp) * 100) / 100;
+      const rCnt = rentalsByCar[c.plate] || 0;
+      const margin = gross > 0 ? Math.round((net / gross) * 100) : (net < 0 ? -100 : 0);
+
+      return {
+        plate: c.plate,
+        brand: c.brand || "",
+        model: c.model || "",
+        color: c.color || "",
+        company: c.company || "Sawasdee Rent A Car",
+        status: c.status || "ว่างพร้อมใช้งาน",
+        total_rentals: rCnt,
+        gross_revenue: gross,
+        total_expense: exp,
+        net_profit: net,
+        margin: margin
+      };
+    });
+
+    return list;
+  }
+
+  renderCarProfitabilityTable() {
+    const tbody = document.getElementById("car-profitability-tbody");
+    if (!tbody) return;
+
+    const kw = (document.getElementById("prof-search-input")?.value || "").toLowerCase().trim();
+    const compFilter = document.getElementById("prof-company-filter")?.value || "ทั้งหมด";
+    const sortMode = document.getElementById("prof-sort-select")?.value || "profit_desc";
+
+    let list = this.calculateCarProfitabilityList();
+
+    // 1. Filter by company and keyword
+    list = list.filter(item => {
+      if (!this.matchesCompanyScope(item.company, compFilter)) return false;
+      if (kw) {
+        const s = `${item.plate} ${item.brand} ${item.model} ${item.company} ${item.status}`.toLowerCase();
+        if (!s.includes(kw)) return false;
+      }
+      return true;
+    });
+
+    // 2. Sort: Highest net profit first down to lowest (default)
+    if (sortMode === "revenue_desc") {
+      list.sort((a, b) => b.gross_revenue - a.gross_revenue || b.net_profit - a.net_profit);
+    } else if (sortMode === "rentals_desc") {
+      list.sort((a, b) => b.total_rentals - a.total_rentals || b.net_profit - a.net_profit);
+    } else {
+      // Default: Highest Net Profit first
+      list.sort((a, b) => b.net_profit - a.net_profit || b.gross_revenue - a.gross_revenue || b.total_rentals - a.total_rentals);
+    }
+
+    // 3. Update top summary metrics in the modal
+    const totalGross = list.reduce((acc, x) => acc + x.gross_revenue, 0);
+    const totalExp = list.reduce((acc, x) => acc + x.total_expense, 0);
+    const totalNet = totalGross - totalExp;
+
+    const elGross = document.getElementById("prof-kpi-gross-rev");
+    const elExp = document.getElementById("prof-kpi-total-exp");
+    const elNet = document.getElementById("prof-kpi-net-profit");
+    const elCars = document.getElementById("prof-kpi-total-cars");
+
+    if (elGross) elGross.textContent = `฿${totalGross.toLocaleString('th-TH', { minimumFractionDigits: 2 })}`;
+    if (elExp) elExp.textContent = `-฿${totalExp.toLocaleString('th-TH', { minimumFractionDigits: 2 })}`;
+    if (elNet) elNet.textContent = `฿${totalNet.toLocaleString('th-TH', { minimumFractionDigits: 2 })}`;
+    if (elCars) elCars.textContent = `${list.length} คัน`;
+
+    if (list.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:32px; color:#64748B;">🔍 ไม่พบข้อมูลรถยนต์ตรงกับเงื่อนไขที่ค้นหา</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = list.map((item, idx) => {
+      let rankBadge = `<b style="font-size:13px; color:#64748B;">${idx + 1}</b>`;
+      if (idx === 0) rankBadge = `<span style="font-size:18px;" title="อันดับ 1">🥇</span>`;
+      else if (idx === 1) rankBadge = `<span style="font-size:18px;" title="อันดับ 2">🥈</span>`;
+      else if (idx === 2) rankBadge = `<span style="font-size:18px;" title="อันดับ 3">🥉</span>`;
+
+      let statusBadge = '<span class="badge badge-gray">' + item.status + '</span>';
+      if (item.status === "ว่างพร้อมใช้งาน") {
+        statusBadge = '<span class="badge badge-success">ว่าง</span>';
+      } else if (item.status === "กำลังเช่า") {
+        statusBadge = '<span class="badge badge-danger">กำลังเช่า</span>';
+      } else if (item.status === "ติดจอง") {
+        statusBadge = '<span class="badge badge-warning">ติดจอง</span>';
+      } else if (item.status === "ซ่อมบำรุง") {
+        statusBadge = '<span class="badge" style="background:#FEE2E2; color:#991B1B;">ซ่อมบำรุง</span>';
+      }
+
+      const netColor = item.net_profit > 0 ? "#15803D" : (item.net_profit < 0 ? "#DC2626" : "#475569");
+      const netBg = item.net_profit > 0 ? "#F0FDF4" : (item.net_profit < 0 ? "#FEF2F2" : "#F8FAFC");
+      const netBorder = item.net_profit > 0 ? "#BBF7D0" : (item.net_profit < 0 ? "#FECACA" : "#E2E8F0");
+
+      return `
+        <tr>
+          <td style="text-align:center;">${rankBadge}</td>
+          <td>
+            <b style="font-size:13.5px; color:#1F2937;">🚘 ${item.plate}</b><br/>
+            <span style="font-size:11.5px; color:#475569;">${item.brand} ${item.model} (${item.color || '-'})</span><br/>
+            <span style="font-size:10.5px; color:#94A3B8;">🏢 ${item.company}</span>
+          </td>
+          <td style="text-align:center;">${statusBadge}</td>
+          <td style="text-align:center;">
+            <b style="color:#1E40AF; font-size:13px;">${item.total_rentals}</b> <span style="font-size:11px; color:#64748B;">งาน</span>
+          </td>
+          <td style="text-align:right;">
+            <b style="color:#15803D; font-size:13px;">+฿${item.gross_revenue.toLocaleString('th-TH', { minimumFractionDigits: 2 })}</b>
+          </td>
+          <td style="text-align:right;">
+            <span style="color:#DC2626; font-size:12.5px;">${item.total_expense > 0 ? `-฿${item.total_expense.toLocaleString('th-TH', { minimumFractionDigits: 2 })}` : '฿0.00'}</span>
+          </td>
+          <td style="text-align:right; background:${netBg};">
+            <span style="display:inline-block; padding:3px 10px; border-radius:8px; border:1px solid ${netBorder}; font-weight:800; font-size:14px; color:${netColor};">
+              ฿${item.net_profit.toLocaleString('th-TH', { minimumFractionDigits: 2 })}
+            </span>
+          </td>
+          <td style="text-align:center;">
+            <button onclick="app.closeModal('modal-car-profitability'); app.jumpToCarInFrontOffice('${item.plate}')" class="btn btn-sm btn-secondary" style="padding:2px 8px; font-size:11px;" title="ดูข้อมูลรถคันนี้ในหน้าเลือกรถ">
+              🔍 ดูรถ
+            </button>
+          </td>
+        </tr>
+      `;
+    }).join("");
+  }
+
 }
 
 // Global App Instance

@@ -601,6 +601,22 @@ body::before {
   box-shadow: var(--shadow-soft);
 }
 
+.kpi-card.interactive {
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+  position: relative;
+}
+
+.kpi-card.interactive:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.08);
+  border-color: #CBD5E1;
+}
+
+.kpi-card.interactive:active {
+  transform: translateY(-1px);
+}
+
 .kpi-icon {
   width: 50px;
   height: 50px;

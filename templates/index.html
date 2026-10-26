@@ -1049,31 +1049,38 @@
           </div>
         </div>
 
-        <!-- KPI Metric Cards -->
+        <!-- KPI Metric Cards (Interactive) -->
         <div class="kpi-grid">
-          <div class="kpi-card">
+          <!-- Card 1: Fleet Total -> Click jumps to Car Selection / Fleet Showcase -->
+          <div class="kpi-card interactive" onclick="app.onClickKpiFleetCard()" title="คลิกเพื่อไปหน้าเลือกรถ & จองคิว (Fleet Showcase)">
             <div class="kpi-icon" style="background:#EFF6FF; color:#2563EB;">🚗</div>
             <div>
               <div class="kpi-value" id="kpi-total-cars">0</div>
-              <div class="kpi-label">กองยานพาหนะ (Fleet)</div>
+              <div class="kpi-label">กองยานพาหนะ (Fleet) <span style="font-size:10.5px; color:#2563EB; font-weight:700; background:#EFF6FF; padding:1px 6px; border-radius:8px;">➔ ไปหน้าเลือกรถ</span></div>
               <div id="kpi-avail-pill" style="margin-top:4px; font-size:11px; font-weight:700; color:#059669; background:#ECFDF5; display:inline-block; padding:2px 8px; border-radius:10px;">พร้อมให้บริการ 0 คัน</div>
             </div>
           </div>
-          <div class="kpi-card">
+
+          <!-- Card 2: Active / Booked Rentals -> Click pops up Active Rentals with Customers Table -->
+          <div class="kpi-card interactive" onclick="app.openActiveRentalsModal()" title="คลิกเพื่อดูสถานะรถที่อยู่กับลูกค้าทั้งหมด (พร้อมวันเวลาเช่า)">
             <div class="kpi-icon" style="background:#ECFDF5; color:#059669;">🔑</div>
             <div>
               <div class="kpi-value" id="kpi-active-rentals">0</div>
-              <div class="kpi-label">รถกำลังเช่า/ติดจอง (Active)</div>
+              <div class="kpi-label">รถกำลังเช่า/ติดจอง (Active) <span style="font-size:10.5px; color:#059669; font-weight:700; background:#ECFDF5; padding:1px 6px; border-radius:8px;">🔍 ดูรถที่อยู่กับลูกค้า</span></div>
               <div id="kpi-maint-pill" style="margin-top:4px; font-size:11px; font-weight:700; color:#D97706; background:#FFFBEB; display:inline-block; padding:2px 8px; border-radius:10px;">ซ่อมบำรุง 0 คัน</div>
             </div>
           </div>
-          <div class="kpi-card">
+
+          <!-- Card 3: Utilization Rate -> Click pops up Car Profitability Ranking Table (Highest to Lowest) -->
+          <div class="kpi-card interactive" onclick="app.openCarProfitabilityModal()" title="คลิกเพื่อดูอันดับรถที่สร้างรายได้หลังหักค่าใช้จ่ายมากที่สุด (เรียงจากมากไปน้อย)">
             <div class="kpi-icon" style="background:#FFFBEB; color:#D97706;">📈</div>
             <div>
               <div class="kpi-value" id="kpi-utilization">0%</div>
-              <div class="kpi-label">อัตราการใช้รถ (Utilization)</div>
+              <div class="kpi-label">อัตราการใช้รถ (Utilization) <span style="font-size:10.5px; color:#D97706; font-weight:700; background:#FFFBEB; padding:1px 6px; border-radius:8px;">🏆 อันดับกำไรสุทธิ</span></div>
             </div>
           </div>
+
+          <!-- Card 4: Total Revenue -->
           <div class="kpi-card">
             <div class="kpi-icon" style="background:#FEF2F2; color:#DC2626;">💰</div>
             <div>
@@ -2117,5 +2124,158 @@
 
   <!-- Scripts with cache busting -->
   <script src="/static/js/app.js?v=5.6"></script>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL: ACTIVE RENTALS / CARS WITH CUSTOMERS (POPUP FOR CARD 1) -->
+  <!-- ===================================================================== -->
+  <div id="modal-active-rentals" class="modal-backdrop">
+    <div class="modal-dialog" style="max-width:1150px; width:95%;">
+      <div class="modal-header" style="background:#F0FDF4; border-bottom:1px solid #BBF7D0;">
+        <div class="modal-title" style="color:#166534; display:flex; align-items:center; gap:8px;">
+          <span>🔑</span> สถานะรถที่อยู่กับลูกค้าทั้งหมด (Active & Booked Rentals)
+        </div>
+        <button class="modal-close" onclick="app.closeModal('modal-active-rentals')" title="ปิดหน้าต่าง">✕</button>
+      </div>
+
+      <!-- Filter & Search Toolbar inside Active Rentals Modal -->
+      <div style="background:#FAF7F2; padding:12px 16px; border-radius:8px; margin-bottom:16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+          <input type="text" id="active-rentals-search" class="form-control" style="width:240px; font-size:12.5px;" placeholder="🔍 ค้นหาทะเบียน / รุ่นรถ / ชื่อลูกค้า..." oninput="app.renderActiveRentalsTable()">
+          <select id="active-rentals-company-filter" class="form-control" style="width:auto; font-size:12.5px; font-weight:600;" onchange="app.renderActiveRentalsTable()">
+            <option value="ทั้งหมด">🏢 ทุกบริษัท</option>
+            <option value="Sawasdee Rent A Car">Sawasdee Rent A Car</option>
+            <option value="P.D.P. Co., Ltd.">P.D.P. Co., Ltd.</option>
+            <option value="Sawasdee Car Rent">Sawasdee Car Rent</option>
+          </select>
+          <select id="active-rentals-status-filter" class="form-control" style="width:auto; font-size:12.5px; font-weight:600;" onchange="app.renderActiveRentalsTable()">
+            <option value="ทั้งหมด">🚦 ทุกสถานะ (กำลังเช่า/ติดจอง/ซ่อมบำรุง)</option>
+            <option value="กำลังเช่า">กำลังเช่า</option>
+            <option value="เตรียมรับคืน">เตรียมรับคืน</option>
+            <option value="ติดจอง">ติดจอง / เตรียมส่งมอบ</option>
+            <option value="ซ่อมบำรุง">ซ่อมบำรุง / ต่อภาษี</option>
+          </select>
+        </div>
+        <div style="font-size:12.5px; font-weight:700; color:#15803D;">
+          พบรถที่อยู่กับลูกค้า: <span id="active-rentals-count-badge" style="background:#DCFCE7; color:#166534; padding:3px 10px; border-radius:12px; border:1px solid #86EFAC;">0 คัน</span>
+        </div>
+      </div>
+
+      <!-- Active Rentals Table -->
+      <div class="table-responsive" style="max-height:480px; overflow-y:auto;">
+        <table class="custom-table">
+          <thead>
+            <tr>
+              <th style="width:40px; text-align:center;">#</th>
+              <th>🚘 รถยนต์ (ทะเบียน / รุ่น / สี)</th>
+              <th>👤 ลูกค้าผู้เช่า</th>
+              <th>📅 ระยะเวลาเช่า (วันรับ ➔ วันคืน)</th>
+              <th>🚦 สถานะ</th>
+              <th>📍 สถานที่ & ผู้รับผิดชอบ</th>
+              <th style="text-align:right;">💰 ค่าเช่าสุทธิ</th>
+              <th style="text-align:center;">จัดการ</th>
+            </tr>
+          </thead>
+          <tbody id="active-rentals-tbody">
+            <!-- Rendered by app.renderActiveRentalsTable() -->
+          </tbody>
+        </table>
+      </div>
+
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:16px; padding-top:12px; border-top:1px solid #E2E8F0;">
+        <div style="font-size:12px; color:#64748B;">
+          💡 ตารางนี้แสดงข้อมูลรถทุกคันที่ติดสัญญาเช่าและอยู่กับลูกค้าแบบ Real-time
+        </div>
+        <button onclick="app.closeModal('modal-active-rentals')" class="btn btn-secondary">
+          ปิดหน้าต่าง (✕)
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL: CAR PROFITABILITY RANKING (POPUP FOR CARD 3) -->
+  <!-- ===================================================================== -->
+  <div id="modal-car-profitability" class="modal-backdrop">
+    <div class="modal-dialog" style="max-width:1150px; width:95%;">
+      <div class="modal-header" style="background:#FFFBEB; border-bottom:1px solid #FDE68A;">
+        <div class="modal-title" style="color:#92400E; display:flex; align-items:center; gap:8px;">
+          <span>📈</span> อันดับรถที่สร้างรายได้หลังหักค่าใช้จ่ายมากที่สุด (Car Profitability Ranking)
+        </div>
+        <button class="modal-close" onclick="app.closeModal('modal-car-profitability')" title="ปิดหน้าต่าง">✕</button>
+      </div>
+
+      <!-- Top Summary Metrics Strip -->
+      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:12px; margin-bottom:16px;">
+        <div style="background:#F0FDF4; border:1px solid #BBF7D0; border-radius:8px; padding:12px 14px;">
+          <div style="font-size:11.5px; font-weight:700; color:#15803D;">💵 รายรับค่าเช่าสะสมรวม</div>
+          <b id="prof-kpi-gross-rev" style="font-size:18px; color:#15803D; display:block; margin-top:4px;">฿0.00</b>
+        </div>
+        <div style="background:#FEF2F2; border:1px solid #FECACA; border-radius:8px; padding:12px 14px;">
+          <div style="font-size:11.5px; font-weight:700; color:#B91C1C;">💸 หักค่าใช้จ่าย/ซ่อมบำรุงรวม</div>
+          <b id="prof-kpi-total-exp" style="font-size:18px; color:#DC2626; display:block; margin-top:4px;">-฿0.00</b>
+        </div>
+        <div style="background:#FFF7ED; border:1px solid #FED7AA; border-radius:8px; padding:12px 14px;">
+          <div style="font-size:11.5px; font-weight:700; color:#C2410C;">🏆 กำไรสุทธิรวมหลังหักค่าใช้จ่าย</div>
+          <b id="prof-kpi-net-profit" style="font-size:18px; color:#EA580C; display:block; margin-top:4px;">฿0.00</b>
+        </div>
+        <div style="background:#EFF6FF; border:1px solid #BFDBFE; border-radius:8px; padding:12px 14px;">
+          <div style="font-size:11.5px; font-weight:700; color:#1E40AF;">🚗 จำนวนรถในกองยานพาหนะ</div>
+          <b id="prof-kpi-total-cars" style="font-size:18px; color:#2563EB; display:block; margin-top:4px;">56 คัน</b>
+        </div>
+      </div>
+
+      <!-- Filter Toolbar inside Profitability Modal -->
+      <div style="background:#FAF7F2; padding:12px 16px; border-radius:8px; margin-bottom:16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+          <input type="text" id="prof-search-input" class="form-control" style="width:240px; font-size:12.5px;" placeholder="🔍 ค้นหาทะเบียน / ยี่ห้อ / รุ่น..." oninput="app.renderCarProfitabilityTable()">
+          <select id="prof-company-filter" class="form-control" style="width:auto; font-size:12.5px; font-weight:600;" onchange="app.renderCarProfitabilityTable()">
+            <option value="ทั้งหมด">🏢 ทุกบริษัท</option>
+            <option value="Sawasdee Rent A Car">Sawasdee Rent A Car</option>
+            <option value="P.D.P. Co., Ltd.">P.D.P. Co., Ltd.</option>
+            <option value="Sawasdee Car Rent">Sawasdee Car Rent</option>
+          </select>
+          <select id="prof-sort-select" class="form-control" style="width:auto; font-size:12.5px; font-weight:700;" onchange="app.renderCarProfitabilityTable()">
+            <option value="profit_desc">🏆 เรียง: กำไรสุทธิหลังหัก คชจ. (มาก ➔ น้อย)</option>
+            <option value="revenue_desc">💵 เรียง: รายรับค่าเช่ารวม (มาก ➔ น้อย)</option>
+            <option value="rentals_desc">📋 เรียง: จำนวนงานเช่า (มาก ➔ น้อย)</option>
+          </select>
+        </div>
+        <div style="font-size:12px; color:#64748B;">
+          เรียงลำดับจากรถที่สร้างรายได้หลังหักค่าใช้จ่ายมากที่สุด ➔ น้อยที่สุด
+        </div>
+      </div>
+
+      <!-- Profitability Table -->
+      <div class="table-responsive" style="max-height:480px; overflow-y:auto;">
+        <table class="custom-table">
+          <thead>
+            <tr>
+              <th style="width:60px; text-align:center;">อันดับ</th>
+              <th>🚘 รถยนต์ (ทะเบียน / ยี่ห้อ-รุ่น / บริษัท)</th>
+              <th style="text-align:center;">สถานะ</th>
+              <th style="text-align:center;">งานเช่า</th>
+              <th style="text-align:right;">💵 รายรับค่าเช่ารวม</th>
+              <th style="text-align:right;">💸 ค่าใช้จ่าย/ซ่อมบำรุง</th>
+              <th style="text-align:right; background:#FEF3C7; color:#92400E;">🏆 รายได้สุทธิ (หลังหัก คชจ.)</th>
+              <th style="text-align:center;">ดูข้อมูลรถ</th>
+            </tr>
+          </thead>
+          <tbody id="car-profitability-tbody">
+            <!-- Rendered by app.renderCarProfitabilityTable() -->
+          </tbody>
+        </table>
+      </div>
+
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:16px; padding-top:12px; border-top:1px solid #E2E8F0;">
+        <div style="font-size:12px; color:#64748B;">
+          💡 รายได้สุทธิคำนวณจาก (รายรับค่าเช่าทั้งหมดของรถคันนั้น − ค่าใช้จ่ายซ่อมบำรุงและดูแลรักษาของรถคันนั้น)
+        </div>
+        <button onclick="app.closeModal('modal-car-profitability')" class="btn btn-secondary">
+          ปิดหน้าต่าง (✕)
+        </button>
+      </div>
+    </div>
+  </div>
+
 </body>
 </html>
