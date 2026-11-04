@@ -1341,7 +1341,45 @@ def safe_fragment(run_every=5):
         return func
     return decorator
 
+FASTAPI_BACKEND_URL = os.environ.get("FASTAPI_URL", "http://127.0.0.1:8000")
+
+def fetch_from_fastapi_backend():
+    """MISSION 2: ดึงข้อมูลหลัก (cars, bookings, customers) ผ่าน FastAPI REST Endpoints เพื่อลดภาระ Streamlit"""
+    try:
+        import requests
+        r_cars = requests.get(f"{FASTAPI_BACKEND_URL}/cars", timeout=1.5)
+        r_bk = requests.get(f"{FASTAPI_BACKEND_URL}/bookings", timeout=1.5)
+        r_cust = requests.get(f"{FASTAPI_BACKEND_URL}/customers", timeout=1.5)
+        if r_cars.status_code == 200 and r_bk.status_code == 200 and r_cust.status_code == 200:
+            c_data = r_cars.json()
+            cars_map = {c["plate"]: c for c in c_data if "plate" in c} if isinstance(c_data, list) else (c_data if isinstance(c_data, dict) else {})
+            
+            b_data = r_bk.json()
+            b_list = b_data if isinstance(b_data, list) else []
+            for b_copy in b_list:
+                if b_copy.get("start_date") and isinstance(b_copy["start_date"], str):
+                    b_copy["start_date"] = to_date(b_copy["start_date"])
+                if b_copy.get("end_date") and isinstance(b_copy["end_date"], str):
+                    b_copy["end_date"] = to_date(b_copy["end_date"])
+
+            cust_data = r_cust.json()
+            cust_map = {c["full_name"]: c for c in cust_data if "full_name" in c} if isinstance(cust_data, list) else (cust_data if isinstance(cust_data, dict) else {})
+            return True, cars_map, b_list, cust_map
+    except Exception:
+        pass
+    return False, None, None, None
+
 def sync_cloud_data(force=False, auto=False):
+    # MISSION 2: หากมี FastAPI Backend ให้ดึงข้อมูลผ่าน API ก่อนเพื่อความรวดเร็ว
+    api_ok, api_cars, api_bk, api_cust = fetch_from_fastapi_backend()
+    if api_ok:
+        _GLOBAL_STORE["cars_db"] = api_cars
+        st.session_state.cars_db = api_cars
+        _GLOBAL_STORE["bookings_db"] = api_bk
+        st.session_state.bookings_db = api_bk
+        _GLOBAL_STORE["customers_db"] = api_cust
+        st.session_state.customers_db = api_cust
+
     sb = get_supabase_client()
     if not sb: return False
     now = time.time()
@@ -1764,20 +1802,23 @@ if st.query_params.get("close_job"):
     st.session_state.active_close_job_type = st.query_params.get("close_type") or "Dispatch"
 
 
+# =========================================================================
+# MISSION 1: เคลียร์ Mock Data (Empty Initial State)
+# =========================================================================
 if "cars_db" not in st.session_state:
-    st.session_state.cars_db = _GLOBAL_STORE.get("cars_db") or {}
+    st.session_state.cars_db = {}
 _GLOBAL_STORE["cars_db"] = st.session_state.cars_db
 
 if "customers_db" not in st.session_state:
-    st.session_state.customers_db = _GLOBAL_STORE.get("customers_db") or {}
+    st.session_state.customers_db = {}
 _GLOBAL_STORE["customers_db"] = st.session_state.customers_db
 
 if "bookings_db" not in st.session_state:
-    st.session_state.bookings_db = _GLOBAL_STORE.get("bookings_db") or []
+    st.session_state.bookings_db = []
 _GLOBAL_STORE["bookings_db"] = st.session_state.bookings_db
 
 if "financial_db" not in st.session_state:
-    st.session_state.financial_db = _GLOBAL_STORE.get("financial_db") or []
+    st.session_state.financial_db = []
 _GLOBAL_STORE["financial_db"] = st.session_state.financial_db
 
 if "completed_jobs_db" not in st.session_state:
@@ -2230,6 +2271,19 @@ div[class*="st-key-btn_q_del_"] button:hover {{
     color: #B91C1C !important;
     box-shadow: 0 2px 6px rgba(220, 38, 38, 0.2) !important;
 }}
+/* =======================================================
+   HIDE STREAMLIT BRANDING & UI CLUTTER (CLEAN WEB APP MODE)
+   ======================================================= */
+#MainMenu {{ visibility: hidden !important; display: none !important; }}
+header {{ visibility: hidden !important; display: none !important; }}
+footer {{ visibility: hidden !important; display: none !important; }}
+[data-testid="stToolbar"] {{ visibility: hidden !important; display: none !important; }}
+[data-testid="stDecoration"] {{ visibility: hidden !important; display: none !important; }}
+[data-testid="stStatusWidget"] {{ visibility: hidden !important; display: none !important; }}
+.stDeployButton {{ display: none !important; }}
+[data-testid="stToolbarActions"] {{ display: none !important; }}
+div[data-testid="stSidebarCollapseButton"] {{ display: none !important; }}
+.block-container {{ padding-top: 1rem !important; }}
 </style>
 """
 if hasattr(st, "html"):
@@ -6859,28 +6913,28 @@ else:
                 </div>
             """, unsafe_allow_html=True)
         
-            # ตัวกรองข้อมูลภาพรวม (KPI & ตารางรถ)
-            c_filter_col1, c_filter_col2 = st.columns([2.5, 1.5])
-            with c_filter_col1:
-                comp_options_main = ["ทั้งหมด (รวมทุกบริษัท)", "Sawasdee Rent A Car", "P.D.P. Co., Ltd.", "Sawasdee Car Rent"]
-                selected_comp_main = st.selectbox("มุมมององค์กร (Company Scope):", comp_options_main, index=0)
-            with c_filter_col2:
-                st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
+            # =====================================================================
+            # MISSION 3: ภาพรวมองค์กรรวมทุกบริษัท (Total Unified Dashboard)
+            # =====================================================================
+            c_head_col1, c_head_col2 = st.columns([2.5, 1.5])
+            with c_head_col1:
+                st.markdown("<div style='font-size: 15px; font-weight: 700; color: #1F2937; padding-top: 8px;'>🌐 ภาพรวมทุกบริษัท (Unified Corporate Fleet & Financial Overview)</div>", unsafe_allow_html=True)
+            with c_head_col2:
+                st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
                 st.caption(f"🕒 ข้อมูลอัปเดตล่าสุด ณ {datetime.now().strftime('%d/%m/%Y %H:%M')}")
 
-            filtered_cars = {k: v for k, v in cars_db.items() if (selected_comp_main == "ทั้งหมด (รวมทุกบริษัท)" or v["company"] == selected_comp_main)}
-            total_cars = len(filtered_cars)
-            active_rentals = sum(1 for c in filtered_cars.values() if c["status"] in ["กำลังเช่า", "ติดจอง", "เตรียมส่งมอบ", "เตรียมรับคืน"])
-            available_cars = sum(1 for c in filtered_cars.values() if c["status"] == "ว่างพร้อมใช้งาน")
-            maintenance_cars = sum(1 for c in filtered_cars.values() if c["status"] == "ซ่อมบำรุง")
+            total_cars = len(cars_db)
+            active_rentals = sum(1 for c in cars_db.values() if c.get("status") in ["กำลังเช่า", "ติดจอง", "เตรียมส่งมอบ", "เตรียมรับคืน"])
+            available_cars = sum(1 for c in cars_db.values() if c.get("status") == "ว่างพร้อมใช้งาน")
+            maintenance_cars = sum(1 for c in cars_db.values() if c.get("status") == "ซ่อมบำรุง")
             
-            total_rev = sum(item["amount"] for item in financial_db if (item["type"] == "รายรับ" and (selected_comp_main == "ทั้งหมด (รวมทุกบริษัท)" or item["company"] == selected_comp_main)))
+            total_rev = sum(float(item.get("amount", 0)) for item in financial_db if item.get("type") == "รายรับ")
 
             kpi1, kpi2, kpi3, kpi4 = st.columns(4)
             with kpi1:
                 st.markdown(f"""
                     <div class="kpi-card">
-                        <div class="kpi-card-header"><span>กองยานพาหนะ (ในมุมมอง)</span><div class="kpi-icon-pill">🚗</div></div>
+                        <div class="kpi-card-header"><span>กองยานพาหนะรวม</span><div class="kpi-icon-pill">🚗</div></div>
                         <div class="kpi-card-value">{total_cars} <span style="font-size:14px; font-weight:400; color:#6B7280;">คัน</span></div>
                         <div style="margin-top:12px;"><span class="status-pill status-available">พร้อมให้บริการ {available_cars} คัน</span></div>
                     </div>
@@ -6895,7 +6949,7 @@ else:
             with kpi3:
                 st.markdown(f"""
                     <div class="kpi-card" style="border-color:#E85826; box-shadow: 0 0 0 2px rgba(232,88,38,0.2);">
-                        <div class="kpi-card-header"><span style="color:#E85826;">รายรับสะสม</span><div class="kpi-icon-pill" style="background:#E8F8F0; color:#0E874D;">💳</div></div>
+                        <div class="kpi-card-header"><span style="color:#E85826;">รายรับสะสมรวม</span><div class="kpi-icon-pill" style="background:#E8F8F0; color:#0E874D;">💳</div></div>
                         <div class="kpi-card-value"><span style="font-size:14px; font-weight:600; color:#6B7280;">THB</span> {total_rev:,.0f}</div>
                     </div>
                 """, unsafe_allow_html=True)
@@ -6909,312 +6963,149 @@ else:
 
             st.markdown("<div style='height: 15px;'></div>", unsafe_allow_html=True)
 
-            # --- DONUT CHARTS: สัดส่วนรถ 3 บริษัท ---
-            with st.container(border=True):
-                c_d_title, c_d_toggle = st.columns([2, 1.6])
-                with c_d_title:
-                    st.markdown("<h3 class='dash-section-title'>สัดส่วนยานพาหนะ 3 บริษัท (Company Fleet Distribution)</h3>", unsafe_allow_html=True)
-                with c_d_toggle:
-                    view_donut_mode = st.radio(
-                        "มุมมองสัดส่วนรถ:",
-                        ["📊 สัดส่วนเปรียบเทียบระหว่าง 3 บริษัท", "🏢 สัดส่วนสถานะรถแยกราย 3 บริษัท"],
-                        horizontal=True,
-                        label_visibility="collapsed",
-                        key="view_donut_mode"
-                    )
-
-                comp_list = ["Sawasdee Rent A Car", "P.D.P. Co., Ltd.", "Sawasdee Car Rent"]
-                comp_palette = ["#E85826", "#10B981", "#3B82F6"]
-                comp_color_map = dict(zip(comp_list, comp_palette))
-                comp_icons = {"Sawasdee Rent A Car": "🚙", "P.D.P. Co., Ltd.": "🚗", "Sawasdee Car Rent": "🚐"}
-
-                d_col1, d_col2, d_col3 = st.columns(3)
-
-                if view_donut_mode == "📊 สัดส่วนเปรียบเทียบระหว่าง 3 บริษัท":
-                    # Metric 1: สัดส่วนกองรถทั้งหมด
-                    with d_col1:
-                        with st.container(border=True):
-                            cnts_all = [{"company": c, "count": sum(1 for v in cars_db.values() if v.get("company") == c)} for c in comp_list]
-                            df_m1 = pd.DataFrame(cnts_all)
-                            tot_m1 = df_m1["count"].sum()
-                            df_m1["pct_str"] = df_m1["count"].apply(lambda x: f"{(x/tot_m1*100):.1f}%" if tot_m1 > 0 else "0%")
-                            
-                            st.markdown(f"""
-                                <div class="donut-header"><span>🚗 กองยานพาหนะรวม</span><span style="font-size:12px; font-weight:700; color:#E85826;">{tot_m1} คัน</span></div>
-                                <div class="donut-sub">สัดส่วนจำนวนรถทั้งหมดที่ถือครอง</div>
-                            """, unsafe_allow_html=True)
-                            
-                            df_chart1 = df_m1[df_m1["count"] > 0]
-                            if not df_chart1.empty:
-                                chart1 = alt.Chart(df_chart1).mark_arc(innerRadius=36, outerRadius=58, stroke='#fff', strokeWidth=2).encode(
-                                    theta=alt.Theta("count:Q"),
-                                    color=alt.Color("company:N", scale=alt.Scale(domain=comp_list, range=comp_palette), legend=None),
-                                    tooltip=[alt.Tooltip("company:N", title="บริษัท"), alt.Tooltip("count:Q", title="จำนวน (คัน)"), alt.Tooltip("pct_str:N", title="สัดส่วน")]
-                                ).properties(height=140).configure_view(strokeWidth=0)
-                                st.altair_chart(chart1, use_container_width=True)
-                            else:
-                                st.info("ไม่มีข้อมูลรถในระบบ")
-                                
-                            for idx, row in df_m1.iterrows():
-                                dot_c = comp_color_map.get(row['company'], '#888')
-                                st.markdown(f"""
-                                    <div class="donut-stat-row">
-                                        <span><span style="color:{dot_c}; font-size:13px;">●</span> {row['company']}</span>
-                                        <b>{row['count']} คัน ({row['pct_str']})</b>
-                                    </div>
-                                """, unsafe_allow_html=True)
-
-                    # Metric 2: รถกำลังเช่า/ติดจอง
-                    with d_col2:
-                        with st.container(border=True):
-                            cnts_rent = [{"company": c, "count": sum(1 for v in cars_db.values() if v.get("company") == c and v.get("status") in ["กำลังเช่า", "ติดจอง", "เตรียมส่งมอบ", "เตรียมรับคืน"])} for c in comp_list]
-                            df_m2 = pd.DataFrame(cnts_rent)
-                            tot_m2 = df_m2["count"].sum()
-                            df_m2["pct_str"] = df_m2["count"].apply(lambda x: f"{(x/tot_m2*100):.1f}%" if tot_m2 > 0 else "0%")
-                            
-                            st.markdown(f"""
-                                <div class="donut-header"><span>🔑 รถกำลังเช่า/ติดจอง</span><span style="font-size:12px; font-weight:700; color:#E85826;">{tot_m2} คัน</span></div>
-                                <div class="donut-sub">สัดส่วนรถที่ติดสัญญาเช่าและล็อกคิว</div>
-                            """, unsafe_allow_html=True)
-                            
-                            df_chart2 = df_m2[df_m2["count"] > 0]
-                            if not df_chart2.empty:
-                                chart2 = alt.Chart(df_chart2).mark_arc(innerRadius=36, outerRadius=58, stroke='#fff', strokeWidth=2).encode(
-                                    theta=alt.Theta("count:Q"),
-                                    color=alt.Color("company:N", scale=alt.Scale(domain=comp_list, range=comp_palette), legend=None),
-                                    tooltip=[alt.Tooltip("company:N", title="บริษัท"), alt.Tooltip("count:Q", title="จำนวน (คัน)"), alt.Tooltip("pct_str:N", title="สัดส่วน")]
-                                ).properties(height=140).configure_view(strokeWidth=0)
-                                st.altair_chart(chart2, use_container_width=True)
-                            else:
-                                st.info("ขณะนี้ยังไม่มีรถที่อยู่ระหว่างการเช่า")
-                                
-                            for idx, row in df_m2.iterrows():
-                                dot_c = comp_color_map.get(row['company'], '#888')
-                                st.markdown(f"""
-                                    <div class="donut-stat-row">
-                                        <span><span style="color:{dot_c}; font-size:13px;">●</span> {row['company']}</span>
-                                        <b>{row['count']} คัน ({row['pct_str']})</b>
-                                    </div>
-                                """, unsafe_allow_html=True)
-
-                    # Metric 3: รถว่างพร้อมใช้งาน
-                    with d_col3:
-                        with st.container(border=True):
-                            cnts_avail = [{"company": c, "count": sum(1 for v in cars_db.values() if v.get("company") == c and v.get("status") == "ว่างพร้อมใช้งาน")} for c in comp_list]
-                            df_m3 = pd.DataFrame(cnts_avail)
-                            tot_m3 = df_m3["count"].sum()
-                            df_m3["pct_str"] = df_m3["count"].apply(lambda x: f"{(x/tot_m3*100):.1f}%" if tot_m3 > 0 else "0%")
-                            
-                            st.markdown(f"""
-                                <div class="donut-header"><span>✨ รถว่างพร้อมให้บริการ</span><span style="font-size:12px; font-weight:700; color:#10B981;">{tot_m3} คัน</span></div>
-                                <div class="donut-sub">สัดส่วนรถว่างที่พร้อมปล่อยเช่าได้ทันที</div>
-                            """, unsafe_allow_html=True)
-                            
-                            df_chart3 = df_m3[df_m3["count"] > 0]
-                            if not df_chart3.empty:
-                                chart3 = alt.Chart(df_chart3).mark_arc(innerRadius=36, outerRadius=58, stroke='#fff', strokeWidth=2).encode(
-                                    theta=alt.Theta("count:Q"),
-                                    color=alt.Color("company:N", scale=alt.Scale(domain=comp_list, range=comp_palette), legend=None),
-                                    tooltip=[alt.Tooltip("company:N", title="บริษัท"), alt.Tooltip("count:Q", title="จำนวน (คัน)"), alt.Tooltip("pct_str:N", title="สัดส่วน")]
-                                ).properties(height=140).configure_view(strokeWidth=0)
-                                st.altair_chart(chart3, use_container_width=True)
-                            else:
-                                st.info("ขณะนี้ไม่มีรถว่างในระบบ")
-                                
-                            for idx, row in df_m3.iterrows():
-                                dot_c = comp_color_map.get(row['company'], '#888')
-                                st.markdown(f"""
-                                    <div class="donut-stat-row">
-                                        <span><span style="color:{dot_c}; font-size:13px;">●</span> {row['company']}</span>
-                                        <b>{row['count']} คัน ({row['pct_str']})</b>
-                                    </div>
-                                """, unsafe_allow_html=True)
-
-                else:
-                    # View Mode: แยกสถานะราย 3 บริษัท
+            # --- กราฟแสดงผลรวมด้วย Altair (Donut Chart & Total Revenue Trend) ---
+            dash_c1, dash_c2 = st.columns([1.1, 1.9])
+            
+            # 1. กราฟวงกลม (Donut Chart): สัดส่วนสถานะรถยนต์ทั้งหมด
+            with dash_c1:
+                with st.container(border=True):
+                    st.markdown(f"""
+                        <div class="donut-header">
+                            <span>🍩 สัดส่วนสถานะรถยนต์ทั้งหมด</span>
+                            <span style="font-size:12px; font-weight:700; color:#E85826;">{total_cars} คัน</span>
+                        </div>
+                        <div class="donut-sub">สัดส่วนสถานะรถในกองยานพาหนะรวมทุกบริษัท</div>
+                    """, unsafe_allow_html=True)
+                    
                     st_domain = ["ว่างพร้อมใช้งาน", "กำลังเช่า/ติดจอง", "ซ่อมบำรุง"]
                     st_range = ["#10B981", "#E85826", "#EF4444"]
-                    st_color_map = {"ว่างพร้อมใช้งาน": "#10B981", "กำลังเช่า/ติดจอง": "#E85826", "ซ่อมบำรุง": "#EF4444"}
-
-                    for col_target, c_name in zip([d_col1, d_col2, d_col3], comp_list):
-                        with col_target:
-                            with st.container(border=True):
-                                c_cars = [v for v in cars_db.values() if v.get("company") == c_name]
-                                tot_c = len(c_cars)
-                                c_avail = sum(1 for v in c_cars if v.get("status") == "ว่างพร้อมใช้งาน")
-                                c_rent = sum(1 for v in c_cars if v.get("status") in ["กำลังเช่า", "ติดจอง", "เตรียมส่งมอบ", "เตรียมรับคืน"])
-                                c_maint = sum(1 for v in c_cars if v.get("status") == "ซ่อมบำรุง")
-                                
-                                c_icon = comp_icons.get(c_name, "🏢")
-                                badge_bg = comp_color_map.get(c_name, "#E85826")
-                                
-                                st.markdown(f"""
-                                    <div class="donut-header">
-                                        <span>{c_icon} {c_name}</span>
-                                        <span style="font-size:12px; font-weight:700; color:{badge_bg};">{tot_c} คัน</span>
-                                    </div>
-                                    <div class="donut-sub">สัดส่วนสถานะรถภายในองค์กร</div>
-                                """, unsafe_allow_html=True)
-                                
-                                df_st = pd.DataFrame([
-                                    {"status": "ว่างพร้อมใช้งาน", "count": c_avail, "pct_str": f"{(c_avail/tot_c*100):.1f}%" if tot_c > 0 else "0%"},
-                                    {"status": "กำลังเช่า/ติดจอง", "count": c_rent, "pct_str": f"{(c_rent/tot_c*100):.1f}%" if tot_c > 0 else "0%"},
-                                    {"status": "ซ่อมบำรุง", "count": c_maint, "pct_str": f"{(c_maint/tot_c*100):.1f}%" if tot_c > 0 else "0%"}
-                                ])
-                                
-                                df_st_chart = df_st[df_st["count"] > 0]
-                                if not df_st_chart.empty:
-                                    chart_c = alt.Chart(df_st_chart).mark_arc(innerRadius=36, outerRadius=58, stroke='#fff', strokeWidth=2).encode(
-                                        theta=alt.Theta("count:Q"),
-                                        color=alt.Color("status:N", scale=alt.Scale(domain=st_domain, range=st_range), legend=None),
-                                        tooltip=[alt.Tooltip("status:N", title="สถานะ"), alt.Tooltip("count:Q", title="จำนวน (คัน)"), alt.Tooltip("pct_str:N", title="สัดส่วน")]
-                                    ).properties(height=140).configure_view(strokeWidth=0)
-                                    st.altair_chart(chart_c, use_container_width=True)
-                                else:
-                                    st.info(f"ยังไม่มีข้อมูลรถของ {c_name}")
-                                    
-                                for idx, row in df_st.iterrows():
-                                    dot_st = st_color_map.get(row['status'], '#888')
-                                    st.markdown(f"""
-                                        <div class="donut-stat-row">
-                                            <span><span style="color:{dot_st}; font-size:13px;">●</span> {row['status']}</span>
-                                            <b>{row['count']} คัน ({row['pct_str']})</b>
-                                        </div>
-                                    """, unsafe_allow_html=True)
-
-            st.markdown("<div style='height: 15px;'></div>", unsafe_allow_html=True)
-
-            # กราฟเปรียบเทียบแนวโน้มการเงินและข้อมูลรถ (Dynamic จาก completed_jobs_db)
-            with st.container(border=True):
-                c_trend_t1, c_trend_t2 = st.columns([1.8, 1.2])
-                with c_trend_t1:
-                    st.markdown("<h3 class='dash-section-title'>แนวโน้มรายรับและจำนวนงานเช่าที่เสร็จสิ้น (Completed Jobs Trend)</h3>", unsafe_allow_html=True)
-                with c_trend_t2:
-                    trend_metric = st.radio(
-                        "เลือกมุมมองกราฟ:",
-                        ["📈 รายรับค่าเช่า (THB)", "📊 จำนวนงานที่เสร็จสิ้น (งาน)"],
-                        horizontal=True,
-                        label_visibility="collapsed",
-                        key="trend_metric_toggle"
-                    )
-                
-                st.markdown("<span style='font-size:14px; font-weight:600; color:#1F2937;'>✅ เลือกเปรียบเทียบบริษัท:</span>", unsafe_allow_html=True)
-                c_comp1, c_comp2, c_comp3 = st.columns(3)
-                with c_comp1:
-                    t_comp1 = st.checkbox("Sawasdee Rent A Car", value=True, key="chk_comp1")
-                with c_comp2:
-                    t_comp2 = st.checkbox("P.D.P. Co., Ltd.", value=True, key="chk_comp2")
-                with c_comp3:
-                    t_comp3 = st.checkbox("Sawasdee Car Rent", value=False, key="chk_comp3")
                     
-                selected_trend_comps = []
-                if t_comp1: selected_trend_comps.append("Sawasdee Rent A Car")
-                if t_comp2: selected_trend_comps.append("P.D.P. Co., Ltd.")
-                if t_comp3: selected_trend_comps.append("Sawasdee Car Rent")
-                
-                month_definitions = [
-                    ("1. พ.ค.", 5, 2026),
-                    ("2. มิ.ย.", 6, 2026),
-                    ("3. ก.ค.", 7, 2026),
-                    ("4. ส.ค.", 8, 2026),
-                    ("5. ก.ย.", 9, 2026),
-                    ("6. ต.ค.", 10, 2026)
-                ]
-                
-                # เพิ่มเดือนที่มีข้อมูลใน completed_jobs_db เข้าสู่ month_definitions อัตโนมัติ
-                th_m_names = ["", "ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."]
-                for c_item in st.session_state.completed_jobs_db:
-                    c_date = c_item.get("completed_date") or c_item.get("end_date")
-                    if isinstance(c_date, datetime):
-                        c_date = c_date.date()
-                    if c_date:
-                        m_lbl = f"{c_date.month}. {th_m_names[c_date.month]}"
-                        if not any(m[1] == c_date.month and m[2] == c_date.year for m in month_definitions):
-                            month_definitions.append((m_lbl, c_date.month, c_date.year))
-                month_definitions.sort(key=lambda x: (x[2], x[1]))
+                    df_status = pd.DataFrame([
+                        {"status": "ว่างพร้อมใช้งาน", "count": available_cars, "pct_str": f"{(available_cars/total_cars*100):.1f}%" if total_cars > 0 else "0%"},
+                        {"status": "กำลังเช่า/ติดจอง", "count": active_rentals, "pct_str": f"{(active_rentals/total_cars*100):.1f}%" if total_cars > 0 else "0%"},
+                        {"status": "ซ่อมบำรุง", "count": maintenance_cars, "pct_str": f"{(maintenance_cars/total_cars*100):.1f}%" if total_cars > 0 else "0%"}
+                    ])
+                    df_status_chart = df_status[df_status["count"] > 0]
+                    
+                    if not df_status_chart.empty:
+                        status_chart = alt.Chart(df_status_chart).mark_arc(innerRadius=45, outerRadius=75, stroke='#fff', strokeWidth=2).encode(
+                            theta=alt.Theta("count:Q"),
+                            color=alt.Color("status:N", scale=alt.Scale(domain=st_domain, range=st_range), legend=None),
+                            tooltip=[
+                                alt.Tooltip("status:N", title="สถานะรถ"),
+                                alt.Tooltip("count:Q", title="จำนวน (คัน)"),
+                                alt.Tooltip("pct_str:N", title="สัดส่วน")
+                            ]
+                        ).properties(height=180).configure_view(strokeWidth=0)
+                        st.altair_chart(status_chart, use_container_width=True)
+                    else:
+                        st.info("ขณะนี้ยังไม่มีข้อมูลรถในระบบ")
+                        
+                    for _, row in df_status.iterrows():
+                        color_dot = "#10B981" if row["status"] == "ว่างพร้อมใช้งาน" else ("#E85826" if row["status"] == "กำลังเช่า/ติดจอง" else "#EF4444")
+                        st.markdown(f"""
+                            <div class="donut-stat-row">
+                                <span><span style="color:{color_dot}; font-size:13px;">●</span> {row['status']}</span>
+                                <b>{row['count']} คัน ({row['pct_str']})</b>
+                            </div>
+                        """, unsafe_allow_html=True)
 
-                # สถิติพื้นฐานย้อนหลัง 6 เดือน
-                base_trend = {
-                    ("5. พ.ค.", "Sawasdee Rent A Car"): {"rev": 120000.0, "jobs": 8},
-                    ("6. มิ.ย.", "Sawasdee Rent A Car"): {"rev": 145000.0, "jobs": 10},
-                    ("7. ก.ค.", "Sawasdee Rent A Car"): {"rev": 160000.0, "jobs": 11},
-                    ("8. ส.ค.", "Sawasdee Rent A Car"): {"rev": 140000.0, "jobs": 9},
-                    ("9. ก.ย.", "Sawasdee Rent A Car"): {"rev": 150000.0, "jobs": 10},
-                    ("10. ต.ค.", "Sawasdee Rent A Car"): {"rev": 190000.0, "jobs": 13},
-
-                    ("5. พ.ค.", "P.D.P. Co., Ltd."): {"rev": 80000.0, "jobs": 5},
-                    ("6. มิ.ย.", "P.D.P. Co., Ltd."): {"rev": 95000.0, "jobs": 6},
-                    ("7. ก.ค.", "P.D.P. Co., Ltd."): {"rev": 110000.0, "jobs": 7},
-                    ("8. ส.ค.", "P.D.P. Co., Ltd."): {"rev": 100000.0, "jobs": 6},
-                    ("9. ก.ย.", "P.D.P. Co., Ltd."): {"rev": 110000.0, "jobs": 7},
-                    ("10. ต.ค.", "P.D.P. Co., Ltd."): {"rev": 135000.0, "jobs": 9},
-
-                    ("5. พ.ค.", "Sawasdee Car Rent"): {"rev": 50000.0, "jobs": 3},
-                    ("6. มิ.ย.", "Sawasdee Car Rent"): {"rev": 60000.0, "jobs": 4},
-                    ("7. ก.ค.", "Sawasdee Car Rent"): {"rev": 75000.0, "jobs": 5},
-                    ("8. ส.ค.", "Sawasdee Car Rent"): {"rev": 65000.0, "jobs": 4},
-                    ("9. ก.ย.", "Sawasdee Car Rent"): {"rev": 70000.0, "jobs": 4},
-                    ("10. ต.ค.", "Sawasdee Car Rent"): {"rev": 90000.0, "jobs": 6},
-                }
-
-                # นำข้อมูลจาก completed_jobs_db มาคำนวณแบบ Dynamic เข้ากราฟ
-                for c_item in st.session_state.completed_jobs_db:
-                    c_date = c_item.get("completed_date") or c_item.get("end_date")
-                    if isinstance(c_date, datetime):
-                        c_date = c_date.date()
-                    if c_date:
-                        comp = c_item.get("company", "Sawasdee Rent A Car")
-                        for m_lbl, m_num, m_yr in month_definitions:
-                            if c_date.month == m_num and c_date.year == m_yr:
-                                k = (m_lbl, comp)
-                                if k not in base_trend:
-                                    base_trend[k] = {"rev": 0.0, "jobs": 0}
-                                base_trend[k]["rev"] += float(c_item.get("net_price", 0))
-                                base_trend[k]["jobs"] += 1
-                                break
-
-                trend_data = []
-                for m_lbl, _, _ in month_definitions:
-                    for comp in ["Sawasdee Rent A Car", "P.D.P. Co., Ltd.", "Sawasdee Car Rent"]:
-                        rec = base_trend.get((m_lbl, comp), {"rev": 0.0, "jobs": 0})
-                        trend_data.append({
-                            "เดือน": m_lbl,
-                            "บริษัท": comp,
-                            "รายรับ (THB)": rec["rev"],
-                            "จำนวนงาน (งาน)": rec["jobs"]
-                        })
-                df_trend = pd.DataFrame(trend_data)
-                
-                if selected_trend_comps:
-                    filtered_trend = df_trend[df_trend["บริษัท"].isin(selected_trend_comps)]
-                    if trend_metric == "📈 รายรับค่าเช่า (THB)":
-                        line_chart = alt.Chart(filtered_trend).mark_line(point=True, strokeWidth=3).encode(
-                            x=alt.X('เดือน:N', title="รอบเดือน"),
-                            y=alt.Y('รายรับ (THB):Q', title="รายรับค่าเช่ารวม (THB)"),
-                            color=alt.Color('บริษัท:N', scale=alt.Scale(domain=["Sawasdee Rent A Car", "P.D.P. Co., Ltd.", "Sawasdee Car Rent"], range=["#E85826", "#10B981", "#3B82F6"]), legend=alt.Legend(title="บริษัท", orient="top")),
+            # 2. กราฟแท่ง/กราฟเส้น (Bar/Line Chart): แนวโน้มรายรับรวมย้อนหลัง
+            with dash_c2:
+                with st.container(border=True):
+                    c_tr_h1, c_tr_h2 = st.columns([2, 1.2])
+                    with c_tr_h1:
+                        st.markdown("""
+                            <div class="donut-header">
+                                <span>📈 แนวโน้มรายรับรวมย้อนหลัง (Total Revenue Trend)</span>
+                            </div>
+                            <div class="donut-sub">ยอดรายรับรวมย้อนหลังและจำนวนงานเช่าทั้งหมด</div>
+                        """, unsafe_allow_html=True)
+                    with c_tr_h2:
+                        trend_chart_type = st.radio(
+                            "รูปแบบกราฟ:",
+                            ["📊 กราฟแท่ง (Bar)", "📈 กราฟเส้น (Line)"],
+                            horizontal=True,
+                            label_visibility="collapsed",
+                            key="unified_trend_chart_type"
+                        )
+                    
+                    th_m_names = ["", "ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."]
+                    now_dt = datetime.now()
+                    month_bins = []
+                    for i in range(5, -1, -1):
+                        m_idx = now_dt.month - i
+                        y_idx = now_dt.year
+                        while m_idx <= 0:
+                            m_idx += 12
+                            y_idx -= 1
+                        m_lbl = f"{m_idx}. {th_m_names[m_idx]}"
+                        month_bins.append({"label": m_lbl, "month": m_idx, "year": y_idx, "rev": 0.0, "jobs": 0})
+                    
+                    for item in financial_db:
+                        if item.get("type") == "รายรับ":
+                            amt = float(item.get("amount", 0))
+                            dt_raw = item.get("created_at") or item.get("date")
+                            if dt_raw:
+                                d_obj = to_date(dt_raw)
+                                if d_obj:
+                                    for mb in month_bins:
+                                        if mb["month"] == d_obj.month and mb["year"] == d_obj.year:
+                                            mb["rev"] += amt
+                                            mb["jobs"] += 1
+                                            break
+                                            
+                    for c_item in st.session_state.get("completed_jobs_db", []):
+                        amt = float(c_item.get("net_price", 0))
+                        c_date = c_item.get("completed_date") or c_item.get("end_date")
+                        if c_date:
+                            d_obj = to_date(c_date)
+                            if d_obj:
+                                for mb in month_bins:
+                                    if mb["month"] == d_obj.month and mb["year"] == d_obj.year:
+                                        mb["rev"] += amt
+                                        mb["jobs"] += 1
+                                        break
+                                        
+                    df_trend_tot = pd.DataFrame([
+                        {
+                            "เดือน": mb["label"],
+                            "รายรับรวม (THB)": mb["rev"],
+                            "จำนวนงาน (งาน)": mb["jobs"]
+                        }
+                        for mb in month_bins
+                    ])
+                    
+                    if trend_chart_type == "📊 กราฟแท่ง (Bar)":
+                        rev_chart = alt.Chart(df_trend_tot).mark_bar(
+                            cornerRadiusTopLeft=6,
+                            cornerRadiusTopRight=6,
+                            color="#E85826"
+                        ).encode(
+                            x=alt.X('เดือน:N', title="รอบเดือน", sort=None),
+                            y=alt.Y('รายรับรวม (THB):Q', title="รายรับรวม (THB)"),
                             tooltip=[
                                 alt.Tooltip('เดือน:N', title="เดือน"),
-                                alt.Tooltip('บริษัท:N', title="บริษัท"),
-                                alt.Tooltip('รายรับ (THB):Q', title="รายรับรวม (THB)", format=',.2f'),
+                                alt.Tooltip('รายรับรวม (THB):Q', title="รายรับรวม (THB)", format=',.2f'),
                                 alt.Tooltip('จำนวนงาน (งาน):Q', title="จำนวนงานเสร็จสิ้น")
                             ]
-                        ).interactive().properties(height=350)
+                        ).properties(height=230)
                     else:
-                        line_chart = alt.Chart(filtered_trend).mark_line(point=True, strokeWidth=3).encode(
-                            x=alt.X('เดือน:N', title="รอบเดือน"),
-                            y=alt.Y('จำนวนงาน (งาน):Q', title="จำนวนงานเช่าที่เสร็จสิ้น (งาน)"),
-                            color=alt.Color('บริษัท:N', scale=alt.Scale(domain=["Sawasdee Rent A Car", "P.D.P. Co., Ltd.", "Sawasdee Car Rent"], range=["#E85826", "#10B981", "#3B82F6"]), legend=alt.Legend(title="บริษัท", orient="top")),
+                        rev_chart = alt.Chart(df_trend_tot).mark_line(
+                            point=alt.OverlayMarkDef(color='#E85826', size=60),
+                            strokeWidth=3,
+                            color="#E85826"
+                        ).encode(
+                            x=alt.X('เดือน:N', title="รอบเดือน", sort=None),
+                            y=alt.Y('รายรับรวม (THB):Q', title="รายรับรวม (THB)"),
                             tooltip=[
                                 alt.Tooltip('เดือน:N', title="เดือน"),
-                                alt.Tooltip('บริษัท:N', title="บริษัท"),
-                                alt.Tooltip('จำนวนงาน (งาน):Q', title="จำนวนงานเสร็จสิ้น"),
-                                alt.Tooltip('รายรับ (THB):Q', title="รายรับรวม (THB)", format=',.2f')
+                                alt.Tooltip('รายรับรวม (THB):Q', title="รายรับรวม (THB)", format=',.2f'),
+                                alt.Tooltip('จำนวนงาน (งาน):Q', title="จำนวนงานเสร็จสิ้น")
                             ]
-                        ).interactive().properties(height=350)
+                        ).interactive().properties(height=230)
                         
-                    st.altair_chart(line_chart, use_container_width=True)
-                else:
-                    st.warning("กรุณาเลือกบริษัทอย่างน้อย 1 แห่งเพื่อแสดงกราฟเปรียบเทียบ")
+                    st.altair_chart(rev_chart, use_container_width=True)
 
             st.markdown("<div style='height: 15px;'></div>", unsafe_allow_html=True)
             
