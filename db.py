@@ -212,8 +212,491 @@ def get_car_fleet_status(car_plate, car_obj, bookings, filter_start_date=None, f
 # INITIAL CARS, CUSTOMERS, BOOKINGS, USERS
 # -------------------------------------------------------------------------
 DEFAULT_CARS = {
-    "5ขฒ 5181": {"plate": "5ขฒ 5181", "brand": "Toyota", "model": "Yaris Ativ", "color": "ขาว (White)", "car_group": "รถเก๋ง (Sedan/Hatchback)", "engine_cc": "1200", "fuel_type": "เบนซิน", "company": "บจก.สวัสดี เรนทัล (Sawasdee Rental)", "price_day": 1000, "price_week": 6000, "price_month": 18000, "status": "ว่างพร้อมใช้งาน", "chassis_no": "MR2BD8A3100079451", "act_expiry": "25/12/2026", "ins_expiry": "25/12/2026", "mileage": "21,476", "image": "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&q=80&w=500", "owner": "SWD", "beneficiary": "บจก.โตโยต้า ลีสซิ่ง", "reg_year": "2567", "tax_expiry": "28/03/2027", "ins_company": "คุ้มภัยโตเกียวมารีน", "last_service_date": "14/07/2026", "next_service": "14/01/2027", "tire_change": "-", "notes": "", "hp_contract_no": "A10916051", "hp_installment": 10748}
+    "5ขฒ 5181": {
+        "plate": "5ขฒ 5181",
+        "brand": "Toyota",
+        "model": "Yaris Ativ",
+        "color": "ขาว (White)",
+        "car_group": "รถเก๋ง (Sedan/Hatchback)",
+        "engine_cc": "1200",
+        "fuel_type": "เบนซิน",
+        "company": "บจก.สวัสดี เรนทัล (Sawasdee Rental)",
+        "price_day": 1000,
+        "price_week": 6000,
+        "price_month": 18000,
+        "status": "ว่างพร้อมใช้งาน",
+        "reg_year": "2567",
+        "engine_no": "3NR-1098452",
+        "chassis_no": "MR2BD8A3100079451",
+        "mileage": "21,476",
+        "image": "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&q=80&w=500",
+        "owner": "SWD",
+        "manager": "สมศักดิ์ ดูแลฟลีท",
+        "beneficiary": "บจก.โตโยต้า ลีสซิ่ง",
+        "leasing_contract": "A10916051",
+        "leasing_total_installments": 48,
+        "leasing_current_installment": 14,
+        "leasing_last_payment_date": "10/10/2026",
+        "leasing_installment_amount": 10748,
+        "insurance_brand": "คุ้มภัยโตเกียวมารีน",
+        "insurance_premium": 18500,
+        "insurance_coverage": 500000,
+        "ins_start_date": "25/12/2025",
+        "ins_expiry": "25/12/2026",
+        "tax_year": "2570",
+        "tax_start_date": "28/03/2026",
+        "tax_expiry": "28/03/2027",
+        "act_brand": "วิริยะประกันภัย",
+        "act_price": 645.21,
+        "act_start_date": "25/12/2025",
+        "act_expiry": "25/12/2026",
+        "maintenance_detail": "เช็คระยะ 20,000 กม. เปลี่ยนถ่ายน้ำมันเครื่องสังเคราะห์แท้และไส้กรอง",
+        "maintenance_date": "14/07/2026",
+        "last_service_date": "14/07/2026",
+        "next_service": "14/01/2027",
+        "tire_change": "-",
+        "notes": "",
+        "hp_contract_no": "A10916051",
+        "hp_installment": 10748
+    },
+    "5ขต 1490": {
+        "plate": "5ขต 1490",
+        "brand": "Toyota",
+        "model": "Yaris Ativ",
+        "color": "เทา-ดำ (Grey-Black)",
+        "car_group": "รถเก๋ง (Sedan/Hatchback)",
+        "engine_cc": "1200",
+        "fuel_type": "เบนซิน",
+        "company": "บจก.สวัสดี เรนทัล (Sawasdee Rental)",
+        "price_day": 1000,
+        "price_week": 6000,
+        "price_month": 18000,
+        "status": "ว่างพร้อมใช้งาน",
+        "reg_year": "2567",
+        "engine_no": "3NR-1098453",
+        "chassis_no": "MR2BD8A3400071405",
+        "mileage": "15,000",
+        "image": "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&q=80&w=500",
+        "owner": "SWD",
+        "manager": "สมศักดิ์ ดูแลฟลีท",
+        "beneficiary": "บจก.โตโยต้า ลีสซิ่ง",
+        "leasing_contract": "A10916050",
+        "leasing_total_installments": 48,
+        "leasing_current_installment": 14,
+        "leasing_last_payment_date": "10/10/2026",
+        "leasing_installment_amount": 10748,
+        "insurance_brand": "คุ้มภัยโตเกียวมารีน",
+        "insurance_premium": 18500,
+        "insurance_coverage": 500000,
+        "ins_start_date": "25/12/2025",
+        "ins_expiry": "25/12/2026",
+        "tax_year": "2570",
+        "tax_start_date": "17/05/2026",
+        "tax_expiry": "17/05/2027",
+        "act_brand": "วิริยะประกันภัย",
+        "act_price": 645.21,
+        "act_start_date": "25/12/2025",
+        "act_expiry": "25/12/2026",
+        "maintenance_detail": "ตรวจเช็คสภาพทั่วไปและระบบไฟ",
+        "maintenance_date": "15/06/2026",
+        "last_service_date": "-",
+        "next_service": "-",
+        "tire_change": "-",
+        "notes": "",
+        "hp_contract_no": "A10916050",
+        "hp_installment": 10748
+    }
 }
+
+DEFAULT_PROPERTY_INSURANCE = [
+    {
+        "id": "PROP-001",
+        "title": "ประกันภัยทรัพย์สิน โครงการหมู่บ้านแกรนด์ แอนด์ กรีน บ้านเลขที่ 499/41",
+        "owner": "คุณอารินทร์ ดูเบ",
+        "ins_company": "คุ้มภัยโตเกียวมารีน",
+        "expiry_date": "11/03/2026",
+        "notes": "เลขที่สินไหม 20250930992 (แผ่นดินไหว 28/3/2025)"
+    },
+    {
+        "id": "PROP-002",
+        "title": "ประกันอุบัติเหตุส่วนบุคคล",
+        "owner": "คุณอารินทร์ ดูเบ",
+        "ins_company": "ฟอลคอนประกันภัย",
+        "expiry_date": "01/05/2026",
+        "notes": "ต่อประกันแล้ว รอกรมธรรม์ตัวจริง (คุณอารินทร์จ่ายเอง 7,300 บาท 29/4/2025)"
+    },
+    {
+        "id": "PROP-003",
+        "title": "ประกันภัยทรัพย์สิน โครงการเดอะแกรนด์ พระราม2 บ้านเลขที่ 77/59",
+        "owner": "คุณเควิน นารูลา",
+        "ins_company": "กรุงเทพประกันภัย",
+        "expiry_date": "15/06/2026",
+        "notes": "ทุนประกันภัย 10 ล้านบาท เบี้ย 12,186.23 บาท"
+    },
+    {
+        "id": "PROP-004",
+        "title": "ประกันภัยบ้าน (โครงการบางกอก บูเลอวาร์ด ซิกเนเจอร์ บางแวก 72 เลขที่ 63/1)",
+        "owner": "คุณอนุปรี๊ด นารูลา",
+        "ins_company": "-",
+        "expiry_date": "-",
+        "notes": "บ้านเลขที่ 63/1 ถนนบางแวก แขวงบางเชือกหนัง เขตตลิ่งชัน กทม. 10170"
+    }
+]
+
+DEFAULT_HP_LEASING = [
+    {
+        "no": 1,
+        "model": "Toyota Yaris Ativ Auto1200CC",
+        "plate": "5ขฒ 5181",
+        "chassis_no": "MR2BD8A3100079451",
+        "contract_no": "A10916051",
+        "down_payment_date": "29/12/2023",
+        "down_payment": 152267.92,
+        "first_payment_date": "28/01/2024",
+        "due_day": "ทุกวันที่ 28",
+        "installment": 10748.0,
+        "total_months": 48,
+        "paid_2023_2024": 128976.0,
+        "paid_2025": 96732.0,
+        "paid_months": 21,
+        "paid_amount": 225708.0,
+        "remaining_months": 27,
+        "remaining_amount": 290196.0,
+        "total_financed": 515904.0,
+        "total_car_price": 668171.92
+    },
+    {
+        "no": 2,
+        "model": "Toyota Yaris Ativ Auto1200CC",
+        "plate": "5ขต 1490",
+        "chassis_no": "MR2BD8A3400071405",
+        "contract_no": "A10916050",
+        "down_payment_date": "29/12/2023",
+        "down_payment": 152267.92,
+        "first_payment_date": "28/01/2024",
+        "due_day": "ทุกวันที่ 28",
+        "installment": 10748.0,
+        "total_months": 48,
+        "paid_2023_2024": 128976.0,
+        "paid_2025": 96732.0,
+        "paid_months": 21,
+        "paid_amount": 225708.0,
+        "remaining_months": 27,
+        "remaining_amount": 290196.0,
+        "total_financed": 515904.0,
+        "total_car_price": 668171.92
+    },
+    {
+        "no": 3,
+        "model": "Toyota Altis Auto1800CC",
+        "plate": "7ขง 5041",
+        "chassis_no": "MR2BK3BE800029073",
+        "contract_no": "P11124483",
+        "down_payment_date": "11/06/2025",
+        "down_payment": 236888.88,
+        "first_payment_date": "11/07/2025",
+        "due_day": "ทุกวันที่ 11",
+        "installment": 16184.0,
+        "total_months": 48,
+        "paid_2023_2024": 0.0,
+        "paid_2025": 48552.0,
+        "paid_months": 3,
+        "paid_amount": 48552.0,
+        "remaining_months": 45,
+        "remaining_amount": 728280.0,
+        "total_financed": 776832.0,
+        "total_car_price": 1013720.88
+    },
+    {
+        "no": 4,
+        "model": "Toyota Corolla Cross",
+        "plate": "3ขค 1951",
+        "chassis_no": "MR2KZAAG200063142",
+        "contract_no": "A10778291",
+        "down_payment_date": "23/12/2022",
+        "down_payment": 259516.92,
+        "first_payment_date": "23/01/2023",
+        "due_day": "ทุกวันที่ 23",
+        "installment": 18544.0,
+        "total_months": 48,
+        "paid_2023_2024": 445056.0,
+        "paid_2025": 166896.0,
+        "paid_months": 33,
+        "paid_amount": 611952.0,
+        "remaining_months": 15,
+        "remaining_amount": 278160.0,
+        "total_financed": 890112.0,
+        "total_car_price": 1149628.92
+    },
+    {
+        "no": 5,
+        "model": "Toyota Yaris Cross Auto1500CC",
+        "plate": "5ขข 2527",
+        "chassis_no": "MR2A78BF904005201",
+        "contract_no": "A10914809",
+        "down_payment_date": "25/12/2023",
+        "down_payment": 236888.88,
+        "first_payment_date": "25/01/2024",
+        "due_day": "ทุกวันที่ 25",
+        "installment": 14007.0,
+        "total_months": 48,
+        "paid_2023_2024": 168084.0,
+        "paid_2025": 126063.0,
+        "paid_months": 21,
+        "paid_amount": 294147.0,
+        "remaining_months": 27,
+        "remaining_amount": 378189.0,
+        "total_financed": 672336.0,
+        "total_car_price": 909224.88
+    },
+    {
+        "no": 6,
+        "model": "Toyota Commuter Auto2800CC",
+        "plate": "ป้ายแดง (Commuter ขาว)",
+        "chassis_no": "MMKBBHCP106530236",
+        "contract_no": "A10955195",
+        "down_payment_date": "11/04/2024",
+        "down_payment": 351000.0,
+        "first_payment_date": "01/05/2024",
+        "due_day": "ทุกวันที่ 1",
+        "installment": 22796.0,
+        "total_months": 48,
+        "paid_2023_2024": 182368.0,
+        "paid_2025": 205164.0,
+        "paid_months": 17,
+        "paid_amount": 387532.0,
+        "remaining_months": 31,
+        "remaining_amount": 706676.0,
+        "total_financed": 1094208.0,
+        "total_car_price": 1445208.0
+    },
+    {
+        "no": 7,
+        "model": "Toyota Yaris Cross Auto1500CC",
+        "plate": "6ขญ 3119",
+        "chassis_no": "MR2A78BF004050706",
+        "contract_no": "A10984839",
+        "down_payment_date": "17/06/2024",
+        "down_payment": 182297.28,
+        "first_payment_date": "07/07/2024",
+        "due_day": "ทุกวันที่ 7",
+        "installment": 16323.0,
+        "total_months": 48,
+        "paid_2023_2024": 97938.0,
+        "paid_2025": 146907.0,
+        "paid_months": 15,
+        "paid_amount": 244845.0,
+        "remaining_months": 33,
+        "remaining_amount": 538659.0,
+        "total_financed": 783504.0,
+        "total_car_price": 965801.28
+    },
+    {
+        "no": 8,
+        "model": "Toyota Majesty 2.8",
+        "plate": "1นญ 1882",
+        "chassis_no": "JTFXB3AP408007967",
+        "contract_no": "A11013342",
+        "down_payment_date": "02/09/2024",
+        "down_payment": 667028.08,
+        "first_payment_date": "02/10/2024",
+        "due_day": "ทุกวันที่ 2",
+        "installment": 40567.0,
+        "total_months": 48,
+        "paid_2023_2024": 121701.0,
+        "paid_2025": 365103.0,
+        "paid_months": 12,
+        "paid_amount": 486804.0,
+        "remaining_months": 36,
+        "remaining_amount": 1460412.0,
+        "total_financed": 1947216.0,
+        "total_car_price": 2614244.08
+    },
+    {
+        "no": 9,
+        "model": "ORA Good Cat P",
+        "plate": "7ขด 856",
+        "chassis_no": "MNUAATD50SR010935",
+        "contract_no": "6801869",
+        "down_payment_date": "29/11/2024",
+        "down_payment": 215880.0,
+        "first_payment_date": "05/01/2025",
+        "due_day": "ทุกวันที่ 5",
+        "installment": 15720.0,
+        "total_months": 48,
+        "paid_2023_2024": 0.0,
+        "paid_2025": 141480.0,
+        "paid_months": 9,
+        "paid_amount": 141480.0,
+        "remaining_months": 39,
+        "remaining_amount": 613080.0,
+        "total_financed": 754560.0,
+        "total_car_price": 970440.0
+    },
+    {
+        "no": 10,
+        "model": "ORA Good Cat P",
+        "plate": "7ขฉ 2011",
+        "chassis_no": "MNUAATD50SR010936",
+        "contract_no": "6801875",
+        "down_payment_date": "29/11/2024",
+        "down_payment": 215880.0,
+        "first_payment_date": "05/01/2025",
+        "due_day": "ทุกวันที่ 5",
+        "installment": 15720.0,
+        "total_months": 48,
+        "paid_2023_2024": 0.0,
+        "paid_2025": 141480.0,
+        "paid_months": 9,
+        "paid_amount": 141480.0,
+        "remaining_months": 39,
+        "remaining_amount": 613080.0,
+        "total_financed": 754560.0,
+        "total_car_price": 970440.0
+    },
+    {
+        "no": 11,
+        "model": "All New Tank 300 HEV Pro",
+        "plate": "7ขจ 1099",
+        "chassis_no": "MNUBB7S70SR008610",
+        "contract_no": "6801686",
+        "down_payment_date": "03/11/2024",
+        "down_payment": 457917.52,
+        "first_payment_date": "10/12/2024",
+        "due_day": "ทุกวันที่ 10",
+        "installment": 25672.0,
+        "total_months": 48,
+        "paid_2023_2024": 25672.0,
+        "paid_2025": 231048.0,
+        "paid_months": 10,
+        "paid_amount": 256720.0,
+        "remaining_months": 38,
+        "remaining_amount": 975536.0,
+        "total_financed": 1232256.0,
+        "total_car_price": 1690173.52
+    },
+    {
+        "no": 12,
+        "model": "Yaris Cross Auto1500CC",
+        "plate": "7ขง 4611",
+        "chassis_no": "MR2A78BF804075269",
+        "contract_no": "A11166836",
+        "down_payment_date": "08/09/2025",
+        "down_payment": 276714.08,
+        "first_payment_date": "08/10/2025",
+        "due_day": "ทุกวันที่ 8",
+        "installment": 13102.0,
+        "total_months": 48,
+        "paid_2023_2024": 0.0,
+        "paid_2025": 0.0,
+        "paid_months": 0,
+        "paid_amount": 0.0,
+        "remaining_months": 48,
+        "remaining_amount": 628896.0,
+        "total_financed": 628896.0,
+        "total_car_price": 905610.08
+    },
+    {
+        "no": 13,
+        "model": "Veloz Auto1500CC",
+        "plate": "7ขง 1762",
+        "chassis_no": "MHFAB1BY000114785",
+        "contract_no": "A11158158",
+        "down_payment_date": "23/08/2025",
+        "down_payment": 215868.08,
+        "first_payment_date": "23/09/2025",
+        "due_day": "ทุกวันที่ 23",
+        "installment": 13584.0,
+        "total_months": 48,
+        "paid_2023_2024": 0.0,
+        "paid_2025": 13584.0,
+        "paid_months": 1,
+        "paid_amount": 13584.0,
+        "remaining_months": 47,
+        "remaining_amount": 638448.0,
+        "total_financed": 652032.0,
+        "total_car_price": 867900.08
+    },
+    {
+        "no": 14,
+        "model": "CR-V 1.5ES",
+        "plate": "พม 6999",
+        "chassis_no": "MRHRY9879RP100803",
+        "contract_no": "Bclick",
+        "down_payment_date": "18/10/2024",
+        "down_payment": 411140.0,
+        "first_payment_date": "25/11/2024",
+        "due_day": "ทุกวันที่ 25",
+        "installment": 113390.0,
+        "total_months": 12,
+        "paid_2023_2024": 226780.0,
+        "paid_2025": 1020510.0,
+        "paid_months": 11,
+        "paid_amount": 1247290.0,
+        "remaining_months": 1,
+        "remaining_amount": 113390.0,
+        "total_financed": 1360680.0,
+        "total_car_price": 1771820.0
+    }
+]
+
+DEFAULT_HP_SUMMARY = {
+    "total_contracts": 14,
+    "total_down_payment": 4031555.56,
+    "total_monthly_installment": 347095.0,
+    "total_paid_2023_2024": 1396551.0,
+    "total_paid_2025": 2800251.0,
+    "total_paid_amount": 4325802.0,
+    "total_remaining_amount": 8253198.0,
+    "total_financed": 12579000.0,
+    "total_car_price": 16610555.56
+}
+
+def deduplicate_cars_dict(cars_dict, deleted_plates=None):
+    """Deduplicate cars by normalized license plate and chassis_no, merging metadata."""
+    deleted_plates = deleted_plates or set()
+    deleted_norms = {re.sub(r"[\s\-\.]+", "", str(dp)).lower() for dp in deleted_plates}
+    result = {}
+    norm_to_key = {}
+    chassis_to_key = {}
+
+    for raw_key, car in (cars_dict or {}).items():
+        if not isinstance(car, dict):
+            continue
+        pl = str(car.get("plate") or raw_key).strip()
+        if not pl:
+            continue
+        norm_pl = re.sub(r"[\s\-\.]+", "", pl).lower()
+        if pl in deleted_plates or norm_pl in deleted_norms:
+            continue
+
+        chassis = str(car.get("chassis_no") or "").strip().upper()
+        has_valid_chassis = bool(chassis and chassis != "-" and len(chassis) >= 8)
+
+        existing_key = None
+        if norm_pl in norm_to_key:
+            existing_key = norm_to_key[norm_pl]
+        elif has_valid_chassis and chassis in chassis_to_key:
+            existing_key = chassis_to_key[chassis]
+
+        if existing_key and existing_key in result:
+            # Merge non-empty values into existing canonical record
+            target = result[existing_key]
+            for fk, fv in car.items():
+                if fv is not None and str(fv).strip() not in ["", "-"]:
+                    if fk not in target or str(target.get(fk, "")).strip() in ["", "-"]:
+                        target[fk] = fv
+                    elif fk in ["status", "mileage", "act_expiry", "ins_expiry", "tax_expiry", "price_day", "price_week", "price_month"]:
+                        target[fk] = fv
+        else:
+            c_copy = dict(car)
+            c_copy["plate"] = pl
+            result[pl] = c_copy
+            norm_to_key[norm_pl] = pl
+            if has_valid_chassis:
+                chassis_to_key[chassis] = pl
+
+    return result
 
 DEFAULT_MAINTENANCE_RECORDS = []
 

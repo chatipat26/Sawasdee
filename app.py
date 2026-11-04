@@ -1755,21 +1755,85 @@ if "cars_db" not in st.session_state:
             "price_week": 6000,
             "price_month": 18000,
             "status": "ว่างพร้อมใช้งาน",
+            "reg_year": "2567",
+            "engine_no": "3NR-1098452",
             "chassis_no": "MR2BD8A3100079451",
-            "act_expiry": "25/12/2026",
-            "ins_expiry": "25/12/2026",
             "mileage": "21,476",
             "image": "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&q=80&w=500",
             "owner": "SWD",
+            "manager": "สมศักดิ์ ดูแลฟลีท",
             "beneficiary": "บจก.โตโยต้า ลีสซิ่ง",
-            "reg_year": "2567",
+            "leasing_contract": "A10916051",
+            "leasing_total_installments": 48,
+            "leasing_current_installment": 14,
+            "leasing_last_payment_date": "10/10/2026",
+            "leasing_installment_amount": 10748,
+            "insurance_brand": "คุ้มภัยโตเกียวมารีน",
+            "insurance_premium": 18500,
+            "insurance_coverage": 500000,
+            "ins_start_date": "25/12/2025",
+            "ins_expiry": "25/12/2026",
+            "tax_year": "2570",
+            "tax_start_date": "28/03/2026",
             "tax_expiry": "28/03/2027",
-            "ins_company": "คุ้มภัยโตเกียวมารีน",
+            "act_brand": "วิริยะประกันภัย",
+            "act_price": 645.21,
+            "act_start_date": "25/12/2025",
+            "act_expiry": "25/12/2026",
+            "maintenance_detail": "เช็คระยะ 20,000 กม. เปลี่ยนถ่ายน้ำมันเครื่องสังเคราะห์แท้และไส้กรอง",
+            "maintenance_date": "14/07/2026",
             "last_service_date": "14/07/2026",
             "next_service": "14/01/2027",
             "tire_change": "-",
             "notes": "",
             "hp_contract_no": "A10916051",
+            "hp_installment": 10748
+        },
+        "5ขต 1490": {
+            "plate": "5ขต 1490",
+            "brand": "Toyota",
+            "model": "Yaris Ativ",
+            "color": "เทา-ดำ (Grey-Black)",
+            "car_group": "รถเก๋ง (Sedan/Hatchback)",
+            "engine_cc": "1200",
+            "fuel_type": "เบนซิน",
+            "company": "บจก.สวัสดี เรนทัล (Sawasdee Rental)",
+            "price_day": 1000,
+            "price_week": 6000,
+            "price_month": 18000,
+            "status": "ว่างพร้อมใช้งาน",
+            "reg_year": "2567",
+            "engine_no": "3NR-1098453",
+            "chassis_no": "MR2BD8A3400071405",
+            "mileage": "15,000",
+            "image": "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&q=80&w=500",
+            "owner": "SWD",
+            "manager": "สมศักดิ์ ดูแลฟลีท",
+            "beneficiary": "บจก.โตโยต้า ลีสซิ่ง",
+            "leasing_contract": "A10916050",
+            "leasing_total_installments": 48,
+            "leasing_current_installment": 14,
+            "leasing_last_payment_date": "10/10/2026",
+            "leasing_installment_amount": 10748,
+            "insurance_brand": "คุ้มภัยโตเกียวมารีน",
+            "insurance_premium": 18500,
+            "insurance_coverage": 500000,
+            "ins_start_date": "25/12/2025",
+            "ins_expiry": "25/12/2026",
+            "tax_year": "2570",
+            "tax_start_date": "17/05/2026",
+            "tax_expiry": "17/05/2027",
+            "act_brand": "วิริยะประกันภัย",
+            "act_price": 645.21,
+            "act_start_date": "25/12/2025",
+            "act_expiry": "25/12/2026",
+            "maintenance_detail": "ตรวจเช็คสภาพทั่วไปและระบบไฟ",
+            "maintenance_date": "15/06/2026",
+            "last_service_date": "-",
+            "next_service": "-",
+            "tire_change": "-",
+            "notes": "",
+            "hp_contract_no": "A10916050",
             "hp_installment": 10748
         }
     }
@@ -4046,15 +4110,35 @@ else:
                                             st.rerun()
                             with det_c2:
                                 st.markdown(f"""
-                                - **ยี่ห้อ / รุ่น:** {c['brand']} {c['model']}
+                                - **ยี่ห้อ / รุ่น:** {c.get('brand', '-')} {c.get('model', '-')}
                                 - **ทะเบียน:** {plate}
                                 - **สี (Color):** {c.get('color', '-')}
+                                - **ประเภทรถ:** {c.get('car_group', '-')}
+                                - **ปีจดทะเบียน:** {c.get('reg_year', '-')}
+                                - **เลขเครื่องยนต์:** {c.get('engine_no', '-')}
                                 - **เลขตัวถัง (VIN):** {c.get('chassis_no', '-')}
-                                - **ประเภทรถ:** {c['car_group']}
-                                - **เจ้าของกรรมสิทธิ์:** {c['company']}
-                                - **วันหมดอายุ พ.ร.บ.:** {c.get('act_expiry', '-')}
-                                - **วันหมดอายุประกันภัย:** {c.get('ins_expiry', '-')}
                                 - **เลขไมล์สะสม:** {c.get('mileage', '-')} km
+                                - **เจ้าของกรรมสิทธิ์:** {c.get('owner', c.get('company', '-'))}
+                                - **ผู้ดูแล:** {c.get('manager', '-')}
+                                - **สัญญาลิสซิ่ง:** {c.get('leasing_contract', c.get('hp_contract_no', '-'))}
+                                - **จำนวนงวดลิสซิ่ง:** {c.get('leasing_total_installments', '-')} งวด
+                                - **งวดปัจจุบันลิสซิ่ง:** {c.get('leasing_current_installment', '-')}
+                                - **วันที่ชำระล่าสุดลิสซิ่ง:** {c.get('leasing_last_payment_date', '-')}
+                                - **ค่างวดลิสซิ่ง:** {c.get('leasing_installment_amount', c.get('hp_installment', '-'))} บาท
+                                - **ยี่ห้อประกันภัย:** {c.get('insurance_brand', c.get('ins_company', '-'))}
+                                - **ราคาประกันภัย:** {c.get('insurance_premium', '-')} บาท
+                                - **ทุนประกันภัย:** {c.get('insurance_coverage', '-')} บาท
+                                - **ประกันภัยวันที่เริ่ม:** {c.get('ins_start_date', '-')}
+                                - **ประกันภัยวันที่สิ้นสุด:** {c.get('ins_expiry', '-')}
+                                - **ปีภาษี:** {c.get('tax_year', '-')}
+                                - **ภาษีวันที่เริ่ม:** {c.get('tax_start_date', '-')}
+                                - **ภาษีวันที่สิ้นสุด:** {c.get('tax_expiry', '-')}
+                                - **ยี่ห้อ พ.ร.บ.:** {c.get('act_brand', '-')}
+                                - **พ.ร.บ. ราคา:** {c.get('act_price', '-')} บาท
+                                - **พ.ร.บ. วันที่เริ่ม:** {c.get('act_start_date', '-')}
+                                - **พ.ร.บ. วันที่สิ้นสุด:** {c.get('act_expiry', '-')}
+                                - **ซ่อมบำรุง:** {c.get('maintenance_detail', '-')}
+                                - **วันที่ซ่อมบำรุง:** {c.get('maintenance_date', c.get('last_service_date', '-'))}
                                 """)
                                 # --- ปุ่มจองรถ & ชำระเงินจอง และ ปุ่มแก้ไขข้อมูลรถยนต์ ---
                                 act_c1, act_c2 = st.columns([1.5, 1])
