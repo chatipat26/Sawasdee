@@ -1542,6 +1542,28 @@ if "users_db" not in st.session_state:
         }
     }
     _GLOBAL_STORE["users_db"] = st.session_state.users_db
+if "language" not in st.session_state:
+    st.session_state.language = "TH"
+
+translations = {
+    "TH": {
+        "nav_front": "🔄 ระบบปฏิบัติการหลัก (Front Office)",
+        "nav_back": "📋 ระบบหลังบ้าน (Back Office)",
+        "nav_crm": "👥 ฐานข้อมูลลูกค้า (CRM)",
+        "nav_dash": "📊 แดชบอร์ดผู้บริหาร (Executive Dashboard)",
+        "btn_logout": "🚪 ออกจากระบบ (Sign Out)",
+        "btn_lang": "🌐 Change to English"
+    },
+    "EN": {
+        "nav_front": "🔄 Front Office Operations",
+        "nav_back": "📋 Back Office Management",
+        "nav_crm": "👥 Customer Database (CRM)",
+        "nav_dash": "📊 Executive Dashboard",
+        "btn_logout": "🚪 Sign Out",
+        "btn_lang": "🌐 เปลี่ยนเป็นภาษาไทย"
+    }
+}
+
 users_db = st.session_state.users_db
 
 def get_approved_staff_list():
@@ -2107,7 +2129,7 @@ def _render_add_customer_form_contents():
             st.rerun()
 
 if hasattr(st, "dialog"):
-    @st.dialog("➕ เพิ่มข้อมูลลูกค้าใหม่เข้าสู่ฐานข้อมูล (Add New Customer)", width="large")
+    @st.dialog("➕ ลงทะเบียนลูกค้า (New Customer)", width="large")
     def dialog_add_new_customer():
         _render_add_customer_form_contents()
 else:
@@ -3040,7 +3062,7 @@ else:
                                     st.toast(f"ระงับสิทธิ์ {u_k} เรียบร้อย", icon="🔒")
                                     st.rerun()
                         with c_act2:
-                            if st.button("🗑️ ลบ", key=f"sb_del_init_{u_k}", use_container_width=True):
+                            if st.button("🗑️ ลบข้อมูล (Delete)", key=f"sb_del_init_{u_k}", use_container_width=True):
                                 st.session_state[del_confirm_key] = True
                                 st.rerun()
                     else:
@@ -3395,10 +3417,22 @@ else:
         st.markdown("<div style='height: 4px;'></div>", unsafe_allow_html=True)
         st.markdown("<p style='font-size:11px; font-weight:700; color:#8C827A; margin: 10px 0 6px 2px;'>เมนูระบบงานหลัก</p>", unsafe_allow_html=True)
         
+        current_lang = st.session_state.get("language", "TH")
+        if current_lang not in translations:
+            current_lang = "TH"
+            st.session_state.language = "TH"
+        t_sidebar = translations[current_lang]
+
+        # ปุ่มสลับภาษา (Language Switcher)
+        if st.button(t_sidebar["btn_lang"], key="btn_lang_toggle", use_container_width=True):
+            st.session_state.language = "EN" if current_lang == "TH" else "TH"
+            st.rerun()
+
         modules = [
-            ("🔄 Front Office", "Front Office"),
-            ("📋 Back Office (ตารางใบงาน)", "Back Office"),
-            ("📊 สรุปแดชบอร์ด & การเงิน", "Dashboard และรายงานผู้บริหาร")
+            (t_sidebar["nav_front"], "Front Office"),
+            (t_sidebar["nav_back"], "Back Office"),
+            (t_sidebar["nav_crm"], "โมดูลจัดการลูกค้า"),
+            (t_sidebar["nav_dash"], "Dashboard และรายงานผู้บริหาร")
         ]
         
         for label, val in modules:
@@ -3420,7 +3454,7 @@ else:
         st.markdown("---")
         render_live_cloud_sync_panel()
 
-        if st.button("🚪 ออกจากระบบ", use_container_width=True):
+        if st.button(translations.get(st.session_state.get("language", "TH"), translations["TH"])["btn_logout"], key="btn_logout_sidebar", use_container_width=True):
             sb_auth_logout()
             st.session_state.user = None
             st.session_state["_logged_out_this_session"] = True
@@ -3491,11 +3525,11 @@ else:
             "5. แผงควบคุมการจอง"
         ]
         tab_display_map = {
-            "1. เลือกรถยนต์": "🚘 1. เลือกรถยนต์",
-            "2. ชำระเงินจอง & การเงิน": "💳 2. ชำระเงินจอง",
-            "3. ใบงานส่ง/รับรถ": "🚚 3. ออกใบงาน",
-            "4. จัดทำสัญญาเช่า": "📝 4. จัดทำสัญญา",
-            "5. แผงควบคุมการจอง": "📂 5. แผงควบคุมการจอง"
+            "1. เลือกรถยนต์": "🚘 2. ค้นหารถยนต์ (Fleet Selection)",
+            "2. ชำระเงินจอง & การเงิน": "💳 4. การเงินและมัดจำ (Financial & Deposit)",
+            "3. ใบงานส่ง/รับรถ": "🚚 5. ระบบงานภาคสนาม (Dispatch & Return)",
+            "4. จัดทำสัญญาเช่า": "📝 3. สัญญาเช่า (Lease Agreement)",
+            "5. แผงควบคุมการจอง": "📂 1. แผงควบคุม (Booking Dashboard)"
         }
         
         with st.container(key="folder_tabs_bar"):
@@ -3619,7 +3653,7 @@ else:
                     )
                 with d_c3:
                     st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
-                    st.button("🔄 ล้างตัวกรอง", on_click=reset_all_fleet_filters, use_container_width=True, help="คืนค่าตัวกรองทั้งหมดและแสดงรถยนต์ทุกคันทันที")
+                    st.button("🔄 ล้างตัวกรอง (Reset Filters)", on_click=reset_all_fleet_filters, use_container_width=True, help="คืนค่าตัวกรองทั้งหมดและแสดงรถยนต์ทุกคันทันที")
 
             # ซิงค์วันที่เลือกในหน้าดูรถยนต์เข้าสู่ดราฟต์สัญญาเช่า เพื่อให้หน้าทำสัญญาแสดงผลทันทีโดยไม่ต้องเลือกซ้ำ
             if f_avail_start:
@@ -3723,8 +3757,8 @@ else:
                 )
 
             # ฟอร์มเพิ่มรถยนต์ใหม่ (คงฟีเจอร์เดิมครบถ้วน 100%)
-            with st.expander("🚗➕ เพิ่มรถยนต์ใหม่เข้าสู่ฐานข้อมูล (Add New Vehicle to Fleet)", expanded=False):
-                    st.markdown("<div style='font-size:13.5px; font-weight:700; color:#E85826; margin-bottom:12px;'>📋 แบบฟอร์มลงทะเบียนรถยนต์ใหม่เข้าสู่ฐานข้อมูล</div>", unsafe_allow_html=True)
+            with st.expander("🚗➕ เพิ่มยานพาหนะ (Add Vehicle)", expanded=False):
+                    st.markdown("<div style='font-size:13.5px; font-weight:700; color:#E85826; margin-bottom:12px;'>📋 แบบฟอร์มลงทะเบียนยานพาหนะ (Add Vehicle) เข้าสู่ฐานข้อมูล</div>", unsafe_allow_html=True)
                     
                     add_c1, add_c2, add_c3 = st.columns(3)
                     with add_c1:
@@ -3970,7 +4004,7 @@ else:
                                     # 1. สัญญาเช่า PDF
                                     pdf_contract_b = generate_filled_pdf("rental_template_blank_v2.pdf", active_rent_bk, cust_rent_info, c)
                                     st.download_button(
-                                        label="📝 ดาวน์โหลดสัญญาเช่า (PDF)",
+                                        label="📝 สัญญาเช่า (Agreement)",
                                         data=pdf_contract_b,
                                         file_name=f"Agreement_{active_rent_bk['booking_id']}.pdf",
                                         mime="application/pdf",
@@ -3988,7 +4022,7 @@ else:
                                         loc=active_rent_bk.get('loc_delivery')
                                     )
                                     st.download_button(
-                                        label="📋 ดาวน์โหลดลิสต์ตรวจเช็ครถ (PDF)",
+                                        label="📋 ใบสั่งงาน (Work Order)",
                                         data=pdf_dispatch_b,
                                         file_name=f"Inspection_Checklist_Dispatch_{active_rent_bk['booking_id']}.pdf",
                                         mime="application/pdf",
@@ -4041,7 +4075,7 @@ else:
                                 with c_exp_dl1:
                                     pdf_contract_exp = generate_filled_pdf("rental_template_blank_v2.pdf", active_rent_bk, cust_exp_info, c)
                                     st.download_button(
-                                        label="📝 ดาวน์โหลดสัญญาเช่า (PDF)",
+                                        label="📝 สัญญาเช่า (Agreement)",
                                         data=pdf_contract_exp,
                                         file_name=f"Agreement_{active_rent_bk['booking_id']}.pdf",
                                         mime="application/pdf",
@@ -4058,7 +4092,7 @@ else:
                                         loc=active_rent_bk.get('loc_delivery')
                                     )
                                     st.download_button(
-                                        label="📋 ดาวน์โหลดลิสต์ตรวจเช็ครถ (PDF)",
+                                        label="📋 ใบสั่งงาน (Work Order)",
                                         data=pdf_dispatch_exp,
                                         file_name=f"Inspection_Checklist_Dispatch_{active_rent_bk['booking_id']}.pdf",
                                         mime="application/pdf",
@@ -4144,7 +4178,7 @@ else:
                                 act_c1, act_c2 = st.columns([1.5, 1])
                                 with act_c1:
                                     if c['status'] != "ซ่อมบำรุง":
-                                        btn_label = f"💳 จองรถ & ชำระเงินจอง ({plate})" if c['status'] == "ว่างพร้อมใช้งาน" else f"📅 จองล่วงหน้า & ชำระเงินจอง ({plate})"
+                                        btn_label = f"✅ สร้างสัญญาเช่า (Create Agreement) ({plate})" if c['status'] == "ว่างพร้อมใช้งาน" else f"📅 จองล่วงหน้า (Advance Booking) ({plate})"
                                         if st.button(btn_label, key=f"sel_det_{plate}", type="primary", use_container_width=True):
                                             st.session_state.draft_car = plate
                                             if f_avail_start:
@@ -4254,7 +4288,7 @@ else:
 
             if matched_count == 0:
                 st.info("ℹ️ ไม่พบรถยนต์ที่ตรงตามเงื่อนไขตัวกรอง กรุณากดปุ่มด้านล่างเพื่อล้างตัวกรองและแสดงรถทุกคันอีกครั้ง")
-                if st.button("🔄 ล้างตัวกรองทั้งหมด (แสดงรถทุกคัน)", key="btn_reset_zero_match", type="primary"):
+                if st.button("🔄 ล้างตัวกรอง (Reset Filters)", key="btn_reset_zero_match", type="primary"):
                     reset_all_fleet_filters()
                     st.rerun()
 
@@ -4284,7 +4318,7 @@ else:
             )
 
             # --- FLOATING ACTION BUTTON (FAB): เครื่องหมาย + ล็อกมุมขวาล่างสำหรับเพิ่มลูกค้าใหม่ ---
-            if st.button("＋", key="fab_add_customer", help="➕ เพิ่มข้อมูลลูกค้าใหม่เข้าสู่ฐานข้อมูล (Add New Customer)"):
+            if st.button("＋", key="fab_add_customer", help="➕ ลงทะเบียนลูกค้า (New Customer)"):
                 dialog_add_new_customer()
 
         # --- TAB 2: BOOKING DEPOSIT & PAYMENT (หน้าชำระเงินจอง & การเงิน) ---
@@ -4595,7 +4629,7 @@ else:
                                     with c_f_btn1:
                                         btn_save_ed = st.form_submit_button("💾 บันทึกการแก้ไขข้อมูลลูกค้า (Save Changes to Database)", type="primary", use_container_width=True)
                                     with c_f_btn2:
-                                        btn_del_prompt = st.form_submit_button("🗑️ ลบลูกค้ารายนี้ (Delete)", use_container_width=True)
+                                        btn_del_prompt = st.form_submit_button("🗑️ ลบข้อมูล (Delete)", use_container_width=True)
 
                                     if btn_save_ed:
                                         new_n = ed_name.strip()
@@ -4805,7 +4839,7 @@ else:
                         st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
 
                         # ปุ่มยืนยันการจองและชำระเงินจอง -> ไปหน้าออกใบงาน
-                        btn_confirm_label = f"💳 ยืนยันการจอง & ชำระเงินมัดจำ ฿{dep_amount_input:,.2f} (ไปออกใบงาน ➔)"
+                        btn_confirm_label = f"💾 ยืนยันการจองและบันทึกสัญญา (Confirm & Save Agreement) ฿{dep_amount_input:,.2f}"
                         if st.button(btn_confirm_label, use_container_width=True, type="primary", key="btn_confirm_booking_and_deposit"):
                             conflict = False
                             for b in st.session_state.bookings_db:
@@ -5012,7 +5046,7 @@ else:
                             if not can_settle:
                                 st.button(f"🔒 ไม่อนุญาตให้กดชำระค่าเช่า (เฉพาะเจ้าของงาน: {owner_settle_user} หรือ Admin)", disabled=True, use_container_width=True, key=f"btn_dis_s_merged_{target_settle_id_curr}")
                             else:
-                                if st.button(f"🧾 ยืนยันรับชำระค่าเช่ารถ ฿{rem_to_pay:,.2f} และออกใบเสร็จรับเงิน (Issue Receipt)", type="primary", use_container_width=True, key=f"btn_confirm_s_merged_{target_settle_id_curr}"):
+                                if st.button(f"✅ บันทึกการรับชำระเงิน (Confirm Payment) ฿{rem_to_pay:,.2f}", type="primary", use_container_width=True, key=f"btn_confirm_s_merged_{target_settle_id_curr}"):
                                     for b in st.session_state.bookings_db:
                                         if b['booking_id'] == target_settle_id_curr:
                                             b['rental_paid'] = True
@@ -5154,7 +5188,7 @@ else:
                             st.caption(f"💡 เมื่อกดยืนยัน: ระบบจะอัปเดตวันคืนรถเป็น **{format_date_dmy(new_computed_end)}**, บันทึกรายรับค่าต่อสัญญา **฿{ext_pay_amount:,.2f}** ลงบัญชีการเงิน และออกใบเสร็จรับเงินค่าต่อสัญญาเช่า (Official Receipt) ทันที")
 
                             if can_extend:
-                                if st.button(f"🧾 ยืนยันต่อสัญญา {ext_add_days} วัน & รับชำระ ฿{ext_pay_amount:,.2f} (ออกใบเสร็จ)", type="primary", use_container_width=True, key=f"btn_confirm_ext_merged_{curr_ext_id}"):
+                                if st.button(f"🔄 ขยายสัญญา (Extend Contract) {ext_add_days} วัน & รับชำระ ฿{ext_pay_amount:,.2f}", type="primary", use_container_width=True, key=f"btn_confirm_ext_merged_{curr_ext_id}"):
                                     ext_count = len(target_extend_bk.get("extension_history", [])) + 1
                                     rec_ext_no = f"REC-EXT-{curr_ext_id}-{ext_count}"
                                     ext_entry = {
@@ -5274,7 +5308,7 @@ else:
                             if is_rental_paid:
                                 pdf_receipt = generate_receipt_bytes(f"REC{b['booking_id']}", b, b_cust, b_car, net_amt, b.get("rental_payment_method") or b.get("final_payment_method", "โอนเงิน/ชำระแล้ว"), item_desc="ค่าเช่ารถยนต์ (Vehicle Rental Fee)")
                                 b64_receipt = base64.b64encode(pdf_receipt).decode()
-                                href_receipt = f'<a href="data:application/pdf;base64,{b64_receipt}" download="Receipt_{b["booking_id"]}.pdf" class="icon-link" title="โหลดใบเสร็จรับเงินค่าเช่ารถ (ชำระแล้ว)">🧾</a>'
+                                href_receipt = f'<a href="data:application/pdf;base64,{b64_receipt}" download="Receipt_{b["booking_id"]}.pdf" class="icon-link" title="🧾 ใบเสร็จรับเงิน (Receipt)">🧾</a>'
                                 btn_pay_action = '<span style="color:#10B981; font-weight:700; font-size:13px; margin:0 3px;" title="✅ ชำระค่าเช่าแล้ว">✅</span>'
                                 pay_status_badge = '<span style="background-color:#ECFDF5; color:#059669; padding:4px 10px; border-radius:12px; font-size:11px; font-weight:700; white-space:nowrap;">🟢 ชำระค่าเช่าแล้ว</span>'
                             else:
@@ -5496,11 +5530,11 @@ else:
                                 if is_d_worker_assigned:
                                     c_b1, c_b2 = st.columns(2)
                                     with c_b1:
-                                        btn_submit = st.form_submit_button("🚚 บันทึก & ไปจัดทำสัญญา ➔", type="primary", use_container_width=True)
+                                        btn_submit = st.form_submit_button("📌 มอบหมายงานจัดส่ง (Assign Dispatch)", type="primary", use_container_width=True)
                                     with c_b2:
                                         btn_cancel = st.form_submit_button("ยกเลิก", use_container_width=True)
                                 else:
-                                    btn_submit = st.form_submit_button("🚚 บันทึกมอบหมายใบงาน & ไปจัดทำสัญญาเช่า ➔", type="primary", use_container_width=True)
+                                    btn_submit = st.form_submit_button("📌 มอบหมายงานจัดส่ง (Assign Dispatch)", type="primary", use_container_width=True)
                                     btn_cancel = False
                                 
                                 if btn_submit:
@@ -5601,7 +5635,7 @@ else:
                                 else:
                                     st.button(f"🔒 ปิดงาน (เฉพาะ {w_ret_target})", use_container_width=True, disabled=True, key=f"btn_dis_fin_r_{target_r_bk['booking_id']}", help=f"เฉพาะพนักงานที่ได้รับมอบหมาย ({w_ret_target}) หรือแอดมินเท่านั้น")
                             with c_extend:
-                                if st.button("🔄 ต่อสัญญา", use_container_width=True, key=f"btn_ext_{target_r_bk['booking_id']}"):
+                                if st.button("🔄 ขยายสัญญา (Extend Contract)", use_container_width=True, key=f"btn_ext_{target_r_bk['booking_id']}"):
                                     st.session_state.active_extend_bk_id = target_r_bk['booking_id']
                                     st.session_state.payment_focus = True
                                     st.session_state.workflow_tab = "2. ชำระเงินจอง & การเงิน"
@@ -5622,11 +5656,11 @@ else:
                                 if is_r_worker_assigned:
                                     c_rb1, c_rb2 = st.columns(2)
                                     with c_rb1:
-                                        btn_ret_sub = st.form_submit_button("📌 ยืนยันบันทึกข้อมูลรับรถ", type="primary", use_container_width=True)
+                                        btn_ret_sub = st.form_submit_button("📌 มอบหมายงานรับคืน (Assign Return)", type="primary", use_container_width=True)
                                     with c_rb2:
                                         btn_ret_can = st.form_submit_button("ยกเลิก", use_container_width=True)
                                 else:
-                                    btn_ret_sub = st.form_submit_button("📌 ยืนยันเตรียมรับรถคืน (มอบหมายงาน)", type="primary", use_container_width=True)
+                                    btn_ret_sub = st.form_submit_button("📌 มอบหมายงานรับคืน (Assign Return)", type="primary", use_container_width=True)
                                     btn_ret_can = False
                                 
                                 if btn_ret_sub:
@@ -5836,7 +5870,7 @@ else:
 
                             pdf_contract_bytes = generate_filled_pdf("rental_template_blank_v2.pdf", target_contract_bk, target_c_cust, target_c_car)
                             st.download_button(
-                                label="📝 ดาวน์โหลดสัญญาเช่า (Rental Agreement PDF)",
+                                label="📝 สัญญาเช่า (Agreement)",
                                 data=pdf_contract_bytes,
                                 file_name=f"Agreement_{target_contract_bk['booking_id']}.pdf",
                                 mime="application/pdf",
@@ -5887,7 +5921,7 @@ else:
                                     item_desc="ค่าเช่ารถยนต์ (Vehicle Rental Fee)"
                                 )
                                 st.download_button(
-                                    label="🧾 โหลดใบเสร็จค่าเช่า (Rental Receipt PDF)",
+                                    label="🧾 ใบเสร็จรับเงิน (Receipt)",
                                     data=pdf_rent_receipt,
                                     file_name=f"Receipt_Rental_{target_contract_bk['booking_id']}.pdf",
                                     mime="application/pdf",
@@ -5984,7 +6018,7 @@ else:
                 
                 st.caption(f"ยอดคำนวณสุทธิ: ฿{w_net:,} ({w_rate_type} {w_diff_days} วัน)")
                 
-                if st.button("💾 สร้างสัญญาเช่า Walk-in นี้", key="btn_save_walkin_contract", type="primary", use_container_width=True):
+                if st.button("💾 ยืนยันการจองและบันทึกสัญญา (Confirm & Save Agreement)", key="btn_save_walkin_contract", type="primary", use_container_width=True):
                     w_new_id = f"MRC{datetime.now().strftime('%y%m%d%H%M%S')}"
                     w_bk_obj = {
                         "booking_id": w_new_id, "car_id": sel_plate_walkin, "customer": sel_cust_walkin,
@@ -6157,7 +6191,7 @@ else:
                                 else:
                                     cd_y, cd_n = st.columns(2)
                                     with cd_y:
-                                        if st.button("ลบ", key=f"btn_del_y_{b_id}", type="primary", use_container_width=True):
+                                        if st.button("🗑️ ลบข้อมูล (Delete)", key=f"btn_del_y_{b_id}", type="primary", use_container_width=True):
                                             st.session_state.bookings_db = [x for x in st.session_state.bookings_db if x.get("booking_id") != b_id]
                                             _GLOBAL_STORE["bookings_db"] = st.session_state.bookings_db
                                             sb_delete_booking(b_id)
@@ -6740,7 +6774,7 @@ else:
                     if t_bk.get("deposit_paid"):
                         pdf_contract = generate_filled_pdf("rental_template_blank_v2.pdf", t_bk, st.session_state.customers_db.get(t_bk['customer']), cars_db.get(t_bk['car_id']))
                         b64_contract = base64.b64encode(pdf_contract).decode()
-                        href_contract = f'<a href="data:application/pdf;base64,{b64_contract}" download="Agreement_{t_bk["booking_id"]}.pdf" class="icon-link" title="โหลดสัญญาเช่า (มัดจำแล้ว)">📝</a>'
+                        href_contract = f'<a href="data:application/pdf;base64,{b64_contract}" download="Agreement_{t_bk["booking_id"]}.pdf" class="icon-link" title="📝 สัญญาเช่า (Agreement)">📝</a>'
                     else:
                         href_contract = '<span style="color:#D1D5DB; font-size:18px; margin-right:6px; cursor:not-allowed;" title="📝 รอชำระเงินมัดจำ ฿5,000 ก่อนออกสัญญาเช่า (ชำระได้ที่ Front Office แท็บ 4. รับมัดจำ)">📝</span>'
                     
@@ -6751,7 +6785,7 @@ else:
                     if is_rental_paid:
                         pdf_receipt = generate_receipt_bytes(f"REC{t_bk['booking_id']}", t_bk, st.session_state.customers_db.get(t_bk['customer']), cars_db.get(t_bk['car_id']), net_b_amt, t_bk.get("rental_payment_method") or t_bk.get("final_payment_method", "โอนเงิน/ชำระแล้ว"), item_desc="ค่าเช่ารถยนต์ (Vehicle Rental Fee)")
                         b64_receipt = base64.b64encode(pdf_receipt).decode()
-                        href_receipt = f'<a href="data:application/pdf;base64,{b64_receipt}" download="Receipt_{t_bk["booking_id"]}.pdf" class="icon-link" title="โหลดใบเสร็จรับเงินค่าเช่ารถ (ชำระแล้ว)">🧾</a>'
+                        href_receipt = f'<a href="data:application/pdf;base64,{b64_receipt}" download="Receipt_{t_bk["booking_id"]}.pdf" class="icon-link" title="🧾 ใบเสร็จรับเงิน (Receipt)">🧾</a>'
                     elif t_bk.get("deposit_paid"):
                         href_receipt = f'<span style="color:#D1D5DB; font-size:18px; margin-right:6px; cursor:not-allowed;" title="🧾 รอชำระค่าเช่ารถวันรับรถ ฿{net_b_amt:,.2f} จึงจะออกใบเสร็จ (ชำระได้ที่ Front Office แท็บ 4. รับมัดจำ)">🧾</span>'
                     else:
@@ -6792,7 +6826,7 @@ else:
                         href_submit = f'<a href="?close_job={t_bk["booking_id"]}&close_type={j_type}&module=Back+Office" target="_self" class="icon-link" title="{act_tip}">📤</a>'
                     
                     bk_id_bo = t_bk["booking_id"]
-                    href_del_bo = f'<a href="?del_booking={bk_id_bo}&module=Back+Office" target="_self" class="icon-link" title="🗑️ ลบ/ยกเลิกรายการจองนี้ออกจากระบบ" onclick="return confirm(\'⚠️ ยืนยันลบรายการจอง {bk_id_bo} ออกจากระบบ?\');">🗑️</a>' if is_admin_user else ''
+                    href_del_bo = f'<a href="?del_booking={bk_id_bo}&module=Back+Office" target="_self" class="icon-link" title="🗑️ ลบข้อมูล (Delete)" onclick="return confirm(\'⚠️ ยืนยันลบรายการจอง {bk_id_bo} ออกจากระบบ?\');">🗑️</a>' if is_admin_user else ''
                     
                     if j['สถานะ'] == "🔒 รอส่งรถก่อน":
                         status_badge = '<span style="background-color:#FEE2E2; color:#991B1B; padding:4px 10px; border-radius:12px; font-size:11px; font-weight:700; white-space:nowrap;">🔒 รอส่งรถก่อน</span>'
