@@ -1515,11 +1515,11 @@ def init_cloud_store(store=None, force=False):
 def get_global_store():
     return {
         "users_db": None,
-        "cars_db": None,
-        "customers_db": None,
-        "bookings_db": None,
-        "completed_jobs_db": None,
-        "financial_db": None,
+        "cars_db": {},
+        "customers_db": {},
+        "bookings_db": [],
+        "completed_jobs_db": [],
+        "financial_db": [],
         "deleted_booking_ids": set(),
         "deleted_usernames": set(),
     }
@@ -2221,6 +2221,41 @@ if hasattr(st, "html"):
     st.html(css_clean_luxury)
 else:
     st.markdown(css_clean_luxury, unsafe_allow_html=True)
+
+# =========================================================================
+# 4.1 ENTER-TO-NEXT UX UPGRADE (กด Enter เพื่อเลื่อนช่องกรอกข้อมูลถัดไป)
+# =========================================================================
+enter_to_next_js = """
+<script>
+(function() {
+    function initEnterToNext(targetDoc) {
+        if (!targetDoc || targetDoc.__enterToNextBound) return;
+        targetDoc.__enterToNextBound = true;
+        targetDoc.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && e.target && e.target.tagName === 'INPUT') {
+                var itype = (e.target.type || '').toLowerCase();
+                if (itype === 'submit' || itype === 'button' || itype === 'reset' || itype === 'checkbox' || itype === 'radio') {
+                    return;
+                }
+                e.preventDefault();
+                var inputs = Array.from(targetDoc.querySelectorAll('input:not([type="hidden"]):not([type="submit"]):not([type="button"]):not([disabled])'));
+                var index = inputs.indexOf(e.target);
+                if (index > -1 && index < inputs.length - 1) {
+                    inputs[index + 1].focus();
+                }
+            }
+        });
+    }
+    try { initEnterToNext(document); } catch (e) {}
+    try { if (window.parent && window.parent.document) initEnterToNext(window.parent.document); } catch (e) {}
+})();
+</script>
+"""
+try:
+    import streamlit.components.v1 as _st_components
+    _st_components.html(enter_to_next_js, height=0, width=0)
+except Exception:
+    st.markdown(enter_to_next_js, unsafe_allow_html=True)
 
 dashboard_luxury_css = """
 <style>

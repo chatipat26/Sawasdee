@@ -211,102 +211,7 @@ def get_car_fleet_status(car_plate, car_obj, bookings, filter_start_date=None, f
 # -------------------------------------------------------------------------
 # INITIAL CARS, CUSTOMERS, BOOKINGS, USERS
 # -------------------------------------------------------------------------
-DEFAULT_CARS = {
-    "5ขฒ 5181": {
-        "plate": "5ขฒ 5181",
-        "brand": "Toyota",
-        "model": "Yaris Ativ",
-        "color": "ขาว (White)",
-        "car_group": "รถเก๋ง (Sedan/Hatchback)",
-        "engine_cc": "1200",
-        "fuel_type": "เบนซิน",
-        "company": "บจก.สวัสดี เรนทัล (Sawasdee Rental)",
-        "price_day": 1000,
-        "price_week": 6000,
-        "price_month": 18000,
-        "status": "ว่างพร้อมใช้งาน",
-        "reg_year": "2567",
-        "engine_no": "3NR-1098452",
-        "chassis_no": "MR2BD8A3100079451",
-        "mileage": "21,476",
-        "image": "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&q=80&w=500",
-        "owner": "SWD",
-        "manager": "สมศักดิ์ ดูแลฟลีท",
-        "beneficiary": "บจก.โตโยต้า ลีสซิ่ง",
-        "leasing_contract": "A10916051",
-        "leasing_total_installments": 48,
-        "leasing_current_installment": 14,
-        "leasing_last_payment_date": "10/10/2026",
-        "leasing_installment_amount": 10748,
-        "insurance_brand": "คุ้มภัยโตเกียวมารีน",
-        "insurance_premium": 18500,
-        "insurance_coverage": 500000,
-        "ins_start_date": "25/12/2025",
-        "ins_expiry": "25/12/2026",
-        "tax_year": "2570",
-        "tax_start_date": "28/03/2026",
-        "tax_expiry": "28/03/2027",
-        "act_brand": "วิริยะประกันภัย",
-        "act_price": 645.21,
-        "act_start_date": "25/12/2025",
-        "act_expiry": "25/12/2026",
-        "maintenance_detail": "เช็คระยะ 20,000 กม. เปลี่ยนถ่ายน้ำมันเครื่องสังเคราะห์แท้และไส้กรอง",
-        "maintenance_date": "14/07/2026",
-        "last_service_date": "14/07/2026",
-        "next_service": "14/01/2027",
-        "tire_change": "-",
-        "notes": "",
-        "hp_contract_no": "A10916051",
-        "hp_installment": 10748
-    },
-    "5ขต 1490": {
-        "plate": "5ขต 1490",
-        "brand": "Toyota",
-        "model": "Yaris Ativ",
-        "color": "เทา-ดำ (Grey-Black)",
-        "car_group": "รถเก๋ง (Sedan/Hatchback)",
-        "engine_cc": "1200",
-        "fuel_type": "เบนซิน",
-        "company": "บจก.สวัสดี เรนทัล (Sawasdee Rental)",
-        "price_day": 1000,
-        "price_week": 6000,
-        "price_month": 18000,
-        "status": "ว่างพร้อมใช้งาน",
-        "reg_year": "2567",
-        "engine_no": "3NR-1098453",
-        "chassis_no": "MR2BD8A3400071405",
-        "mileage": "15,000",
-        "image": "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&q=80&w=500",
-        "owner": "SWD",
-        "manager": "สมศักดิ์ ดูแลฟลีท",
-        "beneficiary": "บจก.โตโยต้า ลีสซิ่ง",
-        "leasing_contract": "A10916050",
-        "leasing_total_installments": 48,
-        "leasing_current_installment": 14,
-        "leasing_last_payment_date": "10/10/2026",
-        "leasing_installment_amount": 10748,
-        "insurance_brand": "คุ้มภัยโตเกียวมารีน",
-        "insurance_premium": 18500,
-        "insurance_coverage": 500000,
-        "ins_start_date": "25/12/2025",
-        "ins_expiry": "25/12/2026",
-        "tax_year": "2570",
-        "tax_start_date": "17/05/2026",
-        "tax_expiry": "17/05/2027",
-        "act_brand": "วิริยะประกันภัย",
-        "act_price": 645.21,
-        "act_start_date": "25/12/2025",
-        "act_expiry": "25/12/2026",
-        "maintenance_detail": "ตรวจเช็คสภาพทั่วไปและระบบไฟ",
-        "maintenance_date": "15/06/2026",
-        "last_service_date": "-",
-        "next_service": "-",
-        "tire_change": "-",
-        "notes": "",
-        "hp_contract_no": "A10916050",
-        "hp_installment": 10748
-    }
-}
+DEFAULT_CARS = {}
 
 DEFAULT_PROPERTY_INSURANCE = [
     {
@@ -933,7 +838,7 @@ class DataStore:
             # 3. Cars (and auto-release cars whose bookings were deleted from Supabase)
             try:
                 c_res = sb.table("cars").select("*").execute()
-                if c_res.data:
+                if c_res.data is not None:
                     active_booked_plates = {
                         b.get("car_id") for b in fresh_b
                         if b.get("car_id") and b.get("status") not in ["เสร็จสิ้น", "ยกเลิก"]
