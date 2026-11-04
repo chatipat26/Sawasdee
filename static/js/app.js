@@ -74,10 +74,14 @@ class App {
 
   applyLanguage() {
     const isEn = (this.currentLang === "EN");
+    
+    // 1. Language Toggle Button
     const langBtnText = document.getElementById("lang-btn-text");
     if (langBtnText) {
       langBtnText.textContent = isEn ? "🌐 ภาษาไทย" : "🌐 English";
     }
+
+    // 2. Sidebar Navigation Items
     const lblFront = document.getElementById("nav-lbl-frontoffice");
     if (lblFront) lblFront.textContent = isEn ? "Front Office" : "Front Office";
     const lblBack = document.getElementById("nav-lbl-backoffice");
@@ -88,6 +92,36 @@ class App {
     if (lblDash) lblDash.textContent = isEn ? "Dashboard & Finance" : "สรุปแดชบอร์ด & การเงิน";
     const lblHeader = document.getElementById("sb-menu-header-text");
     if (lblHeader) lblHeader.textContent = isEn ? "Main Navigation:" : "เมนูระบบงานหลัก:";
+    const btnLogout = document.querySelector(".sb-logout-btn");
+    if (btnLogout) {
+      btnLogout.innerHTML = isEn ? '<span>🚪</span> Sign Out (Auth)' : '<span>🚪</span> ออกจากระบบ (Auth)';
+    }
+
+    // 3. Workflow Folder Tabs (1 to 5)
+    const t1 = document.getElementById("tab-btn-fleet");
+    if (t1) t1.innerHTML = isEn ? '<span>1.</span> 🚗 Fleet & Instant Booking' : '<span>1.</span> 🚗 เลือกรถยนต์ & จองด่วน';
+    const t2 = document.getElementById("tab-btn-deposit");
+    if (t2) t2.innerHTML = isEn ? '<span>2.</span> 💳 Deposit & Finance' : '<span>2.</span> 💳 เงินมัดจำ & การเงิน';
+    const t3 = document.getElementById("tab-btn-assign");
+    if (t3) t3.innerHTML = isEn ? '<span>3.</span> 🚚 Dispatch/Return Orders' : '<span>3.</span> 🚚 ออกใบงานส่ง/รับรถ';
+    const t4 = document.getElementById("tab-btn-contract");
+    if (t4) t4.innerHTML = isEn ? '<span>4.</span> 📝 Rental Agreement' : '<span>4.</span> 📝 จัดทำสัญญาเช่า';
+    const t5 = document.getElementById("tab-btn-dashboard_bks");
+    if (t5) t5.innerHTML = isEn ? '<span>5.</span> 📋 Booking Pipeline' : '<span>5.</span> 📋 แผงควบคุมคิวการจอง';
+
+    // 4. Hero Section Title
+    const barTitle = document.querySelector(".booking-bar h3");
+    if (barTitle) {
+      barTitle.textContent = isEn 
+        ? "✨ 2. INSTANT BOOKING FORM (THE BOOKING BAR) — Fast Fleet Selection for Sales" 
+        : "✨ 2. INSTANT BOOKING FORM (THE BOOKING BAR) — ค้นหาและเลือกรถด่วนสำหรับเซล";
+    }
+
+    // 5. Search box placeholder
+    const sbInput = document.getElementById("sb-search-input");
+    if (sbInput) {
+      sbInput.placeholder = isEn ? "🔍 Search (Booking / Plate / Customer)" : "🔍 ค้นหา (เลขที่จอง / ทะเบียน / ลูกค้า)";
+    }
   }
 
   initGlobalEnterKeyNavigation() {

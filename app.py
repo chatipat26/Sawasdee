@@ -2049,6 +2049,19 @@ else:
 css_clean_luxury = f"""
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Prompt:wght@300;400;500;600;700&amp;display=swap">
 <style>
+/* =========================================================================
+   HIDE STREAMLIT BRANDING & UI CLUTTER (CLEAN WEB APP MODE)
+   ========================================================================= */
+#MainMenu {{ visibility: hidden !important; display: none !important; }}
+header {{ visibility: hidden !important; display: none !important; }}
+footer {{ visibility: hidden !important; display: none !important; }}
+[data-testid="stToolbar"] {{ visibility: hidden !important; display: none !important; }}
+[data-testid="stDecoration"] {{ visibility: hidden !important; display: none !important; }}
+[data-testid="stStatusWidget"] {{ visibility: hidden !important; display: none !important; }}
+.stDeployButton {{ display: none !important; }}
+[data-testid="stToolbarActions"] {{ display: none !important; }}
+div[data-testid="stSidebarCollapseButton"] {{ display: none !important; }}
+
 :root {{ --bg-main: #FDFBF7; --sidebar-bg: #F4EBE1; --card-bg: #FFFFFF; --brand-primary: #E85826; --brand-secondary: #FF7A42; --brand-glow: rgba(232, 88, 38, 0.16); --brand-gradient: linear-gradient(135deg, #FF7A42 0%, #E85826 100%); --text-dark: #1F2937; --text-muted: #6B7280; --border-card: #EFEAE3; --shadow-soft: 0 2px 5px rgba(31,41,55,.025), 0 14px 40px rgba(31,41,55,.035); --radius-lg: 14px; --radius-md: 10px; --radius-sm: 8px; --field-bg: #FAF7F2; --field-border: #E5DFD7; --positive-bg: #E8F9EE; --positive-text: #166534; --positive-border: #BBF7D0; --warning-bg: #FFF3EB; --warning-text: #C2410C; --warning-border: #FFEDD5; --danger-bg: #FEE2E2; --danger-text: #991B1B; --danger-border: #FECACA; --font-ui: 'Plus Jakarta Sans', 'Prompt', sans-serif; }}
 html, body, .stApp {{ font-family: var(--font-ui); background: var(--bg-main); color: var(--text-dark); }}
 .stApp::before {{ content: ''; position: fixed; inset: 0; background-image: url('data:image/png;base64,{bg_image_base64}'); background-repeat: no-repeat; background-position: 55% 50%; background-size: min(50vw, 550px); opacity: 0.04; pointer-events: none; z-index: 0; }}
@@ -2964,10 +2977,14 @@ else:
         # --- LANGUAGE SWITCHER (TH / EN) ---
         if "language" not in st.session_state:
             st.session_state.language = "TH"
-        _current_lang = st.session_state.language
-        _lang_btn_text = "🌐 English" if _current_lang == "TH" else "🌐 ภาษาไทย"
-        if st.button(_lang_btn_text, key="btn_lang_toggle_sidebar", use_container_width=True):
-            st.session_state.language = "EN" if _current_lang == "TH" else "TH"
+        
+        # ดึง Label ปุ่มตามภาษาปัจจุบัน
+        lang_btn_label = translations[st.session_state.language].get("btn_lang", "🌐 Change Language")
+        
+        if st.button(lang_btn_label, use_container_width=True):
+            # สลับค่า State
+            st.session_state.language = "EN" if st.session_state.language == "TH" else "TH"
+            # บังคับรีโหลด UI ทันที
             st.rerun()
         
         # --- ADMIN USER APPROVAL EXPANDER (แอดมินอนุมัติพนักงาน) ---
