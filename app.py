@@ -1825,6 +1825,14 @@ if "completed_jobs_db" not in st.session_state:
     st.session_state.completed_jobs_db = _GLOBAL_STORE.get("completed_jobs_db") or []
 _GLOBAL_STORE["completed_jobs_db"] = st.session_state.completed_jobs_db
 
+if "leasing_db" not in st.session_state:
+    st.session_state.leasing_db = []
+_GLOBAL_STORE["leasing_db"] = st.session_state.leasing_db
+
+if "insurance_db" not in st.session_state:
+    st.session_state.insurance_db = []
+_GLOBAL_STORE["insurance_db"] = st.session_state.insurance_db
+
 # Run automatic cloud synchronization from Supabase Cloud
 sync_cloud_data()
 
@@ -5289,7 +5297,7 @@ else:
                     st.success("✅ ทุกรายการชำระค่าเช่ารถครบถ้วนแล้ว ไม่มีรายการค้างชำระ (ข้อมูลทั้งหมดถูกบันทึกลงฐานข้อมูลเรียบร้อย)")
                 else:
                     table_html = (
-                        '<div style="overflow-x:auto; border-radius: 8px; border: 1px solid #EFEAE3;">'
+                        '<div style="max-height: 250px; overflow-y: auto; overflow-x: auto; border-radius: 8px; border: 1px solid #EFEAE3;">'
                         '<table class="bo-table">'
                         '<tr>'
                         '<th>รหัสการจอง</th>'
@@ -6768,7 +6776,7 @@ else:
                         st.rerun()
             else:
                 table_html = (
-                    '<div style="overflow-x:auto; border-radius: 8px; border: 1px solid #EFEAE3;">'
+                    '<div style="max-height: 250px; overflow-y: auto; overflow-x: auto; border-radius: 8px; border: 1px solid #EFEAE3;">'
                     '<table class="bo-table">'
                     '<tr>'
                     '<th>ประเภทงาน</th>'
@@ -7159,7 +7167,9 @@ else:
                                 "days_left": diff_ins
                             })
                 
-                if expiring_items:
+                if not expiring_items:
+                    st.success("✅ ขณะนี้ไม่มีรายการ พ.ร.บ. หรือ ประกันภัย ที่ใกล้หมดอายุ")
+                else:
                     st.markdown(f"""
                         <div style="background:#FFFBEB; border:1px solid #FCD34D; border-left:5px solid #F59E0B; border-radius:10px; padding:12px 16px; margin-bottom:14px;">
                             <div style="font-weight:700; color:#B45309; font-size:14px; display:flex; align-items:center; gap:8px;">
@@ -7267,6 +7277,7 @@ else:
                         df_fleet, 
                         use_container_width=True, 
                         hide_index=True,
+                        height=250,
                         on_select="rerun",
                         selection_mode="single-row",
                         key="dash_fleet_table"
@@ -7284,7 +7295,7 @@ else:
                     st.caption("💡 ท่านสามารถคลิกเลือกแถวในตารางเพื่อข้ามไปดูรายละเอียดรถแบบเต็มในหน้า 'เลือกรถยนต์' ได้ทันที (หรือคลิกที่หัวข้อเพื่อพับเก็บตาราง)")
 
                 else:
-                    st.info("ไม่มีข้อมูลรถในระบบ")
+                    st.info("💡 ยังไม่มีข้อมูลในระบบ... คุณสามารถเพิ่มข้อมูลใหม่เพื่อเริ่มต้นใช้งานและดูสถิติได้ที่เมนูด้านซ้ายครับ")
 
             st.markdown("<div style='height: 15px;'></div>", unsafe_allow_html=True)
             
@@ -7392,7 +7403,7 @@ else:
                     st.info("ไม่มีข้อมูลงานที่เสร็จสิ้นตรงกับเงื่อนไขที่เลือก")
                 else:
                     rpt_table_html = (
-                        '<div style="overflow-x:auto; border-radius: 8px; border: 1px solid #EFEAE3;">'
+                        '<div style="max-height: 250px; overflow-y: auto; overflow-x: auto; border-radius: 8px; border: 1px solid #EFEAE3;">'
                         '<table class="bo-table">'
                         '<tr>'
                         '<th>รหัสการจอง</th>'

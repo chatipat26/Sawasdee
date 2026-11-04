@@ -3822,9 +3822,17 @@ class App {
       `;
     }
 
+    const titleEl = document.getElementById("title-expander-hp");
+    if (titleEl) {
+      titleEl.textContent = `ตารางผ่อนชำระค่างวดรถยนต์ (HP / Leasing — ${contracts.length} สัญญา) & กรมธรรม์ประกันภัยทรัพย์สิน (${propIns.length} รายการ)`;
+    }
+
     const hpTbody = document.getElementById("hp-leasing-tbody");
     if (hpTbody) {
-      hpTbody.innerHTML = contracts.map(item => `
+      if (contracts.length === 0) {
+        hpTbody.innerHTML = `<tr><td colspan="11" style="text-align:center; padding:30px; color:#64748B;">💡 ยังไม่มีข้อมูลสัญญาเช่าซื้อ (HP / Leasing) ในระบบ... คุณสามารถเพิ่มข้อมูลใหม่เพื่อเริ่มต้นใช้งานได้ครับ</td></tr>`;
+      } else {
+        hpTbody.innerHTML = contracts.map(item => `
         <tr>
           <td style="text-align:center; font-weight:700;">${item.no}</td>
           <td><b>${item.model}</b></td>
@@ -3851,11 +3859,15 @@ class App {
           <td style="text-align:right; font-weight:700; color:#1E293B;">฿${Number(item.total_car_price || 0).toLocaleString('th-TH', {minimumFractionDigits: 2})}</td>
         </tr>
       `).join("");
+      }
     }
 
     const propTbody = document.getElementById("property-insurance-tbody");
     if (propTbody) {
-      propTbody.innerHTML = propIns.map(p => `
+      if (propIns.length === 0) {
+        propTbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:30px; color:#64748B;">💡 ยังไม่มีข้อมูลกรมธรรม์ประกันภัยทรัพย์สินในระบบ</td></tr>`;
+      } else {
+        propTbody.innerHTML = propIns.map(p => `
         <tr>
           <td><span class="badge badge-gray">${p.id}</span></td>
           <td><b>${p.title}</b></td>
@@ -3865,6 +3877,7 @@ class App {
           <td style="font-size:12px; color:#475569;">${p.notes || '-'}</td>
         </tr>
       `).join("");
+      }
     }
   }
 
@@ -4454,7 +4467,7 @@ class App {
     const photosContainer = document.getElementById("completed-jobs-photos-container");
 
     if (filtered.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="12" style="text-align:center; padding:30px; color:#64748B;">ไม่มีข้อมูลงานที่เสร็จสิ้นตรงกับเงื่อนไขที่เลือก</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="12" style="text-align:center; padding:30px; color:#64748B;">💡 ยังไม่มีข้อมูลประวัติงานที่เสร็จสิ้นในระบบครับ</td></tr>`;
       if (photosContainer) photosContainer.innerHTML = "";
       return;
     }
