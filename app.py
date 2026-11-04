@@ -1547,20 +1547,22 @@ if "language" not in st.session_state:
 
 translations = {
     "TH": {
-        "nav_front": "🔄 ระบบปฏิบัติการหลัก (Front Office)",
-        "nav_back": "📋 ระบบหลังบ้าน (Back Office)",
-        "nav_crm": "👥 ฐานข้อมูลลูกค้า (CRM)",
-        "nav_dash": "📊 แดชบอร์ดผู้บริหาร (Executive Dashboard)",
-        "btn_logout": "🚪 ออกจากระบบ (Sign Out)",
-        "btn_lang": "🌐 Change to English"
+        "nav_front": "🖥️ Front Office",
+        "nav_back": "📋 Back Office (ตารางใบงาน)",
+        "nav_crm": "🛠️ ซ่อมบำรุง & บริการ",
+        "nav_dash": "📊 สรุปแดชบอร์ด & การเงิน",
+        "menu_header": "เมนูระบบงานหลัก:",
+        "btn_logout": "🚪 ออกจากระบบ (Auth)",
+        "btn_lang": "🌐 English"
     },
     "EN": {
-        "nav_front": "🔄 Front Office Operations",
-        "nav_back": "📋 Back Office Management",
-        "nav_crm": "👥 Customer Database (CRM)",
-        "nav_dash": "📊 Executive Dashboard",
-        "btn_logout": "🚪 Sign Out",
-        "btn_lang": "🌐 เปลี่ยนเป็นภาษาไทย"
+        "nav_front": "🖥️ Front Office",
+        "nav_back": "📋 Back Office (Work Orders)",
+        "nav_crm": "🛠️ Maintenance & Services",
+        "nav_dash": "📊 Dashboard & Finance",
+        "menu_header": "Main Navigation:",
+        "btn_logout": "🚪 Sign Out (Auth)",
+        "btn_lang": "🌐 ภาษาไทย"
     }
 }
 
@@ -2958,6 +2960,15 @@ else:
                 <div style="font-size:11px; color:#E85826; font-weight:600;">{role_label}</div>
             </div>
         """, unsafe_allow_html=True)
+
+        # --- LANGUAGE SWITCHER (TH / EN) ---
+        if "language" not in st.session_state:
+            st.session_state.language = "TH"
+        _current_lang = st.session_state.language
+        _lang_btn_text = "🌐 English" if _current_lang == "TH" else "🌐 ภาษาไทย"
+        if st.button(_lang_btn_text, key="btn_lang_toggle_sidebar", use_container_width=True):
+            st.session_state.language = "EN" if _current_lang == "TH" else "TH"
+            st.rerun()
         
         # --- ADMIN USER APPROVAL EXPANDER (แอดมินอนุมัติพนักงาน) ---
         if is_admin_user:
@@ -3355,18 +3366,13 @@ else:
 
                                 
         st.markdown("<div style='height: 4px;'></div>", unsafe_allow_html=True)
-        st.markdown("<p style='font-size:11px; font-weight:700; color:#8C827A; margin: 10px 0 6px 2px;'>เมนูระบบงานหลัก</p>", unsafe_allow_html=True)
+        st.markdown(f"<p style='font-size:11px; font-weight:700; color:#8C827A; margin: 10px 0 6px 2px;'>{t_sidebar.get('menu_header', 'เมนูระบบงานหลัก:')}</p>", unsafe_allow_html=True)
         
         current_lang = st.session_state.get("language", "TH")
         if current_lang not in translations:
             current_lang = "TH"
             st.session_state.language = "TH"
         t_sidebar = translations[current_lang]
-
-        # ปุ่มสลับภาษา (Language Switcher)
-        if st.button(t_sidebar["btn_lang"], key="btn_lang_toggle", use_container_width=True):
-            st.session_state.language = "EN" if current_lang == "TH" else "TH"
-            st.rerun()
 
         modules = [
             (t_sidebar["nav_front"], "Front Office"),

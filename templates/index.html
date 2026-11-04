@@ -192,6 +192,11 @@
           <div style="font-size: 11px; color: #E85826; font-weight: 600;" id="sb-user-role">👑 ผู้ดูแลระบบ (Admin)</div>
         </div>
 
+        <!-- Language Switcher Button -->
+        <button id="btn-lang-toggle" onclick="app.toggleLanguage()" style="width: 100%; padding: 8px 12px; margin-bottom: 10px; border-radius: 8px; border: 1.5px solid #E5DFD7; background: #FFFFFF; font-size: 12.5px; font-weight: 700; color: #1F2937; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.03); transition: all 0.2s;" onmouseover="this.style.borderColor='#E85826'; this.style.color='#E85826';" onmouseout="this.style.borderColor='#E5DFD7'; this.style.color='#1F2937';">
+          <span id="lang-btn-text">🌐 English</span>
+        </button>
+
         <!-- Admin Staff Management Button -->
         <div id="sb-admin-staff-btn" class="sb-admin-staff-btn" onclick="app.switchModule('users')" style="display:none;">
           <span>👥 จัดการ & อนุมัติพนักงาน</span>
@@ -204,25 +209,25 @@
         </div>
 
         <!-- Main Navigation Links -->
-        <div style="font-size: 11px; font-weight: 600; color: #6B7280; margin-bottom: 6px;">เมนูระบบงานหลัก:</div>
+        <div id="sb-menu-header-text" style="font-size: 11px; font-weight: 600; color: #6B7280; margin-bottom: 6px;">เมนูระบบงานหลัก:</div>
 
         <a class="nav-item active" onclick="app.switchModule('frontoffice')" id="nav-frontoffice">
-          <span>🖥️</span> Front Office
+          <span>🖥️</span> <span id="nav-lbl-frontoffice">Front Office</span>
           <span class="nav-badge" id="badge-frontoffice-bks">0</span>
         </a>
 
         <a class="nav-item" onclick="app.switchModule('backoffice')" id="nav-backoffice">
-          <span>📋</span> Back Office (ตารางใบงาน)
+          <span>📋</span> <span id="nav-lbl-backoffice">Back Office (ตารางใบงาน)</span>
           <span class="nav-badge" id="badge-backoffice-jobs" style="background:#2563EB;">0</span>
         </a>
 
         <a class="nav-item" onclick="app.switchModule('maintenance')" id="nav-maintenance">
-          <span>🛠️</span> ซ่อมบำรุง & บริการ
+          <span>🛠️</span> <span id="nav-lbl-maintenance">ซ่อมบำรุง & บริการ</span>
           <span class="nav-badge" id="badge-maintenance-jobs" style="background:#F97316;">0</span>
         </a>
 
         <a class="nav-item" onclick="app.switchModule('dashboard')" id="nav-dashboard">
-          <span>📊</span> สรุปแดชบอร์ด & การเงิน
+          <span>📊</span> <span id="nav-lbl-dashboard">สรุปแดชบอร์ด & การเงิน</span>
         </a>
 
         <a class="nav-item" onclick="app.switchModule('customers')" id="nav-customers" style="display:none;">

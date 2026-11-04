@@ -39,6 +39,7 @@ class App {
 
   async init() {
     this.initGlobalEnterKeyNavigation();
+    this.initLanguage();
     this.setupDatePickers();
     this.updateAuthUI();
 
@@ -58,6 +59,35 @@ class App {
         setTimeout(() => splash.classList.add("fade-out"), 450);
       }
     }
+  }
+
+  initLanguage() {
+    this.currentLang = localStorage.getItem("sawasdee_lang") || "TH";
+    this.applyLanguage();
+  }
+
+  toggleLanguage() {
+    this.currentLang = (this.currentLang === "EN") ? "TH" : "EN";
+    localStorage.setItem("sawasdee_lang", this.currentLang);
+    this.applyLanguage();
+  }
+
+  applyLanguage() {
+    const isEn = (this.currentLang === "EN");
+    const langBtnText = document.getElementById("lang-btn-text");
+    if (langBtnText) {
+      langBtnText.textContent = isEn ? "🌐 ภาษาไทย" : "🌐 English";
+    }
+    const lblFront = document.getElementById("nav-lbl-frontoffice");
+    if (lblFront) lblFront.textContent = isEn ? "Front Office" : "Front Office";
+    const lblBack = document.getElementById("nav-lbl-backoffice");
+    if (lblBack) lblBack.textContent = isEn ? "Back Office (Work Orders)" : "Back Office (ตารางใบงาน)";
+    const lblMaint = document.getElementById("nav-lbl-maintenance");
+    if (lblMaint) lblMaint.textContent = isEn ? "Maintenance & Services" : "ซ่อมบำรุง & บริการ";
+    const lblDash = document.getElementById("nav-lbl-dashboard");
+    if (lblDash) lblDash.textContent = isEn ? "Dashboard & Finance" : "สรุปแดชบอร์ด & การเงิน";
+    const lblHeader = document.getElementById("sb-menu-header-text");
+    if (lblHeader) lblHeader.textContent = isEn ? "Main Navigation:" : "เมนูระบบงานหลัก:";
   }
 
   initGlobalEnterKeyNavigation() {
