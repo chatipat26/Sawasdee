@@ -6914,19 +6914,16 @@ else:
             """, unsafe_allow_html=True)
         
             # =====================================================================
-            # MISSION 3: ภาพรวมองค์กรรวมทุกบริษัท (Total Unified Dashboard)
+            # MISSION 1: ภาพรวมองค์กรรวมทุกบริษัท (Total Unified Dashboard)
             # =====================================================================
-            c_head_col1, c_head_col2 = st.columns([2.5, 1.5])
-            with c_head_col1:
-                st.markdown("<div style='font-size: 15px; font-weight: 700; color: #1F2937; padding-top: 8px;'>🌐 ภาพรวมทุกบริษัท (Unified Corporate Fleet & Financial Overview)</div>", unsafe_allow_html=True)
-            with c_head_col2:
-                st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
-                st.caption(f"🕒 ข้อมูลอัปเดตล่าสุด ณ {datetime.now().strftime('%d/%m/%Y %H:%M')}")
-
-            total_cars = len(cars_db)
-            active_rentals = sum(1 for c in cars_db.values() if c.get("status") in ["กำลังเช่า", "ติดจอง", "เตรียมส่งมอบ", "เตรียมรับคืน"])
-            available_cars = sum(1 for c in cars_db.values() if c.get("status") == "ว่างพร้อมใช้งาน")
-            maintenance_cars = sum(1 for c in cars_db.values() if c.get("status") == "ซ่อมบำรุง")
+            filtered_cars = cars_db
+            total_cars = len(filtered_cars)
+            
+            # 4 Categories: ว่างพร้อมให้บริการ (เขียว), กำลังเช่า (แดง), ติดจอง (เหลือง), ซ่อมบำรุง (ส้ม)
+            available_cars = sum(1 for c in filtered_cars.values() if c.get("status") in ["ว่างพร้อมใช้งาน", "ว่าง", "พร้อมให้บริการ"])
+            renting_cars = sum(1 for c in filtered_cars.values() if c.get("status") in ["กำลังเช่า", "เช่าอยู่"])
+            booked_cars = sum(1 for c in filtered_cars.values() if c.get("status") in ["ติดจอง", "จอง", "เตรียมส่งมอบ", "เตรียมรับคืน", "รอส่งมอบ"])
+            maintenance_cars = sum(1 for c in filtered_cars.values() if c.get("status") in ["ซ่อมบำรุง", "ส่งซ่อม", "ไม่พร้อมใช้งาน"])
             
             total_rev = sum(float(item.get("amount", 0)) for item in financial_db if item.get("type") == "รายรับ")
 
@@ -6942,8 +6939,9 @@ else:
             with kpi2:
                 st.markdown(f"""
                     <div class="kpi-card">
-                        <div class="kpi-card-header"><span>รถกำลังเช่า/ติดจอง</span><div class="kpi-icon-pill">🔑</div></div>
-                        <div class="kpi-card-value">{active_rentals} <span style="font-size:14px; font-weight:400; color:#6B7280;">คัน</span></div>
+                        <div class="kpi-card-header"><span>รถกำลังเช่า / ติดจอง</span><div class="kpi-icon-pill">🔑</div></div>
+                        <div class="kpi-card-value">{renting_cars + booked_cars} <span style="font-size:14px; font-weight:400; color:#6B7280;">คัน</span></div>
+                        <div style="margin-top:8px; font-size:12px; color:#4B5563;">เช่าอยู่ <b>{renting_cars}</b> • ติดจอง <b>{booked_cars}</b></div>
                     </div>
                 """, unsafe_allow_html=True)
             with kpi3:
@@ -6963,26 +6961,29 @@ else:
 
             st.markdown("<div style='height: 15px;'></div>", unsafe_allow_html=True)
 
-            # --- กราฟแสดงผลรวมด้วย Altair (Donut Chart & Total Revenue Trend) ---
+            # =====================================================================
+            # MISSION 2 & 3: กราฟรวมแบบ Interactive (Altair Donut & Trend Chart)
+            # =====================================================================
             dash_c1, dash_c2 = st.columns([1.1, 1.9])
             
-            # 1. กราฟวงกลม (Donut Chart): สัดส่วนสถานะรถยนต์ทั้งหมด
+            # --- MISSION 2: สถานะกองยานพาหนะปัจจุบัน (Total Fleet Status) ---
             with dash_c1:
                 with st.container(border=True):
                     st.markdown(f"""
                         <div class="donut-header">
-                            <span>🍩 สัดส่วนสถานะรถยนต์ทั้งหมด</span>
+                            <span>🍩 สถานะกองยานพาหนะปัจจุบัน (Total Fleet Status)</span>
                             <span style="font-size:12px; font-weight:700; color:#E85826;">{total_cars} คัน</span>
                         </div>
-                        <div class="donut-sub">สัดส่วนสถานะรถในกองยานพาหนะรวมทุกบริษัท</div>
+                        <div class="donut-sub">สัดส่วนสถานะรถทั้งหมดในระบบ (Interactive Donut Chart)</div>
                     """, unsafe_allow_html=True)
                     
-                    st_domain = ["ว่างพร้อมใช้งาน", "กำลังเช่า/ติดจอง", "ซ่อมบำรุง"]
-                    st_range = ["#10B981", "#E85826", "#EF4444"]
+                    st_domain = ["ว่างพร้อมให้บริการ", "กำลังเช่า", "ติดจอง", "ซ่อมบำรุง"]
+                    st_range = ["#10B981", "#EF4444", "#F59E0B", "#F97316"] # เขียว, แดง, เหลือง, ส้ม
                     
                     df_status = pd.DataFrame([
-                        {"status": "ว่างพร้อมใช้งาน", "count": available_cars, "pct_str": f"{(available_cars/total_cars*100):.1f}%" if total_cars > 0 else "0%"},
-                        {"status": "กำลังเช่า/ติดจอง", "count": active_rentals, "pct_str": f"{(active_rentals/total_cars*100):.1f}%" if total_cars > 0 else "0%"},
+                        {"status": "ว่างพร้อมให้บริการ", "count": available_cars, "pct_str": f"{(available_cars/total_cars*100):.1f}%" if total_cars > 0 else "0%"},
+                        {"status": "กำลังเช่า", "count": renting_cars, "pct_str": f"{(renting_cars/total_cars*100):.1f}%" if total_cars > 0 else "0%"},
+                        {"status": "ติดจอง", "count": booked_cars, "pct_str": f"{(booked_cars/total_cars*100):.1f}%" if total_cars > 0 else "0%"},
                         {"status": "ซ่อมบำรุง", "count": maintenance_cars, "pct_str": f"{(maintenance_cars/total_cars*100):.1f}%" if total_cars > 0 else "0%"}
                     ])
                     df_status_chart = df_status[df_status["count"] > 0]
@@ -6994,7 +6995,7 @@ else:
                             tooltip=[
                                 alt.Tooltip("status:N", title="สถานะรถ"),
                                 alt.Tooltip("count:Q", title="จำนวน (คัน)"),
-                                alt.Tooltip("pct_str:N", title="สัดส่วน")
+                                alt.Tooltip("pct_str:N", title="สัดส่วน (%)")
                             ]
                         ).properties(height=180).configure_view(strokeWidth=0)
                         st.altair_chart(status_chart, use_container_width=True)
@@ -7002,7 +7003,13 @@ else:
                         st.info("ขณะนี้ยังไม่มีข้อมูลรถในระบบ")
                         
                     for _, row in df_status.iterrows():
-                        color_dot = "#10B981" if row["status"] == "ว่างพร้อมใช้งาน" else ("#E85826" if row["status"] == "กำลังเช่า/ติดจอง" else "#EF4444")
+                        color_map = {
+                            "ว่างพร้อมให้บริการ": "#10B981",
+                            "กำลังเช่า": "#EF4444",
+                            "ติดจอง": "#F59E0B",
+                            "ซ่อมบำรุง": "#F97316"
+                        }
+                        color_dot = color_map.get(row["status"], "#888")
                         st.markdown(f"""
                             <div class="donut-stat-row">
                                 <span><span style="color:{color_dot}; font-size:13px;">●</span> {row['status']}</span>
@@ -7010,21 +7017,21 @@ else:
                             </div>
                         """, unsafe_allow_html=True)
 
-            # 2. กราฟแท่ง/กราฟเส้น (Bar/Line Chart): แนวโน้มรายรับรวมย้อนหลัง
+            # --- MISSION 3: แนวโน้มรายรับสะสมรวม (Total Revenue Trend) ---
             with dash_c2:
                 with st.container(border=True):
                     c_tr_h1, c_tr_h2 = st.columns([2, 1.2])
                     with c_tr_h1:
                         st.markdown("""
                             <div class="donut-header">
-                                <span>📈 แนวโน้มรายรับรวมย้อนหลัง (Total Revenue Trend)</span>
+                                <span>📈 แนวโน้มรายรับสะสมรวม (Total Revenue Trend)</span>
                             </div>
-                            <div class="donut-sub">ยอดรายรับรวมย้อนหลังและจำนวนงานเช่าทั้งหมด</div>
+                            <div class="donut-sub">ยอดรายรับรวมย้อนหลังรายเดือน (Interactive Total Revenue Chart)</div>
                         """, unsafe_allow_html=True)
                     with c_tr_h2:
                         trend_chart_type = st.radio(
                             "รูปแบบกราฟ:",
-                            ["📊 กราฟแท่ง (Bar)", "📈 กราฟเส้น (Line)"],
+                            ["📊 กราฟแท่ง (Bar)", "📈 กราฟพื้นที่ (Area)"],
                             horizontal=True,
                             label_visibility="collapsed",
                             key="unified_trend_chart_type"
@@ -7085,22 +7092,27 @@ else:
                             x=alt.X('เดือน:N', title="รอบเดือน", sort=None),
                             y=alt.Y('รายรับรวม (THB):Q', title="รายรับรวม (THB)"),
                             tooltip=[
-                                alt.Tooltip('เดือน:N', title="เดือน"),
-                                alt.Tooltip('รายรับรวม (THB):Q', title="รายรับรวม (THB)", format=',.2f'),
+                                alt.Tooltip('เดือน:N', title="รอบเดือน"),
+                                alt.Tooltip('รายรับรวม (THB):Q', title="ยอดรายรับรวม (THB)", format=',.2f'),
                                 alt.Tooltip('จำนวนงาน (งาน):Q', title="จำนวนงานเสร็จสิ้น")
                             ]
                         ).properties(height=230)
                     else:
-                        rev_chart = alt.Chart(df_trend_tot).mark_line(
-                            point=alt.OverlayMarkDef(color='#E85826', size=60),
-                            strokeWidth=3,
-                            color="#E85826"
+                        rev_chart = alt.Chart(df_trend_tot).mark_area(
+                            line={'color':'#E85826', 'size':3},
+                            color=alt.Gradient(
+                                gradient='linear',
+                                stops=[alt.GradientStop(color='#E85826', offset=0),
+                                       alt.GradientStop(color='rgba(232,88,38,0.08)', offset=1)],
+                                x1=1, x2=1, y1=1, y2=0
+                            ),
+                            point=alt.OverlayMarkDef(color='#E85826', size=60)
                         ).encode(
                             x=alt.X('เดือน:N', title="รอบเดือน", sort=None),
                             y=alt.Y('รายรับรวม (THB):Q', title="รายรับรวม (THB)"),
                             tooltip=[
-                                alt.Tooltip('เดือน:N', title="เดือน"),
-                                alt.Tooltip('รายรับรวม (THB):Q', title="รายรับรวม (THB)", format=',.2f'),
+                                alt.Tooltip('เดือน:N', title="รอบเดือน"),
+                                alt.Tooltip('รายรับรวม (THB):Q', title="ยอดรายรับรวม (THB)", format=',.2f'),
                                 alt.Tooltip('จำนวนงาน (งาน):Q', title="จำนวนงานเสร็จสิ้น")
                             ]
                         ).interactive().properties(height=230)

@@ -4204,377 +4204,191 @@ class App {
     this.renderTrendChart();
   }
 
-  setDonutMode(mode) {
-    this.donutMode = mode;
-    const btnStatus = document.getElementById("btn-donut-status");
-    const btnCompare = document.getElementById("btn-donut-compare");
-    if (mode === "compare") {
-      if (btnCompare) { btnCompare.style.background = "#E85826"; btnCompare.style.color = "#FFFFFF"; }
-      if (btnStatus) { btnStatus.style.background = "transparent"; btnStatus.style.color = "#6B7280"; }
+  setTrendType(type) {
+    this.trendType = type || "bar";
+    const btnBar = document.getElementById("btn-trend-bar");
+    const btnArea = document.getElementById("btn-trend-area");
+    if (this.trendType === "bar") {
+      if (btnBar) { btnBar.style.background = "#E85826"; btnBar.style.color = "#FFFFFF"; }
+      if (btnArea) { btnArea.style.background = "transparent"; btnArea.style.color = "#6B7280"; }
     } else {
-      if (btnStatus) { btnStatus.style.background = "#E85826"; btnStatus.style.color = "#FFFFFF"; }
-      if (btnCompare) { btnCompare.style.background = "transparent"; btnCompare.style.color = "#6B7280"; }
+      if (btnArea) { btnArea.style.background = "#E85826"; btnArea.style.color = "#FFFFFF"; }
+      if (btnBar) { btnBar.style.background = "transparent"; btnBar.style.color = "#6B7280"; }
     }
-    this.renderDonutCharts();
+    this.renderTrendChart();
   }
 
   renderDonutCharts() {
-    const container = document.getElementById("dashboard-donuts-container");
-    if (!container || !this.cars || this.cars.length === 0) return;
+    const canvas = document.getElementById("chart-fleet-status-donut");
+    const badge = document.getElementById("donut-total-badge");
+    const legend = document.getElementById("fleet-status-legend");
+    if (!canvas || typeof Chart === "undefined") return;
 
-    const compList = ["Sawasdee Rent A Car", "P.D.P. Co., Ltd.", "Sawasdee Car Rent"];
-    const compPalette = ["#E85826", "#10B981", "#3B82F6"];
-    const compIcons = {
-      "Sawasdee Rent A Car": "🚙",
-      "P.D.P. Co., Ltd.": "🚗",
-      "Sawasdee Car Rent": "🚐"
-    };
+    const totalCars = (this.cars || []).length;
+    let availCount = 0;
+    let rentCount = 0;
+    let bookCount = 0;
+    let maintCount = 0;
 
-    const compMap = {
-      "Sawasdee Rent A Car": { total: 0, avail: 0, rent: 0, maint: 0, color: "#E85826" },
-      "P.D.P. Co., Ltd.": { total: 0, avail: 0, rent: 0, maint: 0, color: "#10B981" },
-      "Sawasdee Car Rent": { total: 0, avail: 0, rent: 0, maint: 0, color: "#3B82F6" }
-    };
-
-    const hasExactScr = this.cars.some(c => (c.company || "").trim() === "Sawasdee Car Rent");
-
-    this.cars.forEach(c => {
-      const rawComp = (c.company || "").trim();
-      let targetComp = null;
-      if (rawComp === "Sawasdee Rent A Car" || rawComp.includes("สวัสดี เรนทัล") || rawComp.includes("Sawasdee Rental")) {
-        targetComp = "Sawasdee Rent A Car";
-      } else if (rawComp === "P.D.P. Co., Ltd." || rawComp.includes("P.D.P") || rawComp.includes("พี.ดี.พี")) {
-        targetComp = "P.D.P. Co., Ltd.";
-      } else if (rawComp === "Sawasdee Car Rent" || (!hasExactScr && rawComp.includes("บี คลิ๊ก"))) {
-        targetComp = "Sawasdee Car Rent";
-      }
-
-      if (!targetComp) return;
-
-      compMap[targetComp].total++;
-      if (c.fleet_status_key === "maintenance" || c.status === "ซ่อมบำรุง") {
-        compMap[targetComp].maint++;
-      } else if (c.fleet_status_key === "unavailable" || ["กำลังเช่า", "ติดจอง", "เตรียมส่งมอบ", "เตรียมรับคืน", "รอส่งมอบ"].includes(c.status)) {
-        compMap[targetComp].rent++;
+    (this.cars || []).forEach(c => {
+      const st = String(c.status || "").trim();
+      const fst = String(c.fleet_status_key || "").trim();
+      if (fst === "maintenance" || ["ซ่อมบำรุง", "ส่งซ่อม", "ไม่พร้อมใช้งาน"].includes(st)) {
+        maintCount++;
+      } else if (["กำลังเช่า", "เช่าอยู่"].includes(st)) {
+        rentCount++;
+      } else if (["ติดจอง", "จอง", "เตรียมส่งมอบ", "เตรียมรับคืน", "รอส่งมอบ"].includes(st)) {
+        bookCount++;
       } else {
-        compMap[targetComp].avail++;
+        availCount++;
       }
     });
 
-    const mode = this.donutMode || "status";
+    if (badge) {
+      badge.textContent = `${totalCars} คัน`;
+    }
 
-    if (mode === "compare") {
-      // Compare 3 companies across: 1) Total Fleet, 2) Rented/Reserved, 3) Available
-      const metrics = [
-        { key: "total", title: "🚗 กองยานพาหนะรวม", sub: "สัดส่วนจำนวนรถทั้งหมดที่ถือครอง", badgeColor: "#E85826" },
-        { key: "rent", title: "🔑 รถกำลังเช่า/ติดจอง", sub: "สัดส่วนรถที่ติดสัญญาเช่าและล็อกคิว", badgeColor: "#E85826" },
-        { key: "avail", title: "✨ รถว่างพร้อมให้บริการ", sub: "สัดส่วนรถว่างที่พร้อมปล่อยเช่าได้ทันที", badgeColor: "#10B981" }
-      ];
+    const dataArr = [availCount, rentCount, bookCount, maintCount];
+    const labels = ["ว่างพร้อมให้บริการ", "กำลังเช่า", "ติดจอง", "ซ่อมบำรุง"];
+    const colors = ["#10B981", "#EF4444", "#F59E0B", "#F97316"]; // เขียว, แดง, เหลือง, ส้ม
 
-      container.innerHTML = metrics.map((m, idx) => {
-        const canvasId = `donut-chart-canvas-${idx}`;
-        const tot = compList.reduce((acc, cName) => acc + compMap[cName][m.key], 0);
-        const rowsHtml = compList.map((cName, cIdx) => {
-          const val = compMap[cName][m.key];
-          const pct = tot > 0 ? ((val / tot) * 100).toFixed(1) : "0.0";
-          return `
-            <div class="donut-stat-row">
-              <span><span style="color:${compPalette[cIdx]}; font-size:13px;">●</span> ${cName}</span>
-              <b>${val} คัน (${pct}%)</b>
-            </div>
-          `;
-        }).join("");
+    if (this.donutChart) {
+      this.donutChart.destroy();
+    }
 
-        return `
-          <div class="donut-card">
-            <div class="donut-header">
-              <span>${m.title}</span>
-              <span style="font-size:12px; font-weight:800; color:${m.badgeColor}; background:#FFF7ED; padding:2px 8px; border-radius:12px; border:1px solid #FED7AA;">
-                ${tot} คัน
-              </span>
-            </div>
-            <div class="donut-sub">${m.sub}</div>
-            <div style="position:relative; height:150px; margin-bottom:12px;">
-              <canvas id="${canvasId}"></canvas>
-            </div>
-            <div>${rowsHtml}</div>
-          </div>
-        `;
-      }).join("");
-
-      if (typeof Chart === "undefined") return;
-
-      metrics.forEach((m, idx) => {
-        const canvasId = `donut-chart-canvas-${idx}`;
-        const canvas = document.getElementById(canvasId);
-        if (!canvas) return;
-        if (this.donutCharts[canvasId]) this.donutCharts[canvasId].destroy();
-
-        const vals = compList.map(cName => compMap[cName][m.key]);
-        const tot = vals.reduce((a, b) => a + b, 0);
-
-        this.donutCharts[canvasId] = new Chart(canvas, {
-          type: 'doughnut',
-          data: {
-            labels: compList,
-            datasets: [{
-              data: tot > 0 ? vals : [1, 1, 1],
-              backgroundColor: tot > 0 ? compPalette : ['#E5E7EB', '#E5E7EB', '#E5E7EB'],
-              borderWidth: 2,
-              borderColor: '#FFFFFF'
-            }]
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            cutout: '68%',
-            plugins: {
-              legend: { display: false },
-              tooltip: {
-                callbacks: {
-                  label: function(ctx) {
-                    const val = tot > 0 ? (ctx.raw || 0) : 0;
-                    const pct = tot > 0 ? ((val / tot) * 100).toFixed(1) : "0.0";
-                    return ` ${ctx.label}: ${val} คัน (${pct}%)`;
-                  }
-                }
+    this.donutChart = new Chart(canvas, {
+      type: 'doughnut',
+      data: {
+        labels: labels,
+        datasets: [{
+          data: dataArr,
+          backgroundColor: colors,
+          borderColor: '#FFFFFF',
+          borderWidth: 2,
+          hoverOffset: 6
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: '65%',
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: function(ctx) {
+                const val = ctx.raw || 0;
+                const pct = totalCars > 0 ? ((val / totalCars) * 100).toFixed(1) : "0.0";
+                return ` ${ctx.label}: ${val} คัน (${pct}%)`;
               }
             }
           }
-        });
-      });
-    } else {
-      // Default: 3 cards for the 3 main companies showing status breakdown
-      container.innerHTML = compList.map((compName, idx) => {
-        const data = compMap[compName];
-        const icon = compIcons[compName] || "🏢";
-        const canvasId = `donut-chart-canvas-${idx}`;
-        const availPct = data.total > 0 ? ((data.avail / data.total) * 100).toFixed(1) : "0.0";
-        const rentPct = data.total > 0 ? ((data.rent / data.total) * 100).toFixed(1) : "0.0";
-        const maintPct = data.total > 0 ? ((data.maint / data.total) * 100).toFixed(1) : "0.0";
-
-        return `
-          <div class="donut-card">
-            <div class="donut-header">
-              <span>${icon} ${compName}</span>
-              <span style="font-size:12px; font-weight:800; color:${data.color}; background:#FFF7ED; padding:2px 8px; border-radius:12px; border:1px solid #FED7AA;">
-                ${data.total} คัน
-              </span>
-            </div>
-            <div class="donut-sub">สัดส่วนสถานะรถภายในองค์กร</div>
-            <div style="position:relative; height:150px; margin-bottom:12px;">
-              <canvas id="${canvasId}"></canvas>
-            </div>
-            <div>
-              <div class="donut-stat-row">
-                <span><span style="color:#10B981; font-size:13px;">●</span> ว่างพร้อมใช้งาน</span>
-                <b>${data.avail} คัน (${availPct}%)</b>
-              </div>
-              <div class="donut-stat-row">
-                <span><span style="color:#E85826; font-size:13px;">●</span> กำลังเช่า/ติดจอง</span>
-                <b>${data.rent} คัน (${rentPct}%)</b>
-              </div>
-              <div class="donut-stat-row">
-                <span><span style="color:#EF4444; font-size:13px;">●</span> ซ่อมบำรุง</span>
-                <b>${data.maint} คัน (${maintPct}%)</b>
-              </div>
-            </div>
-          </div>
-        `;
-      }).join("");
-
-      if (typeof Chart === "undefined") return;
-
-      compList.forEach((compName, idx) => {
-        const data = compMap[compName];
-        const canvasId = `donut-chart-canvas-${idx}`;
-        const canvas = document.getElementById(canvasId);
-        if (!canvas) return;
-
-        if (this.donutCharts[canvasId]) {
-          this.donutCharts[canvasId].destroy();
         }
+      }
+    });
 
-        const hasData = data.total > 0;
-        this.donutCharts[canvasId] = new Chart(canvas, {
-          type: 'doughnut',
-          data: {
-            labels: ['ว่างพร้อมใช้งาน', 'กำลังเช่า/ติดจอง', 'ซ่อมบำรุง'],
-            datasets: [{
-              data: hasData ? [data.avail, data.rent, data.maint] : [1],
-              backgroundColor: hasData ? ['#10B981', '#E85826', '#EF4444'] : ['#E5E7EB'],
-              borderWidth: 2,
-              borderColor: '#FFFFFF'
-            }]
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            cutout: '68%',
-            plugins: {
-              legend: { display: false },
-              tooltip: {
-                callbacks: {
-                  label: function(ctx) {
-                    if (!hasData) return ' ยังไม่มีข้อมูลรถ';
-                    const val = ctx.raw || 0;
-                    const total = data.total || 1;
-                    const pct = ((val / total) * 100).toFixed(1);
-                    return ` ${ctx.label}: ${val} คัน (${pct}%)`;
-                  }
-                }
-              }
-            }
-          }
-        });
-      });
+    if (legend) {
+      legend.innerHTML = labels.map((lbl, idx) => {
+        const val = dataArr[idx];
+        const pct = totalCars > 0 ? ((val / totalCars) * 100).toFixed(1) : "0.0";
+        const cDot = colors[idx];
+        return `
+          <div style="display:flex; justify-content:space-between; align-items:center; font-size:12.5px; padding:3px 0;">
+            <span><span style="color:${cDot}; font-size:14px; margin-right:6px;">●</span>${lbl}</span>
+            <span style="font-weight:700; color:#1F2937;">${val} คัน <span style="font-weight:400; color:#6B7280; font-size:11px;">(${pct}%)</span></span>
+          </div>
+        `;
+      }).join("");
     }
-  }
-
-  setTrendMetric(metric) {
-    this.trendMetric = metric;
-    const btnRev = document.getElementById("btn-trend-rev");
-    const btnJobs = document.getElementById("btn-trend-jobs");
-
-    if (metric === "rev") {
-      if (btnRev) {
-        btnRev.style.background = "#E85826";
-        btnRev.style.color = "#FFFFFF";
-      }
-      if (btnJobs) {
-        btnJobs.style.background = "transparent";
-        btnJobs.style.color = "#6B7280";
-      }
-    } else {
-      if (btnJobs) {
-        btnJobs.style.background = "#E85826";
-        btnJobs.style.color = "#FFFFFF";
-      }
-      if (btnRev) {
-        btnRev.style.background = "transparent";
-        btnRev.style.color = "#6B7280";
-      }
-    }
-
-    this.renderTrendChart();
   }
 
   renderTrendChart() {
     const canvas = document.getElementById("chart-revenue-trend");
     if (!canvas || typeof Chart === "undefined") return;
 
-    const months = ["1. พ.ค.", "2. มิ.ย.", "3. ก.ค.", "4. ส.ค.", "5. ก.ย.", "6. ต.ค."];
-    const monthNums = [5, 6, 7, 8, 9, 10];
-    const baseTrend = {
-      "Sawasdee Rent A Car": {
-        rev: [120000, 145000, 160000, 140000, 150000, 190000],
-        jobs: [8, 10, 11, 9, 10, 13],
-        color: "#E85826"
-      },
-      "P.D.P. Co., Ltd.": {
-        rev: [80000, 95000, 110000, 100000, 110000, 135000],
-        jobs: [5, 6, 7, 6, 7, 9],
-        color: "#10B981"
-      },
-      "Sawasdee Car Rent": {
-        rev: [50000, 60000, 75000, 65000, 70000, 90000],
-        jobs: [3, 4, 5, 4, 4, 6],
-        color: "#3B82F6"
+    const thMonthNames = ["", "ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
+    const now = new Date();
+    const monthBins = [];
+    for (let i = 5; i >= 0; i--) {
+      let m = now.getMonth() + 1 - i;
+      let y = now.getFullYear();
+      while (m <= 0) {
+        m += 12;
+        y -= 1;
       }
-    };
+      monthBins.push({
+        label: `${m}. ${thMonthNames[m]}`,
+        month: m,
+        year: y,
+        rev: 0,
+        jobs: 0
+      });
+    }
 
-    // Dynamically incorporate completedJobs into baseTrend (matching app.py lines 7054-7068)
     (this.completedJobs || []).forEach(item => {
       const dStr = String(item.completed_date || item.end_date || "");
-      let mNum = null;
+      let dObj = null;
       if (dStr.includes("-")) {
-        const parts = dStr.split("-");
-        if (parts.length >= 2) mNum = parseInt(parts[1], 10);
+        const p = dStr.split("-");
+        if (p.length >= 3) dObj = new Date(parseInt(p[0]), parseInt(p[1]) - 1, parseInt(p[2]));
       } else if (dStr.includes("/")) {
-        const parts = dStr.split("/");
-        if (parts.length >= 2) mNum = parseInt(parts[1], 10);
+        const p = dStr.split("/");
+        if (p.length >= 3) dObj = new Date(parseInt(p[2]), parseInt(p[1]) - 1, parseInt(p[0]));
       }
-      const mIdx = monthNums.indexOf(mNum);
-      if (mIdx !== -1) {
-        let comp = item.company || "Sawasdee Rent A Car";
-        if (this.matchesCompanyScope(comp, "Sawasdee Rent A Car")) comp = "Sawasdee Rent A Car";
-        else if (this.matchesCompanyScope(comp, "P.D.P. Co., Ltd.")) comp = "P.D.P. Co., Ltd.";
-        else if (this.matchesCompanyScope(comp, "Sawasdee Car Rent")) comp = "Sawasdee Car Rent";
-        if (baseTrend[comp]) {
-          baseTrend[comp].rev[mIdx] += parseFloat(item.net_price || 0);
-          baseTrend[comp].jobs[mIdx] += 1;
+      if (dObj && !isNaN(dObj.getTime())) {
+        const m = dObj.getMonth() + 1;
+        const y = dObj.getFullYear();
+        const mb = monthBins.find(b => b.month === m && b.year === y);
+        if (mb) {
+          mb.rev += parseFloat(item.net_price || 0);
+          mb.jobs += 1;
         }
       }
     });
 
-    // Render company selector checkboxes if empty
-    const togglesContainer = document.getElementById("trend-company-toggles");
-    if (togglesContainer && togglesContainer.children.length === 0) {
-      togglesContainer.innerHTML = Object.keys(baseTrend).map(cName => {
-        const checked = this.selectedTrendCompanies.includes(cName) ? "checked" : "";
-        return `
-          <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
-            <input type="checkbox" value="${cName}" ${checked} onchange="app.onTrendCompanyToggle(this)" style="cursor:pointer; accent-color:#E85826;">
-            <span>${cName}</span>
-          </label>
-        `;
-      }).join("");
-    }
-
-    const datasets = [];
-    Object.keys(baseTrend).forEach(cName => {
-      if (!this.selectedTrendCompanies.includes(cName)) return;
-      const compData = baseTrend[cName];
-      const dataArr = this.trendMetric === "rev" ? compData.rev : compData.jobs;
-
-      datasets.push({
-        label: cName,
-        data: dataArr,
-        borderColor: compData.color,
-        backgroundColor: compData.color,
-        fill: false,
-        tension: 0.35,
-        borderWidth: 3,
-        pointRadius: 4,
-        pointHoverRadius: 6
-      });
-    });
+    const labels = monthBins.map(b => b.label);
+    const dataRev = monthBins.map(b => b.rev);
+    const dataJobs = monthBins.map(b => b.jobs);
 
     if (this.trendChart) {
       this.trendChart.destroy();
     }
 
-    const isRev = this.trendMetric === "rev";
+    const isBar = (this.trendType || "bar") === "bar";
+
     this.trendChart = new Chart(canvas, {
-      type: 'line',
+      type: isBar ? 'bar' : 'line',
       data: {
-        labels: months,
-        datasets: datasets
+        labels: labels,
+        datasets: [{
+          label: 'รายรับรวม (THB)',
+          data: dataRev,
+          backgroundColor: isBar ? '#E85826' : 'rgba(232, 88, 38, 0.12)',
+          borderColor: '#E85826',
+          borderWidth: isBar ? 0 : 3,
+          borderRadius: isBar ? 6 : 0,
+          fill: !isBar,
+          tension: 0.35,
+          pointRadius: isBar ? 0 : 5,
+          pointBackgroundColor: '#E85826',
+          pointHoverRadius: isBar ? 0 : 7
+        }]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        interaction: {
-          mode: 'index',
-          intersect: false
-        },
         plugins: {
-          legend: {
-            position: 'top',
-            labels: {
-              boxWidth: 14,
-              font: { weight: '600' }
-            }
-          },
+          legend: { display: false },
           tooltip: {
             callbacks: {
               label: function(ctx) {
+                const idx = ctx.dataIndex;
                 const val = ctx.raw || 0;
-                if (isRev) {
-                  return ` ${ctx.dataset.label}: ฿${val.toLocaleString()} บาท`;
-                } else {
-                  return ` ${ctx.dataset.label}: ${val} งาน`;
-                }
+                const jCount = dataJobs[idx] || 0;
+                return [
+                  ` รายรับรวม: ฿${val.toLocaleString()} บาท`,
+                  ` จำนวนงาน: ${jCount} งาน`
+                ];
               }
             }
           }
@@ -4584,11 +4398,7 @@ class App {
             beginAtZero: true,
             ticks: {
               callback: function(val) {
-                if (isRev) {
-                  return '฿' + (val >= 1000 ? (val/1000) + 'k' : val);
-                } else {
-                  return val + ' งาน';
-                }
+                return '฿' + (val >= 1000 ? (val/1000) + 'k' : val);
               }
             },
             grid: { color: '#F3EDE4' }
@@ -4599,16 +4409,6 @@ class App {
         }
       }
     });
-  }
-
-  onTrendCompanyToggle(el) {
-    const val = el.value;
-    if (el.checked) {
-      if (!this.selectedTrendCompanies.includes(val)) this.selectedTrendCompanies.push(val);
-    } else {
-      this.selectedTrendCompanies = this.selectedTrendCompanies.filter(c => c !== val);
-    }
-    this.renderTrendChart();
   }
 
   renderCompletedJobsTable() {

@@ -1110,61 +1110,53 @@
           </div>
         </div>
 
-        <!-- Donut Charts: 3 Main Companies Fleet Breakdown -->
-        <div class="card" style="margin-bottom:20px;">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:8px;">
-            <div>
-              <div class="card-title" style="margin:0;">
-                <span>🍩</span> สัดส่วนยานพาหนะ 3 บริษัท (Company Fleet Distribution)
+        <!-- Unified Interactive Charts Grid (Total Fleet Status & Total Revenue Trend) -->
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap:20px; margin-bottom:20px;">
+          <!-- 1. Total Fleet Status Donut Chart -->
+          <div class="card" style="margin-bottom:0;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:8px;">
+              <div>
+                <div class="card-title" style="margin:0;">
+                  <span>🍩</span> สถานะกองยานพาหนะปัจจุบัน (Total Fleet Status)
+                </div>
+                <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">
+                  สัดส่วนสถานะรถทั้งหมดในระบบ (Interactive Donut Chart)
+                </div>
               </div>
-              <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">
-                สัดส่วนสถานะรถยนต์ 3 บริษัทหลัก (Sawasdee Rent A Car / P.D.P. Co., Ltd. / Sawasdee Car Rent)
-              </div>
+              <span id="donut-total-badge" style="background:#FFF0EB; color:#E85826; font-size:13px; font-weight:700; padding:4px 10px; border-radius:20px; border:1px solid #FFD8CC;">0 คัน</span>
             </div>
-            <div style="display:flex; background:#F4EBE1; padding:3px; border-radius:8px; border:1px solid #E5DFD7;">
-              <button type="button" id="btn-donut-status" onclick="app.setDonutMode('status')" class="btn btn-sm" style="background:#E85826; color:white; font-size:12px; font-weight:700; border-radius:6px; padding:4px 12px; border:none; cursor:pointer;">
-                🏢 สัดส่วนสถานะรถแยกราย 3 บริษัท
-              </button>
-              <button type="button" id="btn-donut-compare" onclick="app.setDonutMode('compare')" class="btn btn-sm" style="background:transparent; color:#6B7280; font-size:12px; font-weight:700; border-radius:6px; padding:4px 12px; border:none; cursor:pointer;">
-                📊 สัดส่วนเปรียบเทียบระหว่าง 3 บริษัท
-              </button>
+            <div style="position:relative; height:200px; width:100%; display:flex; justify-content:center; align-items:center;">
+              <canvas id="chart-fleet-status-donut" style="max-height:190px;"></canvas>
+            </div>
+            <div id="fleet-status-legend" style="margin-top:14px; display:flex; flex-direction:column; gap:6px;">
+              <!-- Status breakdown legend populated by JS -->
             </div>
           </div>
-          <div id="dashboard-donuts-container" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:18px;">
-            <!-- Rendered dynamically by JS (3 main companies only) -->
-          </div>
-        </div>
 
-        <!-- Revenue & Completed Jobs Trend Chart Section -->
-        <div class="card" style="margin-bottom:20px;">
-          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:14px;">
-            <div>
-              <div class="card-title" style="margin:0;">
-                <span>📈</span> แนวโน้มรายรับและจำนวนงานเช่าที่เสร็จสิ้น (Completed Jobs Trend)
+          <!-- 2. Total Revenue Trend Chart -->
+          <div class="card" style="margin-bottom:0;">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:14px;">
+              <div>
+                <div class="card-title" style="margin:0;">
+                  <span>📈</span> แนวโน้มรายรับสะสมรวม (Total Revenue Trend)
+                </div>
+                <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">
+                  ยอดรายรับรวมย้อนหลังรายเดือน (Interactive Total Revenue Chart)
+                </div>
               </div>
-              <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">
-                เปรียบเทียบผลประกอบการย้อนหลังรายเดือนตามรอบดำเนินงาน
-              </div>
-            </div>
-            
-            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
               <div style="display:flex; background:#F4EBE1; padding:3px; border-radius:8px; border:1px solid #E5DFD7;">
-                <button type="button" id="btn-trend-rev" onclick="app.setTrendMetric('rev')" class="btn btn-sm" style="background:#E85826; color:white; font-size:12px; font-weight:700; border-radius:6px; padding:4px 12px; border:none; cursor:pointer;">
-                  📈 รายรับค่าเช่า (THB)
+                <button type="button" id="btn-trend-bar" onclick="app.setTrendType('bar')" class="btn btn-sm" style="background:#E85826; color:white; font-size:12px; font-weight:700; border-radius:6px; padding:4px 12px; border:none; cursor:pointer;">
+                  📊 กราฟแท่ง (Bar)
                 </button>
-                <button type="button" id="btn-trend-jobs" onclick="app.setTrendMetric('jobs')" class="btn btn-sm" style="background:transparent; color:#6B7280; font-size:12px; font-weight:700; border-radius:6px; padding:4px 12px; border:none; cursor:pointer;">
-                  📊 จำนวนงานที่เสร็จสิ้น (งาน)
+                <button type="button" id="btn-trend-area" onclick="app.setTrendType('area')" class="btn btn-sm" style="background:transparent; color:#6B7280; font-size:12px; font-weight:700; border-radius:6px; padding:4px 12px; border:none; cursor:pointer;">
+                  📈 กราฟพื้นที่ (Area)
                 </button>
               </div>
             </div>
-          </div>
 
-          <div id="trend-company-toggles" style="display:flex; gap:18px; margin-bottom:16px; flex-wrap:wrap; font-size:12.5px; font-weight:600; color:#374151;">
-            <!-- Company checkboxes rendered by JS -->
-          </div>
-
-          <div style="position:relative; height:320px; width:100%;">
-            <canvas id="chart-revenue-trend"></canvas>
+            <div style="position:relative; height:260px; width:100%;">
+              <canvas id="chart-revenue-trend"></canvas>
+            </div>
           </div>
         </div>
 
