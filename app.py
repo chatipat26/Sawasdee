@@ -1431,7 +1431,7 @@ def sync_cloud_data(force=False, auto=False):
         
         if should_full_sync:
             c_res = sb.table("cars").select("*").execute()
-            if c_res.data is not None and len(c_res.data) > 0:
+            if c_res.data is not None:
                 fresh_cars = {c["plate"]: c for c in c_res.data}
                 if len(fresh_cars) != len(st.session_state.get("cars_db", {})):
                     has_changed = True
@@ -1763,102 +1763,7 @@ if st.query_params.get("close_job"):
 
 
 if "cars_db" not in st.session_state:
-    st.session_state.cars_db = _GLOBAL_STORE.get("cars_db") or {
-        "5ขฒ 5181": {
-            "plate": "5ขฒ 5181",
-            "brand": "Toyota",
-            "model": "Yaris Ativ",
-            "color": "ขาว (White)",
-            "car_group": "รถเก๋ง (Sedan/Hatchback)",
-            "engine_cc": "1200",
-            "fuel_type": "เบนซิน",
-            "company": "บจก.สวัสดี เรนทัล (Sawasdee Rental)",
-            "price_day": 1000,
-            "price_week": 6000,
-            "price_month": 18000,
-            "status": "ว่างพร้อมใช้งาน",
-            "reg_year": "2567",
-            "engine_no": "3NR-1098452",
-            "chassis_no": "MR2BD8A3100079451",
-            "mileage": "21,476",
-            "image": "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&q=80&w=500",
-            "owner": "SWD",
-            "manager": "สมศักดิ์ ดูแลฟลีท",
-            "beneficiary": "บจก.โตโยต้า ลีสซิ่ง",
-            "leasing_contract": "A10916051",
-            "leasing_total_installments": 48,
-            "leasing_current_installment": 14,
-            "leasing_last_payment_date": "10/10/2026",
-            "leasing_installment_amount": 10748,
-            "insurance_brand": "คุ้มภัยโตเกียวมารีน",
-            "insurance_premium": 18500,
-            "insurance_coverage": 500000,
-            "ins_start_date": "25/12/2025",
-            "ins_expiry": "25/12/2026",
-            "tax_year": "2570",
-            "tax_start_date": "28/03/2026",
-            "tax_expiry": "28/03/2027",
-            "act_brand": "วิริยะประกันภัย",
-            "act_price": 645.21,
-            "act_start_date": "25/12/2025",
-            "act_expiry": "25/12/2026",
-            "maintenance_detail": "เช็คระยะ 20,000 กม. เปลี่ยนถ่ายน้ำมันเครื่องสังเคราะห์แท้และไส้กรอง",
-            "maintenance_date": "14/07/2026",
-            "last_service_date": "14/07/2026",
-            "next_service": "14/01/2027",
-            "tire_change": "-",
-            "notes": "",
-            "hp_contract_no": "A10916051",
-            "hp_installment": 10748
-        },
-        "5ขต 1490": {
-            "plate": "5ขต 1490",
-            "brand": "Toyota",
-            "model": "Yaris Ativ",
-            "color": "เทา-ดำ (Grey-Black)",
-            "car_group": "รถเก๋ง (Sedan/Hatchback)",
-            "engine_cc": "1200",
-            "fuel_type": "เบนซิน",
-            "company": "บจก.สวัสดี เรนทัล (Sawasdee Rental)",
-            "price_day": 1000,
-            "price_week": 6000,
-            "price_month": 18000,
-            "status": "ว่างพร้อมใช้งาน",
-            "reg_year": "2567",
-            "engine_no": "3NR-1098453",
-            "chassis_no": "MR2BD8A3400071405",
-            "mileage": "15,000",
-            "image": "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&q=80&w=500",
-            "owner": "SWD",
-            "manager": "สมศักดิ์ ดูแลฟลีท",
-            "beneficiary": "บจก.โตโยต้า ลีสซิ่ง",
-            "leasing_contract": "A10916050",
-            "leasing_total_installments": 48,
-            "leasing_current_installment": 14,
-            "leasing_last_payment_date": "10/10/2026",
-            "leasing_installment_amount": 10748,
-            "insurance_brand": "คุ้มภัยโตเกียวมารีน",
-            "insurance_premium": 18500,
-            "insurance_coverage": 500000,
-            "ins_start_date": "25/12/2025",
-            "ins_expiry": "25/12/2026",
-            "tax_year": "2570",
-            "tax_start_date": "17/05/2026",
-            "tax_expiry": "17/05/2027",
-            "act_brand": "วิริยะประกันภัย",
-            "act_price": 645.21,
-            "act_start_date": "25/12/2025",
-            "act_expiry": "25/12/2026",
-            "maintenance_detail": "ตรวจเช็คสภาพทั่วไปและระบบไฟ",
-            "maintenance_date": "15/06/2026",
-            "last_service_date": "-",
-            "next_service": "-",
-            "tire_change": "-",
-            "notes": "",
-            "hp_contract_no": "A10916050",
-            "hp_installment": 10748
-        }
-    }
+    st.session_state.cars_db = _GLOBAL_STORE.get("cars_db") or {}
 _GLOBAL_STORE["cars_db"] = st.session_state.cars_db
 
 if "customers_db" not in st.session_state:
@@ -4523,8 +4428,8 @@ else:
                     # ฟอร์มจองรถใหม่และชำระเงินจอง (Default Booking Form)
                     if not has_target_job:
                         # เลือกรถยนต์ (default ล็อกจาก Tab 2 แต่สามารถเลือกเองได้)
-                        if not st.session_state.get("draft_car"):
-                            st.session_state.draft_car = list(cars_db.keys())[0]
+                        if not st.session_state.get("draft_car") or st.session_state.draft_car not in cars_db:
+                            st.session_state.draft_car = list(cars_db.keys())[0] if cars_db else None
 
                         car_keys = list(cars_db.keys())
                         c_idx = car_keys.index(st.session_state.draft_car) if st.session_state.draft_car in car_keys else 0
@@ -4721,13 +4626,13 @@ else:
                             index=c_idx,
                             key="sb_change_draft_car_dep",
                             label_visibility="collapsed",
-                            format_func=lambda p: f"🚗 ทะเบียน: {p} — {cars_db[p]['brand']} {cars_db[p]['model']} ({cars_db[p].get('color','-')}) | ฿{cars_db[p].get('price_day', 0):,}/วัน"
+                            format_func=lambda p: f"🚗 ทะเบียน: {p} — {cars_db.get(p, {}).get('brand', '')} {cars_db.get(p, {}).get('model', '')} ({cars_db.get(p, {}).get('color','-')}) | ฿{cars_db.get(p, {}).get('price_day', 0):,}/วัน" if p in cars_db else str(p)
                         )
                         if chg_plate != st.session_state.draft_car:
                             st.session_state.draft_car = chg_plate
                             st.rerun()
 
-                        sel_car = cars_db[st.session_state.draft_car]
+                        sel_car = cars_db.get(st.session_state.draft_car) or {"brand": "-", "model": "-", "price_day": 0, "price_week": 0, "price_month": 0, "plate": "-"}
                         st.markdown(f"""
                             <div style="background:#EFF6FF; border:1px solid #BFDBFE; border-radius:8px; padding:8px 14px; margin-bottom:14px; font-size:12.5px; color:#1E40AF; display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px;">
                                 <span>🚘 <b>รุ่น:</b> {sel_car['brand']} {sel_car['model']}</span>
@@ -5990,7 +5895,7 @@ else:
                 st.markdown("<div style='font-size:14px; font-weight:700; color:#1F2937; margin-bottom:10px;'>📝 จัดทำสัญญาเช่าใหม่โดยตรง (Walk-in Contract Formulation)</div>", unsafe_allow_html=True)
                 
                 sel_plate_walkin = st.selectbox("เลือกรถยนต์:", list(cars_db.keys()), key="sb_walkin_car")
-                sel_car_walkin = cars_db[sel_plate_walkin]
+                sel_car_walkin = cars_db.get(sel_plate_walkin) or {"brand": "-", "model": "-", "price_day": 0, "price_week": 0, "price_month": 0, "plate": "-"}
                 
                 sel_cust_walkin = st.selectbox("เลือกลูกค้า:", list(st.session_state.customers_db.keys()), key="sb_walkin_cust")
                 
