@@ -70,9 +70,8 @@ body::before {
   backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--border-card);
   padding: 12px 28px;
-  position: sticky;
-  top: 0;
-  z-index: 50;
+  position: relative;
+  z-index: 20;
   box-shadow: 0 1px 4px rgba(0,0,0,0.03);
   display: flex;
   justify-content: space-between;
@@ -282,9 +281,12 @@ body::before {
 /* Main Content Area - Unlocked for Position Sticky */
 html,
 body,
+#root,
 #main-app-wrapper,
 .app-container,
+main,
 .app-content,
+section,
 #module-frontoffice,
 #subtab-fleet,
 .tab-pane {
@@ -400,11 +402,12 @@ body,
   gap: 8px;
 }
 
-/* The Booking Bar Hero - Sticky Header */
+/* The Booking Bar Hero - Sticky Header (top: 0; z-index: 50) */
 .booking-bar {
+  position: -webkit-sticky;
   position: sticky;
   top: 0;
-  z-index: 100;
+  z-index: 50;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   background: rgba(255, 247, 237, 0.98);

@@ -63,15 +63,34 @@ class VehicleBase(BaseModel):
 
 
 class VehicleCreate(VehicleBase):
-    pass
+    finance_company: Optional[str] = None
+    installment_amount: Optional[float] = 0.0
+    total_installments: Optional[int] = 0
+    current_installment: Optional[int] = 0
+    payment_due_date: Optional[str] = None
+    next_service_mileage: Optional[float] = 0.0
+    is_debt_free: Optional[bool] = False
 
 
 class VehicleUpdate(VehicleBase):
     plate: Optional[str] = None
+    finance_company: Optional[str] = None
+    installment_amount: Optional[float] = 0.0
+    total_installments: Optional[int] = 0
+    current_installment: Optional[int] = 0
+    payment_due_date: Optional[str] = None
+    next_service_mileage: Optional[float] = 0.0
+    is_debt_free: Optional[bool] = False
 
 
 class VehicleResponse(VehicleBase):
-    pass
+    finance_company: Optional[str] = None
+    installment_amount: Optional[float] = 0.0
+    total_installments: Optional[int] = 0
+    current_installment: Optional[int] = 0
+    payment_due_date: Optional[str] = None
+    next_service_mileage: Optional[float] = 0.0
+    is_debt_free: Optional[bool] = False
 
 
 # Strict 1:1 Aliases for Car/Vehicle

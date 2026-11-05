@@ -1934,6 +1934,15 @@ class App {
       { key: "tax", name: dict ? dict.tax : (isEn ? "Tax" : "ภาษี"), dateStr: c.tax_expire_date || c.tax_expiry || c.tax_expire }
     ];
 
+    if (!c.is_debt_free && (c.payment_due_date || c.installment_due_date)) {
+      checks.push({
+        key: "finance",
+        name: isEn ? "Payment Due" : "วันตัดงวด",
+        dateStr: c.payment_due_date || c.installment_due_date,
+        maxDays: 7
+      });
+    }
+
     const alerts = [];
 
     for (const item of checks) {
@@ -1958,15 +1967,20 @@ class App {
       if (!expD || isNaN(expD.getTime())) continue;
       expD.setHours(0, 0, 0, 0);
       const diffDays = Math.round((expD.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-      if (diffDays <= 30) {
+      const maxAlertDays = item.maxDays || 30;
+      if (diffDays <= maxAlertDays) {
         let badge = null;
         if (diffDays <= 0) {
           const daysAgo = Math.abs(diffDays);
-          const txt = (item.key === "prb" && dict?.prb_alert_expired)
-            ? dict.prb_alert_expired
-            : (diffDays === 0
-                ? (dict ? `${item.name} ${dict.due_today}` : (isEn ? `${item.name} today` : `${item.name} หมดอายุวันนี้`))
-                : (dict ? `${item.name} ${dict.overdue_days.replace('{days}', daysAgo)}` : (isEn ? `${item.name} ${daysAgo}d overdue` : `${item.name} เกินกำหนด ${daysAgo} วัน`)));
+          const txt = (item.key === "finance")
+            ? (diffDays === 0
+                ? (isEn ? "Payment Due Today!" : "ตัดงวดวันนี้!")
+                : (isEn ? `Payment ${daysAgo}d Overdue` : `ตัดงวดเกินกำหนด ${daysAgo} วัน`))
+            : ((item.key === "prb" && dict?.prb_alert_expired)
+                ? dict.prb_alert_expired
+                : (diffDays === 0
+                    ? (dict ? `${item.name} ${dict.due_today}` : (isEn ? `${item.name} today` : `${item.name} หมดอายุวันนี้`))
+                    : (dict ? `${item.name} ${dict.overdue_days.replace('{days}', daysAgo)}` : (isEn ? `${item.name} ${daysAgo}d overdue` : `${item.name} เกินกำหนด ${daysAgo} วัน`))));
           badge = {
             key: item.key,
             text: txt,
@@ -1977,16 +1991,18 @@ class App {
             diff: diffDays
           };
         } else {
-          const txt = (item.key === "prb" && dict?.prb_alert_in_days)
-            ? dict.prb_alert_in_days.replace('{days}', diffDays)
-            : (dict ? `${item.name} ${dict.in_days.replace('{days}', diffDays)}` : (isEn ? `${item.name} in ${diffDays}d` : `${item.name} เหลือ ${diffDays} วัน`));
+          const txt = (item.key === "finance")
+            ? (isEn ? `Payment Due in ${diffDays}d` : `ตัดงวดในอีก ${diffDays} วัน`)
+            : ((item.key === "prb" && dict?.prb_alert_in_days)
+                ? dict.prb_alert_in_days.replace('{days}', diffDays)
+                : (dict ? `${item.name} ${dict.in_days.replace('{days}', diffDays)}` : (isEn ? `${item.name} in ${diffDays}d` : `${item.name} เหลือ ${diffDays} วัน`)));
           badge = {
             key: item.key,
             text: txt,
-            bg: "#FEF3C7",
-            border: "#FDE68A",
-            color: "#92400E",
-            dot: "#F59E0B",
+            bg: diffDays <= 3 ? "#FEF2F2" : "#FEF3C7",
+            border: diffDays <= 3 ? "#FECACA" : "#FDE68A",
+            color: diffDays <= 3 ? "#991B1B" : "#92400E",
+            dot: diffDays <= 3 ? "#EF4444" : "#F59E0B",
             diff: diffDays
           };
         }
@@ -2002,6 +2018,52 @@ class App {
   getCarExpiryAlert(c, lang = null) {
     const list = this.getCarExpiryAlerts(c, lang);
     return list.length > 0 ? list[0] : null;
+  }
+
+  checkFinancePaymentDueAlerts() {
+    if (!this.cars || typeof this.cars !== "object") return [];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const dueCars = [];
+    const carList = Array.isArray(this.cars) ? this.cars : Object.values(this.cars);
+
+    for (const c of carList) {
+      if (!c || c.is_debt_free || !c.payment_due_date || c.payment_due_date === "-" || c.payment_due_date === "") continue;
+      const cleanDateStr = String(c.payment_due_date).trim().split("T")[0].split(" ")[0];
+      const parts = cleanDateStr.split(/[\/-]/);
+      let expD = null;
+      if (parts.length === 3) {
+        let y = 0, m = 0, d = 0;
+        if (parts[0].length === 4) {
+          y = parseInt(parts[0], 10);
+          m = parseInt(parts[1], 10) - 1;
+          d = parseInt(parts[2], 10);
+        } else {
+          d = parseInt(parts[0], 10);
+          m = parseInt(parts[1], 10) - 1;
+          y = parseInt(parts[2], 10);
+        }
+        if (y > 2400) y -= 543;
+        expD = new Date(y, m, d);
+      }
+      if (!expD || isNaN(expD.getTime())) continue;
+      expD.setHours(0, 0, 0, 0);
+      const diffDays = Math.round((expD.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      if (diffDays <= 7) {
+        dueCars.push({ plate: c.plate, diffDays, car: c });
+      }
+    }
+
+    if (dueCars.length > 0 && !this._financeAlertNotified) {
+      this._financeAlertNotified = true;
+      const count = dueCars.length;
+      const isEn = (this.currentLang === "EN");
+      const msg = isEn
+        ? `⚠️ Finance Alert: ${count} vehicle(s) have installment payment due within 7 days!`
+        : `⚠️ แจ้งเตือนวันตัดงวด: มีรถยนต์ ${count} คัน ถึงกำหนดชำระค่างวดภายใน 7 วัน!`;
+      this.showToast(msg, "warning");
+    }
+    return dueCars;
   }
 
   toggleCarExpander(plate) {
@@ -2122,6 +2184,8 @@ class App {
         ? `Available: ${availCount} / ${filtered.length} cars`
         : `ว่างพร้อมใช้งาน: ${availCount} / ${filtered.length} คัน`;
     }
+
+    this.checkFinancePaymentDueAlerts();
 
     if (filtered.length === 0) {
       container.innerHTML = isEn
