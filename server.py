@@ -81,6 +81,13 @@ app.mount("/static", StaticFiles(directory=static_dir), name="static")
 @app.on_event("startup")
 def startup_event():
     print("🚀 Starting SawasdeeRental Web App server...")
+    # Attempt direct PostgreSQL schema check/migration
+    try:
+        sb = get_supabase_client()
+        if sb and hasattr(sb, "_connection"):
+            sb._connection()
+    except Exception as e:
+        print(f"Startup schema check note: {e}")
     # Perform initial synchronous sync so all Supabase tables are immediately available
     store.sync_from_supabase(force=True)
     start_background_cloud_sync()

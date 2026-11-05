@@ -2217,14 +2217,16 @@ class App {
             ${alertPillHtml}
           </div>
 
-          <!-- MISSION 3: Toggle Button for Collapsible Footer -->
-          <button type="button" 
-                  class="car-footer-toggle-btn" 
-                  id="btn-toggle-footer-${safeId}" 
-                  data-plate="${safePlate}" 
-                  onclick="app.toggleCardFooter('${safePlate}')">
-            <span>${toggleLabel}</span>
-          </button>
+          <!-- MISSION 3: Toggle Button for Collapsible Footer (Hanging Folder Tab Centered) -->
+          <div class="car-footer-tab-center-wrap">
+            <button type="button" 
+                    class="car-footer-toggle-btn car-folder-tab-btn" 
+                    id="btn-toggle-footer-${safeId}" 
+                    data-plate="${safePlate}" 
+                    onclick="app.toggleCardFooter('${safePlate}')">
+              <span>${toggleLabel}</span>
+            </button>
+          </div>
 
           <!-- MISSION 2: Collapsible Price and Action Buttons Footer -->
           <div class="car-card-collapsible-footer" 
