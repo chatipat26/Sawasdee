@@ -152,7 +152,7 @@ class App {
           available_fleet: "ว่างพร้อมใช้งาน:",
           hide_filters: "ซ่อนตัวกรอง ▴",
           show_filters: "แสดงตัวกรอง ▾",
-          prb_alert_in_days: "พ.ร.บ. ใน {days} วัน",
+          prb_alert_in_days: "พ.ร.บ. เหลือ {days} วัน",
           prb_alert_expired: "พ.ร.บ. หมดอายุ",
           prb_alert_due_today: "พ.ร.บ. หมดอายุวันนี้"
         },
@@ -803,10 +803,18 @@ class App {
     if (legRet) legRet.textContent = isEn ? "Return" : "รับคืน (Return)";
     const legMnt = document.getElementById("legend-maint-lbl");
     if (legMnt) legMnt.textContent = isEn ? "Maintenance/Renewal" : "ซ่อมบำรุง/ต่อภาษี";
+    const boLblStaff = document.getElementById("bo-lbl-filter-staff");
+    if (boLblStaff) boLblStaff.textContent = isEn ? "Filter Staff:" : "กรองพนักงาน:";
+    const optBoStaffAll = document.getElementById("opt-bo-staff-all");
+    if (optBoStaffAll) optBoStaffAll.textContent = isEn ? "All Staff" : "พนักงานทั้งหมด (All Staff)";
     const btnBoCal = document.getElementById("btn-bo-view-calendar");
     if (btnBoCal) btnBoCal.textContent = isEn ? "📅 Calendar" : "📅 ปฏิทิน";
     const btnBoTbl = document.getElementById("btn-bo-view-table");
     if (btnBoTbl) btnBoTbl.textContent = isEn ? "📋 Table" : "📋 ตาราง";
+    const boDayJobsTitle = document.getElementById("bo-day-jobs-title");
+    if (boDayJobsTitle) boDayJobsTitle.textContent = isEn ? "📋 Selected Date Work Orders" : "📋 งานประจำวันที่เลือก";
+    const boDayJobsSub = document.getElementById("bo-day-jobs-subtitle");
+    if (boDayJobsSub) boDayJobsSub.textContent = isEn ? "Click action button to open inspection form or view docs" : "คลิกที่ปุ่มจัดการเพื่อเปิดฟอร์มตรวจสภาพหรือดูเอกสาร";
 
     // 9. Re-render jobs in Back Office if table exists
     if (this.renderBackofficeCalendar) {
@@ -1912,25 +1920,35 @@ class App {
 
     for (const item of checks) {
       if (!item.dateStr || String(item.dateStr).trim() === "-" || String(item.dateStr).trim() === "") continue;
-      const parts = String(item.dateStr).trim().split(/[\/-]/);
+      const cleanDateStr = String(item.dateStr).trim().split("T")[0].split(" ")[0];
+      const parts = cleanDateStr.split(/[\/-]/);
       let expD = null;
       if (parts.length === 3) {
+        let y = 0, m = 0, d = 0;
         if (parts[0].length === 4) {
-          expD = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+          y = parseInt(parts[0], 10);
+          m = parseInt(parts[1], 10) - 1;
+          d = parseInt(parts[2], 10);
         } else {
-          expD = new Date(parseInt(parts[2], 10), parseInt(parts[1], 10) - 1, parseInt(parts[0], 10));
+          d = parseInt(parts[0], 10);
+          m = parseInt(parts[1], 10) - 1;
+          y = parseInt(parts[2], 10);
         }
+        if (y > 2400) y -= 543;
+        expD = new Date(y, m, d);
       }
       if (!expD || isNaN(expD.getTime())) continue;
       expD.setHours(0, 0, 0, 0);
       const diffDays = Math.round((expD.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
       if (diffDays <= 30) {
         let badge = null;
-        if (diffDays < 0) {
+        if (diffDays <= 0) {
           const daysAgo = Math.abs(diffDays);
           const txt = (item.key === "prb" && dict?.prb_alert_expired)
             ? dict.prb_alert_expired
-            : (dict ? `${item.name} ${dict.overdue_days.replace('{days}', daysAgo)}` : (isEn ? `${item.name} ${daysAgo}d overdue` : `${item.name} เกินกำหนด ${daysAgo} วัน`));
+            : (diffDays === 0
+                ? (dict ? `${item.name} ${dict.due_today}` : (isEn ? `${item.name} today` : `${item.name} หมดอายุวันนี้`))
+                : (dict ? `${item.name} ${dict.overdue_days.replace('{days}', daysAgo)}` : (isEn ? `${item.name} ${daysAgo}d overdue` : `${item.name} เกินกำหนด ${daysAgo} วัน`)));
           badge = {
             key: item.key,
             text: txt,
@@ -1938,19 +1956,6 @@ class App {
             border: "#FECACA",
             color: "#991B1B",
             dot: "#EF4444",
-            diff: diffDays
-          };
-        } else if (diffDays === 0) {
-          const txt = (item.key === "prb" && dict?.prb_alert_due_today)
-            ? dict.prb_alert_due_today
-            : (dict ? `${item.name} ${dict.due_today}` : (isEn ? `${item.name} today` : `${item.name} หมดอายุวันนี้`));
-          badge = {
-            key: item.key,
-            text: txt,
-            bg: "#FEF3C7",
-            border: "#FDE68A",
-            color: "#92400E",
-            dot: "#F59E0B",
             diff: diffDays
           };
         } else {
@@ -2665,22 +2670,22 @@ class App {
     setVal("edit-car-brand", car.brand || "Toyota");
     setVal("edit-car-model", car.model || "");
     setVal("edit-car-group", car.car_group || "รถเก๋ง (Sedan/Hatchback)");
-    setVal("edit-car-fuel", car.fuel_type || "เบนซิน");
-    setVal("edit-car-cc", car.engine_cc || "1200");
-    setVal("edit-car-company", car.company || "บจก.สวัสดี เรนทัล (Sawasdee Rental)");
+    setVal("edit-car-fuel", car.fuel_system || car.fuel_type || "เบนซิน");
+    setVal("edit-car-cc", car.cc_ev || car.engine_cc || "1200");
+    setVal("edit-car-company", car.owner_company || car.company || "บจก.สวัสดี เรนทัล (Sawasdee Rental)");
     setVal("edit-car-color", car.color || "");
     setVal("edit-car-mileage", car.mileage || "15,000");
-    setVal("edit-car-pday", car.price_day !== undefined ? car.price_day : 1000);
-    setVal("edit-car-pweek", car.price_week !== undefined ? car.price_week : 6000);
-    setVal("edit-car-pmonth", car.price_month !== undefined ? car.price_month : 20000);
-    setVal("edit-car-vin", car.chassis_no || "-");
-    setVal("edit-car-tax", this.dmyToYmd(car.tax_expiry));
-    setVal("edit-car-act", this.dmyToYmd(car.act_expiry));
-    setVal("edit-car-ins", this.dmyToYmd(car.ins_expiry));
-    setVal("edit-car-ins-comp", car.ins_company || "-");
-    setVal("edit-car-owner", car.owner || "-");
-    setVal("edit-car-beneficiary", car.beneficiary || car.company || "-");
-    setVal("edit-car-reg-year", car.reg_year || "-");
+    setVal("edit-car-pday", car.daily_rate !== undefined && car.daily_rate !== null ? car.daily_rate : (car.price_day !== undefined ? car.price_day : 1000));
+    setVal("edit-car-pweek", car.weekly_rate !== undefined && car.weekly_rate !== null ? car.weekly_rate : (car.price_week !== undefined ? car.price_week : 6000));
+    setVal("edit-car-pmonth", car.monthly_rate !== undefined && car.monthly_rate !== null ? car.monthly_rate : (car.price_month !== undefined ? car.price_month : 20000));
+    setVal("edit-car-vin", car.vin || car.chassis_no || "-");
+    setVal("edit-car-tax", this.dmyToYmd(car.tax_expire_date || car.tax_expiry));
+    setVal("edit-car-act", this.dmyToYmd(car.prb_expire_date || car.act_expiry));
+    setVal("edit-car-ins", this.dmyToYmd(car.insurance_expire_date || car.ins_expiry));
+    setVal("edit-car-ins-comp", car.insurance_company || car.ins_company || "-");
+    setVal("edit-car-owner", car.car_owner || car.owner || "-");
+    setVal("edit-car-beneficiary", car.beneficiary || car.owner_company || car.company || "-");
+    setVal("edit-car-reg-year", car.register_year || car.reg_year || "-");
     setVal("edit-car-prb-price", car.prb_price !== undefined && car.prb_price !== null ? car.prb_price : (car.act_price !== undefined && car.act_price !== null ? car.act_price : ""));
     setVal("edit-car-ins-premium", car.insurance_premium !== undefined && car.insurance_premium !== null ? car.insurance_premium : (car.ins_premium !== undefined && car.ins_premium !== null ? car.ins_premium : ""));
     setVal("edit-car-last-srv", this.dmyToYmd(car.last_service_date));
@@ -2691,7 +2696,7 @@ class App {
       : (car.next_engine_oil_mileage && Number(car.next_engine_oil_mileage) > 0 ? car.next_engine_oil_mileage : "");
     setVal("edit-car-next-srv-mileage", srvMileageVal);
     setVal("edit-car-notes", car.notes || "");
-    setVal("edit-car-status", car.status || "ว่างพร้อมใช้งาน");
+    setVal("edit-car-status", car.car_status || car.status || "ว่างพร้อมใช้งาน");
 
     const isDebtFree = car.is_debt_free !== undefined ? Boolean(car.is_debt_free) : (!car.installment_amount);
     const debtFreeEl = document.getElementById("edit-car-debt-free");

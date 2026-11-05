@@ -544,6 +544,45 @@ class DataStore:
                                     merged_c[k] = v
                                 elif k not in merged_c:
                                     merged_c[k] = v
+                            # Synchronize aliases bidirectionally
+                            if 'fuel_system' in merged_c and 'fuel_type' not in merged_c: merged_c['fuel_type'] = merged_c['fuel_system']
+                            if 'fuel_type' in merged_c and 'fuel_system' not in merged_c: merged_c['fuel_system'] = merged_c['fuel_type']
+                            if 'cc_ev' in merged_c and 'engine_cc' not in merged_c: merged_c['engine_cc'] = merged_c['cc_ev']
+                            if 'engine_cc' in merged_c and 'cc_ev' not in merged_c: merged_c['cc_ev'] = merged_c['engine_cc']
+                            if 'owner_company' in merged_c and 'company' not in merged_c: merged_c['company'] = merged_c['owner_company']
+                            if 'company' in merged_c and 'owner_company' not in merged_c: merged_c['owner_company'] = merged_c['company']
+                            if 'daily_rate' in merged_c and 'price_day' not in merged_c: merged_c['price_day'] = merged_c['daily_rate']
+                            if 'price_day' in merged_c and 'daily_rate' not in merged_c: merged_c['daily_rate'] = merged_c['price_day']
+                            if 'weekly_rate' in merged_c and 'price_week' not in merged_c: merged_c['price_week'] = merged_c['weekly_rate']
+                            if 'price_week' in merged_c and 'weekly_rate' not in merged_c: merged_c['weekly_rate'] = merged_c['price_week']
+                            if 'monthly_rate' in merged_c and 'price_month' not in merged_c: merged_c['price_month'] = merged_c['monthly_rate']
+                            if 'price_month' in merged_c and 'monthly_rate' not in merged_c: merged_c['monthly_rate'] = merged_c['price_month']
+                            if 'vin' in merged_c and 'chassis_no' not in merged_c: merged_c['chassis_no'] = merged_c['vin']
+                            if 'chassis_no' in merged_c and 'vin' not in merged_c: merged_c['vin'] = merged_c['chassis_no']
+                            if 'tax_expire_date' in merged_c and 'tax_expiry' not in merged_c: merged_c['tax_expiry'] = merged_c['tax_expire_date']
+                            if 'tax_expiry' in merged_c and 'tax_expire_date' not in merged_c: merged_c['tax_expire_date'] = merged_c['tax_expiry']
+                            if 'prb_expire_date' in merged_c and 'act_expiry' not in merged_c: merged_c['act_expiry'] = merged_c['prb_expire_date']
+                            if 'act_expiry' in merged_c and 'prb_expire_date' not in merged_c: merged_c['prb_expire_date'] = merged_c['act_expiry']
+                            if 'insurance_expire_date' in merged_c and 'ins_expiry' not in merged_c: merged_c['ins_expiry'] = merged_c['insurance_expire_date']
+                            if 'ins_expiry' in merged_c and 'insurance_expire_date' not in merged_c: merged_c['insurance_expire_date'] = merged_c['ins_expiry']
+                            if 'insurance_company' in merged_c and 'ins_company' not in merged_c: merged_c['ins_company'] = merged_c['insurance_company']
+                            if 'ins_company' in merged_c and 'insurance_company' not in merged_c: merged_c['insurance_company'] = merged_c['ins_company']
+                            if 'car_owner' in merged_c and 'owner' not in merged_c: merged_c['owner'] = merged_c['car_owner']
+                            if 'owner' in merged_c and 'car_owner' not in merged_c: merged_c['car_owner'] = merged_c['owner']
+                            if 'register_year' in merged_c and 'reg_year' not in merged_c: merged_c['reg_year'] = merged_c['register_year']
+                            if 'reg_year' in merged_c and 'register_year' not in merged_c: merged_c['register_year'] = merged_c['reg_year']
+                            if 'car_status' in merged_c and 'status' not in merged_c: merged_c['status'] = merged_c['car_status']
+                            if 'status' in merged_c and 'car_status' not in merged_c: merged_c['car_status'] = merged_c['status']
+                            if 'image_url' in merged_c and 'image' not in merged_c: merged_c['image'] = merged_c['image_url']
+                            if 'image' in merged_c and 'image_url' not in merged_c: merged_c['image_url'] = merged_c['image']
+                            if 'prb_price' in merged_c and 'act_price' not in merged_c: merged_c['act_price'] = merged_c['prb_price']
+                            if 'act_price' in merged_c and 'prb_price' not in merged_c: merged_c['prb_price'] = merged_c['act_price']
+                            if 'insurance_premium' in merged_c and 'ins_premium' not in merged_c: merged_c['ins_premium'] = merged_c['insurance_premium']
+                            if 'ins_premium' in merged_c and 'insurance_premium' not in merged_c: merged_c['insurance_premium'] = merged_c['ins_premium']
+                            if 'next_service_mileage' in merged_c and 'next_engine_oil_mileage' not in merged_c: merged_c['next_engine_oil_mileage'] = merged_c['next_service_mileage']
+                            if 'next_engine_oil_mileage' in merged_c and 'next_service_mileage' not in merged_c: merged_c['next_service_mileage'] = merged_c['next_engine_oil_mileage']
+                            if 'next_service_date' in merged_c and 'next_engine_oil_date' not in merged_c: merged_c['next_engine_oil_date'] = merged_c['next_service_date']
+                            if 'next_engine_oil_date' in merged_c and 'next_service_date' not in merged_c: merged_c['next_service_date'] = merged_c['next_engine_oil_date']
                             fresh_cars[pl] = merged_c
                     if fresh_cars is not None:
                         with self.lock:
@@ -575,7 +614,25 @@ class DataStore:
                     for c in cust_res.data:
                         fn = c.get("full_name")
                         if fn:
-                            fresh_cust[fn] = c
+                            cust_obj = dict(self.customers.get(fn, {}))
+                            for k, v in c.items():
+                                if v is not None and v != "":
+                                    cust_obj[k] = v
+                                elif k not in cust_obj:
+                                    cust_obj[k] = v
+                            phone_val = cust_obj.get("contact_no") or cust_obj.get("phone") or "-"
+                            id_val = cust_obj.get("passport_id") or cust_obj.get("id_card") or "-"
+                            lic_val = cust_obj.get("licence_no") or cust_obj.get("driver_license") or "-"
+                            home_val = cust_obj.get("home_address") or cust_obj.get("address") or "-"
+                            cust_obj["contact_no"] = phone_val
+                            cust_obj["phone"] = phone_val
+                            cust_obj["passport_id"] = id_val
+                            cust_obj["id_card"] = id_val
+                            cust_obj["licence_no"] = lic_val
+                            cust_obj["driver_license"] = lic_val
+                            cust_obj["home_address"] = home_val
+                            cust_obj["address"] = home_val
+                            fresh_cust[fn] = cust_obj
                     with self.lock:
                         self.customers = fresh_cust
             except Exception as e:
@@ -802,6 +859,23 @@ class DataStore:
         threading.Thread(target=_task, daemon=True).start()
 
     def async_sync_customer(self, name, cust_dict):
+        phone_val = cust_dict.get("contact_no") or cust_dict.get("phone") or "-"
+        id_val = cust_dict.get("passport_id") or cust_dict.get("id_card") or "-"
+        lic_val = cust_dict.get("licence_no") or cust_dict.get("driver_license") or "-"
+        home_val = cust_dict.get("home_address") or cust_dict.get("address") or "-"
+        thai_val = cust_dict.get("thai_address") or "-"
+
+        cust_dict["full_name"] = name
+        cust_dict["contact_no"] = phone_val
+        cust_dict["phone"] = phone_val
+        cust_dict["passport_id"] = id_val
+        cust_dict["id_card"] = id_val
+        cust_dict["licence_no"] = lic_val
+        cust_dict["driver_license"] = lic_val
+        cust_dict["home_address"] = home_val
+        cust_dict["address"] = home_val
+        cust_dict["thai_address"] = thai_val
+
         with self.lock:
             self.customers[name] = cust_dict
         def _task():
@@ -813,6 +887,18 @@ class DataStore:
                 sb.table("customers").upsert(row).execute()
             except Exception as e:
                 print(f"sb_sync_customer error: {e}")
+                try:
+                    fallback_row = {
+                        "full_name": name,
+                        "phone": phone_val,
+                        "id_card": id_val,
+                        "driver_license": lic_val,
+                        "address": home_val,
+                        "notes": cust_dict.get("notes", "")
+                    }
+                    sb.table("customers").upsert(fallback_row).execute()
+                except Exception as e2:
+                    print(f"sb_sync_customer fallback error: {e2}")
         threading.Thread(target=_task, daemon=True).start()
 
     def async_delete_customer(self, name):

@@ -490,65 +490,15 @@ def normalize_plate(plate: str) -> str:
     import re
     return re.sub(r"[\s\-\.]+", "", str(plate)).lower()
 
-class VehicleCreate(BaseModel):
-    plate: str
-    original_plate: Optional[str] = None
-    brand: Optional[str] = "Toyota"
-    model: Optional[str] = ""
-    car_group: Optional[str] = "รถเก๋ง (Sedan/Hatchback)"
-    fuel_type: Optional[str] = "เบนซิน"
-    fuel_system: Optional[str] = None
-    engine_cc: Optional[str] = "1200"
-    cc_ev: Optional[str] = None
-    company: Optional[str] = "Sawasdee Rent A Car"
-    owner_company: Optional[str] = None
-    color: Optional[str] = "-"
-    mileage: Optional[str] = "0"
-    price_day: Optional[int] = 1000
-    daily_rate: Optional[int] = None
-    price_week: Optional[int] = 6000
-    weekly_rate: Optional[int] = None
-    price_month: Optional[int] = 20000
-    monthly_rate: Optional[int] = None
-    chassis_no: Optional[str] = "-"
-    vin: Optional[str] = None
-    tax_expiry: Optional[str] = "-"
-    tax_expire_date: Optional[str] = None
-    act_expiry: Optional[str] = "-"
-    prb_expire_date: Optional[str] = None
-    ins_expiry: Optional[str] = "-"
-    insurance_expire_date: Optional[str] = None
-    ins_company: Optional[str] = "-"
-    insurance_company: Optional[str] = None
-    owner: Optional[str] = "-"
-    car_owner: Optional[str] = None
-    beneficiary: Optional[str] = "-"
-    reg_year: Optional[str] = "-"
-    register_year: Optional[str] = None
-    prb_price: Optional[float] = None
-    act_price: Optional[float] = None
-    insurance_premium: Optional[float] = None
-    ins_premium: Optional[float] = None
-    last_service_date: Optional[str] = "-"
-    next_service_date: Optional[str] = "-"
-    next_service_mileage: Optional[int] = 0
-    next_service: Optional[str] = None
-    notes: Optional[str] = ""
-    status: Optional[str] = "ว่างพร้อมใช้งาน"
-    car_status: Optional[str] = None
-    image: Optional[str] = ""
-    image_url: Optional[str] = None
-    is_debt_free: Optional[bool] = False
-    finance_company: Optional[str] = "-"
-    installment_amount: Optional[float] = 0.0
-    total_installments: Optional[int] = 0
-    current_installment: Optional[int] = 0
-    payment_due_date: Optional[str] = "-"
-
-    class Config:
-        extra = "allow"
-
-VehicleUpdate = VehicleCreate
+from schemas import (
+    VehicleCreate,
+    VehicleUpdate,
+    VehicleResponse,
+    CustomerCreate,
+    CustomerUpdate,
+    CustomerResponse,
+)
+from models import Vehicle, Customer
 
 @app.post("/api/cars")
 @app.post("/api/vehicles")
@@ -790,7 +740,13 @@ async def list_customers():
     return list(store.customers.values())
 
 @app.post("/api/customers")
-async def create_or_update_customer(payload: Dict[str, Any]):
+async def create_or_update_customer(payload: Union[CustomerCreate, Dict[str, Any]]):
+    if hasattr(payload, "model_dump"):
+        payload = payload.model_dump(exclude_unset=False)
+    elif hasattr(payload, "dict"):
+        payload = payload.dict()
+    else:
+        payload = dict(payload)
     name = str(payload.get("full_name", "")).strip()
     if not name:
         raise HTTPException(status_code=400, detail="กรุณาระบุชื่อ-นามสกุลลูกค้า")
