@@ -46,7 +46,7 @@ class VehicleCreate(VehicleBase):
 
 
 class VehicleUpdate(VehicleBase):
-    pass
+    plate: Optional[str] = None
 
 
 class VehicleResponse(VehicleBase):

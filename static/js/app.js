@@ -1911,9 +1911,9 @@ class App {
     today.setHours(0, 0, 0, 0);
 
     const checks = [
-      { key: "insurance", name: dict ? dict.insurance : (isEn ? "Insurance" : "ประกันภัย"), dateStr: c.insurance_expire_date || c.ins_expiry },
-      { key: "prb", name: dict ? dict.act : (isEn ? "PRB" : "พ.ร.บ."), dateStr: c.prb_expire_date || c.act_expiry },
-      { key: "tax", name: dict ? dict.tax : (isEn ? "Tax" : "ภาษี"), dateStr: c.tax_expire_date || c.tax_expiry }
+      { key: "insurance", name: dict ? dict.insurance : (isEn ? "Insurance" : "ประกันภัย"), dateStr: c.insurance_expire_date || c.ins_expiry || c.ins_expire_date || c.insurance_expiry },
+      { key: "prb", name: dict ? dict.act : (isEn ? "PRB" : "พ.ร.บ."), dateStr: c.prb_expire_date || c.act_expiry || c.prb_expiry || c.prb_date || c.act_expire_date },
+      { key: "tax", name: dict ? dict.tax : (isEn ? "Tax" : "ภาษี"), dateStr: c.tax_expire_date || c.tax_expiry || c.tax_expire }
     ];
 
     const alerts = [];
