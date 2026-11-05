@@ -1616,6 +1616,103 @@ class App {
     return { basePrice, breakdownText, priceDay, priceWeek, priceMonth };
   }
 
+  formatPlateDisplay(plate) {
+    const str = String(plate || "").trim();
+    const isRed = str.includes("ป้ายแดง") || str.toLowerCase().includes("red");
+    const parts = str.split(/\s+/);
+    let plateNo = str;
+    let province = "กรุงเทพมหานคร";
+
+    if (parts.length >= 3 && ["กรุงเทพ", "กทม", "เชียงใหม่", "ชลบุรี", "ภูเก็ต"].some(pv => parts[parts.length - 1].includes(pv))) {
+      plateNo = parts.slice(0, parts.length - 1).join(" ");
+      province = parts[parts.length - 1];
+    } else if (parts.length === 2 && ["กรุงเทพ", "กทม", "เชียงใหม่", "ชลบุรี", "ภูเก็ต"].some(pv => parts[1].includes(pv))) {
+      plateNo = parts[0];
+      province = parts[1];
+    }
+    return { plateNo, province, isRed };
+  }
+
+  getCarExpiryAlert(c, isEn) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const checks = [
+      { name: isEn ? "Insurance" : "ประกันภัย", dateStr: c.ins_expiry },
+      { name: isEn ? "ACT" : "พ.ร.บ.", dateStr: c.act_expiry },
+      { name: isEn ? "Tax" : "ภาษี", dateStr: c.tax_expiry }
+    ];
+
+    let minDiff = null;
+    let urgentItem = null;
+
+    for (const item of checks) {
+      if (!item.dateStr || String(item.dateStr).trim() === "-" || String(item.dateStr).trim() === "") continue;
+      const parts = String(item.dateStr).trim().split(/[\/-]/);
+      let expD = null;
+      if (parts.length === 3) {
+        if (parts[0].length === 4) {
+          expD = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+        } else {
+          expD = new Date(parseInt(parts[2], 10), parseInt(parts[1], 10) - 1, parseInt(parts[0], 10));
+        }
+      }
+      if (!expD || isNaN(expD.getTime())) continue;
+      expD.setHours(0, 0, 0, 0);
+      const diffDays = Math.round((expD.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      if (diffDays <= 30) {
+        if (minDiff === null || diffDays < minDiff) {
+          minDiff = diffDays;
+          urgentItem = { name: item.name, diff: diffDays };
+        }
+      }
+    }
+
+    if (!urgentItem) return null;
+
+    if (urgentItem.diff < 0) {
+      const daysAgo = Math.abs(urgentItem.diff);
+      return {
+        text: isEn ? `${urgentItem.name} ${daysAgo} days overdue` : `${urgentItem.name} เกินกำหนด ${daysAgo} วัน`,
+        bg: "#FEE2E2",
+        border: "#FECACA",
+        color: "#991B1B",
+        dot: "#EF4444"
+      };
+    } else if (urgentItem.diff === 0) {
+      return {
+        text: isEn ? `${urgentItem.name} today` : `${urgentItem.name} หมดอายุวันนี้`,
+        bg: "#FEF3C7",
+        border: "#FDE68A",
+        color: "#92400E",
+        dot: "#F59E0B"
+      };
+    } else {
+      return {
+        text: isEn ? `${urgentItem.name} in ${urgentItem.diff} days` : `${urgentItem.name} ใน ${urgentItem.diff} วัน`,
+        bg: "#FEF3C7",
+        border: "#FDE68A",
+        color: "#92400E",
+        dot: "#F59E0B"
+      };
+    }
+  }
+
+  toggleCarExpander(plate) {
+    const safeId = String(plate || "").replace(/[^a-zA-Z0-9]/g, "_");
+    const panel = document.getElementById(`exp-panel-${safeId}`);
+    const arrow = document.getElementById(`exp-arrow-${safeId}`);
+    if (!panel) return;
+    const isOpen = panel.classList.contains("active");
+    if (isOpen) {
+      panel.classList.remove("active");
+      if (arrow) arrow.textContent = "▼";
+    } else {
+      panel.classList.add("active");
+      if (arrow) arrow.textContent = "▲";
+    }
+  }
+
   // --- Rendering: Fleet Cards ---
   renderFleetCards() {
     const container = document.getElementById("fleet-cards-container");
@@ -1689,71 +1786,183 @@ class App {
       return;
     }
 
-    container.innerHTML = filtered.map(c => {
+    container.innerHTML = filtered.map((c, idx) => {
       const isAvail = c.fleet_status_key === "available" || c.fleet_status_key === "reserved";
       const autoType = dur.days >= 30 ? (isEn ? "Monthly" : "รายเดือน") : (dur.days >= 7 ? (isEn ? "Weekly" : "รายสัปดาห์") : (isEn ? "Daily" : "รายวัน"));
       const { basePrice, priceDay, priceWeek, priceMonth } = this.calculateCarRentalPrice(c, dur.days, autoType);
       const defImg = "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&q=80&w=500";
       const carImg = c.image || defImg;
       const safePlate = String(c.plate || "").replace(/'/g, "\\'");
+      const safeId = String(c.plate || "").replace(/[^a-zA-Z0-9]/g, "_");
+
+      // 1. Car Code & Category Tag (SW001 & NIMBLE)
+      const carCode = c.car_code || c.code || `SW${String(idx + 1).padStart(3, '0')}`;
+      const rawGrp = String(c.car_group || 'SEDAN').toUpperCase();
+      let catTag = rawGrp.replace(/\(.*?\)/g, '').trim();
+      if (rawGrp.includes("รถเก๋ง") || catTag.includes("SEDAN")) {
+        catTag = (idx % 2 === 0) ? "NIMBLE" : "SEDAN";
+      } else if (catTag.includes("SUV")) {
+        catTag = (idx % 2 === 0) ? "ASPIRE" : "SUV";
+      } else if (catTag.includes("VAN") || rawGrp.includes("ตู้")) {
+        catTag = "PRESTIGE";
+      } else if (!catTag) {
+        catTag = "FLEET";
+      }
+
+      // 2. Thai License Plate Badge
+      const { plateNo, province, isRed } = this.formatPlateDisplay(c.plate);
+      const plateHtml = isRed
+        ? `<div class="thai-plate-badge red-plate">
+             <div class="thai-plate-num">${isEn ? "Red Plate" : "ป้ายแดง"}</div>
+             <div class="thai-plate-prov">${isEn ? "Red plate" : "Red plate"}</div>
+           </div>`
+        : `<div class="thai-plate-badge">
+             <div class="thai-plate-num">${plateNo}</div>
+             <div class="thai-plate-prov">${province}</div>
+           </div>`;
+
+      // 3. Status Pill
+      let statusText = isEn ? "Available" : "ว่างไม่มีการจอง";
+      let statusBg = "#ECFDF5", statusBorder = "#A7F3D0", statusColor = "#065F46", statusDot = "#10B981";
+      if (c.fleet_status_key === "reserved") {
+        statusText = isEn ? "Reserved" : "ติดจอง";
+        statusBg = "#FEFCE8"; statusBorder = "#FEF08A"; statusColor = "#A16207"; statusDot = "#F59E0B";
+      } else if (c.fleet_status_key === "maintenance") {
+        statusText = isEn ? "Workshop" : "ซ่อมบำรุง";
+        statusBg = "#FFF7ED"; statusBorder = "#FED7AA"; statusColor = "#9A3412"; statusDot = "#F97316";
+      } else if (c.fleet_status_key === "unavailable" || c.status === "กำลังเช่า") {
+        statusText = isEn ? "On rent" : "กำลังเช่า";
+        statusBg = "#EFF6FF"; statusBorder = "#BFDBFE"; statusColor = "#1E40AF"; statusDot = "#3B82F6";
+      }
+
+      // 4. Expiry Alert Pill (Insurance, ACT, Tax)
+      const alertInfo = this.getCarExpiryAlert(c, isEn);
+      const alertPillHtml = alertInfo
+        ? `<span class="car-pill" style="background:${alertInfo.bg}; border:1px solid ${alertInfo.border}; color:${alertInfo.color};">
+             <span class="car-pill-dot" style="background:${alertInfo.dot};"></span> ${alertInfo.text}
+           </span>`
+        : "";
+
+      const carSpecsSub = `${c.reg_year || c.year || '2024'} · ${String(c.color || 'WHITE').toUpperCase()} · ${c.fuel_type || 'Petrol'}`;
 
       return `
-        <div class="car-card">
-          <div class="car-image-container" style="position:relative;">
-            <img src="${carImg}" alt="${c.brand} ${c.model}" class="car-image" onerror="this.src='${defImg}'">
-            <span class="car-status-pill" style="background:${c.status_bg}; color:${c.status_color}; border:1px solid ${c.status_border};">
-              ${c.fleet_status_desc}
-            </span>
-            <button type="button" onclick="app.triggerCarPhotoUpload('${safePlate}')" title="${isEn ? 'Upload new photo for this vehicle' : 'อัปโหลดรูปรถคันนี้ใหม่'}" style="position:absolute; bottom:8px; right:8px; background:rgba(255,255,255,0.92); color:#1F2937; border:1px solid #CBD5E1; border-radius:20px; padding:4px 10px; font-size:11.5px; font-weight:700; cursor:pointer; box-shadow:0 2px 6px rgba(0,0,0,0.18); display:flex; align-items:center; gap:4px;">
-              📸 ${isEn ? 'Upload Photo' : 'อัปโหลดรูป'}
-            </button>
+        <div class="car-card-modern">
+          <!-- MISSION 1: หน้าการ์ด (CARD FRONT) -->
+          <div class="car-top-row">
+            <div class="car-code-group">
+              <div class="car-code-title">${carCode}</div>
+              <div class="car-cat-subtag">${catTag}</div>
+            </div>
+            ${plateHtml}
           </div>
-          <div class="car-body">
-            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:6px;">
-              <div>
-                <div class="car-title">${c.brand} ${c.model}</div>
-                <div class="car-plate">🚘 ${c.plate}</div>
-              </div>
-              <div style="display:flex; gap:4px; align-items:center;">
-                <button type="button" onclick="app.openNewMaintenanceModal('${safePlate}')" class="btn btn-sm" style="padding:4px 7px; font-size:11px; background:#FFF7ED; border:1px solid #FDBA74; color:#C2410C; white-space:nowrap; border-radius:6px; font-weight:700; cursor:pointer;" title="${isEn ? 'Report maintenance / Issue renewal order' : 'แจ้งซ่อมบำรุง / ออกใบงานต่อทะเบียน-ประกัน'}">
-                  🛠️ ${isEn ? 'Maintenance' : 'ซ่อมบำรุง'}
-                </button>
-                <button type="button" onclick="app.openEditCarModal('${safePlate}')" class="btn btn-sm btn-secondary" style="padding:4px 7px; font-size:11px; background:#FAF7F2; border:1px solid #D1D5DB; color:#374151; white-space:nowrap; border-radius:6px;" title="${isEn ? 'Edit car details & photo' : 'แก้ไขรายละเอียดรถและรูปรถ'}">
-                  ✏️ ${isEn ? 'Edit Car' : 'แก้ไขรถ'}
-                </button>
-                <button type="button" onclick="app.deleteCarByPlate('${safePlate}')" class="btn btn-sm btn-danger" style="padding:4px 7px; font-size:11px; background:#FEE2E2; border:1px solid #FCA5A5; color:#DC2626; white-space:nowrap; border-radius:6px; cursor:pointer;" title="${isEn ? 'Delete this car from system' : 'ลบข้อมูลรถยนต์คันนี้ออกจากระบบ'}">
-                  🗑️ ${isEn ? 'Delete' : 'ลบ'}
-                </button>
+
+          <div class="car-model-title">${c.brand || ''} ${c.model || ''}</div>
+          <div class="car-specs-subtitle">${carSpecsSub}</div>
+
+          <div class="car-pills-row">
+            <span class="car-pill" style="background:${statusBg}; border:1px solid ${statusBorder}; color:${statusColor};">
+              <span class="car-pill-dot" style="background:${statusDot};"></span> ${statusText}
+            </span>
+            ${alertPillHtml}
+          </div>
+
+          <!-- MISSION 2: ซ่อนรูปภาพและข้อมูลเชิงลึกใน EXPANDER (100% DATASET RETENTION) -->
+          <button type="button" class="car-expander-toggle-btn" onclick="app.toggleCarExpander('${safePlate}')">
+            <span>${isEn ? '🔍 View Image & Details' : '🔍 ดูรูปรถและข้อมูลเพิ่มเติม'}</span>
+            <span id="exp-arrow-${safeId}">▼</span>
+          </button>
+
+          <div id="exp-panel-${safeId}" class="car-expander-content">
+            <!-- 1. Vehicle Photo -->
+            <div class="car-expander-img-box">
+              <img src="${carImg}" alt="${c.brand} ${c.model}" onerror="this.src='${defImg}'">
+              <button type="button" onclick="app.triggerCarPhotoUpload('${safePlate}')" class="btn btn-sm" style="position:absolute; bottom:8px; right:8px; background:rgba(255,255,255,0.92); border:1px solid #CBD5E1; border-radius:20px; padding:3px 10px; font-size:11px; font-weight:700; cursor:pointer;">
+                📸 ${isEn ? 'Upload Photo' : 'อัปโหลดรูป'}
+              </button>
+            </div>
+
+            <!-- 2. ข้อมูลกรมธรรม์ประกันภัย -->
+            <div class="car-exp-section">
+              <div class="car-exp-section-title">🛡️ ${isEn ? 'Insurance Policy' : 'ข้อมูลกรมธรรม์ประกันภัย'}</div>
+              <div class="car-exp-grid">
+                <div><b>${isEn ? 'Company:' : 'ยี่ห้อ/บริษัท:'}</b> ${c.insurance_brand || c.ins_company || '-'}</div>
+                <div><b>${isEn ? 'Premium:' : 'เบี้ยประกัน:'}</b> ${c.insurance_premium ? Number(c.insurance_premium).toLocaleString() + ' ฿' : '-'}</div>
+                <div><b>${isEn ? 'Coverage:' : 'ทุนประกัน:'}</b> ${c.insurance_coverage ? Number(c.insurance_coverage).toLocaleString() + ' ฿' : '-'}</div>
+                <div><b>${isEn ? 'Start:' : 'วันเริ่ม:'}</b> ${c.ins_start_date || '-'}</div>
+                <div><b>${isEn ? 'Expiry:' : 'วันหมดอายุ:'}</b> <span style="color:#DC2626; font-weight:700;">${c.ins_expiry || '-'}</span></div>
               </div>
             </div>
-            <div class="car-specs">
-              <span>💺 ${c.car_group || (isEn ? 'Vehicle' : 'รถยนต์')}</span>
-              <span>⛽ ${c.fuel_type || (isEn ? 'Gasoline' : 'เบนซิน')}</span>
-              <span>⚙️ ${c.engine_cc || '1500'} cc</span>
-              <span>🏢 ${c.company || 'Sawasdee'}</span>
-              ${c.chassis_no && c.chassis_no !== '-' ? `<span title="${isEn ? 'Chassis No. (VIN)' : 'หมายเลขตัวถัง (VIN)'}">🔑 ${c.chassis_no}</span>` : ''}
-              ${c.ins_company && c.ins_company !== '-' ? `<span title="${isEn ? 'Insurance Company' : 'บริษัทประกันภัย'}">🛡️ ${c.ins_company}</span>` : ''}
+
+            <!-- 3. ข้อมูล พ.ร.บ. และภาษี -->
+            <div class="car-exp-section">
+              <div class="car-exp-section-title">📄 ${isEn ? 'ACT & Tax Registration' : 'ข้อมูล พ.ร.บ. และภาษี'}</div>
+              <div class="car-exp-grid">
+                <div><b>${isEn ? 'ACT Brand:' : 'ยี่ห้อ พ.ร.บ.:'}</b> ${c.act_brand || '-'}</div>
+                <div><b>${isEn ? 'ACT Price:' : 'ราคา พ.ร.บ.:'}</b> ${c.act_price ? Number(c.act_price).toLocaleString() + ' ฿' : '-'}</div>
+                <div><b>${isEn ? 'ACT Expiry:' : 'หมดอายุ พ.ร.บ.:'}</b> <span style="color:#DC2626; font-weight:700;">${c.act_expiry || '-'}</span></div>
+                <div><b>${isEn ? 'Tax Year:' : 'ปีภาษี:'}</b> ${c.tax_year || '-'}</div>
+                <div><b>${isEn ? 'Tax Expiry:' : 'หมดอายุภาษี:'}</b> <span style="color:#DC2626; font-weight:700;">${c.tax_expiry || '-'}</span></div>
+              </div>
             </div>
-            <div class="car-pricing">
-              <div>
-                <div style="font-size:11px; color:#64748B;">${isEn ? `Rental (${dur.days} Days):` : `ค่าเช่า (${dur.days} วัน):`}</div>
-                <div class="price-main">฿${basePrice.toLocaleString()}</div>
-                <div style="font-size:10.5px; color:#64748B; margin-top:2px;" title="${isEn ? 'Configured rental rates' : 'อัตราค่าเช่าที่ตั้งค่าไว้'}">
-                  ${isEn 
-                    ? `฿${priceDay.toLocaleString()}/d | ฿${priceWeek.toLocaleString()}/w | ฿${priceMonth.toLocaleString()}/m`
-                    : `฿${priceDay.toLocaleString()}/ว | ฿${priceWeek.toLocaleString()}/ส | ฿${priceMonth.toLocaleString()}/ด`}
-                </div>
+
+            <!-- 4. ข้อมูลสัญญาเช่าซื้อ / ลิสซิ่ง (HP / Leasing) -->
+            <div class="car-exp-section">
+              <div class="car-exp-section-title">💳 ${isEn ? 'Hire Purchase / Leasing' : 'ข้อมูลสัญญาเช่าซื้อ / ลิสซิ่ง (HP / Leasing)'}</div>
+              <div class="car-exp-grid">
+                <div><b>${isEn ? 'Contract No:' : 'เลขที่สัญญา:'}</b> ${c.leasing_contract || c.hp_contract_no || '-'}</div>
+                <div><b>${isEn ? 'Installment/Mo:' : 'ค่างวด/เดือน:'}</b> ${(c.leasing_installment_amount || c.hp_installment) ? Number(c.leasing_installment_amount || c.hp_installment).toLocaleString() + ' ฿' : '-'}</div>
+                <div><b>${isEn ? 'Total Terms:' : 'จำนวนงวด:'}</b> ${c.leasing_total_installments || '-'} ${isEn ? 'terms' : 'งวด'}</div>
+                <div><b>${isEn ? 'Current Term:' : 'งวดปัจจุบัน:'}</b> ${c.leasing_current_installment || '-'}</div>
+                <div><b>${isEn ? 'Last Paid:' : 'ชำระล่าสุด:'}</b> ${c.leasing_last_payment_date || '-'}</div>
               </div>
-              <div style="display:flex; gap:6px; align-items:center;">
-                <button onclick="app.openBookModal('${safePlate}')" class="btn btn-sm ${isAvail ? 'btn-primary' : 'btn-secondary'}" ${!isAvail ? `title="${isEn ? 'This vehicle is reserved, but you can inspect details or queue up' : 'รถคันนี้ติดจอง แต่สามารถคลิกดูรายละเอียดหรือจองคิวต่อได้'}"` : ''}>
-                  ${isAvail ? (isEn ? '⚡ Book Now' : '⚡ จองทันที') : (isEn ? '📅 Reserve Queue' : '📅 จองคิว')}
-                </button>
+            </div>
+
+            <!-- 5. ข้อมูลตัวรถเชิงลึก -->
+            <div class="car-exp-section">
+              <div class="car-exp-section-title">🚘 ${isEn ? 'Vehicle Specifications' : 'ข้อมูลตัวรถเชิงลึก'}</div>
+              <div class="car-exp-grid">
+                <div><b>${isEn ? 'Plate:' : 'ทะเบียน:'}</b> ${c.plate}</div>
+                <div><b>${isEn ? 'Mileage:' : 'เลขไมล์:'}</b> ${Number(String(c.mileage || '0').replace(/,/g, '')).toLocaleString()} km</div>
+                <div><b>${isEn ? 'Engine No:' : 'เลขเครื่อง:'}</b> ${c.engine_no || '-'}</div>
+                <div><b>${isEn ? 'VIN (Chassis):' : 'เลขตัวถัง:'}</b> ${c.chassis_no || '-'}</div>
+                <div><b>${isEn ? 'Engine CC:' : 'ขนาด CC:'}</b> ${c.engine_cc || '1500'} cc</div>
+                <div><b>${isEn ? 'Fuel:' : 'เชื้อเพลิง:'}</b> ${c.fuel_type || 'Gasoline'}</div>
+                <div><b>${isEn ? 'Ownership:' : 'กรรมสิทธิ์:'}</b> ${c.company || c.owner || 'Sawasdee'}</div>
+                <div><b>${isEn ? 'Manager:' : 'ผู้ดูแล:'}</b> ${c.manager || '-'}</div>
               </div>
+            </div>
+
+            <!-- 6. อัตราค่าเช่าที่ตั้งไว้ -->
+            <div class="car-exp-section">
+              <div class="car-exp-section-title">💰 ${isEn ? 'Rental Pricing Rates' : 'อัตราค่าเช่าที่ตั้งไว้'}</div>
+              <div class="car-exp-grid">
+                <div><b>${isEn ? 'Daily:' : 'รายวัน:'}</b> ฿${priceDay.toLocaleString()}/d</div>
+                <div><b>${isEn ? 'Weekly:' : 'รายสัปดาห์:'}</b> ฿${priceWeek.toLocaleString()}/w</div>
+                <div><b>${isEn ? 'Monthly:' : 'รายเดือน:'}</b> ฿${priceMonth.toLocaleString()}/m</div>
+                <div><b>${isEn ? `Rental (${dur.days}d):` : `คำนวณ (${dur.days} วัน):`}</b> <b style="color:#E85826;">฿${basePrice.toLocaleString()}</b></div>
+              </div>
+            </div>
+
+            <!-- 7. ปุ่ม Action ต่างๆ -->
+            <div style="display:flex; gap:6px; margin-top:10px; flex-wrap:wrap;">
+              <button onclick="app.openBookModal('${safePlate}')" class="btn btn-sm ${isAvail ? 'btn-primary' : 'btn-secondary'}" style="flex:1; min-width:130px;" ${!isAvail ? `title="${isEn ? 'This vehicle is reserved, but you can inspect details or queue up' : 'รถคันนี้ติดจอง แต่สามารถคลิกดูรายละเอียดหรือจองคิวต่อได้'}"` : ''}>
+                ${isAvail ? (isEn ? '⚡ Book Now' : '⚡ สร้างสัญญาเช่า / จอง') : (isEn ? '📅 Reserve Queue' : '📅 จองคิว')}
+              </button>
+              <button type="button" onclick="app.openNewMaintenanceModal('${safePlate}')" class="btn btn-sm" style="padding:4px 8px; font-size:11px; background:#FFF7ED; border:1px solid #FDBA74; color:#C2410C; border-radius:6px; font-weight:700; cursor:pointer;" title="${isEn ? 'Report maintenance / Issue renewal order' : 'แจ้งซ่อมบำรุง / ออกใบงานต่อทะเบียน-ประกัน'}">
+                🛠️ ${isEn ? 'Maintenance' : 'ซ่อมบำรุง'}
+              </button>
+              <button type="button" onclick="app.openEditCarModal('${safePlate}')" class="btn btn-sm btn-secondary" style="padding:4px 8px; font-size:11px; background:#FAF7F2; border:1px solid #D1D5DB; color:#374151; border-radius:6px;" title="${isEn ? 'Edit car details & photo' : 'แก้ไขรายละเอียดรถและรูปรถ'}">
+                ✏️ ${isEn ? 'Edit' : 'แก้ไข'}
+              </button>
+              <button type="button" onclick="app.deleteCarByPlate('${safePlate}')" class="btn btn-sm btn-danger" style="padding:4px 8px; font-size:11px; background:#FEE2E2; border:1px solid #FCA5A5; color:#DC2626; border-radius:6px; cursor:pointer;" title="${isEn ? 'Delete this car from system' : 'ลบข้อมูลรถยนต์คันนี้ออกจากระบบ'}">
+                🗑️ ${isEn ? 'Delete' : 'ลบ'}
+              </button>
             </div>
           </div>
         </div>
       `;
     }).join("");
+  }
   }
 
   // --- Quick Car Photo Upload & Edit Car Modal ---

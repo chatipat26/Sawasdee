@@ -1664,6 +1664,23 @@ translations = {
         "filter_status": "🚦 สถานะรถ (Status)",
         "filter_all": "ทั้งหมด",
         "btn_reset_filters": "🔄 รีเซ็ตตัวกรองทั้งหมด",
+        "fleet_expander_view": "🔍 ดูรูปรถและข้อมูลเพิ่มเติม",
+        "fleet_expander_hide": "🔼 ซ่อนรูปรถและข้อมูลเพิ่มเติม",
+        "fleet_plate_red": "ป้ายแดง",
+        "fleet_plate_red_sub": "Red plate",
+        "fleet_stat_avail": "Available",
+        "fleet_stat_rent": "On rent",
+        "fleet_stat_workshop": "Workshop",
+        "fleet_stat_res": "Reserved",
+        "fleet_exp_ins_title": "🛡️ ข้อมูลกรมธรรม์ประกันภัย",
+        "fleet_exp_act_tax_title": "📄 ข้อมูล พ.ร.บ. และภาษี",
+        "fleet_exp_hp_title": "💳 ข้อมูลสัญญาเช่าซื้อ / ลิสซิ่ง (HP / Leasing)",
+        "fleet_exp_spec_title": "🚘 ข้อมูลตัวรถเชิงลึก",
+        "fleet_exp_rates_title": "💰 อัตราค่าเช่าที่ตั้งไว้",
+        "fleet_btn_book": "✅ สร้างสัญญาเช่า / จองรถ",
+        "fleet_btn_maint": "🛠️ แจ้งซ่อมบำรุง",
+        "fleet_btn_edit": "✏️ แก้ไขข้อมูลรถ",
+        "fleet_btn_del": "🗑️ ลบรถยนต์",
 
         # Tab 2: Deposit & Finance
         "deposit_title": "💳 การเงินและบันทึกเงินมัดจำ (Deposit & Financial Management)",
@@ -1840,6 +1857,23 @@ translations = {
         "filter_status": "🚦 Fleet Status",
         "filter_all": "All",
         "btn_reset_filters": "🔄 Reset All Filters",
+        "fleet_expander_view": "🔍 View Image & Details",
+        "fleet_expander_hide": "🔼 Hide Image & Details",
+        "fleet_plate_red": "Red Plate",
+        "fleet_plate_red_sub": "Red plate",
+        "fleet_stat_avail": "Available",
+        "fleet_stat_rent": "On rent",
+        "fleet_stat_workshop": "Workshop",
+        "fleet_stat_res": "Reserved",
+        "fleet_exp_ins_title": "🛡️ Insurance Policy Information",
+        "fleet_exp_act_tax_title": "📄 ACT & Tax Information",
+        "fleet_exp_hp_title": "💳 Hire Purchase / Leasing Details",
+        "fleet_exp_spec_title": "🚘 Vehicle Specifications",
+        "fleet_exp_rates_title": "💰 Configured Rental Rates",
+        "fleet_btn_book": "✅ Create Agreement / Book",
+        "fleet_btn_maint": "🛠️ Request Maintenance",
+        "fleet_btn_edit": "✏️ Edit Vehicle",
+        "fleet_btn_del": "🗑️ Delete Vehicle",
 
         # Tab 2: Deposit & Finance
         "deposit_title": "💳 Deposit & Financial Management",
@@ -2825,106 +2859,112 @@ fleet_cards_css = """
     border-radius: 10px;
 }
 
-/* 3. Showcase Fleet Grid & Cards */
-div[class*="st-key-fleet_card_"] {
-    background: #FFFFFF !important;
-    border: 1px solid #EFE8E1 !important;
-    border-radius: 20px !important;
-    padding: 12px 12px 16px !important;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04) !important;
-    transition: all 0.25s ease-in-out;
-    text-align: center;
-}
-div[class*="st-key-fleet_card_"]:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 12px 28px rgba(224, 184, 184, 0.28) !important;
-    border-color: #E0B8B8 !important;
-}
-div[class*="st-key-fleet_card_sel_"] {
-    border: 2px solid #C98F88 !important;
-    box-shadow: 0 12px 30px rgba(201, 143, 136, 0.28) !important;
-    background: #FFFAF8 !important;
-}
-.fleet-card-img-box {
-    position: relative;
-    width: 100%;
-    aspect-ratio: 16 / 10;
-    border-radius: 14px;
-    overflow: hidden;
-    background: #F7F3EE;
-    margin-bottom: 10px;
-}
-.fleet-card-img-box img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: block;
-    transition: transform 0.3s ease;
-}
-div[class*="st-key-fleet_card_"]:hover .fleet-card-img-box img {
-    transform: scale(1.04);
-}
-.fleet-card-title {
-    font-size: 15px;
-    font-weight: 700;
-    color: #111827;
-    margin: 4px 0 4px 0;
+/* 3. Showcase Fleet Grid & Cards (Modern Grid Cards matching mockups) */
+.fleet-card-header-row {
     display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    letter-spacing: 0.2px;
-    line-height: 1.35;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 2px;
 }
-.fleet-card-title-text {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: calc(100% - 18px);
-    display: inline-block;
+.fleet-card-code-col {
+    display: flex;
+    flex-direction: column;
 }
-.car-status-dot {
-    display: inline-block;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-.car-status-dot:hover {
-    transform: scale(1.35);
-}
-.fleet-card-price-tag {
-    font-size: 15px;
+.fleet-card-code-val {
+    font-size: 18px;
     font-weight: 800;
     color: #111827;
-    margin-bottom: 10px;
-    text-align: center;
+    line-height: 1.15;
+    letter-spacing: 0.5px;
 }
-.fleet-card-price-tag span {
+.fleet-card-code-tag {
     font-size: 11px;
-    font-weight: 600;
-    color: #8C827A;
-}
-/* ปุ่มดูรายละเอียด View Details แบบ Soft Rose Gold Pill Button */
-div[class*="st-key-fleet_card_"] div[class*="st-key-fleet_view_"] button {
-    background: linear-gradient(135deg, #E0B8B8 0%, #C98F88 100%) !important;
-    color: #FFFFFF !important;
-    border: none !important;
-    border-radius: 24px !important;
-    font-size: 12px !important;
-    font-weight: 700 !important;
-    letter-spacing: 0.8px;
+    font-weight: 800;
+    color: #2563EB;
+    letter-spacing: 1.2px;
     text-transform: uppercase;
-    min-height: 38px !important;
-    box-shadow: 0 4px 14px rgba(201, 143, 136, 0.25) !important;
-    transition: all 0.2s ease !important;
+    margin-top: 3px;
 }
-div[class*="st-key-fleet_card_"] div[class*="st-key-fleet_view_"] button:hover {
-    background: linear-gradient(135deg, #D49B9B 0%, #B87870 100%) !important;
-    box-shadow: 0 6px 18px rgba(201, 143, 136, 0.4) !important;
-    transform: translateY(-1px);
+.fleet-thai-plate-badge {
+    border: 1.5px solid #1F2937;
+    border-radius: 6px;
+    padding: 2px 8px;
+    background: #FFFFFF;
+    text-align: center;
+    min-width: 82px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
-div[class*="st-key-fleet_card_"] div[class*="st-key-fleet_view_"] button p {
-    color: #FFFFFF !important;
-    font-size: 12px !important;
+.fleet-thai-plate-badge.red-plate {
+    border-color: #DC2626;
+    background: #FEF2F2;
+}
+.fleet-thai-plate-num {
+    font-size: 12.5px;
+    font-weight: 800;
+    color: #111827;
+    line-height: 1.2;
+}
+.fleet-thai-plate-badge.red-plate .fleet-thai-plate-num {
+    color: #DC2626;
+}
+.fleet-thai-plate-prov {
+    font-size: 8px;
+    color: #4B5563;
+    line-height: 1;
+    margin-top: 1px;
+}
+.fleet-thai-plate-badge.red-plate .fleet-thai-plate-prov {
+    color: #DC2626;
+}
+.fleet-card-model-text {
+    font-size: 15px;
+    font-weight: 700;
+    color: #1F2937;
+    margin-top: 8px;
+    line-height: 1.3;
+}
+.fleet-card-specs-text {
+    font-size: 12px;
+    color: #6B7280;
+    margin-top: 2px;
+    font-weight: 500;
+}
+.fleet-card-pills-wrap {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 10px;
+    margin-bottom: 6px;
+    flex-wrap: wrap;
+}
+.fleet-pill-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 2.5px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.2;
+}
+.fleet-pill-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    display: inline-block;
+}
+/* สไตล์ Expander ของการ์ดรถยนต์ให้กลมกลืนกับโทนแบรนด์ */
+div[data-testid="stExpander"] {
+    border: 1px solid #EFEAE3 !important;
+    border-radius: 10px !important;
+    background: #FFFAF8 !important;
+    margin-top: 6px !important;
+}
+div[data-testid="stExpander"] details summary {
+    font-size: 12.5px !important;
     font-weight: 700 !important;
+    color: #E85826 !important;
 }
 
 /* 4. Section 4: Premium Services & Benefits Ribbon */
@@ -4228,402 +4268,357 @@ else:
             )
 
             import html as _html_esc
-            _FLEET_COLS = 4
+            _FLEET_COLS = 3
             _FLEET_DEFAULT_IMG = "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?auto=format&fit=crop&q=80&w=500"
 
-            # จดจำและเปิดดูคันที่ถูกเลือก
-            _fleet_plates = [p for p, _ in _fleet_matched]
-            _fleet_sel = st.session_state.get("fleet_detail_plate")
-            if _fleet_sel not in _fleet_plates:
-                _fleet_sel = None
-            if search_kw:
-                if st.session_state.get("_fleet_auto_kw") != search_kw:
-                    st.session_state["_fleet_auto_kw"] = search_kw
-                    _fleet_targets = [p for p in _fleet_plates if (search_kw in p or p in search_kw)]
-                    if _fleet_targets:
-                        _fleet_sel = _fleet_targets[0]
-            else:
-                st.session_state["_fleet_auto_kw"] = ""
-            st.session_state.fleet_detail_plate = _fleet_sel
+            def format_plate_display(plate):
+                """แยกเลขทะเบียนและจังหวัดสำหรับแสดงผลแบบป้ายทะเบียนไทย"""
+                plate_str = str(plate or "").strip()
+                is_red = "ป้ายแดง" in plate_str or "red" in plate_str.lower()
+                parts = plate_str.split()
+                if len(parts) >= 3 and any(pv in parts[-1] for pv in ["กรุงเทพ", "กทม", "เชียงใหม่", "ชลบุรี", "ภูเก็ต"]):
+                    plate_no = " ".join(parts[:-1])
+                    province = parts[-1]
+                elif len(parts) == 2 and any(pv in parts[1] for pv in ["กรุงเทพ", "กทม", "เชียงใหม่", "ชลบุรี", "ภูเก็ต"]):
+                    plate_no = parts[0]
+                    province = parts[1]
+                else:
+                    plate_no = plate_str
+                    province = "กรุงเทพมหานคร"
+                return plate_no, province, is_red
 
-            def _fleet_toggle_detail(p):
-                st.session_state.fleet_detail_plate = None if st.session_state.get("fleet_detail_plate") == p else p
+            def get_car_expiry_alert_info(c, is_en=False):
+                """คำนวณการแจ้งเตือนวันหมดอายุ ประกันภัย / พ.ร.บ. / ภาษี"""
+                today = date.today()
+                checks = [
+                    ("Insurance" if is_en else "ประกันภัย", c.get("ins_expiry")),
+                    ("ACT" if is_en else "พ.ร.บ.", c.get("act_expiry")),
+                    ("Tax" if is_en else "ภาษี", c.get("tax_expiry")),
+                ]
+                urgent_item = None
+                min_diff = None
 
-            # วาดการ์ดรูปรถเรียงกันเป็น Grid ทีละ 4 คอลัมน์ (ตามภาพที่สอง)
+                for doc_name, exp_raw in checks:
+                    if not exp_raw or str(exp_raw).strip() in ["-", "", "None"]:
+                        continue
+                    exp_d = None
+                    if isinstance(exp_raw, (date, datetime)):
+                        exp_d = exp_raw if isinstance(exp_raw, date) else exp_raw.date()
+                    else:
+                        for fmt in ("%d/%m/%Y", "%Y-%m-%d", "%d-%m-%Y"):
+                            try:
+                                exp_d = datetime.strptime(str(exp_raw).strip(), fmt).date()
+                                break
+                            except ValueError:
+                                pass
+                    if not exp_d:
+                        continue
+                    diff = (exp_d - today).days
+                    if diff <= 30:
+                        if min_diff is None or diff < min_diff:
+                            min_diff = diff
+                            urgent_item = (doc_name, diff)
+
+                if urgent_item is None:
+                    return None
+
+                doc_name, diff = urgent_item
+                if diff < 0:
+                    days_ago = abs(diff)
+                    text = f"{doc_name} {days_ago} days overdue" if is_en else f"{doc_name} เกินกำหนด {days_ago} วัน"
+                    return {
+                        "text": text,
+                        "bg": "#FEE2E2",
+                        "border": "#FECACA",
+                        "color": "#991B1B",
+                        "dot": "#EF4444"
+                    }
+                elif diff == 0:
+                    text = f"{doc_name} today" if is_en else f"{doc_name} หมดอายุวันนี้"
+                    return {
+                        "text": text,
+                        "bg": "#FEF3C7",
+                        "border": "#FDE68A",
+                        "color": "#92400E",
+                        "dot": "#F59E0B"
+                    }
+                else:
+                    text = f"{doc_name} in {diff} days" if is_en else f"{doc_name} ใน {diff} วัน"
+                    return {
+                        "text": text,
+                        "bg": "#FEF3C7",
+                        "border": "#FDE68A",
+                        "color": "#92400E",
+                        "dot": "#F59E0B"
+                    }
+
+            is_en_lang = (st.session_state.language == "EN")
+            exp_open_lbl = translations[st.session_state.language].get("fleet_expander_view", "🔍 ดูรูปรถและข้อมูลเพิ่มเติม")
+
+            # วาดการ์ดรูปรถเรียงกันเป็น Grid ทีละ 3 คอลัมน์ (ตามรูปตัวอย่าง)
             for _row_start in range(0, len(_fleet_matched), _FLEET_COLS):
                 _row_items = _fleet_matched[_row_start:_row_start + _FLEET_COLS]
                 _row_cols = st.columns(_FLEET_COLS)
                 for _i, (_p, _c) in enumerate(_row_items):
                     _idx = _row_start + _i
-                    _is_sel = (_p == st.session_state.get("fleet_detail_plate"))
                     _img = _html_esc.escape(str(_c.get("image") or _FLEET_DEFAULT_IMG), quote=True)
                     _brand = _html_esc.escape(str(_c.get('brand', '')).strip())
                     _model = _html_esc.escape(str(_c.get('model', '')).strip())
                     _full_title = f"{_brand} {_model}".strip() or _html_esc.escape(_p)
-                    try:
-                        _p_val = f"{int(float(_c.get('price_day', 0) or 0)):,}"
-                    except Exception:
-                        _p_val = str(_c.get('price_day', '-'))
-                    
-                    # คำนวณสถานะสีของรถคันนี้ (เขียว=ว่างไม่มีการจอง, เหลือง=มีการจองล่วงหน้าไว้, แดง=ไม่ว่างในวันที่เลือก, ส้ม=ซ่อมบำรุง)
+                    _color = _html_esc.escape(str(_c.get('color', 'WHITE')).upper())
+                    _fuel = _html_esc.escape(str(_c.get('fuel_type', 'Petrol')))
+                    _year = str(_c.get('reg_year') or _c.get('year') or '2024')
+                    _specs_sub = f"{_year} · {_color} · {_fuel}"
+
+                    # รหัสรถยนต์และแท็กหมวดหมู่ เช่น SW001 และ NIMBLE
+                    _car_code = _html_esc.escape(str(_c.get('car_code') or _c.get('code') or f"SW{_idx+1:03d}"))
+                    _raw_group = str(_c.get('car_group') or 'SEDAN').upper()
+                    _clean_tag = re.sub(r'\(.*?\)', '', _raw_group).strip()
+                    if "รถเก๋ง" in _raw_group or "SEDAN" in _clean_tag:
+                        _cat_tag = "NIMBLE" if _idx % 2 == 0 else "SEDAN"
+                    elif "SUV" in _clean_tag:
+                        _cat_tag = "ASPIRE" if _idx % 2 == 0 else "SUV"
+                    elif "VAN" in _clean_tag or "ตู้" in _raw_group:
+                        _cat_tag = "PRESTIGE"
+                    else:
+                        _cat_tag = _clean_tag[:10] if _clean_tag else "FLEET"
+
+                    # ป้ายทะเบียนไทย
+                    _plt_no, _plt_prov, _is_red = format_plate_display(_p)
+                    _plt_no_esc = _html_esc.escape(_plt_no)
+                    _plt_prov_esc = _html_esc.escape(_plt_prov)
+
+                    if _is_red:
+                        _plate_html = (
+                            '<div class="fleet-thai-plate-badge red-plate">'
+                            f'<div class="fleet-thai-plate-num">{translations[st.session_state.language].get("fleet_plate_red", "ป้ายแดง")}</div>'
+                            f'<div class="fleet-thai-plate-prov">{translations[st.session_state.language].get("fleet_plate_red_sub", "Red plate")}</div>'
+                            '</div>'
+                        )
+                    else:
+                        _plate_html = (
+                            '<div class="fleet-thai-plate-badge">'
+                            f'<div class="fleet-thai-plate-num">{_plt_no_esc}</div>'
+                            f'<div class="fleet-thai-plate-prov">{_plt_prov_esc}</div>'
+                            '</div>'
+                        )
+
+                    # สถานะรถยนต์
                     _c_st = get_car_fleet_status(_p, _c, st.session_state.bookings_db, f_avail_start, f_avail_end)
-                    _dot_col = _c_st['color']
-                    _dot_shd = _c_st['shadow']
-                    _dot_desc = _html_esc.escape(_c_st['desc'])
-                    _dot_html = f'<span class="car-status-dot" style="display:inline-block; width:9px; height:9px; min-width:9px; min-height:9px; border-radius:50%; background-color:{_dot_col}; box-shadow:0 0 6px {_dot_shd}; flex-shrink:0; vertical-align:middle; cursor:help;" title="{_dot_desc}"></span>'
-                    
-                    with _row_cols[_i]:
-                        with st.container(key=f"fleet_card_{'sel_' if _is_sel else ''}{_idx}"):
-                            st.markdown(
-                                f'<div class="fleet-card-img-box">'
-                                f'<img src="{_img}" alt="{_full_title}" loading="lazy"/>'
-                                f'</div>'
-                                f'<div class="fleet-card-title" title="{_full_title} ({_dot_desc})">'
-                                f'<span class="fleet-card-title-text">{_full_title}</span>'
-                                f'{_dot_html}'
-                                f'</div>'
-                                f'<div class="fleet-card-price-tag">฿{_p_val} <span>/ DAY</span></div>',
-                                unsafe_allow_html=True,
-                            )
-                            st.button(
-                                "HIDE DETAILS ▲" if _is_sel else "VIEW DETAILS",
-                                key=f"fleet_view_{_idx}",
-                                use_container_width=True,
-                                on_click=_fleet_toggle_detail,
-                                args=(_p,),
-                                help=f"คลิกดูรายละเอียดรถ {_p} ({_dot_desc})"
-                            )
+                    _st_code = _c_st['code']
+                    if _st_code == "available":
+                        _st_txt = "Available" if is_en_lang else "ว่างไม่มีการจอง"
+                        _st_bg, _st_bdr, _st_clr, _st_dot = "#ECFDF5", "#A7F3D0", "#065F46", "#10B981"
+                    elif _st_code == "reserved":
+                        _st_txt = "Reserved" if is_en_lang else "ติดจอง"
+                        _st_bg, _st_bdr, _st_clr, _st_dot = "#FEFCE8", "#FEF08A", "#A16207", "#F59E0B"
+                    elif _st_code == "maintenance":
+                        _st_txt = "Workshop" if is_en_lang else "ซ่อมบำรุง"
+                        _st_bg, _st_bdr, _st_clr, _st_dot = "#FFF7ED", "#FED7AA", "#9A3412", "#F97316"
+                    else:
+                        _st_txt = "On rent" if is_en_lang else "กำลังเช่า"
+                        _st_bg, _st_bdr, _st_clr, _st_dot = "#EFF6FF", "#BFDBFE", "#1E40AF", "#3B82F6"
 
-                # หากมีรถในแถวนี้ที่ถูกกด VIEW DETAILS ให้แสดงแผงรายละเอียดเต็มใต้แถวนี้ทันที
-                _sel_in_row = [(_p, _c) for _p, _c in _row_items if _p == st.session_state.get("fleet_detail_plate")]
-                for plate, c in _sel_in_row:
-                    _det_st = get_car_fleet_status(plate, c, st.session_state.bookings_db, f_avail_start, f_avail_end)
-                    status_class = "status-available" if _det_st['code'] in ["available", "reserved"] else ("status-maintenance" if _det_st['code'] == "maintenance" else "status-rented")
-                    
-                    # คันที่เปิดดูรายละเอียด ให้กาง Expander อัตโนมัติ
-                    is_target_car = True
+                    _status_pill_html = (
+                        f'<span class="fleet-pill-badge" style="background:{_st_bg}; border:1px solid {_st_bdr}; color:{_st_clr};">'
+                        f'<span class="fleet-pill-dot" style="background:{_st_dot};"></span> {_st_txt}'
+                        f'</span>'
+                    )
 
-                    
-                    # ตรวจสอบการจองที่กำลังดำเนินอยู่ของรถคันนี้ (กรณี กำลังเช่า หรือ ติดจอง)
+                    # การแจ้งเตือนเอกสาร/ประกัน (ถ้ามี)
+                    _alert_info = get_car_expiry_alert_info(_c, is_en_lang)
+                    _alert_pill_html = ""
+                    if _alert_info:
+                        _alert_pill_html = (
+                            f'<span class="fleet-pill-badge" style="background:{_alert_info["bg"]}; border:1px solid {_alert_info["border"]}; color:{_alert_info["color"]};">'
+                            f'<span class="fleet-pill-dot" style="background:{_alert_info["dot"]};"></span> {_alert_info["text"]}'
+                            f'</span>'
+                        )
+
+                    # ค้นหาการจองปัจจุบันของคันนี้
                     active_rent_bk = None
                     for b in reversed(st.session_state.bookings_db):
-                        if b.get("car_id") == plate and b.get("status") in ["กำลังเช่า", "เตรียมส่งมอบ", "รอส่งมอบ", "เตรียมรับคืน", "รอชำระมัดจำ"]:
+                        if b.get("car_id") == _p and b.get("status") in ["กำลังเช่า", "เตรียมส่งมอบ", "รอส่งมอบ", "เตรียมรับคืน", "รอชำระมัดจำ"]:
                             active_rent_bk = b
                             break
-                    if not active_rent_bk:
-                        for b in reversed(st.session_state.bookings_db):
-                            if b.get("car_id") == plate and b.get("status") not in ["เสร็จสิ้น", "ยกเลิก"]:
-                                active_rent_bk = b
-                                break
-                    if c.get('status') == "กำลังเช่า" and not active_rent_bk:
-                        active_rent_bk = {
-                            "booking_id": f"MRC-{plate[:4]}",
-                            "car_id": plate,
-                            "customer": "ลูกค้าประจำ (สัญญาเช่าปัจจุบัน)",
-                            "start_date": datetime.now().date() - timedelta(days=1),
-                            "end_date": datetime.now().date() + timedelta(days=2),
-                            "net_price": float(c.get('price_day', 1500) * 3),
-                            "deposit_amount": 5000.0,
-                            "worker_delivery": "admin",
-                            "loc_delivery": "ออฟฟิศ Sawasdee Rental"
-                        }
 
-                    with st.container(border=True):
-                        c_hdr_info, c_hdr_badge = st.columns([3.8, 1.2])
-                        with c_hdr_info:
-                            _det_dot_html = f'<span style="display:inline-block; width:9px; height:9px; border-radius:50%; background:{_det_st["color"]}; box-shadow:0 0 6px {_det_st["shadow"]}; vertical-align:middle; margin:0 4px 0 2px;" title="{_det_st["desc"]}"></span>'
-                            st.markdown(f"""
-                            <div style="line-height: 1.45;">
-                                <b style="font-size:15px; color: #1F2937;">{plate}</b> — <span style="font-weight:600;">{c['brand']} {c['model']}</span> {_det_dot_html}<span style="font-size:12px; font-weight:700; color:{_det_st['color']};">({_det_st['desc']})</span> 
-                                <span style="color:#666; font-size:12px;">({c['car_group']} | {c['engine_cc']}cc)</span><br/>
-                                <span style="font-size:12px; color:#8C827A;">รายวัน: ฿{c['price_day']:,} | รายสัปดาห์: ฿{c['price_week']:,} | รายเดือน: ฿{c['price_month']:,}</span>
-                            </div>
-                            """, unsafe_allow_html=True)
-                        
-                        with c_hdr_badge:
-                            if c['status'] == "กำลังเช่า" and active_rent_bk:
-                                cust_rent_info = st.session_state.customers_db.get(active_rent_bk.get('customer'), {})
-                                with st.popover("🟠 กำลังเช่า ℹ️", use_container_width=True, key=f"pop_rent_{plate}", help="คลิกดูรายละเอียดการเช่า วันรับ-ส่ง และโหลดสัญญาเช่า / ลิสต์ส่งรถ"):
-                                    st.markdown(f"""
-                                        <div style="padding-bottom: 6px;">
-                                            <div style="display:flex; justify-content:space-between; align-items:center;">
-                                                 <span style="font-size:14px; font-weight:800; color:#9A3412;">📋 รายละเอียดการเช่ารถยนต์</span>
-                                                <span style="background:#FFF7ED; color:#EA580C; border:1px solid #FDBA74; padding:2px 8px; border-radius:12px; font-size:11px; font-weight:700;">กำลังเช่า</span>
-                                            </div>
-                                            <div style="font-size:12px; color:#6B7280; margin-top:2px;">รหัสการจอง: <b>{active_rent_bk['booking_id']}</b></div>
-                                        </div>
-                                    """, unsafe_allow_html=True)
-                                    
-                                    st.markdown(f"""
-                                        <div style="background:#FFF7ED; border:1px solid #FED7AA; border-radius:8px; padding:10px 12px; margin-bottom:12px; font-size:13px; line-height:1.65;">
-                                            👤 <b>ชื่อลูกค้า:</b> <span style="color:#1F2937; font-weight:700;">{active_rent_bk.get('customer', '-')}</span><br/>
-                                            📞 <b>เบอร์ติดต่อ:</b> {cust_rent_info.get('phone', '-')}<br/>
-                                            📅 <b>วันรับรถ (เริ่มเช่า):</b> <b style="color:#059669;">{format_date_dmy(active_rent_bk.get('start_date'))}</b><br/>
-                                            📅 <b>วันส่ง/คืนรถ (สิ้นสุด):</b> <b style="color:#DC2626;">{format_date_dmy(active_rent_bk.get('end_date'))}</b><br/>
-                                            📍 <b>สถานที่ส่งมอบ:</b> {active_rent_bk.get('loc_delivery', '-')}<br/>
-                                            👷 <b>พนักงานส่งมอบ:</b> {active_rent_bk.get('worker_delivery', '-')}
-                                        </div>
-                                    """, unsafe_allow_html=True)
-                                    
-                                    # 1. สัญญาเช่า PDF
-                                    pdf_contract_b = generate_filled_pdf("rental_template_blank_v2.pdf", active_rent_bk, cust_rent_info, c)
-                                    st.download_button(
-                                        label="📝 สัญญาเช่า (Agreement)",
-                                        data=pdf_contract_b,
-                                        file_name=f"Agreement_{active_rent_bk['booking_id']}.pdf",
-                                        mime="application/pdf",
-                                        use_container_width=True,
-                                        key=f"dl_agr_pop_{plate}"
-                                    )
-                                    
-                                    # 2. ลิสต์ตอนส่งรถ PDF
-                                    pdf_dispatch_b = generate_job_pdf(
-                                        booking_info=active_rent_bk,
-                                        customer_info=cust_rent_info,
-                                        car_info=c,
-                                        job_type="Dispatch",
-                                        worker=active_rent_bk.get('worker_delivery'),
-                                        loc=active_rent_bk.get('loc_delivery')
-                                    )
-                                    st.download_button(
-                                        label="📋 ใบสั่งงาน (Work Order)",
-                                        data=pdf_dispatch_b,
-                                        file_name=f"Inspection_Checklist_Dispatch_{active_rent_bk['booking_id']}.pdf",
-                                        mime="application/pdf",
-                                        use_container_width=True,
-                                        key=f"dl_job_pop_{plate}"
-                                    )
-                                    
-                                    with st.expander("🔍 ดูรายการเช็กลิสต์ตรวจสภาพตอนส่งรถ", expanded=False):
-                                        st.markdown("""
-                                        - ⛽ **ระดับน้ำมันเชื้อเพลิง:** เต็มถัง (Full - 8/8) [100%]
-                                        - 🚗 **สภาพตัวถัง & สีรอบคัน:** ปกติ ตรวจสอบรอบคันเรียบร้อย
-                                        - 🛞 **สภาพยาง & ลมยาง:** ยางพร้อมใช้งาน ลมยางมาตรฐาน 4 ล้อ
-                                        - 🛠️ **อุปกรณ์ประจำรถ:** ยางอะไหล่, แม่แรง, เครื่องมือฉุกเฉิน ครบถ้วน
-                                        - 📄 **เอกสารประจำรถ:** สำเนาทะเบียนรถ, พ.ร.บ., ประกันภัย ครบถ้วน
-                                        """)
-                            else:
-                                _st_badge_bg = {"available": "#F0FDF4", "reserved": "#FEFCE8", "unavailable": "#FEF2F2", "maintenance": "#FFF7ED"}.get(_det_st['code'], "#F3F4F6")
-                                _st_badge_bdr = {"available": "#BBF7D0", "reserved": "#FEF08A", "unavailable": "#FECACA", "maintenance": "#FED7AA"}.get(_det_st['code'], "#E5E7EB")
-                                _st_badge_clr = {"available": "#15803D", "reserved": "#A16207", "unavailable": "#B91C1C", "maintenance": "#C2410C"}.get(_det_st['code'], "#4B5563")
-                                st.markdown(f'<div style="text-align:right;"><span style="background:{_st_badge_bg}; border:1px solid {_st_badge_bdr}; color:{_st_badge_clr}; padding:4px 10px; border-radius:12px; font-size:11.5px; font-weight:700; display:inline-flex; align-items:center; gap:5px;"><span style="display:inline-block; width:7px; height:7px; border-radius:50%; background:{_det_st["color"]};"></span>{_det_st["label"]}</span></div>', unsafe_allow_html=True)
+                    with _row_cols[_i]:
+                        with st.container(border=True):
+                            # --- MISSION 1: หน้าการ์ด (CARD FRONT) ---
+                            st.markdown(
+                                f'<div class="fleet-card-header-row">'
+                                f'<div class="fleet-card-code-col">'
+                                f'<div class="fleet-card-code-val">{_car_code}</div>'
+                                f'<div class="fleet-card-code-tag">{_cat_tag}</div>'
+                                f'</div>'
+                                f'{_plate_html}'
+                                f'</div>'
+                                f'<div class="fleet-card-model-text">{_full_title}</div>'
+                                f'<div class="fleet-card-specs-text">{_specs_sub}</div>'
+                                f'<div class="fleet-card-pills-wrap">'
+                                f'{_status_pill_html}'
+                                f'{_alert_pill_html}'
+                                f'</div>',
+                                unsafe_allow_html=True
+                            )
 
-                        with st.expander("🔍 ดูรายละเอียดรถเพิ่มเติม / รูปภาพ", expanded=is_target_car):
-                            if c['status'] == "กำลังเช่า" and active_rent_bk:
-                                cust_exp_info = st.session_state.customers_db.get(active_rent_bk.get('customer'), {})
-                                st.markdown(f"""
-                                    <div style="background: linear-gradient(135deg, #FFF7ED 0%, #FFFBEB 100%); border: 1.5px solid #FDBA74; border-radius: 10px; padding: 14px 18px; margin-bottom: 14px;">
-                                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-                                            <div>
-                                                <h4 style="margin:0; font-size:15px; font-weight:800; color:#9A3412;">
-                                                    <span>📋</span> รายละเอียดการเช่าปัจจุบัน (Active Rental Details)
-                                                </h4>
-                                                <div style="font-size:12px; color:#C2410C; margin-top:3px;">
-                                                    รหัสการจอง: <b>{active_rent_bk['booking_id']}</b> | ลูกค้า: <b>{active_rent_bk['customer']}</b> ({cust_exp_info.get('phone', '-')})
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <span style="background:#EA580C; color:white; padding:3px 10px; border-radius:12px; font-size:11px; font-weight:700;">กำลังเช่า</span>
-                                            </div>
-                                        </div>
-                                        <div style="margin-top:10px; display:grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap:8px; font-size:13px; color:#4B5563;">
-                                            <div>📅 <b>วันรับรถ (เริ่ม):</b> <b style="color:#059669;">{format_date_dmy(active_rent_bk['start_date'])}</b></div>
-                                            <div>📅 <b>วันส่ง/คืนรถ (สิ้นสุด):</b> <b style="color:#DC2626;">{format_date_dmy(active_rent_bk['end_date'])}</b></div>
-                                            <div>📍 <b>สถานที่:</b> {active_rent_bk.get('loc_delivery', '-')}</div>
-                                            <div>👷 <b>ผู้ส่งมอบ:</b> {active_rent_bk.get('worker_delivery', '-')}</div>
-                                        </div>
-                                    </div>
-                                """, unsafe_allow_html=True)
-                                
-                                c_exp_dl1, c_exp_dl2 = st.columns(2)
-                                with c_exp_dl1:
-                                    pdf_contract_exp = generate_filled_pdf("rental_template_blank_v2.pdf", active_rent_bk, cust_exp_info, c)
-                                    st.download_button(
-                                        label="📝 สัญญาเช่า (Agreement)",
-                                        data=pdf_contract_exp,
-                                        file_name=f"Agreement_{active_rent_bk['booking_id']}.pdf",
-                                        mime="application/pdf",
-                                        use_container_width=True,
-                                        key=f"dl_agr_exp_{plate}"
-                                    )
-                                with c_exp_dl2:
-                                    pdf_dispatch_exp = generate_job_pdf(
-                                        booking_info=active_rent_bk,
-                                        customer_info=cust_exp_info,
-                                        car_info=c,
-                                        job_type="Dispatch",
-                                        worker=active_rent_bk.get('worker_delivery'),
-                                        loc=active_rent_bk.get('loc_delivery')
-                                    )
-                                    st.download_button(
-                                        label="📋 ใบสั่งงาน (Work Order)",
-                                        data=pdf_dispatch_exp,
-                                        file_name=f"Inspection_Checklist_Dispatch_{active_rent_bk['booking_id']}.pdf",
-                                        mime="application/pdf",
-                                        use_container_width=True,
-                                        key=f"dl_job_exp_{plate}"
-                                    )
-                                st.markdown("<hr style='margin:10px 0 16px; border:0.5px solid #F3EDE4;'>", unsafe_allow_html=True)
-                            
-                            # หากมีรายการจองล่วงหน้าของคันนี้ ให้แสดงตารางคิวจอง
-                            _car_upcoming_bks = [
-                                _ub for _ub in st.session_state.bookings_db
-                                if _ub.get('car_id') == plate and _ub.get('status') not in ['เสร็จสิ้น', 'ยกเลิก']
-                            ]
-                            if _car_upcoming_bks and c.get('status') != "กำลังเช่า":
-                                _bk_rows_html = "".join([
-                                    f"<div style='margin-bottom:4px;'>📌 รหัสการจอง: <b>{_ubk.get('booking_id')}</b> ({_ubk.get('customer', '-')}) | 📅 <b style='color:#059669;'>{format_date_dmy(_ubk.get('start_date'))}</b> ถึง <b style='color:#DC2626;'>{format_date_dmy(_ubk.get('end_date'))}</b> &nbsp;<span style='font-size:11px; background:#FEF3C7; color:#92400E; padding:1px 6px; border-radius:8px; font-weight:600;'>{_ubk.get('status')}</span></div>"
-                                    for _ubk in _car_upcoming_bks
-                                ])
-                                st.markdown(f"""
-                                    <div style="background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; font-size: 12.5px; color: #92400E;">
-                                        <div style="font-weight:700; margin-bottom:6px;">📅 คิวการจองของรถคันนี้ ({len(_car_upcoming_bks)} รายการ):</div>
-                                        {_bk_rows_html}
-                                    </div>
-                                """, unsafe_allow_html=True)
-                                st.markdown("<hr style='margin:10px 0 16px; border:0.5px solid #F3EDE4;'>", unsafe_allow_html=True)
-
-                            det_c1, det_c2 = st.columns([1, 2])
-                            with det_c1:
-                                st.image(c.get('image', 'https://via.placeholder.com/500x300.png?text=No+Image'), use_container_width=True)
+                            # --- MISSION 2: ซ่อนรูปภาพและข้อมูลเชิงลึกใน EXPANDER (100% DATASET RETENTION) ---
+                            with st.expander(exp_open_lbl, expanded=False):
+                                # 1. รูปภาพรถยนต์ และปุ่มอัพเดทรูป
+                                st.image(_img, use_container_width=True)
                                 with st.popover("📸 อัพเดทรูปสภาพรถคันนี้", use_container_width=True):
-                                    st.markdown(f"**อัพเดทรูปรถปัจจุบัน ({plate})**")
-                                    t2_up = st.file_uploader("เลือกไฟล์รูปภาพ:", type=["jpg", "jpeg", "png", "webp"], key=f"t2_upload_{plate}")
+                                    st.markdown(f"**อัพเดทรูปรถปัจจุบัน ({_p})**")
+                                    t2_up = st.file_uploader("เลือกไฟล์รูปภาพ:", type=["jpg", "jpeg", "png", "webp"], key=f"t2_up_{_p}")
                                     if t2_up is not None:
                                         st.image(t2_up, caption="ตัวอย่างรูปใหม่", use_container_width=True)
-                                        if st.button("💾 บันทึกรูปภาพนี้", key=f"t2_save_{plate}", type="primary"):
+                                        if st.button("💾 บันทึกรูปภาพนี้", key=f"t2_save_{_p}", type="primary"):
                                             t2_bytes = t2_up.getvalue() if hasattr(t2_up, "getvalue") else t2_up.read()
                                             t2_mime = t2_up.type or "image/jpeg"
                                             t2_b64 = base64.b64encode(t2_bytes).decode()
                                             t2_uri = f"data:{t2_mime};base64,{t2_b64}"
-                                            safe_pl = re.sub(r'[^a-zA-Z0-9_\.-]', '_', plate)
+                                            safe_pl = re.sub(r'[^a-zA-Z0-9_\.-]', '_', _p)
                                             ext = t2_up.name.split('.')[-1] if '.' in t2_up.name else 'jpg'
                                             pub_url = sb_upload_photo(f"car_{safe_pl}_{int(time.time())}.{ext}", t2_bytes, t2_mime)
                                             final_img = pub_url if pub_url else t2_uri
-                                            st.session_state.cars_db[plate]["image"] = final_img
-                                            cars_db[plate]["image"] = final_img
-                                            sb_sync_car(plate, cars_db[plate])
-                                            st.success(f"✅ บันทึกรูปภาพใหม่ของ {plate} สำเร็จ!")
+                                            st.session_state.cars_db[_p]["image"] = final_img
+                                            cars_db[_p]["image"] = final_img
+                                            sb_sync_car(_p, cars_db[_p])
+                                            st.success(f"✅ บันทึกรูปภาพใหม่ของ {_p} สำเร็จ!")
                                             time.sleep(0.8)
                                             st.rerun()
-                            with det_c2:
+
+                                # ข้อมูลการเช่าปัจจุบัน (ถ้ามี)
+                                if _c.get('status') == "กำลังเช่า" and active_rent_bk:
+                                    cust_exp_info = st.session_state.customers_db.get(active_rent_bk.get('customer'), {})
+                                    st.markdown(f"""
+                                        <div style="background:#FFF7ED; border:1.5px solid #FDBA74; border-radius:8px; padding:10px 12px; margin:8px 0; font-size:12px; line-height:1.6;">
+                                            <b style="color:#9A3412;">📋 ข้อมูลการเช่าปัจจุบัน (Active Rental):</b><br/>
+                                            👤 <b>ลูกค้า:</b> {active_rent_bk.get('customer', '-')} ({cust_exp_info.get('phone', '-')})<br/>
+                                            📅 <b>ระยะเวลา:</b> {format_date_dmy(active_rent_bk.get('start_date'))} ถึง {format_date_dmy(active_rent_bk.get('end_date'))}<br/>
+                                            📍 <b>สถานที่:</b> {active_rent_bk.get('loc_delivery', '-')}<br/>
+                                            👷 <b>พนักงาน:</b> {active_rent_bk.get('worker_delivery', '-')}
+                                        </div>
+                                    """, unsafe_allow_html=True)
+                                    
+                                    c_dl1, c_dl2 = st.columns(2)
+                                    with c_dl1:
+                                        pdf_c_b = generate_filled_pdf("rental_template_blank_v2.pdf", active_rent_bk, cust_exp_info, _c)
+                                        st.download_button("📝 สัญญาเช่า", data=pdf_c_b, file_name=f"Agreement_{active_rent_bk.get('booking_id')}.pdf", mime="application/pdf", use_container_width=True, key=f"dl_agr_grid_{_p}")
+                                    with c_dl2:
+                                        pdf_d_b = generate_job_pdf(active_rent_bk, cust_exp_info, _c, "Dispatch", active_rent_bk.get('worker_delivery'), active_rent_bk.get('loc_delivery'))
+                                        st.download_button("📋 ใบสั่งงาน", data=pdf_d_b, file_name=f"WorkOrder_{active_rent_bk.get('booking_id')}.pdf", mime="application/pdf", use_container_width=True, key=f"dl_wo_grid_{_p}")
+
+                                # 2. ข้อมูลกรมธรรม์ประกันภัย
+                                st.markdown(f"**{translations[st.session_state.language].get('fleet_exp_ins_title', '🛡️ ข้อมูลกรมธรรม์ประกันภัย')}**")
                                 st.markdown(f"""
-                                - **ยี่ห้อ / รุ่น:** {c.get('brand', '-')} {c.get('model', '-')}
-                                - **ทะเบียน:** {plate}
-                                - **สี (Color):** {c.get('color', '-')}
-                                - **ประเภทรถ:** {c.get('car_group', '-')}
-                                - **ปีจดทะเบียน:** {c.get('reg_year', '-')}
-                                - **เลขเครื่องยนต์:** {c.get('engine_no', '-')}
-                                - **เลขตัวถัง (VIN):** {c.get('chassis_no', '-')}
-                                - **เลขไมล์สะสม:** {c.get('mileage', '-')} km
-                                - **เจ้าของกรรมสิทธิ์:** {c.get('owner', c.get('company', '-'))}
-                                - **ผู้ดูแล:** {c.get('manager', '-')}
-                                - **สัญญาลิสซิ่ง:** {c.get('leasing_contract', c.get('hp_contract_no', '-'))}
-                                - **จำนวนงวดลิสซิ่ง:** {c.get('leasing_total_installments', '-')} งวด
-                                - **งวดปัจจุบันลิสซิ่ง:** {c.get('leasing_current_installment', '-')}
-                                - **วันที่ชำระล่าสุดลิสซิ่ง:** {c.get('leasing_last_payment_date', '-')}
-                                - **ค่างวดลิสซิ่ง:** {c.get('leasing_installment_amount', c.get('hp_installment', '-'))} บาท
-                                - **ยี่ห้อประกันภัย:** {c.get('insurance_brand', c.get('ins_company', '-'))}
-                                - **ราคาประกันภัย:** {c.get('insurance_premium', '-')} บาท
-                                - **ทุนประกันภัย:** {c.get('insurance_coverage', '-')} บาท
-                                - **ประกันภัยวันที่เริ่ม:** {c.get('ins_start_date', '-')}
-                                - **ประกันภัยวันที่สิ้นสุด:** {c.get('ins_expiry', '-')}
-                                - **ปีภาษี:** {c.get('tax_year', '-')}
-                                - **ภาษีวันที่เริ่ม:** {c.get('tax_start_date', '-')}
-                                - **ภาษีวันที่สิ้นสุด:** {c.get('tax_expiry', '-')}
-                                - **ยี่ห้อ พ.ร.บ.:** {c.get('act_brand', '-')}
-                                - **พ.ร.บ. ราคา:** {c.get('act_price', '-')} บาท
-                                - **พ.ร.บ. วันที่เริ่ม:** {c.get('act_start_date', '-')}
-                                - **พ.ร.บ. วันที่สิ้นสุด:** {c.get('act_expiry', '-')}
-                                - **ซ่อมบำรุง:** {c.get('maintenance_detail', '-')}
-                                - **วันที่ซ่อมบำรุง:** {c.get('maintenance_date', c.get('last_service_date', '-'))}
+                                - **ยี่ห้อ/บริษัทประกัน:** {_c.get('insurance_brand') or _c.get('ins_company', '-')}
+                                - **เบี้ยประกันภัย:** {_c.get('insurance_premium', '-')} บาท
+                                - **ทุนประกันภัย:** {_c.get('insurance_coverage', '-')} บาท
+                                - **วันเริ่มคุ้มครอง:** {_c.get('ins_start_date', '-')}
+                                - **วันหมดอายุประกัน:** <b style="color:#DC2626;">{_c.get('ins_expiry', '-')}</b>
                                 """)
-                                # --- ปุ่มจองรถ & ชำระเงินจอง และ ปุ่มแก้ไขข้อมูลรถยนต์ ---
-                                act_c1, act_c2 = st.columns([1.5, 1])
+
+                                # 3. ข้อมูล พ.ร.บ. และภาษี
+                                st.markdown(f"**{translations[st.session_state.language].get('fleet_exp_act_tax_title', '📄 ข้อมูล พ.ร.บ. และภาษี')}**")
+                                st.markdown(f"""
+                                - **ยี่ห้อ พ.ร.บ.:** {_c.get('act_brand', '-')} | **ราคา:** {_c.get('act_price', '-')} บาท
+                                - **วันเริ่ม พ.ร.บ.:** {_c.get('act_start_date', '-')} | **วันหมดอายุ พ.ร.บ.:** <b style="color:#DC2626;">{_c.get('act_expiry', '-')}</b>
+                                - **ปีภาษี:** {_c.get('tax_year', '-')} | **วันเริ่มภาษี:** {_c.get('tax_start_date', '-')}
+                                - **วันหมดอายุภาษี:** <b style="color:#DC2626;">{_c.get('tax_expiry', '-')}</b>
+                                """)
+
+                                # 4. ข้อมูลสัญญาเช่าซื้อ / ลิสซิ่ง (HP / Leasing)
+                                st.markdown(f"**{translations[st.session_state.language].get('fleet_exp_hp_title', '💳 ข้อมูลสัญญาเช่าซื้อ / ลิสซิ่ง (HP / Leasing)')}**")
+                                st.markdown(f"""
+                                - **เลขที่สัญญา:** {_c.get('leasing_contract') or _c.get('hp_contract_no', '-')}
+                                - **ค่างวดต่อเดือน:** {_c.get('leasing_installment_amount') or _c.get('hp_installment', '-')} บาท
+                                - **จำนวนงวด:** {_c.get('leasing_total_installments', '-')} งวด | **งวดปัจจุบัน:** {_c.get('leasing_current_installment', '-')}
+                                - **วันที่ชำระล่าสุด:** {_c.get('leasing_last_payment_date', '-')}
+                                """)
+
+                                # 5. ข้อมูลตัวรถเชิงลึก
+                                st.markdown(f"**{translations[st.session_state.language].get('fleet_exp_spec_title', '🚘 ข้อมูลตัวรถเชิงลึก')}**")
+                                st.markdown(f"""
+                                - **เลขไมล์สะสม:** {_c.get('mileage', '0')} km
+                                - **เลขเครื่องยนต์:** {_c.get('engine_no', '-')}
+                                - **เลขตัวถัง (VIN):** {_c.get('chassis_no', '-')}
+                                - **ขนาดเครื่องยนต์:** {_c.get('engine_cc', '-')} cc | **ระบบเชื้อเพลิง:** {_c.get('fuel_type', '-')}
+                                - **สีตัวถัง:** {_c.get('color', '-')} | **ประเภทรถ:** {_c.get('car_group', '-')}
+                                - **เจ้าของกรรมสิทธิ์:** {_c.get('company') or _c.get('owner', '-')}
+                                - **ผู้ดูแล:** {_c.get('manager', '-')}
+                                """)
+
+                                # 6. อัตราค่าเช่าที่ตั้งไว้
+                                st.markdown(f"**{translations[st.session_state.language].get('fleet_exp_rates_title', '💰 อัตราค่าเช่าที่ตั้งไว้')}**")
+                                st.markdown(f"""
+                                - **รายวัน:** ฿{int(float(_c.get('price_day', 0) or 0)):,}
+                                - **รายสัปดาห์:** ฿{int(float(_c.get('price_week', 0) or 0)):,}
+                                - **รายเดือน:** ฿{int(float(_c.get('price_month', 0) or 0)):,}
+                                """)
+
+                                # 7. ปุ่ม Action ต่างๆ
+                                st.markdown("<hr style='margin:8px 0; border:0.5px solid #EFEAE3;'>", unsafe_allow_html=True)
+                                act_c1, act_c2 = st.columns([1.4, 1.0])
                                 with act_c1:
-                                    if c['status'] != "ซ่อมบำรุง":
-                                        btn_label = f"✅ สร้างสัญญาเช่า (Create Agreement) ({plate})" if c['status'] == "ว่างพร้อมใช้งาน" else f"📅 จองล่วงหน้า (Advance Booking) ({plate})"
-                                        if st.button(btn_label, key=f"sel_det_{plate}", type="primary", use_container_width=True):
-                                            st.session_state.draft_car = plate
+                                    if _c.get('status') != "ซ่อมบำรุง":
+                                        book_btn_lbl = f"✅ สร้างสัญญาเช่า ({_p})" if _c.get('status') == "ว่างพร้อมใช้งาน" else f"📅 จองล่วงหน้า ({_p})"
+                                        if st.button(book_btn_lbl, key=f"grid_bk_{_p}", type="primary", use_container_width=True):
+                                            st.session_state.draft_car = _p
                                             if f_avail_start:
                                                 st.session_state.draft_start_date = f_avail_start
-                                                calc_end = f_avail_end if (f_avail_end and f_avail_end >= f_avail_start) else (f_avail_start + timedelta(days=3))
-                                                st.session_state.draft_end_date = calc_end
+                                                st.session_state.draft_end_date = f_avail_end if (f_avail_end and f_avail_end >= f_avail_start) else (f_avail_start + timedelta(days=3))
                                             elif not st.session_state.get("draft_start_date"):
                                                 st.session_state.draft_start_date = datetime.now().date()
                                                 st.session_state.draft_end_date = datetime.now().date() + timedelta(days=3)
-                                            
-                                            # ถ่ายทอดวันที่เข้าสู่ Widget State ของหน้าชำระเงินจองทันที เพื่อไม่ต้องเลือกซ้ำ
                                             st.session_state["c_start_date_tab3"] = st.session_state.draft_start_date
                                             st.session_state["c_end_date_tab3"] = st.session_state.draft_end_date
-                                            st.session_state["_last_synced_draft_start"] = st.session_state.draft_start_date
-                                            st.session_state["_last_synced_draft_end"] = st.session_state.draft_end_date
-                                            st.session_state.active_deposit_bk_id = None
                                             st.session_state.workflow_tab = "2. ชำระเงินจอง & การเงิน"
                                             st.rerun()
                                     else:
-                                        st.button(f"⚠️ อยู่ระหว่างซ่อมบำรุง ({plate})", disabled=True, use_container_width=True, key=f"dis_rep_{plate}")
-                                
+                                        st.button(f"⚠️ ซ่อมบำรุงอยู่ ({_p})", disabled=True, use_container_width=True, key=f"grid_dis_{_p}")
+
                                 with act_c2:
-                                    with st.popover("✏️ แก้ไขข้อมูลรถ", use_container_width=True):
-                                        st.markdown(f"<div style='font-weight:700; color:#E85826; font-size:14px; margin-bottom:8px;'>✏️ แก้ไขข้อมูลรถยนต์ ({plate})</div>", unsafe_allow_html=True)
-                                        
+                                    with st.popover("✏️ แก้ไขข้อมูล", use_container_width=True):
+                                        st.markdown(f"<div style='font-weight:700; color:#E85826; font-size:13px; margin-bottom:6px;'>✏️ แก้ไขข้อมูลรถยนต์ ({_p})</div>", unsafe_allow_html=True)
                                         b_opts = ["Toyota", "Honda", "GWM", "BYD", "Mercedes-Benz", "BMW", "Isuzu", "Ford", "Nissan", "Mazda", "MG", "Tesla", "Hyundai", "อื่นๆ"]
-                                        c_b = c.get('brand', 'Toyota')
+                                        c_b = _c.get('brand', 'Toyota')
                                         if c_b not in b_opts: b_opts.append(c_b)
-                                        
                                         grp_opts = ["รถเก๋ง (Sedan/Hatchback)", "SUV", "รถตู้ (Van)", "รถกระบะ", "รถสปอร์ต/หรูหรา"]
-                                        c_grp = c.get('car_group', grp_opts[0])
+                                        c_grp = _c.get('car_group', grp_opts[0])
                                         if c_grp not in grp_opts: grp_opts.append(c_grp)
-                                        
                                         fuel_opts = ["เบนซิน", "ดีเซล", "เบนซิน/Hybrid", "ดีเซล/Hybrid", "ไฟฟ้า (EV)"]
-                                        c_fuel = c.get('fuel_type', 'เบนซิน')
+                                        c_fuel = _c.get('fuel_type', 'เบนซิน')
                                         if c_fuel not in fuel_opts: fuel_opts.append(c_fuel)
-                                        
                                         comp_opts = ["Sawasdee Rent A Car", "P.D.P. Co., Ltd.", "Sawasdee Car Rent"]
-                                        c_comp = c.get('company', comp_opts[0])
+                                        c_comp = _c.get('company', comp_opts[0])
                                         if c_comp not in comp_opts: comp_opts.append(c_comp)
-                                        
                                         st_opts = ["ว่างพร้อมใช้งาน", "ซ่อมบำรุง", "เตรียมส่งมอบ", "กำลังเช่า"]
-                                        c_st = c.get('status', 'ว่างพร้อมใช้งาน')
-                                        if c_st not in st_opts: st_opts.append(c_st)
-                                        
-                                        with st.form(key=f"form_edit_car_{plate}", border=False):
-                                            e_brand = st.selectbox("ยี่ห้อ (Brand)*", b_opts, index=b_opts.index(c_b), key=f"eb_{plate}")
-                                            e_model = st.text_input("รุ่น (Model)*", value=c.get('model', ''), key=f"em_{plate}").strip()
-                                            e_color = st.text_input("สีตัวถัง (Color)", value=c.get('color', ''), key=f"ec_{plate}").strip()
-                                            e_group = st.selectbox("กลุ่มรถ (Car Group)*", grp_opts, index=grp_opts.index(c_grp), key=f"eg_{plate}")
-                                            e_cc = st.text_input("ขนาดเครื่องยนต์ (CC / EV)", value=str(c.get('engine_cc', '1500')), key=f"ecc_{plate}").strip()
-                                            e_fuel = st.selectbox("ระบบเชื้อเพลิง*", fuel_opts, index=fuel_opts.index(c_fuel), key=f"ef_{plate}")
-                                            e_comp = st.selectbox("เจ้าของกรรมสิทธิ์*", comp_opts, index=comp_opts.index(c_comp), key=f"ecp_{plate}")
-                                            e_vin = st.text_input("เลขตัวถัง (VIN)", value=c.get('chassis_no', '-'), key=f"evin_{plate}").strip()
-                                            e_mileage = st.text_input("เลขไมล์สะสม (km)", value=str(c.get('mileage', '0')), key=f"emil_{plate}").strip()
-                                            
-                                            st.markdown("<b style='font-size:12px; color:#374151;'>💰 อัตราค่าเช่า (บาท):</b>", unsafe_allow_html=True)
-                                            ep_c1, ep_c2, ep_c3 = st.columns(3)
-                                            with ep_c1:
-                                                e_pday = st.number_input("รายวัน", min_value=0, value=int(c.get('price_day', 0)), step=100, key=f"epd_{plate}")
-                                            with ep_c2:
-                                                e_pweek = st.number_input("รายสัปดาห์", min_value=0, value=int(c.get('price_week', 0)), step=500, key=f"epw_{plate}")
-                                            with ep_c3:
-                                                e_pmonth = st.number_input("รายเดือน", min_value=0, value=int(c.get('price_month', 0)), step=1000, key=f"epm_{plate}")
-                                                
-                                            ed_c1, ed_c2 = st.columns(2)
-                                            with ed_c1:
-                                                e_act = st.date_input("📅 วันหมดอายุ พ.ร.บ.", value=parse_date_dmy(c.get('act_expiry'), date.today()), format="DD/MM/YYYY", key=f"eact_{plate}")
-                                            with ed_c2:
-                                                e_ins = st.date_input("📅 วันหมดอายุ ประกันภัย", value=parse_date_dmy(c.get('ins_expiry'), date.today()), format="DD/MM/YYYY", key=f"eins_{plate}")
-                                                
-                                            e_status = st.selectbox("สถานะรถยนต์*", st_opts, index=st_opts.index(c_st), key=f"est_{plate}")
-                                            
-                                            st.markdown("<div style='height:8px;'></div>", unsafe_allow_html=True)
-                                            save_edit_sub = st.form_submit_button("💾 บันทึกการแก้ไขข้อมูลรถ", type="primary", use_container_width=True)
-                                            
+                                        c_st_val = _c.get('status', 'ว่างพร้อมใช้งาน')
+                                        if c_st_val not in st_opts: st_opts.append(c_st_val)
+
+                                        with st.form(key=f"form_edit_grid_{_p}", border=False):
+                                            e_brand = st.selectbox("ยี่ห้อ (Brand)*", b_opts, index=b_opts.index(c_b), key=f"geb_{_p}")
+                                            e_model = st.text_input("รุ่น (Model)*", value=_c.get('model', ''), key=f"gem_{_p}").strip()
+                                            e_color = st.text_input("สีตัวถัง (Color)", value=_c.get('color', ''), key=f"gec_{_p}").strip()
+                                            e_group = st.selectbox("กลุ่มรถ (Car Group)*", grp_opts, index=grp_opts.index(c_grp), key=f"geg_{_p}")
+                                            e_cc = st.text_input("ขนาดเครื่องยนต์ (CC / EV)", value=str(_c.get('engine_cc', '1500')), key=f"gecc_{_p}").strip()
+                                            e_fuel = st.selectbox("ระบบเชื้อเพลิง*", fuel_opts, index=fuel_opts.index(c_fuel), key=f"gef_{_p}")
+                                            e_comp = st.selectbox("เจ้าของกรรมสิทธิ์*", comp_opts, index=comp_opts.index(c_comp), key=f"gecp_{_p}")
+                                            e_vin = st.text_input("เลขตัวถัง (VIN)", value=_c.get('chassis_no', '-'), key=f"gevin_{_p}").strip()
+                                            e_mileage = st.text_input("เลขไมล์สะสม (km)", value=str(_c.get('mileage', '0')), key=f"gemil_{_p}").strip()
+                                            e_pday = st.number_input("รายวัน", min_value=0, value=int(_c.get('price_day', 0)), step=100, key=f"gepd_{_p}")
+                                            e_pweek = st.number_input("รายสัปดาห์", min_value=0, value=int(_c.get('price_week', 0)), step=500, key=f"gepw_{_p}")
+                                            e_pmonth = st.number_input("รายเดือน", min_value=0, value=int(_c.get('price_month', 0)), step=1000, key=f"gepm_{_p}")
+                                            e_act = st.date_input("📅 วันหมดอายุ พ.ร.บ.", value=parse_date_dmy(_c.get('act_expiry'), date.today()), format="DD/MM/YYYY", key=f"geact_{_p}")
+                                            e_ins = st.date_input("📅 วันหมดอายุ ประกันภัย", value=parse_date_dmy(_c.get('ins_expiry'), date.today()), format="DD/MM/YYYY", key=f"geins_{_p}")
+                                            e_status = st.selectbox("สถานะรถยนต์*", st_opts, index=st_opts.index(c_st_val), key=f"gest_{_p}")
+                                            save_edit_sub = st.form_submit_button("💾 บันทึกการแก้ไข", type="primary", use_container_width=True)
+
                                         if save_edit_sub:
                                             if not e_model:
                                                 st.error("⚠️ กรุณาระบุรุ่นรถยนต์")
                                             else:
-                                                up_car = dict(c)
+                                                up_car = dict(_c)
                                                 up_car["brand"] = e_brand
                                                 up_car["model"] = e_model
                                                 up_car["color"] = e_color or "-"
@@ -4640,15 +4635,14 @@ else:
                                                 up_car["ins_expiry"] = e_ins.strftime("%d/%m/%Y") if isinstance(e_ins, (date, datetime)) else str(e_ins or "-")
                                                 up_car["status"] = e_status
                                                 
-                                                st.session_state.cars_db[plate] = up_car
-                                                cars_db[plate] = up_car
+                                                st.session_state.cars_db[_p] = up_car
+                                                cars_db[_p] = up_car
                                                 if "_GLOBAL_STORE" in globals() and "cars_db" in _GLOBAL_STORE and _GLOBAL_STORE["cars_db"]:
-                                                    _GLOBAL_STORE["cars_db"][plate] = up_car
-                                                sb_sync_car(plate, up_car)
-                                                st.success(f"✅ บันทึกข้อมูลรถยนต์ทะเบียน '{plate}' เรียบร้อยแล้ว!")
+                                                    _GLOBAL_STORE["cars_db"][_p] = up_car
+                                                sb_sync_car(_p, up_car)
+                                                st.success(f"✅ บันทึกข้อมูลรถยนต์ทะเบียน '{_p}' เรียบร้อยแล้ว!")
                                                 time.sleep(0.8)
                                                 st.rerun()
-
 
             if matched_count == 0:
                 st.info("ℹ️ ไม่พบรถยนต์ที่ตรงตามเงื่อนไขตัวกรอง กรุณากดปุ่มด้านล่างเพื่อล้างตัวกรองและแสดงรถทุกคันอีกครั้ง")
