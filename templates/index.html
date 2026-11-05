@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sawasdee Rental - เธฃเธฐเธเธเธเธฃเธดเธซเธฒเธฃเธเธฑเธ”เธเธฒเธฃเธฃเธ–เน€เธเนเธฒเธฃเธฐเธ”เธฑเธเธเธฃเธตเน€เธกเธตเธขเธก</title>
-  <link rel="stylesheet" href="/static/css/app.css?v=4.7">
+  <title>Sawasdee Rental - ระบบบริหารจัดการรถเช่าระดับพรีเมียม</title>
+  <link rel="stylesheet" href="/static/css/app.css?v=4.8">
   <link rel="icon" type="image/png" href="/static/sawasdee-logo.png">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
@@ -24,7 +24,7 @@
       <div class="app-splash-loader">
         <div class="app-splash-bar"></div>
       </div>
-      <div id="app-splash-status" class="app-splash-status">เธเธณเธฅเธฑเธเน€เธฃเธดเนเธกเธ•เนเธเธฃเธฐเธเธเธเธงเธฒเธกเธเธฅเธญเธ”เธ เธฑเธข...</div>
+      <div id="app-splash-status" class="app-splash-status">กำลังเริ่มต้นระบบความปลอดภัย...</div>
     </div>
   </div>
 
@@ -41,104 +41,104 @@
       <!-- Mode 1: Login -->
       <div id="gate-mode-login" class="auth-gate-box">
         <div style="text-align:center; margin-bottom:18px;">
-          <h3 style="font-size:18px; font-weight:800; color:#1F2937; margin-bottom:4px;">๐” เน€เธเนเธฒเธชเธนเนเธฃเธฐเธเธ (Authentication)</h3>
-          <p style="font-size:12.5px; color:#6B7280;">เธเธฃเธธเธ“เธฒเธฅเธเธเธทเนเธญเน€เธเนเธฒเนเธเนเธเธฒเธเธเนเธญเธเน€เธเนเธฒเธชเธนเนเธฃเธฐเธเธ Sawasdee Rental</p>
+          <h3 style="font-size:18px; font-weight:800; color:#1F2937; margin-bottom:4px;">🔐 เข้าสู่ระบบ (Authentication)</h3>
+          <p style="font-size:12.5px; color:#6B7280;">กรุณาลงชื่อเข้าใช้งานก่อนเข้าสู่ระบบ Sawasdee Rental</p>
         </div>
 
         <div class="gate-form-group">
-          <label class="gate-label">เธเธทเนเธญเธเธนเนเนเธเนเธเธฒเธ เธซเธฃเธทเธญ เธญเธตเน€เธกเธฅ (Username / Email)</label>
-          <input type="text" id="gate-login-username" class="gate-input" placeholder="เน€เธเนเธ admin เธซเธฃเธทเธญ chaiwat.u" autocomplete="username" onkeydown="if(event.key==='Enter') app.submitGateLogin()">
+          <label class="gate-label">ชื่อผู้ใช้งาน หรือ อีเมล (Username / Email)</label>
+          <input type="text" id="gate-login-username" class="gate-input" placeholder="เช่น admin หรือ chaiwat.u" autocomplete="username" onkeydown="if(event.key==='Enter') app.submitGateLogin()">
         </div>
 
         <div class="gate-form-group">
-          <label class="gate-label">เธฃเธซเธฑเธชเธเนเธฒเธ (Password)</label>
-          <input type="password" id="gate-login-password" class="gate-input" placeholder="เธเธฃเธญเธเธฃเธซเธฑเธชเธเนเธฒเธ" autocomplete="current-password" onkeydown="if(event.key==='Enter') app.submitGateLogin()">
+          <label class="gate-label">รหัสผ่าน (Password)</label>
+          <input type="password" id="gate-login-password" class="gate-input" placeholder="กรอกรหัสผ่าน" autocomplete="current-password" onkeydown="if(event.key==='Enter') app.submitGateLogin()">
         </div>
 
         <div id="gate-login-alert" class="gate-alert"></div>
 
         <button id="btn-gate-submit-login" onclick="app.submitGateLogin()" class="gate-btn-submit">
-          โก เน€เธเนเธฒเธชเธนเนเธฃเธฐเธเธ (Login)
+          ⚡ เข้าสู่ระบบ (Login)
         </button>
 
         <div class="gate-sub-actions">
-          <button type="button" onclick="app.setGateMode('register')" class="gate-btn-sub">๐“ เธชเธกเธฑเธเธฃเธชเธกเธฒเธเธดเธ</button>
-          <button type="button" onclick="app.setGateMode('forgot')" class="gate-btn-sub">๐”‘ เนเธเนเนเธเธฃเธซเธฑเธชเธเนเธฒเธ</button>
+          <button type="button" onclick="app.setGateMode('register')" class="gate-btn-sub">📝 สมัครสมาชิก</button>
+          <button type="button" onclick="app.setGateMode('forgot')" class="gate-btn-sub">🔑 แก้ไขรหัสผ่าน</button>
         </div>
       </div>
 
       <!-- Mode 2: Register -->
       <div id="gate-mode-register" class="auth-gate-box" style="display:none;">
-        <h4 class="gate-form-title">๐“ เธชเธกเธฑเธเธฃเธชเธกเธฒเธเธดเธเธเธเธฑเธเธเธฒเธเนเธซเธกเน</h4>
-        <p class="gate-form-desc">เธเธฃเธญเธเธเนเธญเธกเธนเธฅเนเธฅเธฐเนเธญเธ”เธตเนเธฅเธเนเนเธซเนเธเธฃเธเธ–เนเธงเธ เน€เธเธทเนเธญเนเธเนเธฃเธฑเธเนเธเนเธเน€เธ•เธทเธญเธเนเธเธเธฒเธเนเธฅเธฐเธฃเธญ Admin เธญเธเธธเธกเธฑเธ•เธดเน€เธเนเธฒเนเธเนเธเธฒเธ</p>
+        <h4 class="gate-form-title">📝 สมัครสมาชิกพนักงานใหม่</h4>
+        <p class="gate-form-desc">กรอกข้อมูลและไอดีไลน์ให้ครบถ้วน เพื่อใช้รับแจ้งเตือนใบงานและรอ Admin อนุมัติเข้าใช้งาน</p>
 
         <div class="gate-form-group">
-          <label class="gate-label">เธเธทเนเธญเธเธนเนเนเธเนเธเธฒเธ / เธเธทเนเธญเธเธเธฑเธเธเธฒเธ (Username) <span style="color:#DC2626;">*</span></label>
-          <input type="text" id="gate-reg-username" class="gate-input" placeholder="เน€เธเนเธ somchai" required>
+          <label class="gate-label">ชื่อผู้ใช้งาน / ชื่อพนักงาน (Username) <span style="color:#DC2626;">*</span></label>
+          <input type="text" id="gate-reg-username" class="gate-input" placeholder="เช่น somchai" required>
         </div>
 
         <div class="gate-form-group">
-          <label class="gate-label">เธเธทเนเธญ-เธเธฒเธกเธชเธเธธเธฅเธเธฃเธดเธ (Full Name) <span style="color:#DC2626;">*</span></label>
-          <input type="text" id="gate-reg-fullname" class="gate-input" placeholder="เน€เธเนเธ เธชเธกเธเธฒเธข เนเธเธ”เธต" required>
+          <label class="gate-label">ชื่อ-นามสกุลจริง (Full Name) <span style="color:#DC2626;">*</span></label>
+          <input type="text" id="gate-reg-fullname" class="gate-input" placeholder="เช่น สมชาย ใจดี" required>
         </div>
 
         <div class="gate-form-group">
-          <label class="gate-label">๐“ฒ เนเธญเธ”เธตเนเธฅเธเน / LINE User ID (เธเธฑเธเธเธฑเธเธเธฃเธญเธเน€เธเธทเนเธญเธฃเธฑเธเนเธเนเธเน€เธ•เธทเธญเธเนเธเธเธฒเธ) <span style="color:#DC2626;">*</span></label>
-          <input type="text" id="gate-reg-line-id" class="gate-input" placeholder="เน€เธเนเธ somchai99 เธซเธฃเธทเธญ Uxxxxxxxx..." required>
+          <label class="gate-label">📲 ไอดีไลน์ / LINE User ID (บังคับกรอกเพื่อรับแจ้งเตือนใบงาน) <span style="color:#DC2626;">*</span></label>
+          <input type="text" id="gate-reg-line-id" class="gate-input" placeholder="เช่น somchai99 หรือ Uxxxxxxxx..." required>
           <small style="display:block; font-size:11px; color:#64748B; margin-top:4px; line-height:1.35;">
-            ๐’ก เธเธฃเธญเธเนเธญเธ”เธตเนเธฅเธเนเธเธญเธเธเธธเธ“ เธซเธฃเธทเธญเธ—เธฑเธเนเธเธ—เธเธญเธ— LINE OA เธเธญเธเธฃเนเธฒเธเน€เธเธทเนเธญเธฃเธฑเธเธฃเธซเธฑเธช <code>U...</code> เธกเธฒเธงเธฒเธเน€เธเธทเนเธญเนเธซเนเธฃเธฐเธเธเธขเธดเธเนเธเธเธฒเธเธ•เธฃเธเธซเธฒเธเธธเธ“เนเธ”เนเธ—เธฑเธเธ—เธต
+            💡 กรอกไอดีไลน์ของคุณ หรือทักแชทบอท LINE OA ของร้านเพื่อรับรหัส <code>U...</code> มาวางเพื่อให้ระบบยิงใบงานตรงหาคุณได้ทันที
           </small>
         </div>
 
         <div class="gate-form-group">
-          <label class="gate-label">เธฃเธซเธฑเธชเธเนเธฒเธ (เธญเธขเนเธฒเธเธเนเธญเธข 6 เธ•เธฑเธงเธญเธฑเธเธฉเธฃ) <span style="color:#DC2626;">*</span></label>
-          <input type="password" id="gate-reg-password" class="gate-input" placeholder="เธฃเธซเธฑเธชเธเนเธฒเธ..." required>
+          <label class="gate-label">รหัสผ่าน (อย่างน้อย 6 ตัวอักษร) <span style="color:#DC2626;">*</span></label>
+          <input type="password" id="gate-reg-password" class="gate-input" placeholder="รหัสผ่าน..." required>
         </div>
 
         <div class="gate-form-group">
-          <label class="gate-label">เธขเธทเธเธขเธฑเธเธฃเธซเธฑเธชเธเนเธฒเธ <span style="color:#DC2626;">*</span></label>
-          <input type="password" id="gate-reg-password2" class="gate-input" placeholder="เธเธดเธกเธเนเธฃเธซเธฑเธชเธเนเธฒเธเธเนเธณเธญเธตเธเธเธฃเธฑเนเธ" required>
+          <label class="gate-label">ยืนยันรหัสผ่าน <span style="color:#DC2626;">*</span></label>
+          <input type="password" id="gate-reg-password2" class="gate-input" placeholder="พิมพ์รหัสผ่านซ้ำอีกครั้ง" required>
         </div>
 
         <div id="gate-reg-alert" class="gate-alert"></div>
 
         <button onclick="app.submitGateRegister()" class="gate-btn-submit">
-          ๐“ เธขเธทเธเธขเธฑเธเธเธฒเธฃเธฅเธเธ—เธฐเน€เธเธตเธขเธ
+          📝 ยืนยันการลงทะเบียน
         </button>
 
         <button type="button" onclick="app.setGateMode('login')" class="gate-btn-sub" style="margin-top:12px; width:100%;">
-          โ เธเธฅเธฑเธเนเธเธซเธเนเธฒเน€เธเนเธฒเธชเธนเนเธฃเธฐเธเธ
+          ← กลับไปหน้าเข้าสู่ระบบ
         </button>
       </div>
 
       <!-- Mode 3: Forgot Password -->
       <div id="gate-mode-forgot" class="auth-gate-box" style="display:none;">
-        <h4 class="gate-form-title">๐”‘ เน€เธเธฅเธตเนเธขเธเธฃเธซเธฑเธชเธเนเธฒเธเนเธซเธกเน</h4>
-        <p class="gate-form-desc">เธเธฃเธญเธเธเธทเนเธญเธเธนเนเนเธเนเธเธฒเธเน€เธ”เธดเธกเนเธฅเธฐเธ•เธฑเนเธเธฃเธซเธฑเธชเธเนเธฒเธเนเธซเธกเนเน€เธเธทเนเธญเธญเธฑเธเน€เธ”เธ•เธฃเธฐเธเธ</p>
+        <h4 class="gate-form-title">🔑 เปลี่ยนรหัสผ่านใหม่</h4>
+        <p class="gate-form-desc">กรอกชื่อผู้ใช้งานเดิมและตั้งรหัสผ่านใหม่เพื่ออัปเดตระบบ</p>
 
         <div class="gate-form-group">
-          <label class="gate-label">เธเธทเนเธญเธเธนเนเนเธเนเธเธฒเธเน€เธ”เธดเธก (Username)</label>
-          <input type="text" id="gate-forgot-username" class="gate-input" placeholder="เน€เธเนเธ admin เธซเธฃเธทเธญ user">
+          <label class="gate-label">ชื่อผู้ใช้งานเดิม (Username)</label>
+          <input type="text" id="gate-forgot-username" class="gate-input" placeholder="เช่น admin หรือ user">
         </div>
 
         <div class="gate-form-group">
-          <label class="gate-label">เธฃเธซเธฑเธชเธเนเธฒเธเน€เธ”เธดเธก</label>
-          <input type="password" id="gate-forgot-old-password" class="gate-input" placeholder="เธฃเธซเธฑเธชเธเนเธฒเธเน€เธ”เธดเธก">
+          <label class="gate-label">รหัสผ่านเดิม</label>
+          <input type="password" id="gate-forgot-old-password" class="gate-input" placeholder="รหัสผ่านเดิม">
         </div>
 
         <div class="gate-form-group">
-          <label class="gate-label">เธฃเธซเธฑเธชเธเนเธฒเธเนเธซเธกเน (เธญเธขเนเธฒเธเธเนเธญเธข 6 เธ•เธฑเธงเธญเธฑเธเธฉเธฃ)</label>
-          <input type="password" id="gate-forgot-new-password" class="gate-input" placeholder="เธฃเธซเธฑเธชเธเนเธฒเธเนเธซเธกเน">
+          <label class="gate-label">รหัสผ่านใหม่ (อย่างน้อย 6 ตัวอักษร)</label>
+          <input type="password" id="gate-forgot-new-password" class="gate-input" placeholder="รหัสผ่านใหม่">
         </div>
 
         <div id="gate-forgot-alert" class="gate-alert"></div>
 
         <button onclick="app.submitGateForgot()" class="gate-btn-submit">
-          ๐”‘ เธขเธทเธเธขเธฑเธเน€เธเธฅเธตเนเธขเธเธฃเธซเธฑเธชเธเนเธฒเธ
+          🔑 ยืนยันเปลี่ยนรหัสผ่าน
         </button>
 
         <button type="button" onclick="app.setGateMode('login')" class="gate-btn-sub" style="margin-top:12px; width:100%;">
-          โ เธเธฅเธฑเธเนเธเธซเธเนเธฒเน€เธเนเธฒเธชเธนเนเธฃเธฐเธเธ
+          ← กลับไปหน้าเข้าสู่ระบบ
         </button>
       </div>
     </div>
@@ -158,15 +158,15 @@
 
       <div class="header-actions">
         <!-- Live Cloud Sync Pill -->
-        <div class="cloud-pill" onclick="app.manualSync()" title="เธเธฅเธดเธเน€เธเธทเนเธญเธเธดเธเธเนเธเนเธญเธกเธนเธฅเธเธฑเธเธเธฒเธเธเนเธญเธกเธนเธฅ PostgreSQL เธ—เธฑเธเธ—เธต">
+        <div class="cloud-pill" onclick="app.manualSync()" title="คลิกเพื่อซิงค์ข้อมูลกับฐานข้อมูล PostgreSQL ทันที">
           <span class="pulse-dot"></span>
-          <span><span id="sync-label">เธเธดเธเธเน Cloud เธญเธฑเธ•เนเธเธกเธฑเธ•เธด:</span> <b id="sync-time-txt">เธเธณเธฅเธฑเธเน€เธเธทเนเธญเธกเธ•เนเธญ...</b></span>
-          <span style="font-size:11px; margin-left:2px;">๐”</span>
+          <span><span id="sync-label">ซิงค์ Cloud อัตโนมัติ:</span> <b id="sync-time-txt">กำลังเชื่อมต่อ...</b></span>
+          <span style="font-size:11px; margin-left:2px;">🔄</span>
         </div>
 
         <!-- Role Badge in Header -->
         <div class="user-badge">
-          <span>๐‘ค</span>
+          <span>👤</span>
           <span id="user-display-name">Admin</span>
           <span id="user-role-tag" class="role-tag">Admin</span>
         </div>
@@ -188,71 +188,71 @@
 
         <!-- User Profile Card in Sidebar -->
         <div class="sb-user-card">
-          <div id="sb-user-card-label" style="font-size: 11px; color: #8C827A;">เน€เธเนเธฒเธชเธนเนเธฃเธฐเธเธเนเธ”เธข:</div>
-          <div style="font-size: 13.5px; font-weight: 700; color: #1F2937;">๐‘ค <span id="sb-user-name">admin</span></div>
-          <div style="font-size: 11px; color: #E85826; font-weight: 600;" id="sb-user-role">๐‘‘ เธเธนเนเธ”เธนเนเธฅเธฃเธฐเธเธ (Admin)</div>
+          <div id="sb-user-card-label" style="font-size: 11px; color: #8C827A;">เข้าสู่ระบบโดย:</div>
+          <div style="font-size: 13.5px; font-weight: 700; color: #1F2937;">👤 <span id="sb-user-name">admin</span></div>
+          <div style="font-size: 11px; color: #E85826; font-weight: 600;" id="sb-user-role">👑 ผู้ดูแลระบบ (Admin)</div>
         </div>
 
         <!-- Language Switcher Button -->
         <button id="btn-lang-toggle" onclick="app.toggleLanguage()" style="width: 100%; padding: 8px 12px; margin-bottom: 10px; border-radius: 8px; border: 1.5px solid #E5DFD7; background: #FFFFFF; font-size: 12.5px; font-weight: 700; color: #1F2937; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.03); transition: all 0.2s;" onmouseover="this.style.borderColor='#E85826'; this.style.color='#E85826';" onmouseout="this.style.borderColor='#E5DFD7'; this.style.color='#1F2937';">
-          <span id="lang-btn-text">๐ English</span>
+          <span id="lang-btn-text">🌐 English</span>
         </button>
 
         <!-- Admin Staff Management Button -->
         <div id="sb-admin-staff-btn" class="sb-admin-staff-btn" onclick="app.switchModule('users')" style="display:none;">
-          <span id="sb-admin-staff-text">๐‘ฅ เธเธฑเธ”เธเธฒเธฃ & เธญเธเธธเธกเธฑเธ•เธดเธเธเธฑเธเธเธฒเธ</span>
+          <span id="sb-admin-staff-text">👥 จัดการ & อนุมัติพนักงาน</span>
           <span id="badge-pending-users" style="background:#EF4444; color:white; font-size:10.5px; font-weight:700; padding:1px 7px; border-radius:10px; display:none;">0</span>
         </div>
 
         <!-- Global Search in Sidebar -->
         <div style="margin-bottom: 12px;">
-          <input type="text" id="sb-search-input" oninput="app.handleSidebarSearch(this.value)" placeholder="๐” เธเนเธเธซเธฒ (เน€เธฅเธเธ—เธตเนเธเธญเธ / เธ—เธฐเน€เธเธตเธขเธ / เธฅเธนเธเธเนเธฒ)" style="width: 100%; padding: 9px 12px; border: 1.5px solid #E5DFD7; border-radius: 8px; background: #FAF7F2; font-size: 12px; outline: none; transition: all 0.2s;" onfocus="this.style.borderColor='#E85826'; this.style.background='#FFFFFF';" onblur="this.style.borderColor='#E5DFD7'; this.style.background='#FAF7F2';" />
+          <input type="text" id="sb-search-input" oninput="app.handleSidebarSearch(this.value)" placeholder="🔍 ค้นหา (เลขที่จอง / ทะเบียน / ลูกค้า)" style="width: 100%; padding: 9px 12px; border: 1.5px solid #E5DFD7; border-radius: 8px; background: #FAF7F2; font-size: 12px; outline: none; transition: all 0.2s;" onfocus="this.style.borderColor='#E85826'; this.style.background='#FFFFFF';" onblur="this.style.borderColor='#E5DFD7'; this.style.background='#FAF7F2';" />
         </div>
 
         <!-- Quick Actions (Global Action Buttons) -->
         <div class="sb-quick-actions">
           <div id="sb-actions-header-text" style="font-size: 11px; font-weight: 700; color: #8C827A; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">
-            เธเธธเนเธกเธ”เธณเน€เธเธดเธเธเธฒเธฃเธ”เนเธงเธ:
+            ปุ่มดำเนินการด่วน:
           </div>
           <div style="display: flex; flex-direction: column; gap: 7px;">
-            <button type="button" id="sb-btn-add-customer" onclick="app.openAddCustomerModal()" class="sb-quick-btn sb-quick-btn-customer" title="เน€เธเธดเนเธกเธเนเธญเธกเธนเธฅเธฅเธนเธเธเนเธฒเนเธซเธกเน">
-              <span style="font-size: 15px;">๐‘ค</span> <span id="sb-lbl-add-customer">เน€เธเธดเนเธกเธฅเธนเธเธเนเธฒ</span>
+            <button type="button" id="sb-btn-add-customer" onclick="app.openAddCustomerModal()" class="sb-quick-btn sb-quick-btn-customer" title="เพิ่มข้อมูลลูกค้าใหม่">
+              <span style="font-size: 15px;">👤</span> <span id="sb-lbl-add-customer">เพิ่มลูกค้า</span>
             </button>
-            <button type="button" id="sb-btn-add-car" onclick="app.openEditCarModal('')" class="sb-quick-btn sb-quick-btn-car" title="เน€เธเธดเนเธกเธเนเธญเธกเธนเธฅเธฃเธ–เธขเธเธ•เนเนเธซเธกเนเน€เธเนเธฒเธชเธนเนเธฃเธฐเธเธ">
-              <span style="font-size: 15px;">๐—</span> <span id="sb-lbl-add-car">เน€เธเธดเนเธกเธฃเธ–เธขเธเธ•เน</span>
+            <button type="button" id="sb-btn-add-car" onclick="app.openEditCarModal('')" class="sb-quick-btn sb-quick-btn-car" title="เพิ่มข้อมูลรถยนต์ใหม่เข้าสู่ระบบ">
+              <span style="font-size: 15px;">🚗</span> <span id="sb-lbl-add-car">เพิ่มรถยนต์</span>
             </button>
           </div>
         </div>
 
         <!-- Main Navigation Links -->
-        <div id="sb-menu-header-text" style="font-size: 11px; font-weight: 600; color: #6B7280; margin-bottom: 6px;">เน€เธกเธเธนเธฃเธฐเธเธเธเธฒเธเธซเธฅเธฑเธ:</div>
+        <div id="sb-menu-header-text" style="font-size: 11px; font-weight: 600; color: #6B7280; margin-bottom: 6px;">เมนูระบบงานหลัก:</div>
 
         <a class="nav-item active" onclick="app.switchModule('frontoffice')" id="nav-frontoffice">
-          <span>๐–ฅ๏ธ</span> <span id="nav-lbl-frontoffice">Front Office</span>
+          <span>🖥️</span> <span id="nav-lbl-frontoffice">Front Office</span>
           <span class="nav-badge" id="badge-frontoffice-bks">0</span>
         </a>
 
         <a class="nav-item" onclick="app.switchModule('backoffice')" id="nav-backoffice">
-          <span>๐“</span> <span id="nav-lbl-backoffice">Back Office (เธ•เธฒเธฃเธฒเธเนเธเธเธฒเธ)</span>
+          <span>📋</span> <span id="nav-lbl-backoffice">Back Office (ตารางใบงาน)</span>
           <span class="nav-badge" id="badge-backoffice-jobs" style="background:#2563EB;">0</span>
         </a>
 
         <a class="nav-item" onclick="app.switchModule('maintenance')" id="nav-maintenance">
-          <span>๐ ๏ธ</span> <span id="nav-lbl-maintenance">เธเนเธญเธกเธเธณเธฃเธธเธ & เธเธฃเธดเธเธฒเธฃ</span>
+          <span>🛠️</span> <span id="nav-lbl-maintenance">ซ่อมบำรุง & บริการ</span>
           <span class="nav-badge" id="badge-maintenance-jobs" style="background:#F97316;">0</span>
         </a>
 
         <a class="nav-item" onclick="app.switchModule('dashboard')" id="nav-dashboard">
-          <span>๐“</span> <span id="nav-lbl-dashboard">เธชเธฃเธธเธเนเธ”เธเธเธญเธฃเนเธ” & เธเธฒเธฃเน€เธเธดเธ</span>
+          <span>📊</span> <span id="nav-lbl-dashboard">สรุปแดชบอร์ด & การเงิน</span>
         </a>
 
         <a class="nav-item" onclick="app.switchModule('customers')" id="nav-customers" style="display:none;">
-          <span>๐‘ฅ</span> เธเธฒเธเธเนเธญเธกเธนเธฅเธฅเธนเธเธเนเธฒ
+          <span>👥</span> ฐานข้อมูลลูกค้า
         </a>
 
         <!-- Logout Button -->
-        <button onclick="app.logout()" class="sb-logout-btn" title="เธญเธญเธเธเธฒเธเธฃเธฐเธเธเนเธเธขเธฑเธเธซเธเนเธฒเธฅเนเธญเธเธญเธดเธ (Auth Gate)">
-          <span>๐ช</span> เธญเธญเธเธเธฒเธเธฃเธฐเธเธ (Auth)
+        <button onclick="app.logout()" class="sb-logout-btn" title="ออกจากระบบไปยังหน้าล็อกอิน (Auth Gate)">
+          <span>🚪</span> ออกจากระบบ (Auth)
         </button>
       </aside>
 
@@ -267,19 +267,19 @@
         <div class="folder-tabs-wrapper">
           <div class="workflow-tabs">
             <button class="tab-btn active" onclick="app.switchTab('fleet')" id="tab-btn-fleet">
-              <span>1.</span> เน€เธฅเธทเธญเธเธฃเธ–เธขเธเธ•เน & เธเธญเธเธ”เนเธงเธ
+              <span>1.</span> เลือกรถยนต์ & จองด่วน
             </button>
             <button class="tab-btn" onclick="app.switchTab('deposit')" id="tab-btn-deposit">
-              <span>2.</span> เน€เธเธดเธเธกเธฑเธ”เธเธณ & เธเธฒเธฃเน€เธเธดเธ
+              <span>2.</span> เงินมัดจำ & การเงิน
             </button>
             <button class="tab-btn" onclick="app.switchTab('assign')" id="tab-btn-assign">
-              <span>3.</span> เธญเธญเธเนเธเธเธฒเธเธชเนเธ/เธฃเธฑเธเธฃเธ–
+              <span>3.</span> ออกใบงานส่ง/รับรถ
             </button>
             <button class="tab-btn" onclick="app.switchTab('contract')" id="tab-btn-contract">
-              <span>4.</span> เธเธฑเธ”เธ—เธณเธชเธฑเธเธเธฒเน€เธเนเธฒ
+              <span>4.</span> จัดทำสัญญาเช่า
             </button>
             <button class="tab-btn" onclick="app.switchTab('dashboard_bks')" id="tab-btn-dashboard_bks">
-              <span>5.</span> เนเธเธเธเธงเธเธเธธเธกเธเธดเธงเธเธฒเธฃเธเธญเธ
+              <span>5.</span> แผงควบคุมคิวการจอง
             </button>
           </div>
         </div>
@@ -292,72 +292,72 @@
             <div class="booking-bar-head">
               <div>
                 <h3 id="booking-bar-title" style="font-size:15px; font-weight:800; color:#92400E; margin:0;">
-                  เน€เธฅเธทเธญเธเธฃเธ–เธขเธเธ•เน & เธเธญเธเธ”เนเธงเธ (Instant Booking Bar)
+                  เลือกรถยนต์ & จองด่วน (Instant Booking Bar)
                 </h3>
                 <div id="booking-bar-subtitle" style="font-size:11.5px; color:#B45309; margin-top:1px;">
-                  เน€เธฅเธทเธญเธเธงเธฑเธเธฃเธฑเธ - เธเธทเธเธฃเธ– (เธเธณเธเธงเธ“เธฃเธฐเธขเธฐเน€เธงเธฅเธฒเน€เธเนเธฒเธญเธฑเธ•เนเธเธกเธฑเธ•เธด)
+                  เลือกวันรับ - คืนรถ (คำนวณระยะเวลาเช่าอัตโนมัติ)
                 </div>
               </div>
               <div class="booking-bar-head-meta">
                 <span class="booking-bar-meta-dur">
-                  <span id="lbl-calc-duration">เธฃเธฐเธขเธฐเน€เธงเธฅเธฒเน€เธเนเธฒ:</span>
-                  <b id="calc-duration-text">1 เธงเธฑเธ (24 เธเธก.)</b>
+                  <span id="lbl-calc-duration">ระยะเวลาเช่า:</span>
+                  <b id="calc-duration-text">1 วัน (24 ชม.)</b>
                 </span>
-                <span id="calc-cars-count">เธงเนเธฒเธเธเธฃเนเธญเธกเนเธเนเธเธฒเธ: 0 เธเธฑเธ</span>
+                <span id="calc-cars-count">ว่างพร้อมใช้งาน: 0 คัน</span>
                 <button type="button" id="btn-toggle-filter-collapse" onclick="app.toggleBookingFilterCollapse()" class="btn btn-sm" style="font-size:12px; padding:4px 12px; font-weight:700; background:#FFFFFF; border:1px solid #FDBA74; color:#C2410C; border-radius:999px; cursor:pointer; display:inline-flex; align-items:center; gap:5px;">
-                  <span id="btn-toggle-filter-text">เธเนเธญเธเธ•เธฑเธงเธเธฃเธญเธ โ–ด</span>
+                  <span id="btn-toggle-filter-text">ซ่อนตัวกรอง ▴</span>
                 </button>
               </div>
             </div>
 
-            <!-- เธชเนเธงเธเธ—เธตเนเธขเธธเธ/เธเธขเธฒเธขเนเธ”เน (Collapsible Content) -->
+            <!-- ส่วนที่ยุบ/ขยายได้ (Collapsible Content) -->
             <div id="booking-bar-collapsible-content">
-              <!-- เนเธ–เธงเธ—เธตเน 1: เธ”เธฃเธญเธเธ”เธฒเธงเธเนเธ•เธฑเธงเธเธฃเธญเธ 4 เธ•เธฑเธง (เธซเธกเธงเธ”เธซเธกเธนเนเธฃเธ–, เธขเธตเนเธซเนเธญ, เธเธฃเธฃเธกเธชเธดเธ—เธเธดเน/เธเธฃเธดเธฉเธฑเธ—, เธชเธ–เธฒเธเธฐเธฃเธ–) -->
+              <!-- แถวที่ 1: ดรอปดาวน์ตัวกรอง 4 ตัว (หมวดหมู่รถ, ยี่ห้อ, กรรมสิทธิ์/บริษัท, สถานะรถ) -->
               <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:8px; margin-bottom:8px;">
                 <div class="form-group">
-                  <label id="lbl-filter-group">เธซเธกเธงเธ”เธซเธกเธนเนเธฃเธ–</label>
+                  <label id="lbl-filter-group">หมวดหมู่รถ</label>
                   <select id="filter-group" class="form-control" onchange="app.onFilterChange()">
-                    <option id="opt-filter-group-all" value="เธ—เธฑเนเธเธซเธกเธ”">เธ—เธฑเนเธเธซเธกเธ”</option>
+                    <option id="opt-filter-group-all" value="ทั้งหมด">ทั้งหมด</option>
                   </select>
                 </div>
                 <div class="form-group">
-                  <label id="lbl-filter-brand">เธขเธตเนเธซเนเธญ</label>
+                  <label id="lbl-filter-brand">ยี่ห้อ</label>
                   <select id="filter-brand" class="form-control" onchange="app.onFilterChange()">
-                    <option id="opt-filter-brand-all" value="เธ—เธฑเนเธเธซเธกเธ”">เธ—เธฑเนเธเธซเธกเธ”</option>
+                    <option id="opt-filter-brand-all" value="ทั้งหมด">ทั้งหมด</option>
                   </select>
                 </div>
                 <div class="form-group">
-                  <label id="lbl-filter-company">เธเธฃเธดเธฉเธฑเธ— / เธชเธฑเธเธเธฑเธ”</label>
+                  <label id="lbl-filter-company">บริษัท / สังกัด</label>
                   <select id="filter-company" class="form-control" onchange="app.onFilterChange()">
-                    <option id="opt-filter-company-all" value="เธ—เธฑเนเธเธซเธกเธ”">เธ—เธฑเนเธเธซเธกเธ”</option>
+                    <option id="opt-filter-company-all" value="ทั้งหมด">ทั้งหมด</option>
                   </select>
                 </div>
                 <div class="form-group">
-                  <label id="lbl-filter-status">เธชเธ–เธฒเธเธฐเธฃเธ–</label>
+                  <label id="lbl-filter-status">สถานะรถ</label>
                   <select id="filter-status" class="form-control" onchange="app.onFilterChange()">
-                    <option id="opt-filter-status-all" value="เธ—เธฑเนเธเธซเธกเธ”">เธ—เธฑเนเธเธซเธกเธ”</option>
-                    <option id="opt-filter-status-avail" value="เธงเนเธฒเธเนเธกเนเธกเธตเธเธฒเธฃเธเธญเธ (๐ข)">เธงเนเธฒเธเนเธกเนเธกเธตเธเธฒเธฃเธเธญเธ (๐ข)</option>
-                    <option id="opt-filter-status-res" value="เธกเธตเธเธฒเธฃเธเธญเธเธฅเนเธงเธเธซเธเนเธฒเนเธงเน (๐ก)">เธกเธตเธเธฒเธฃเธเธญเธเธฅเนเธงเธเธซเธเนเธฒเนเธงเน (๐ก)</option>
-                    <option id="opt-filter-status-unavail" value="เนเธกเนเธงเนเธฒเธเนเธเธงเธฑเธเธ—เธตเนเน€เธฅเธทเธญเธ (๐”ด)">เนเธกเนเธงเนเธฒเธเนเธเธงเธฑเธเธ—เธตเนเน€เธฅเธทเธญเธ (๐”ด)</option>
-                    <option id="opt-filter-status-maint" value="เธชเธ–เธฒเธเธฐเธเนเธญเธกเธเธณเธฃเธธเธ (๐ )">เธชเธ–เธฒเธเธฐเธเนเธญเธกเธเธณเธฃเธธเธ (๐ )</option>
-                    <option id="opt-filter-status-ready" value="เธงเนเธฒเธเธเธฃเนเธญเธกเนเธเนเธเธฒเธ (๐ข+๐ก)">เธงเนเธฒเธเธเธฃเนเธญเธกเนเธเนเธเธฒเธ (๐ข+๐ก)</option>
-                    <option id="opt-filter-status-renting" value="เธเธณเธฅเธฑเธเน€เธเนเธฒ">เธเธณเธฅเธฑเธเน€เธเนเธฒ</option>
-                    <option id="opt-filter-status-booked" value="เธ•เธดเธ”เธเธญเธ">เธ•เธดเธ”เธเธญเธ</option>
+                    <option id="opt-filter-status-all" value="ทั้งหมด">ทั้งหมด</option>
+                    <option id="opt-filter-status-avail" value="ว่างไม่มีการจอง (🟢)">ว่างไม่มีการจอง (🟢)</option>
+                    <option id="opt-filter-status-res" value="มีการจองล่วงหน้าไว้ (🟡)">มีการจองล่วงหน้าไว้ (🟡)</option>
+                    <option id="opt-filter-status-unavail" value="ไม่ว่างในวันที่เลือก (🔴)">ไม่ว่างในวันที่เลือก (🔴)</option>
+                    <option id="opt-filter-status-maint" value="สถานะซ่อมบำรุง (🟠)">สถานะซ่อมบำรุง (🟠)</option>
+                    <option id="opt-filter-status-ready" value="ว่างพร้อมใช้งาน (🟢+🟡)">ว่างพร้อมใช้งาน (🟢+🟡)</option>
+                    <option id="opt-filter-status-renting" value="กำลังเช่า">กำลังเช่า</option>
+                    <option id="opt-filter-status-booked" value="ติดจอง">ติดจอง</option>
                   </select>
                 </div>
               </div>
 
-              <!-- เนเธ–เธงเธ—เธตเน 2: เธฃเธฐเธเธธเธงเธฑเธเธ—เธตเน (เธงเธฑเธเธ—เธตเนเธชเนเธเธฃเธ–, เธงเธฑเธเธ—เธตเนเธเธทเธเธฃเธ–) เนเธฅเธฐเธเธธเนเธกเธฅเนเธฒเธเธ•เธฑเธงเธเธฃเธญเธ -->
+              <!-- แถวที่ 2: ระบุวันที่ (วันที่ส่งรถ, วันที่คืนรถ) และปุ่มล้างตัวกรอง -->
               <div style="display:grid; grid-template-columns: 1.5fr 1.5fr 1fr; gap:8px; align-items:flex-end;">
                 <div class="form-group">
-                  <label id="lbl-filter-start">เธงเธฑเธเธฃเธฑเธเธฃเธ– (Pick-up)</label>
+                  <label id="lbl-filter-start">วันรับรถ (Pick-up)</label>
                   <div style="display:flex; gap:6px;">
                     <input type="date" id="filter-start-date" class="form-control" onchange="app.onDateFilterChange()">
                     <input type="time" id="filter-start-time" class="form-control" style="width:115px;" onchange="app.onFilterChange()">
                   </div>
                 </div>
                 <div class="form-group">
-                  <label id="lbl-filter-end">เธงเธฑเธเธเธทเธเธฃเธ– (Return)</label>
+                  <label id="lbl-filter-end">วันคืนรถ (Return)</label>
                   <div style="display:flex; gap:6px;">
                     <input type="date" id="filter-end-date" class="form-control" onchange="app.onDateFilterChange()">
                     <input type="time" id="filter-end-time" class="form-control" style="width:115px;" onchange="app.onFilterChange()">
@@ -365,7 +365,7 @@
                 </div>
                 <div class="form-group">
                   <button type="button" id="btn-reset-filters" onclick="app.resetFleetFilters()" class="btn btn-secondary" style="width:100%; height:34px; font-weight:700; background:#FAF7F2; border:1px solid #E5E7EB; color:#374151;">
-                    เธฅเนเธฒเธเธ•เธฑเธงเธเธฃเธญเธ
+                    ล้างตัวกรอง
                   </button>
                 </div>
               </div>
@@ -384,18 +384,18 @@
         <div id="subtab-deposit" class="tab-pane" style="display:none;">
           <div class="card">
             <div class="card-title" id="title-tab2">
-              <span>๐’ณ</span> เธเธณเธฃเธฐเน€เธเธดเธเธกเธฑเธ”เธเธณเธเธฃเธฐเธเธฑเธเธชเธฑเธเธเธฒ & เธเธฒเธฃเน€เธเธดเธ (Booking Deposit & Rental Payment)
+              <span>💳</span> ชำระเงินมัดจำประกันสัญญา & การเงิน (Booking Deposit & Rental Payment)
             </div>
             <div id="subtitle-tab2" style="font-size:12.5px; color:var(--text-muted); margin-bottom:16px;">
-              เธเธฑเธเธ—เธถเธเธเธฒเธฃเธฃเธฑเธเธเธณเธฃเธฐเน€เธเธดเธเธกเธฑเธ”เธเธณ (เธเนเธฒเน€เธฃเธดเนเธกเธ•เนเธ เธฟ5,000 เน€เธเธทเนเธญเธฅเนเธญเธเธเธดเธงเธฃเธ–เนเธฅเธฐเธญเธญเธเธชเธฑเธเธเธฒ) เนเธฅเธฐเธฃเธฑเธเธเธณเธฃเธฐเธเนเธฒเน€เธเนเธฒเธเธเน€เธซเธฅเธทเธญ
+              บันทึกการรับชำระเงินมัดจำ (ค่าเริ่มต้น ฿5,000 เพื่อล็อกคิวรถและออกสัญญา) และรับชำระค่าเช่าคงเหลือ
             </div>
 
             <div class="deposit-layout">
             <div class="deposit-left">
               <div class="form-group">
-                <label id="lbl-deposit-sel-bk">๐“ เน€เธฅเธทเธญเธเธฃเธซเธฑเธชเธเธฒเธฃเธเธญเธ / เธ—เธฐเน€เธเธตเธขเธเธฃเธ–เธ—เธตเนเธ•เนเธญเธเธเธฒเธฃเธ—เธณเธฃเธฒเธขเธเธฒเธฃ:</label>
+                <label id="lbl-deposit-sel-bk">📌 เลือกรหัสการจอง / ทะเบียนรถที่ต้องการทำรายการ:</label>
                 <select id="deposit-sel-booking" class="form-control" onchange="app.onSelectDepositBooking()">
-                  <option id="opt-dep-sel-default" value="">-- เธเธฃเธธเธ“เธฒเน€เธฅเธทเธญเธเธฃเธฒเธขเธเธฒเธฃเธเธญเธ --</option>
+                  <option id="opt-dep-sel-default" value="">-- กรุณาเลือกรายการจอง --</option>
                 </select>
               </div>
               <div id="deposit-booking-summary" class="deposit-summary-card" style="display:none;">
@@ -407,43 +407,43 @@
             <div id="deposit-action-section" class="deposit-right" style="display:none;">
               <div class="deposit-form-grid">
                 <div class="form-group deposit-amount-group">
-                  <label id="lbl-deposit-amount">๐’ต เธขเธญเธ”เน€เธเธดเธเธกเธฑเธ”เธเธณเธเธฃเธฐเธเธฑเธเธชเธฑเธเธเธฒ (เธเธฒเธ—):</label>
+                  <label id="lbl-deposit-amount">💵 ยอดเงินมัดจำประกันสัญญา (บาท):</label>
                   <div class="deposit-amount-row">
                     <input type="number" id="deposit-amount-input" class="form-control" value="5000" min="0" step="500">
                     <div class="deposit-pills" role="radiogroup">
-                      <label class="deposit-pill"><input type="radio" name="deposit-type" value="เธกเธฑเธ”เธเธณเธเธฃเธฐเธเธฑเธเธชเธฑเธเธเธฒ" checked><span id="opt-dep-type-deposit">เน€เธเธดเธเธกเธฑเธ”เธเธณ</span></label>
-                      <label class="deposit-pill"><input type="radio" name="deposit-type" value="เธเนเธฒเน€เธเนเธฒ"><span id="opt-dep-type-rental">เธเนเธฒเน€เธเนเธฒ</span></label>
-                      <label class="deposit-pill"><input type="radio" name="deposit-type" value="เธกเธฑเธ”เธเธณเนเธฅเธฐเธเนเธฒเน€เธเนเธฒ"><span id="opt-dep-type-both">เธ—เธฑเนเธเธชเธญเธ</span></label>
+                      <label class="deposit-pill"><input type="radio" name="deposit-type" value="มัดจำประกันสัญญา" checked><span id="opt-dep-type-deposit">เงินมัดจำ</span></label>
+                      <label class="deposit-pill"><input type="radio" name="deposit-type" value="ค่าเช่า"><span id="opt-dep-type-rental">ค่าเช่า</span></label>
+                      <label class="deposit-pill"><input type="radio" name="deposit-type" value="มัดจำและค่าเช่า"><span id="opt-dep-type-both">ทั้งสอง</span></label>
                     </div>
                   </div>
-                  <span id="lbl-deposit-type" style="display:none;">เธเธฃเธฐเน€เธ เธ—เธเธฒเธฃเธเธณเธฃเธฐ</span>
+                  <span id="lbl-deposit-type" style="display:none;">ประเภทการชำระ</span>
                 </div>
                 <div class="form-group">
-                  <label id="lbl-deposit-method">๐’ณ เธเนเธญเธเธ—เธฒเธเธเธฒเธฃเธเธณเธฃเธฐเน€เธเธดเธ:</label>
+                  <label id="lbl-deposit-method">💳 ช่องทางการชำระเงิน:</label>
                   <select id="deposit-method-input" class="form-control">
-                    <option id="opt-dep-method-transfer" value="เนเธญเธเน€เธเธดเธ / เธชเนเธเธ QR">เนเธญเธเน€เธเธดเธ / เธชเนเธเธ QR</option>
-                    <option id="opt-dep-method-card" value="เธเธฑเธ•เธฃเน€เธเธฃเธ”เธดเธ•">เธเธฑเธ•เธฃเน€เธเธฃเธ”เธดเธ•</option>
-                    <option id="opt-dep-method-cash" value="เน€เธเธดเธเธชเธ”">เน€เธเธดเธเธชเธ”</option>
+                    <option id="opt-dep-method-transfer" value="โอนเงิน / สแกน QR">โอนเงิน / สแกน QR</option>
+                    <option id="opt-dep-method-card" value="บัตรเครดิต">บัตรเครดิต</option>
+                    <option id="opt-dep-method-cash" value="เงินสด">เงินสด</option>
                     <option id="opt-dep-method-paypal" value="PayPal">PayPal</option>
                   </select>
                 </div>
                 <div class="form-group">
-                  <label id="lbl-deposit-ref">๐งพ เน€เธฅเธ Ref เธชเธฅเธดเธเนเธญเธเน€เธเธดเธ / เธฃเธฒเธขเธเธฒเธฃเธชเธฅเธดเธเธเธฑเธ•เธฃ:</label>
-                  <input type="text" id="deposit-ref-input" class="form-control" placeholder="เน€เธเนเธ 2026101912345678 / App Ref / EDC Trace No.">
-                  <small id="hint-deposit-ref" style="font-size:11px; color:#64748B;">เธฃเธฐเธเธธเน€เธฅเธเธญเนเธฒเธเธญเธดเธเธเธฒเธเธชเธฅเธดเธเธเธเธฒเธเธฒเธฃ เธซเธฃเธทเธญเธชเธฅเธดเธเธฃเธนเธ”เธเธฑเธ•เธฃเน€เธเธทเนเธญเนเธเนเน€เธเนเธเธซเธฅเธฑเธเธเธฒเธ</small>
+                  <label id="lbl-deposit-ref">🧾 เลข Ref สลิปโอนเงิน / รายการสลิปบัตร:</label>
+                  <input type="text" id="deposit-ref-input" class="form-control" placeholder="เช่น 2026101912345678 / App Ref / EDC Trace No.">
+                  <small id="hint-deposit-ref" style="font-size:11px; color:#64748B;">ระบุเลขอ้างอิงจากสลิปธนาคาร หรือสลิปรูดบัตรเพื่อใช้เป็นหลักฐาน</small>
                 </div>
                 <div class="form-group deposit-attach-group">
-                  <label id="lbl-deposit-slip">๐“ เนเธเธเธชเธฅเธดเธ เธซเธฃเธทเธญ เนเธชเนเธฅเธดเธเธเน Google Drive:</label>
+                  <label id="lbl-deposit-slip">📎 แนบสลิป หรือ ใส่ลิงก์ Google Drive:</label>
                   <div class="deposit-attach-box">
                     <div class="deposit-slip-row">
                       <input type="file" id="deposit-slip-file" accept="image/*,application/pdf" style="display:none;" onchange="app.onDepositSlipSelected(this)">
                       <button type="button" id="btn-choose-slip" onclick="document.getElementById('deposit-slip-file').click()" class="btn btn-secondary deposit-slip-btn">
-                        เน€เธฅเธทเธญเธเนเธเธฅเนเธชเธฅเธดเธ
+                        เลือกไฟล์สลิป
                       </button>
-                      <span id="deposit-slip-status" class="deposit-slip-status">เธขเธฑเธเนเธกเนเนเธ”เนเนเธเธเธชเธฅเธดเธ</span>
+                      <span id="deposit-slip-status" class="deposit-slip-status">ยังไม่ได้แนบสลิป</span>
                     </div>
-                    <span class="deposit-attach-or">เธซเธฃเธทเธญ</span>
-                    <span id="lbl-deposit-gdrive" style="display:none;">เธฅเธดเธเธเน Google Drive</span>
+                    <span class="deposit-attach-or">หรือ</span>
+                    <span id="lbl-deposit-gdrive" style="display:none;">ลิงก์ Google Drive</span>
                     <input type="url" id="deposit-gdrive-input" class="form-control" placeholder="https://drive.google.com/...">
                   </div>
                   <input type="hidden" id="deposit-slip-url">
@@ -452,15 +452,15 @@
 
               <!-- Uploaded Slip Preview Card -->
               <div id="deposit-slip-preview-box" style="display:none; margin-bottom:14px; align-items:center; gap:12px; background:#F8FAFC; border:1px solid #CBD5E1; border-radius:8px; padding:8px 12px;">
-                <a id="deposit-slip-preview-link" href="#" target="_blank" title="เธเธฅเธดเธเน€เธเธทเนเธญเธ”เธนเธฃเธนเธเธชเธฅเธดเธเธเธเธฒเธ”เนเธซเธเน">
-                  <img id="deposit-slip-preview-img" src="" alt="เธชเธฅเธดเธ" style="width:52px; height:52px; object-fit:cover; border-radius:6px; border:1px solid #94A3B8; cursor:pointer;">
+                <a id="deposit-slip-preview-link" href="#" target="_blank" title="คลิกเพื่อดูรูปสลิปขนาดใหญ่">
+                  <img id="deposit-slip-preview-img" src="" alt="สลิป" style="width:52px; height:52px; object-fit:cover; border-radius:6px; border:1px solid #94A3B8; cursor:pointer;">
                 </a>
                 <div style="flex:1; overflow:hidden;">
-                  <span id="deposit-slip-preview-name" style="font-size:12.5px; font-weight:700; color:#1E293B; display:block; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">เธชเธฅเธดเธเธซเธฅเธฑเธเธเธฒเธเธเธฒเธฃเธเธณเธฃเธฐเน€เธเธดเธ</span>
+                  <span id="deposit-slip-preview-name" style="font-size:12.5px; font-weight:700; color:#1E293B; display:block; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">สลิปหลักฐานการชำระเงิน</span>
                   <div style="display:flex; gap:10px; align-items:center; margin-top:2px;">
-                    <a id="deposit-slip-open-btn" href="#" target="_blank" style="font-size:12px; color:#2563EB; font-weight:700; text-decoration:none;">๐” เธ”เธนเธฃเธนเธเธชเธฅเธดเธเน€เธ•เนเธก</a>
+                    <a id="deposit-slip-open-btn" href="#" target="_blank" style="font-size:12px; color:#2563EB; font-weight:700; text-decoration:none;">🔍 ดูรูปสลิปเต็ม</a>
                     <span style="color:#CBD5E1;">|</span>
-                    <button type="button" onclick="app.clearDepositSlip(true)" class="btn btn-sm btn-danger" style="padding:1px 6px; font-size:11px;">๐—‘๏ธ เธฅเธเธชเธฅเธดเธเธเธตเน</button>
+                    <button type="button" onclick="app.clearDepositSlip(true)" class="btn btn-sm btn-danger" style="padding:1px 6px; font-size:11px;">🗑️ ลบสลิปนี้</button>
                   </div>
                 </div>
               </div>
@@ -468,35 +468,35 @@
               <div class="form-group" style="margin-bottom:16px;">
                 <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
                   <input type="checkbox" id="deposit-also-rent" style="width:16px; height:16px;">
-                  <b id="lbl-deposit-also-rent" style="font-size:12.5px; color:#1E3A8A;">เธฃเธฑเธเธเธณเธฃเธฐเธเนเธฒเน€เธเนเธฒเน€เธ•เนเธกเธเธณเธเธงเธเธเธฃเนเธญเธกเธเธฑเธเธ—เธฑเธเธ—เธต</b>
+                  <b id="lbl-deposit-also-rent" style="font-size:12.5px; color:#1E3A8A;">รับชำระค่าเช่าเต็มจำนวนพร้อมกันทันที</b>
                 </label>
               </div>
 
               <div class="deposit-actions">
                 <button id="btn-submit-deposit" onclick="app.submitDeposit()" class="btn btn-primary deposit-btn-primary">
-                  เธขเธทเธเธขเธฑเธเธฃเธฑเธเน€เธเธดเธเธกเธฑเธ”เธเธณ
+                  ยืนยันรับเงินมัดจำ
                 </button>
                 <div class="deposit-actions-secondary">
-                  <button id="btn-save-slip-only" onclick="app.submitUpdateSlipOnly()" class="btn btn-secondary deposit-btn-ghost" style="display:none;" title="เธญเธฑเธเน€เธ”เธ•เธชเธฅเธดเธเนเธฅเธฐเน€เธฅเธ Ref เน€เธเธดเนเธกเน€เธ•เธดเธก">
-                    เธญเธฑเธเน€เธ”เธ•เธชเธฅเธดเธ & เน€เธฅเธ Ref
+                  <button id="btn-save-slip-only" onclick="app.submitUpdateSlipOnly()" class="btn btn-secondary deposit-btn-ghost" style="display:none;" title="อัปเดตสลิปและเลข Ref เพิ่มเติม">
+                    อัปเดตสลิป & เลข Ref
                   </button>
                   <button id="btn-settle-rental" onclick="app.submitSettle()" class="btn btn-success" style="display:none;">
-                    เธเธฑเธเธ—เธถเธเธเธณเธฃเธฐเธเนเธฒเน€เธเนเธฒเธเธเน€เธซเธฅเธทเธญ
+                    บันทึกชำระค่าเช่าคงเหลือ
                   </button>
                   <button id="btn-dl-dep-receipt" onclick="app.downloadDepositReceipt()" class="btn btn-secondary deposit-btn-ghost" style="display:none;">
-                    เนเธเน€เธชเธฃเนเธเธฃเธฑเธเน€เธเธดเธเธกเธฑเธ”เธเธณ (PDF)
+                    ใบเสร็จรับเงินมัดจำ (PDF)
                   </button>
                   <button id="btn-dl-rent-receipt" onclick="app.downloadRentalReceipt()" class="btn btn-secondary deposit-btn-ghost" style="display:none;">
-                    เนเธเน€เธชเธฃเนเธเธเนเธฒเน€เธเนเธฒ (PDF)
+                    ใบเสร็จค่าเช่า (PDF)
                   </button>
                   <button id="btn-dl-contract-from-dep" onclick="app.downloadContractPdf()" class="btn btn-secondary deposit-btn-ghost" style="display:none;">
-                    เธชเธฑเธเธเธฒเน€เธเนเธฒ (PDF)
+                    สัญญาเช่า (PDF)
                   </button>
                   <button id="btn-goto-assign-from-dep" onclick="app.goToTabWithBooking('assign', document.getElementById('deposit-sel-booking').value)" class="btn btn-secondary deposit-btn-ghost">
-                    เนเธเธซเธเนเธฒเธญเธญเธเนเธเธเธฒเธ
+                    ไปหน้าออกใบงาน
                   </button>
                   <button id="btn-goto-contract-from-dep" onclick="app.goToTabWithBooking('contract', document.getElementById('deposit-sel-booking').value)" class="btn btn-secondary deposit-btn-ghost">
-                    เนเธเธซเธเนเธฒเธ—เธณเธชเธฑเธเธเธฒ
+                    ไปหน้าทำสัญญา
                   </button>
                 </div>
               </div>
@@ -511,61 +511,61 @@
             <!-- Column 1: Dispatch Assignment -->
             <div class="card">
               <div class="card-title" id="title-tab3-disp">
-                <span>๐</span> เธญเธญเธเนเธเธเธฒเธเธชเนเธเธฃเธ– (Dispatch Work Order)
+                <span>🚚</span> ออกใบงานส่งรถ (Dispatch Work Order)
               </div>
               <div class="form-group" style="margin-bottom:14px;">
-                <label id="lbl-assign-disp-bk">เน€เธฅเธทเธญเธเธฃเธซเธฑเธชเธเธฒเธฃเธเธญเธเธชเธณเธซเธฃเธฑเธเธชเนเธเธกเธญเธเธฃเธ–:</label>
+                <label id="lbl-assign-disp-bk">เลือกรหัสการจองสำหรับส่งมอบรถ:</label>
                 <select id="assign-disp-bk" class="form-control" onchange="app.onSelectAssignDispBooking()">
-                  <option id="opt-assign-disp-default" value="">-- เน€เธฅเธทเธญเธเธฃเธซเธฑเธชเธเธฒเธฃเธเธญเธ --</option>
+                  <option id="opt-assign-disp-default" value="">-- เลือกรหัสการจอง --</option>
                 </select>
               </div>
               <div id="assign-disp-form" style="display:none;">
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:12px;">
                   <div class="form-group">
-                    <label id="lbl-assign-disp-start">๐“… เธงเธฑเธเธ—เธตเนเน€เธฃเธดเนเธกเน€เธเนเธฒ (เธงเธฑเธเธชเนเธเธกเธญเธ):</label>
+                    <label id="lbl-assign-disp-start">📅 วันที่เริ่มเช่า (วันส่งมอบ):</label>
                     <input type="date" id="assign-disp-start-date" class="form-control" onchange="document.getElementById('assign-disp-date').value = this.value">
                   </div>
                   <div class="form-group">
-                    <label id="lbl-assign-disp-end">๐“… เธเธณเธซเธเธ”เธเธทเธเธฃเธ–:</label>
+                    <label id="lbl-assign-disp-end">📅 กำหนดคืนรถ:</label>
                     <input type="date" id="assign-disp-end-date" class="form-control">
                   </div>
                 </div>
                 <div id="assign-disp-status-banner" style="margin-bottom:12px;"></div>
                 <div class="form-group" style="margin-bottom:12px;">
-                  <label id="lbl-assign-disp-worker">๐‘ค เน€เธฅเธทเธญเธเธเธเธฑเธเธเธฒเธเธเธฑเธ”เธชเนเธ / เธเธเธเธฑเธเธฃเธ–:</label>
+                  <label id="lbl-assign-disp-worker">👤 เลือกพนักงานจัดส่ง / คนขับรถ:</label>
                   <select id="assign-disp-worker" class="form-control">
-                    <option value="admin">admin (เธเธนเนเธ”เธนเนเธฅเธฃเธฐเธเธ (Admin)) [Admin]</option>
+                    <option value="admin">admin (ผู้ดูแลระบบ (Admin)) [Admin]</option>
                     <option value="chaiwat.u">chaiwat.u [Staff]</option>
                     <option value="sam">sam [Staff]</option>
                     <option value="sucheeda">sucheeda (uswachoke) [Staff]</option>
-                    <option value="Chatipat">Chatipat (เธเธฒเธ•เธดเธเธฑเธ’เธเน เธ•เธฑเนเธเธฃเธธเนเธเน€เธฃเธทเธญเธเธญเธขเธนเน) [Staff]</option>
+                    <option value="Chatipat">Chatipat (ชาติพัฒน์ ตั้งรุ่งเรืองอยู่) [Staff]</option>
                   </select>
                 </div>
                 <div class="form-group" style="margin-bottom:12px;">
-                  <label id="lbl-assign-disp-loc">๐“ เธชเธ–เธฒเธเธ—เธตเนเธเธฑเธ”เธซเธกเธฒเธขเธชเนเธเธกเธญเธเธฃเธ–:</label>
-                  <textarea id="assign-disp-loc" class="form-control" rows="2" placeholder="เน€เธเนเธ เธชเธเธฒเธกเธเธดเธเธชเธธเธงเธฃเธฃเธ“เธ เธนเธกเธด เธซเธฃเธทเธญเนเธชเน Google Maps link"></textarea>
+                  <label id="lbl-assign-disp-loc">📍 สถานที่นัดหมายส่งมอบรถ:</label>
+                  <textarea id="assign-disp-loc" class="form-control" rows="2" placeholder="เช่น สนามบินสุวรรณภูมิ หรือใส่ Google Maps link"></textarea>
                 </div>
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:16px;">
                   <div class="form-group">
-                    <label id="lbl-assign-disp-date">๐“… เธงเธฑเธเธ—เธตเนเธเธฑเธ”เธชเนเธเธกเธญเธเธฃเธ–:</label>
+                    <label id="lbl-assign-disp-date">📅 วันที่นัดส่งมอบรถ:</label>
                     <input type="date" id="assign-disp-date" class="form-control" onchange="document.getElementById('assign-disp-start-date').value = this.value">
                   </div>
                   <div class="form-group">
-                    <label id="lbl-assign-disp-time">โฐ เน€เธงเธฅเธฒเธเธฑเธ”เธชเนเธเธกเธญเธเธฃเธ–:</label>
+                    <label id="lbl-assign-disp-time">⏰ เวลานัดส่งมอบรถ:</label>
                     <input type="time" id="assign-disp-time" class="form-control">
                   </div>
                 </div>
                 <div style="display:flex; flex-direction:column; gap:8px;">
                   <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-                    <button type="button" id="btn-assign-disp-sched" onclick="app.submitAssign('Dispatch', 'prepare')" class="btn btn-secondary" style="width:100%; font-weight:700;" title="เธเธฑเธเธ—เธถเธเธเนเธญเธกเธนเธฅเน€เธ•เธฃเธตเธขเธกเธเธฑเธ”เธซเธกเธฒเธข (เธชเธ–เธฒเธเธฐ: เน€เธ•เธฃเธตเธขเธกเธชเนเธเธกเธญเธ)">
-                      ๐“ เธเธฑเธ”เธซเธกเธฒเธข (เน€เธ•เธฃเธตเธขเธกเธชเนเธเธกเธญเธ)
+                    <button type="button" id="btn-assign-disp-sched" onclick="app.submitAssign('Dispatch', 'prepare')" class="btn btn-secondary" style="width:100%; font-weight:700;" title="บันทึกข้อมูลเตรียมนัดหมาย (สถานะ: เตรียมส่งมอบ)">
+                      📋 นัดหมาย (เตรียมส่งมอบ)
                     </button>
-                    <button type="button" id="btn-assign-disp-handover" onclick="app.submitAssign('Dispatch', 'handover')" class="btn btn-primary" style="width:100%; background:#16a34a; border-color:#16a34a; font-weight:700;" title="เธชเนเธเธกเธญเธเธฃเธ–เนเธซเนเธฅเธนเธเธเนเธฒเธเธฃเธดเธเนเธฅเนเธง (เธชเธ–เธฒเธเธฐ: เธเธณเธฅเธฑเธเน€เธเนเธฒ)">
-                      ๐ เธชเนเธเธกเธญเธเธฃเธ–เนเธฅเนเธง (เธเธณเธฅเธฑเธเน€เธเนเธฒ) โ”
+                    <button type="button" id="btn-assign-disp-handover" onclick="app.submitAssign('Dispatch', 'handover')" class="btn btn-primary" style="width:100%; background:#16a34a; border-color:#16a34a; font-weight:700;" title="ส่งมอบรถให้ลูกค้าจริงแล้ว (สถานะ: กำลังเช่า)">
+                      🚚 ส่งมอบรถแล้ว (กำลังเช่า) ➔
                     </button>
                   </div>
                   <button type="button" id="btn-assign-disp-goto-contract" onclick="app.goToTabWithBooking('contract', document.getElementById('assign-disp-bk').value)" class="btn btn-secondary" style="width:100%; background:#FAF7F2; border:1px solid #CBD5E1; color:#374151; font-weight:700;">
-                    ๐“ เนเธเธซเธเนเธฒเธ—เธณเธชเธฑเธเธเธฒ โ”
+                    📝 ไปหน้าทำสัญญา ➔
                   </button>
                 </div>
               </div>
@@ -574,56 +574,56 @@
             <!-- Column 2: Return Assignment -->
             <div class="card">
               <div class="card-title" id="title-tab3-ret">
-                <span>๐”</span> เธญเธญเธเนเธเธเธฒเธเธฃเธฑเธเธฃเธ–เธเธทเธ (Return Work Order)
+                <span>🔙</span> ออกใบงานรับรถคืน (Return Work Order)
               </div>
               <div class="form-group" style="margin-bottom:14px;">
-                <label id="lbl-assign-ret-bk">เน€เธฅเธทเธญเธเธฃเธซเธฑเธชเธเธฒเธฃเธเธญเธเธชเธณเธซเธฃเธฑเธเธฃเธฑเธเธฃเธ–เธเธทเธ:</label>
+                <label id="lbl-assign-ret-bk">เลือกรหัสการจองสำหรับรับรถคืน:</label>
                 <select id="assign-ret-bk" class="form-control" onchange="app.onSelectAssignRetBooking()">
-                  <option id="opt-assign-ret-default" value="">-- เน€เธฅเธทเธญเธเธฃเธซเธฑเธชเธเธฒเธฃเธเธญเธ --</option>
+                  <option id="opt-assign-ret-default" value="">-- เลือกรหัสการจอง --</option>
                 </select>
               </div>
               <div id="assign-ret-form" style="display:none;">
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:12px;">
                   <div class="form-group">
-                    <label id="lbl-assign-ret-start">๐“… เธงเธฑเธเธ—เธตเนเน€เธฃเธดเนเธกเน€เธเนเธฒ:</label>
+                    <label id="lbl-assign-ret-start">📅 วันที่เริ่มเช่า:</label>
                     <input type="date" id="assign-ret-start-date" class="form-control">
                   </div>
                   <div class="form-group">
-                    <label id="lbl-assign-ret-end">๐“… เธเธณเธซเธเธ”เธเธทเธเธฃเธ– (เธงเธฑเธเธฃเธฑเธเธเธทเธ):</label>
+                    <label id="lbl-assign-ret-end">📅 กำหนดคืนรถ (วันรับคืน):</label>
                     <input type="date" id="assign-ret-end-date" class="form-control" onchange="document.getElementById('assign-ret-date').value = this.value">
                   </div>
                 </div>
                 <div id="assign-ret-status-banner" style="margin-bottom:12px;"></div>
                 <div class="form-group" style="margin-bottom:12px;">
-                  <label id="lbl-assign-ret-worker">๐‘ค เน€เธฅเธทเธญเธเธเธเธฑเธเธเธฒเธเธฃเธฑเธเธฃเธ–เธเธทเธ / เธเธเธเธฑเธเธฃเธ–:</label>
+                  <label id="lbl-assign-ret-worker">👤 เลือกพนักงานรับรถคืน / คนขับรถ:</label>
                   <select id="assign-ret-worker" class="form-control">
-                    <option value="admin">admin (เธเธนเนเธ”เธนเนเธฅเธฃเธฐเธเธ (Admin)) [Admin]</option>
+                    <option value="admin">admin (ผู้ดูแลระบบ (Admin)) [Admin]</option>
                     <option value="chaiwat.u">chaiwat.u [Staff]</option>
                     <option value="sam">sam [Staff]</option>
                     <option value="sucheeda">sucheeda (uswachoke) [Staff]</option>
-                    <option value="Chatipat">Chatipat (เธเธฒเธ•เธดเธเธฑเธ’เธเน เธ•เธฑเนเธเธฃเธธเนเธเน€เธฃเธทเธญเธเธญเธขเธนเน) [Staff]</option>
+                    <option value="Chatipat">Chatipat (ชาติพัฒน์ ตั้งรุ่งเรืองอยู่) [Staff]</option>
                   </select>
                 </div>
                 <div class="form-group" style="margin-bottom:12px;">
-                  <label id="lbl-assign-ret-loc">๐“ เธชเธ–เธฒเธเธ—เธตเนเธเธฑเธ”เธซเธกเธฒเธขเธฃเธฑเธเธฃเธ–เธเธทเธ:</label>
-                  <textarea id="assign-ret-loc" class="form-control" rows="2" placeholder="เน€เธเนเธ เธชเธ–เธฒเธเธ—เธตเนเน€เธ”เธดเธก เธซเธฃเธทเธญ เนเธฃเธเนเธฃเธก..."></textarea>
+                  <label id="lbl-assign-ret-loc">📍 สถานที่นัดหมายรับรถคืน:</label>
+                  <textarea id="assign-ret-loc" class="form-control" rows="2" placeholder="เช่น สถานที่เดิม หรือ โรงแรม..."></textarea>
                 </div>
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:16px;">
                   <div class="form-group">
-                    <label id="lbl-assign-ret-date">๐“… เธงเธฑเธเธ—เธตเนเธเธฑเธ”เธฃเธฑเธเธฃเธ–เธเธทเธ:</label>
+                    <label id="lbl-assign-ret-date">📅 วันที่นัดรับรถคืน:</label>
                     <input type="date" id="assign-ret-date" class="form-control" onchange="document.getElementById('assign-ret-end-date').value = this.value">
                   </div>
                   <div class="form-group">
-                    <label id="lbl-assign-ret-time">โฐ เน€เธงเธฅเธฒเธเธฑเธ”เธฃเธฑเธเธฃเธ–เธเธทเธ:</label>
+                    <label id="lbl-assign-ret-time">⏰ เวลานัดรับรถคืน:</label>
                     <input type="time" id="assign-ret-time" class="form-control">
                   </div>
                 </div>
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-                  <button type="button" id="btn-assign-ret-sched" onclick="app.submitAssign('Return', 'prepare')" class="btn btn-secondary" style="width:100%; font-weight:700;" title="เธเธฑเธเธ—เธถเธเน€เธ•เธฃเธตเธขเธกเธเธฑเธ”เธซเธกเธฒเธขเธฃเธฑเธเธฃเธ–เธเธทเธ (เธชเธ–เธฒเธเธฐ: เน€เธ•เธฃเธตเธขเธกเธฃเธฑเธเธเธทเธ)">
-                    ๐“ เธเธฑเธ”เธฃเธฑเธเธเธทเธ (เน€เธ•เธฃเธตเธขเธกเธฃเธฑเธเธเธทเธ)
+                  <button type="button" id="btn-assign-ret-sched" onclick="app.submitAssign('Return', 'prepare')" class="btn btn-secondary" style="width:100%; font-weight:700;" title="บันทึกเตรียมนัดหมายรับรถคืน (สถานะ: เตรียมรับคืน)">
+                    📋 นัดรับคืน (เตรียมรับคืน)
                   </button>
-                  <button type="button" id="btn-assign-ret-complete" onclick="app.submitAssign('Return', 'complete')" class="btn btn-warning" style="width:100%; background:#f59e0b; border-color:#d97706; font-weight:700; color:#1F2937;" title="เธฅเธนเธเธเนเธฒเธเธณเธฃเธ–เธเธฅเธฑเธเธกเธฒเธเธทเธเนเธฅเธฐเธเธดเธ”เธเธฒเธ (เธชเธ–เธฒเธเธฐ: เน€เธชเธฃเนเธเธชเธดเนเธ)">
-                    ๐ เธฃเธฑเธเธเธทเธเนเธฅเนเธง (เน€เธชเธฃเนเธเธชเธดเนเธ) โ”
+                  <button type="button" id="btn-assign-ret-complete" onclick="app.submitAssign('Return', 'complete')" class="btn btn-warning" style="width:100%; background:#f59e0b; border-color:#d97706; font-weight:700; color:#1F2937;" title="ลูกค้านำรถกลับมาคืนและปิดงาน (สถานะ: เสร็จสิ้น)">
+                    🏁 รับคืนแล้ว (เสร็จสิ้น) ➔
                   </button>
                 </div>
               </div>
@@ -636,27 +636,27 @@
           <!-- 1. Document Center & Contract Review Card -->
           <div class="card" style="margin-bottom:20px;">
             <div class="card-title" id="title-tab4">
-              <span>๐“</span> เธจเธนเธเธขเนเธเธฑเธ”เธ—เธณเนเธฅเธฐเธ•เธฃเธงเธเธชเธญเธเธชเธฑเธเธเธฒเน€เธเนเธฒ (Rental Contract Formulation & Inspection)
+              <span>📝</span> ศูนย์จัดทำและตรวจสอบสัญญาเช่า (Rental Contract Formulation & Inspection)
             </div>
             <div id="subtitle-tab4" style="font-size:12.5px; color:var(--text-muted); margin-bottom:16px;">
-              เธชเธฃเนเธฒเธเนเธฅเธฐเธ”เธฒเธงเธเนเนเธซเธฅเธ”เธชเธฑเธเธเธฒเน€เธเนเธฒเธฃเธ–เธขเธเธ•เนเธ—เธฒเธเธเธฒเธฃ (Official Rental Agreement PDF) เธเธดเธเธฑเธ”เธกเธฒเธ•เธฃเธเธฒเธเน€เธเนเธฐ 100% เธเธฃเนเธญเธกเนเธเน€เธชเธฃเนเธเธฃเธฑเธเน€เธเธดเธ
+              สร้างและดาวน์โหลดสัญญาเช่ารถยนต์ทางการ (Official Rental Agreement PDF) พิกัดมาตรฐานเป๊ะ 100% พร้อมใบเสร็จรับเงิน
             </div>
 
             <div style="display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap; margin-bottom:20px; max-width:680px;">
               <div class="form-group" style="flex:1; min-width:280px;">
-                <label id="lbl-contract-sel-bk">๐“ เน€เธฅเธทเธญเธเธชเธฑเธเธเธฒเน€เธเนเธฒเน€เธเธทเนเธญเธ•เธฃเธงเธเธชเธญเธเนเธฅเธฐเธ”เธฒเธงเธเนเนเธซเธฅเธ”เน€เธญเธเธชเธฒเธฃ PDF:</label>
+                <label id="lbl-contract-sel-bk">📋 เลือกสัญญาเช่าเพื่อตรวจสอบและดาวน์โหลดเอกสาร PDF:</label>
                 <select id="contract-sel-bk" class="form-control" onchange="app.onSelectContractBooking()">
-                  <option id="opt-contract-sel-default" value="">-- เธเธฃเธธเธ“เธฒเน€เธฅเธทเธญเธเธฃเธฒเธขเธเธฒเธฃเธเธญเธ --</option>
+                  <option id="opt-contract-sel-default" value="">-- กรุณาเลือกรายการจอง --</option>
                 </select>
               </div>
               <button id="btn-refresh-contracts" onclick="app.populateBookingDropdowns(); app.onSelectContractBooking();" class="btn btn-secondary btn-sm" style="height:38px; padding:0 14px;">
-                ๐” เธฃเธตเน€เธเธฃเธเธฃเธฒเธขเธเธฒเธฃ
+                🔄 รีเฟรชรายการ
               </button>
             </div>
 
             <!-- Empty message if no booking selected -->
             <div id="contract-empty-msg" style="display:none; padding:30px; text-align:center; background:#FAF7F2; border:1px dashed #D1D5DB; border-radius:8px; color:#6B7280;">
-              โน๏ธ เธขเธฑเธเนเธกเนเธกเธตเธฃเธฒเธขเธเธฒเธฃเธชเธฑเธเธเธฒเน€เธเนเธฒเธ—เธตเนเน€เธเธดเธ”เนเธเนเธเธฒเธเธญเธขเธนเนเนเธเธฃเธฐเธเธ เธชเธฒเธกเธฒเธฃเธ–เน€เธฅเธทเธญเธเธชเธฃเนเธฒเธเธชเธฑเธเธเธฒเนเธซเธกเนเนเธ”เนเธเธฒเธเธเธญเธฃเนเธก Walk-in เธ”เนเธฒเธเธฅเนเธฒเธ เธซเธฃเธทเธญเธเธฅเธฑเธเนเธเน€เธฅเธทเธญเธเธฃเธ–เธขเธเธ•เนเนเธเนเธ—เนเธ 1
+              ℹ️ ยังไม่มีรายการสัญญาเช่าที่เปิดใช้งานอยู่ในระบบ สามารถเลือกสร้างสัญญาใหม่ได้จากฟอร์ม Walk-in ด้านล่าง หรือกลับไปเลือกรถยนต์ในแท็บ 1
             </div>
 
             <!-- Contract Details Card -->
@@ -669,54 +669,54 @@
               <!-- 3 Info Columns -->
               <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:16px; margin-bottom:16px;">
                 <div style="background:white; border:1px solid #E2E8F0; border-radius:8px; padding:14px;">
-                  <b id="hdr-contract-cust-info" style="color:#1E3A8A; font-size:13px;">๐‘ค เธเนเธญเธกเธนเธฅเธเธนเนเน€เธเนเธฒ (Customer)</b>
+                  <b id="hdr-contract-cust-info" style="color:#1E3A8A; font-size:13px;">👤 ข้อมูลผู้เช่า (Customer)</b>
                   <div id="contract-cust-info" style="font-size:12px; margin-top:8px; line-height:1.7;">-</div>
                 </div>
                 <div style="background:white; border:1px solid #E2E8F0; border-radius:8px; padding:14px;">
-                  <b id="hdr-contract-car-info" style="color:#1E3A8A; font-size:13px;">๐ เธเนเธญเธกเธนเธฅเธฃเธ–เธขเธเธ•เน (Vehicle)</b>
+                  <b id="hdr-contract-car-info" style="color:#1E3A8A; font-size:13px;">🚘 ข้อมูลรถยนต์ (Vehicle)</b>
                   <div id="contract-car-info" style="font-size:12px; margin-top:8px; line-height:1.7;">-</div>
                 </div>
                 <div style="background:white; border:1px solid #E2E8F0; border-radius:8px; padding:14px;">
-                  <b id="hdr-contract-sched-info" style="color:#1E3A8A; font-size:13px;">๐“… เธฃเธฐเธขเธฐเน€เธงเธฅเธฒ & เธเธณเธซเธเธ”เธเธฒเธฃ (Schedule)</b>
+                  <b id="hdr-contract-sched-info" style="color:#1E3A8A; font-size:13px;">📅 ระยะเวลา & กำหนดการ (Schedule)</b>
                   <div id="contract-sched-info" style="font-size:12px; margin-top:8px; line-height:1.7;">-</div>
                 </div>
               </div>
 
               <!-- Price Box -->
               <div style="background:#FFF7ED; border:1px solid #FED7AA; border-radius:8px; padding:12px 18px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:18px;">
-                <span>๐’ฐ <b id="lbl-contract-net-price">เธขเธญเธ”เธเนเธฒเน€เธเนเธฒเธ•เธฒเธกเธชเธฑเธเธเธฒ:</b> <b id="contract-net-price" style="color:#92400E; font-size:14px;">เธฟ0.00</b></span>
-                <span>๐ก๏ธ <b id="lbl-contract-dep-status">เธกเธฑเธ”เธเธณเธเธฃเธฐเธเธฑเธเธชเธฑเธเธเธฒ:</b> <b id="contract-dep-status" style="color:#15803D; font-size:14px;">เธฟ5,000.00</b></span>
-                <span>๐งพ <b id="lbl-contract-rem-price">เธขเธญเธ”เธเนเธฒเน€เธเนเธฒเธเธเน€เธซเธฅเธทเธญ:</b> <b id="contract-rem-price" style="color:#E85826; font-size:16px;">เธฟ0.00</b></span>
+                <span>💰 <b id="lbl-contract-net-price">ยอดค่าเช่าตามสัญญา:</b> <b id="contract-net-price" style="color:#92400E; font-size:14px;">฿0.00</b></span>
+                <span>🛡️ <b id="lbl-contract-dep-status">มัดจำประกันสัญญา:</b> <b id="contract-dep-status" style="color:#15803D; font-size:14px;">฿5,000.00</b></span>
+                <span>🧾 <b id="lbl-contract-rem-price">ยอดค่าเช่าคงเหลือ:</b> <b id="contract-rem-price" style="color:#E85826; font-size:16px;">฿0.00</b></span>
               </div>
 
               <!-- Actions & Document Center -->
               <div style="border-top:1px solid #E2E8F0; padding-top:16px;">
                 <div id="hdr-contract-doc-center" style="font-size:13px; font-weight:700; color:#1F2937; margin-bottom:10px;">
-                  ๐“ฅ เธเธดเธกเธเนเนเธฅเธฐเธ”เธฒเธงเธเนเนเธซเธฅเธ”เน€เธญเธเธชเธฒเธฃเธ—เธฒเธเธเธฒเธฃ (Document Center):
+                  📥 พิมพ์และดาวน์โหลดเอกสารทางการ (Document Center):
                 </div>
                 <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
                   <button type="button" id="btn-dl-contract-pdf" onclick="app.downloadContractPdf()" class="btn btn-primary" style="font-weight:700;">
-                    ๐“ เธ”เธฒเธงเธเนเนเธซเธฅเธ”เธชเธฑเธเธเธฒเน€เธเนเธฒ (Rental Agreement PDF)
+                    📝 ดาวน์โหลดสัญญาเช่า (Rental Agreement PDF)
                   </button>
                   <button type="button" id="btn-dl-contract-dep-receipt" onclick="app.downloadDepositReceipt()" class="btn btn-secondary">
-                    ๐งพ เนเธซเธฅเธ”เนเธเน€เธชเธฃเนเธเธกเธฑเธ”เธเธณ (Deposit Receipt PDF)
+                    🧾 โหลดใบเสร็จมัดจำ (Deposit Receipt PDF)
                   </button>
                   <button type="button" id="btn-dl-contract-rent-receipt" onclick="app.downloadRentalReceipt()" class="btn btn-secondary">
-                    ๐งพ เนเธซเธฅเธ”เนเธเน€เธชเธฃเนเธเธเนเธฒเน€เธเนเธฒ (Rental Receipt PDF)
+                    🧾 โหลดใบเสร็จค่าเช่า (Rental Receipt PDF)
                   </button>
                   <button type="button" id="btn-dl-contract-job" onclick="app.downloadJobPdf()" class="btn btn-secondary">
-                    ๐“ เนเธซเธฅเธ”เนเธเธ•เธฃเธงเธเธชเธ เธฒเธเธฃเธ– (Checklist PDF)
+                    📋 โหลดใบตรวจสภาพรถ (Checklist PDF)
                   </button>
                 </div>
 
                 <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin-top:14px; border-top:1px dashed #CBD5E1; padding-top:12px;">
                   <span id="contract-issued-status-pill">
                     <button id="btn-mark-contract-issued" onclick="app.markContractIssued()" class="btn btn-success">
-                      โ… เธขเธทเธเธขเธฑเธเธญเธญเธเธชเธฑเธเธเธฒเน€เธฃเธตเธขเธเธฃเนเธญเธข
+                      ✅ ยืนยันออกสัญญาเรียบร้อย
                     </button>
                   </span>
                   <button id="btn-goto-deposit-from-contract" onclick="app.goToDepositFromContract()" class="btn btn-primary" style="background:#0284C7; border-color:#0284C7;">
-                    ๐’ณ เนเธเธซเธเนเธฒเธเธณเธฃเธฐเน€เธเธดเธ / เธเธดเธ”เธขเธญเธ”เธเธเน€เธซเธฅเธทเธญ โ”
+                    💳 ไปหน้าชำระเงิน / ปิดยอดคงเหลือ ➔
                   </button>
                 </div>
               </div>
@@ -727,32 +727,32 @@
           <div class="expander-card" id="expander-walkin-contract">
             <div class="expander-header open" onclick="app.toggleExpander('expander-walkin-contract')">
               <div class="expander-title" id="title-walkin-contract">
-                <span>โ•</span> เธชเธฃเนเธฒเธเธชเธฑเธเธเธฒเน€เธเนเธฒเนเธซเธกเนเนเธ”เธขเธ•เธฃเธ (Walk-in Direct Contract Formulation)
+                <span>➕</span> สร้างสัญญาเช่าใหม่โดยตรง (Walk-in Direct Contract Formulation)
               </div>
               <div class="expander-indicator">
-                <span id="indicator-expander-walkin-contract">โ–ฒ เธเธฅเธดเธเน€เธเธทเนเธญเธเธฑเธเน€เธเนเธ</span>
+                <span id="indicator-expander-walkin-contract">▲ คลิกเพื่อพับเก็บ</span>
               </div>
             </div>
             <div class="expander-body" id="body-expander-walkin-contract" style="display:block;">
               <div id="subtitle-walkin-contract" style="font-size:12.5px; color:var(--text-muted); margin-bottom:16px;">
-                เธชเธณเธซเธฃเธฑเธเธเธฃเธ“เธตเธฅเธนเธเธเนเธฒ Walk-in เน€เธเนเธฒเธกเธฒเธ—เธตเนเธซเธเนเธฒเธฃเนเธฒเธเนเธ”เธขเธ•เธฃเธ เธชเธฒเธกเธฒเธฃเธ–เธเธฃเธญเธเธฃเธฒเธขเธฅเธฐเน€เธญเธตเธขเธ” เธญเธญเธเธชเธฑเธเธเธฒเน€เธเนเธฒ เนเธฅเธฐเธ”เธฒเธงเธเนเนเธซเธฅเธ” PDF เนเธ”เนเธ—เธฑเธเธ—เธต
+                สำหรับกรณีลูกค้า Walk-in เข้ามาที่หน้าร้านโดยตรง สามารถกรอกรายละเอียด ออกสัญญาเช่า และดาวน์โหลด PDF ได้ทันที
               </div>
 
               <!-- Form Fields -->
               <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:14px; margin-bottom:14px;">
                 <div class="form-group">
-                  <label id="lbl-walkin-car">๐ เน€เธฅเธทเธญเธเธฃเธ–เธขเธเธ•เน:</label>
+                  <label id="lbl-walkin-car">🚘 เลือกรถยนต์:</label>
                   <select id="walkin-car-select" class="form-control" onchange="app.recalcWalkinPrice()">
-                    <option id="opt-walkin-car-default" value="">-- เน€เธฅเธทเธญเธเธฃเธ–เธขเธเธ•เนเธเธฒเธเธเธนเธเธฃเธ– --</option>
+                    <option id="opt-walkin-car-default" value="">-- เลือกรถยนต์จากฝูงรถ --</option>
                   </select>
                 </div>
                 <div class="form-group">
                   <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-                    <label id="lbl-walkin-cust" style="margin:0;">๐‘ค เน€เธฅเธทเธญเธเธฅเธนเธเธเนเธฒเธเธนเนเน€เธเนเธฒ:</label>
+                    <label id="lbl-walkin-cust" style="margin:0;">👤 เลือกลูกค้าผู้เช่า:</label>
                     <div style="display:flex; gap:6px;">
-                      <button type="button" id="btn-walkin-cust-edit" onclick="app.openEditSelectedCustomerModal('walkin')" class="btn btn-sm btn-secondary" style="padding:2px 8px; font-size:11.5px; background:#FAF7F2; border:1px solid #CBD5E1; color:#374151;" title="เธ”เธนเนเธฅเธฐเนเธเนเนเธเธเนเธญเธกเธนเธฅเธฅเธนเธเธเนเธฒเธ—เธตเนเน€เธฅเธทเธญเธ">โ๏ธ เธ”เธน/เนเธเนเนเธ</button>
-                      <button type="button" id="btn-walkin-cust-del" onclick="app.deleteSelectedCustomer('walkin')" class="btn btn-sm btn-danger" style="padding:2px 8px; font-size:11.5px;" title="เธฅเธเธเนเธญเธกเธนเธฅเธฅเธนเธเธเนเธฒเธเธตเน (เธเธฃเธ“เธตเธเธฑเธเธ—เธถเธเธเธดเธ”)">๐—‘๏ธ เธฅเธ</button>
-                      <button type="button" id="btn-walkin-cust-add" onclick="app.openAddCustomerModal()" class="btn btn-sm btn-primary" style="padding:2px 8px; font-size:11.5px;">โ• เน€เธเธดเนเธกเนเธซเธกเน</button>
+                      <button type="button" id="btn-walkin-cust-edit" onclick="app.openEditSelectedCustomerModal('walkin')" class="btn btn-sm btn-secondary" style="padding:2px 8px; font-size:11.5px; background:#FAF7F2; border:1px solid #CBD5E1; color:#374151;" title="ดูและแก้ไขข้อมูลลูกค้าที่เลือก">✏️ ดู/แก้ไข</button>
+                      <button type="button" id="btn-walkin-cust-del" onclick="app.deleteSelectedCustomer('walkin')" class="btn btn-sm btn-danger" style="padding:2px 8px; font-size:11.5px;" title="ลบข้อมูลลูกค้านี้ (กรณีบันทึกผิด)">🗑️ ลบ</button>
+                      <button type="button" id="btn-walkin-cust-add" onclick="app.openAddCustomerModal()" class="btn btn-sm btn-primary" style="padding:2px 8px; font-size:11.5px;">➕ เพิ่มใหม่</button>
                     </div>
                   </div>
                   <select id="walkin-cust-select" class="form-control" onchange="app.onSelectWalkinCustomer()"></select>
@@ -762,14 +762,14 @@
 
               <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:14px; margin-bottom:14px;">
                 <div class="form-group">
-                  <label id="lbl-walkin-start">๐“… เธงเธฑเธเธ—เธตเนเธชเนเธเธกเธญเธเธฃเธ– (Pick-up เน€เธงเธฅเธฒเนเธ—เธข):</label>
+                  <label id="lbl-walkin-start">📅 วันที่ส่งมอบรถ (Pick-up เวลาไทย):</label>
                   <div style="display:flex; gap:6px;">
                     <input type="date" id="walkin-start-date" class="form-control" onchange="app.recalcWalkinPrice()">
                     <input type="time" id="walkin-start-time" class="form-control" style="width:110px;" onchange="app.recalcWalkinPrice()">
                   </div>
                 </div>
                 <div class="form-group">
-                  <label id="lbl-walkin-end">๐“… เธงเธฑเธเธ—เธตเนเธเธทเธเธฃเธ– (Return เน€เธงเธฅเธฒเนเธ—เธข):</label>
+                  <label id="lbl-walkin-end">📅 วันที่คืนรถ (Return เวลาไทย):</label>
                   <div style="display:flex; gap:6px;">
                     <input type="date" id="walkin-end-date" class="form-control" onchange="app.recalcWalkinPrice()">
                     <input type="time" id="walkin-end-time" class="form-control" style="width:110px;" onchange="app.recalcWalkinPrice()">
@@ -779,34 +779,34 @@
 
               <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:14px; margin-bottom:14px;">
                 <div class="form-group">
-                  <label id="lbl-walkin-type">๐“ เธเธฃเธฐเน€เธ เธ—เธชเธฑเธเธเธฒ:</label>
+                  <label id="lbl-walkin-type">📋 ประเภทสัญญา:</label>
                   <select id="walkin-contract-type" class="form-control" onchange="app.recalcWalkinPrice()">
-                    <option id="opt-walkin-type-daily" value="เธฃเธฒเธขเธงเธฑเธ">เธฃเธฒเธขเธงเธฑเธ (Daily)</option>
-                    <option id="opt-walkin-type-weekly" value="เธฃเธฒเธขเธชเธฑเธเธ”เธฒเธซเน">เธฃเธฒเธขเธชเธฑเธเธ”เธฒเธซเน (Weekly)</option>
-                    <option id="opt-walkin-type-monthly" value="เธฃเธฒเธขเน€เธ”เธทเธญเธ">เธฃเธฒเธขเน€เธ”เธทเธญเธ (Monthly)</option>
+                    <option id="opt-walkin-type-daily" value="รายวัน">รายวัน (Daily)</option>
+                    <option id="opt-walkin-type-weekly" value="รายสัปดาห์">รายสัปดาห์ (Weekly)</option>
+                    <option id="opt-walkin-type-monthly" value="รายเดือน">รายเดือน (Monthly)</option>
                   </select>
                 </div>
                 <div class="form-group">
-                  <label id="lbl-walkin-discount">๐ท๏ธ เธชเนเธงเธเธฅเธ”เธเธดเน€เธจเธฉ (เธเธฒเธ—):</label>
+                  <label id="lbl-walkin-discount">🏷️ ส่วนลดพิเศษ (บาท):</label>
                   <input type="number" id="walkin-discount" class="form-control" value="0" min="0" step="100" oninput="app.recalcWalkinPrice()">
                 </div>
                 <div class="form-group">
-                  <label id="lbl-walkin-worker">๐‘ค เธเธเธฑเธเธเธฒเธเธเธฑเธ”เธชเนเธเธกเธญเธเธฃเธ–:</label>
+                  <label id="lbl-walkin-worker">👤 พนักงานจัดส่งมอบรถ:</label>
                   <select id="walkin-worker-select" class="form-control"></select>
                 </div>
                 <div class="form-group">
-                  <label id="lbl-walkin-loc">๐“ เธชเธ–เธฒเธเธ—เธตเนเธชเนเธเธกเธญเธเธฃเธ–:</label>
-                  <input type="text" id="walkin-loc" class="form-control" placeholder="เน€เธเนเธ เธซเธเนเธฒเธฃเนเธฒเธเธชเธฒเธเธฒ เธซเธฃเธทเธญ เนเธฃเธเนเธฃเธก...">
+                  <label id="lbl-walkin-loc">📍 สถานที่ส่งมอบรถ:</label>
+                  <input type="text" id="walkin-loc" class="form-control" placeholder="เช่น หน้าร้านสาขา หรือ โรงแรม...">
                 </div>
               </div>
 
               <!-- Price calculation summary banner -->
               <div id="walkin-price-summary" style="background:#FFFBEB; border:1px solid #FDE68A; border-radius:8px; padding:12px 16px; margin-bottom:16px; font-size:13px; color:#475569;">
-                โฑ๏ธ เธเธณเธเธงเธ“เธฃเธฐเธขเธฐเน€เธงเธฅเธฒเน€เธเนเธฒ: <b style="color:#D97706;">1 เธงเธฑเธ</b>
+                ⏱️ คำนวณระยะเวลาเช่า: <b style="color:#D97706;">1 วัน</b>
               </div>
 
               <button type="button" id="btn-submit-walkin" onclick="app.submitWalkinContract()" class="btn btn-primary" style="width:100%; height:44px; font-weight:700; font-size:14px;">
-                ๐’พ เธเธฑเธเธ—เธถเธเธชเธฃเนเธฒเธเธชเธฑเธเธเธฒเน€เธเนเธฒ Walk-in & เน€เธเธดเธ”เน€เธญเธเธชเธฒเธฃ PDF เธ—เธฑเธเธ—เธต โ”
+                💾 บันทึกสร้างสัญญาเช่า Walk-in & เปิดเอกสาร PDF ทันที ➔
               </button>
             </div>
           </div>
@@ -817,19 +817,19 @@
           <div class="card">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
               <div class="card-title" id="title-tab5" style="margin:0;">
-                <span>๐“</span> เนเธเธเธเธงเธเธเธธเธกเธเธดเธงเธเธฒเธฃเธเธญเธ & เธฃเธฒเธขเธเธฒเธฃเธ—เธฑเนเธเธซเธกเธ” (Master Bookings List)
+                <span>📋</span> แผงควบคุมคิวการจอง & รายการทั้งหมด (Master Bookings List)
               </div>
               <div style="display:flex; gap:10px;">
-                <input type="text" id="bks-search-input" class="form-control" placeholder="๐” เธเนเธเธซเธฒเธฃเธซเธฑเธช, เธฅเธนเธเธเนเธฒ, เธ—เธฐเน€เธเธตเธขเธ..." style="width:220px;" oninput="app.renderBookingsTable()">
+                <input type="text" id="bks-search-input" class="form-control" placeholder="🔍 ค้นหารหัส, ลูกค้า, ทะเบียน..." style="width:220px;" oninput="app.renderBookingsTable()">
                 <select id="bks-status-filter" class="form-control" style="width:160px;" onchange="app.renderBookingsTable()">
-                  <option id="opt-bks-status-all" value="เธ—เธฑเนเธเธซเธกเธ”">เธชเธ–เธฒเธเธฐ: เธ—เธฑเนเธเธซเธกเธ”</option>
-                  <option id="opt-bks-status-dep" value="เธฃเธญเธเธณเธฃเธฐเธกเธฑเธ”เธเธณ">เธฃเธญเธเธณเธฃเธฐเธกเธฑเธ”เธเธณ</option>
-                  <option id="opt-bks-status-disp-wait" value="เธฃเธญเธชเนเธเธกเธญเธ">เธฃเธญเธชเนเธเธกเธญเธ</option>
-                  <option id="opt-bks-status-disp-prep" value="เน€เธ•เธฃเธตเธขเธกเธชเนเธเธกเธญเธ">เน€เธ•เธฃเธตเธขเธกเธชเนเธเธกเธญเธ</option>
-                  <option id="opt-bks-status-renting" value="เธเธณเธฅเธฑเธเน€เธเนเธฒ">เธเธณเธฅเธฑเธเน€เธเนเธฒ</option>
-                  <option id="opt-bks-status-ret-prep" value="เน€เธ•เธฃเธตเธขเธกเธฃเธฑเธเธเธทเธ">เน€เธ•เธฃเธตเธขเธกเธฃเธฑเธเธเธทเธ</option>
-                  <option id="opt-bks-status-done" value="เน€เธชเธฃเนเธเธชเธดเนเธ">เน€เธชเธฃเนเธเธชเธดเนเธ</option>
-                  <option id="opt-bks-status-cancel" value="เธขเธเน€เธฅเธดเธ">เธขเธเน€เธฅเธดเธ</option>
+                  <option id="opt-bks-status-all" value="ทั้งหมด">สถานะ: ทั้งหมด</option>
+                  <option id="opt-bks-status-dep" value="รอชำระมัดจำ">รอชำระมัดจำ</option>
+                  <option id="opt-bks-status-disp-wait" value="รอส่งมอบ">รอส่งมอบ</option>
+                  <option id="opt-bks-status-disp-prep" value="เตรียมส่งมอบ">เตรียมส่งมอบ</option>
+                  <option id="opt-bks-status-renting" value="กำลังเช่า">กำลังเช่า</option>
+                  <option id="opt-bks-status-ret-prep" value="เตรียมรับคืน">เตรียมรับคืน</option>
+                  <option id="opt-bks-status-done" value="เสร็จสิ้น">เสร็จสิ้น</option>
+                  <option id="opt-bks-status-cancel" value="ยกเลิก">ยกเลิก</option>
                 </select>
               </div>
             </div>
@@ -838,14 +838,14 @@
               <table class="custom-table" id="bookings-master-table">
                 <thead>
                   <tr>
-                    <th id="th-bks-id">เธฃเธซเธฑเธชเธเธฒเธฃเธเธญเธ</th>
-                    <th id="th-bks-car">เธฃเธ–เธขเธเธ•เน</th>
-                    <th id="th-bks-cust">เธฅเธนเธเธเนเธฒ</th>
-                    <th id="th-bks-dur">เธฃเธฐเธขเธฐเน€เธงเธฅเธฒเน€เธเนเธฒ</th>
-                    <th id="th-bks-net">เธเนเธฒเน€เธเนเธฒเธชเธธเธ—เธเธด</th>
-                    <th id="th-bks-payment">เธชเธ–เธฒเธเธฐเธกเธฑเธ”เธเธณ / เธเนเธฒเน€เธเนเธฒ</th>
-                    <th id="th-bks-status">เธชเธ–เธฒเธเธฐเธเธฒเธ</th>
-                    <th id="th-bks-action" style="text-align:center;">เธเธฑเธ”เธเธฒเธฃ</th>
+                    <th id="th-bks-id">รหัสการจอง</th>
+                    <th id="th-bks-car">รถยนต์</th>
+                    <th id="th-bks-cust">ลูกค้า</th>
+                    <th id="th-bks-dur">ระยะเวลาเช่า</th>
+                    <th id="th-bks-net">ค่าเช่าสุทธิ</th>
+                    <th id="th-bks-payment">สถานะมัดจำ / ค่าเช่า</th>
+                    <th id="th-bks-status">สถานะงาน</th>
+                    <th id="th-bks-action" style="text-align:center;">จัดการ</th>
                   </tr>
                 </thead>
                 <tbody id="bookings-table-body">
@@ -876,19 +876,19 @@
               
               <!-- Filter by Staff Dropdown -->
               <div style="display:flex; align-items:center; gap:6px;">
-                <label for="bo-staff-filter" id="bo-lbl-filter-staff" style="font-size:11.5px; font-weight:700; color:#475569; margin:0; white-space:nowrap;">เธเธฃเธญเธเธเธเธฑเธเธเธฒเธ:</label>
+                <label for="bo-staff-filter" id="bo-lbl-filter-staff" style="font-size:11.5px; font-weight:700; color:#475569; margin:0; white-space:nowrap;">กรองพนักงาน:</label>
                 <select id="bo-staff-filter" class="form-control" onchange="app.onBackofficeStaffFilterChange(this.value)" style="font-size:12px; padding:5px 10px; font-weight:700; min-width:140px; height:32px;">
-                  <option value="เธ—เธฑเนเธเธซเธกเธ”" id="opt-bo-staff-all">เธเธเธฑเธเธเธฒเธเธ—เธฑเนเธเธซเธกเธ” (All Staff)</option>
+                  <option value="ทั้งหมด" id="opt-bo-staff-all">พนักงานทั้งหมด (All Staff)</option>
                 </select>
               </div>
 
               <!-- View Mode Toggle Buttons -->
               <div style="display:flex; border:1px solid #CBD5E1; border-radius:8px; overflow:hidden;">
                 <button type="button" id="btn-bo-view-calendar" onclick="app.setBackofficeViewMode('calendar')" class="btn btn-sm btn-primary" style="border-radius:0; padding:5px 12px; font-size:12px; font-weight:700;">
-                  ๐“… เธเธเธดเธ—เธดเธ
+                  📅 ปฏิทิน
                 </button>
                 <button type="button" id="btn-bo-view-table" onclick="app.setBackofficeViewMode('table')" class="btn btn-sm btn-secondary" style="border-radius:0; padding:5px 12px; font-size:12px; font-weight:700;">
-                  ๐“ เธ•เธฒเธฃเธฒเธ
+                  📋 ตาราง
                 </button>
               </div>
 
@@ -902,20 +902,20 @@
         <div id="bo-calendar-wrapper" class="card" style="padding:18px; margin-bottom:14px; background:#FFFFFF;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
             <div style="font-size:13.5px; font-weight:700; color:#1E293B;" id="bo-calendar-heading">
-              ๐“… เธเธเธดเธ—เธดเธเธ•เธฒเธฃเธฒเธเธเธฒเธเธชเนเธเธกเธญเธ - เธฃเธฑเธเธเธทเธเธฃเธ–เธขเธเธ•เน (Schedule Calendar)
+              📅 ปฏิทินตารางงานส่งมอบ - รับคืนรถยนต์ (Schedule Calendar)
             </div>
             <div style="display:flex; gap:12px; font-size:11.5px; font-weight:700;">
               <span style="display:inline-flex; align-items:center; gap:5px; color:#2563EB;">
                 <span style="width:10px; height:10px; border-radius:50%; background:#2563EB; display:inline-block;"></span>
-                <span id="legend-dispatch-lbl">เธชเนเธเธกเธญเธ (Dispatch)</span>
+                <span id="legend-dispatch-lbl">ส่งมอบ (Dispatch)</span>
               </span>
               <span style="display:inline-flex; align-items:center; gap:5px; color:#16A34A;">
                 <span style="width:10px; height:10px; border-radius:50%; background:#16A34A; display:inline-block;"></span>
-                <span id="legend-return-lbl">เธฃเธฑเธเธเธทเธ (Return)</span>
+                <span id="legend-return-lbl">รับคืน (Return)</span>
               </span>
               <span style="display:inline-flex; align-items:center; gap:5px; color:#EA580C;">
                 <span style="width:10px; height:10px; border-radius:50%; background:#EA580C; display:inline-block;"></span>
-                <span id="legend-maint-lbl">เธเนเธญเธกเธเธณเธฃเธธเธ/เธ•เนเธญเธ เธฒเธฉเธต</span>
+                <span id="legend-maint-lbl">ซ่อมบำรุง/ต่อภาษี</span>
               </span>
             </div>
           </div>
@@ -927,29 +927,29 @@
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
             <div>
               <h4 id="bo-day-jobs-title" style="margin:0; font-size:14px; font-weight:800; color:#1E293B;">
-                ๐“ เธเธฒเธเธเธฃเธฐเธเธณเธงเธฑเธเธ—เธตเนเน€เธฅเธทเธญเธ
+                📋 งานประจำวันที่เลือก
               </h4>
               <div id="bo-day-jobs-subtitle" style="font-size:11.5px; color:#64748B; margin-top:2px;">
-                เธเธฅเธดเธเธ—เธตเนเธเธธเนเธกเธเธฑเธ”เธเธฒเธฃเน€เธเธทเนเธญเน€เธเธดเธ”เธเธญเธฃเนเธกเธ•เธฃเธงเธเธชเธ เธฒเธเธซเธฃเธทเธญเธ”เธนเน€เธญเธเธชเธฒเธฃ
+                คลิกที่ปุ่มจัดการเพื่อเปิดฟอร์มตรวจสภาพหรือดูเอกสาร
               </div>
             </div>
             <button type="button" onclick="document.getElementById('bo-day-jobs-card').style.display='none'" class="btn btn-sm btn-secondary" style="font-size:11.5px; padding:3px 10px;">
-              โ• เธเธดเธ”
+              ✕ ปิด
             </button>
           </div>
           <div class="table-responsive">
             <table class="custom-table" style="background:#FFFFFF;">
               <thead>
                 <tr>
-                  <th>เธเธฃเธฐเน€เธ เธ—เธเธฒเธ</th>
-                  <th>เธฃเธซเธฑเธชเธเธฒเธฃเธเธญเธ</th>
-                  <th>เธ—เธฐเน€เธเธตเธขเธเธฃเธ–</th>
-                  <th>เธฅเธนเธเธเนเธฒ & เน€เธเธญเธฃเนเนเธ—เธฃ</th>
-                  <th>เธเธณเธซเธเธ”เธงเธฑเธ-เน€เธงเธฅเธฒ</th>
-                  <th>เธเธเธฑเธเธเธฒเธ</th>
-                  <th>เธชเธ–เธฒเธเธ—เธตเน</th>
-                  <th>เธชเธ–เธฒเธเธฐ</th>
-                  <th style="text-align:center;">เธเธฑเธ”เธเธฒเธฃ</th>
+                  <th>ประเภทงาน</th>
+                  <th>รหัสการจอง</th>
+                  <th>ทะเบียนรถ</th>
+                  <th>ลูกค้า & เบอร์โทร</th>
+                  <th>กำหนดวัน-เวลา</th>
+                  <th>พนักงาน</th>
+                  <th>สถานที่</th>
+                  <th>สถานะ</th>
+                  <th style="text-align:center;">จัดการ</th>
                 </tr>
               </thead>
               <tbody id="bo-day-jobs-tbody">
@@ -966,7 +966,7 @@
               <span id="bo-table-header-text">Vehicle Dispatch & Return Work Orders</span>
             </div>
             <button type="button" onclick="app.setBackofficeViewMode('calendar')" class="btn btn-sm btn-secondary" style="font-size:12px; padding:4px 10px;">
-              ๐“… เธเธฅเธฑเธเนเธเธ”เธนเธเธเธดเธ—เธดเธ
+              📅 กลับไปดูปฏิทิน
             </button>
           </div>
 
@@ -1033,7 +1033,7 @@
           </div>
           <div class="card" style="padding:14px; border-left: 4px solid #10B981; margin-bottom:0;">
             <div id="mnt-kpi-total-lbl" style="font-size:11.5px; font-weight:700; color:#64748B;">Total Maintenance Cost</div>
-            <div style="font-size:22px; font-weight:800; color:#059669; margin-top:4px;" id="mnt-kpi-total-cost">เธฟ0</div>
+            <div style="font-size:22px; font-weight:800; color:#059669; margin-top:4px;" id="mnt-kpi-total-cost">฿0</div>
           </div>
           <div class="card" style="padding:14px; border-left: 4px solid #3B82F6; margin-bottom:0;">
             <div id="mnt-kpi-renewal-lbl" style="font-size:11.5px; font-weight:700; color:#64748B;">Tax / ACT / Insurance Renewals</div>
@@ -1051,28 +1051,28 @@
             <div>
               <label id="mnt-lbl-type" style="font-size:11px; font-weight:700; color:#475569; display:block; margin-bottom:3px;">Filter Job Category:</label>
               <select id="mnt-filter-type" class="form-control" onchange="app.renderMaintenanceRecords()" style="font-size:12px; padding:7px 10px;">
-                <option value="เธ—เธฑเนเธเธซเธกเธ”" id="opt-mnt-type-all">All</option>
-                <option value="เธเนเธญเธกเธเธณเธฃเธธเธ" id="opt-mnt-type-routine">Routine / Oil Change</option>
-                <option value="เน€เธเธฃเธทเนเธญเธเธขเธเธ•เน" id="opt-mnt-type-engine">Engine & Suspension</option>
-                <option value="เธ•เธฑเธงเธ–เธฑเธ" id="opt-mnt-type-body">Body & Paint</option>
-                <option value="เธ•เนเธญเธ—เธฐเน€เธเธตเธขเธ" id="opt-mnt-type-tax">Vehicle Tax & ACT</option>
-                <option value="เธเธฃเธฐเธเธฑเธเธ เธฑเธข" id="opt-mnt-type-ins">Car Insurance Renewal</option>
-                <option value="เธ•เธฃเธงเธเธชเธ เธฒเธ" id="opt-mnt-type-inspect">Vehicle Inspection (Tor Ror Or)</option>
+                <option value="ทั้งหมด" id="opt-mnt-type-all">All</option>
+                <option value="ซ่อมบำรุง" id="opt-mnt-type-routine">Routine / Oil Change</option>
+                <option value="เครื่องยนต์" id="opt-mnt-type-engine">Engine & Suspension</option>
+                <option value="ตัวถัง" id="opt-mnt-type-body">Body & Paint</option>
+                <option value="ต่อทะเบียน" id="opt-mnt-type-tax">Vehicle Tax & ACT</option>
+                <option value="ประกันภัย" id="opt-mnt-type-ins">Car Insurance Renewal</option>
+                <option value="ตรวจสภาพ" id="opt-mnt-type-inspect">Vehicle Inspection (Tor Ror Or)</option>
               </select>
             </div>
             <div>
               <label id="mnt-lbl-status" style="font-size:11px; font-weight:700; color:#475569; display:block; margin-bottom:3px;">Filter Status:</label>
               <select id="mnt-filter-status" class="form-control" onchange="app.renderMaintenanceRecords()" style="font-size:12px; padding:7px 10px;">
-                <option value="เธ—เธฑเนเธเธซเธกเธ”" id="opt-mnt-status-all">All</option>
-                <option value="เธเธณเธฅเธฑเธเธเนเธญเธกเธเธณเธฃเธธเธ" id="opt-mnt-status-repairing">In Repair</option>
-                <option value="เธฃเธญเธ”เธณเน€เธเธดเธเธเธฒเธฃ" id="opt-mnt-status-pending">Pending</option>
-                <option value="เน€เธชเธฃเนเธเธชเธดเนเธ" id="opt-mnt-status-done">Completed</option>
+                <option value="ทั้งหมด" id="opt-mnt-status-all">All</option>
+                <option value="กำลังซ่อมบำรุง" id="opt-mnt-status-repairing">In Repair</option>
+                <option value="รอดำเนินการ" id="opt-mnt-status-pending">Pending</option>
+                <option value="เสร็จสิ้น" id="opt-mnt-status-done">Completed</option>
               </select>
             </div>
             <div>
               <label id="mnt-lbl-car" style="font-size:11px; font-weight:700; color:#475569; display:block; margin-bottom:3px;">Select Vehicle:</label>
               <select id="mnt-filter-car" class="form-control" onchange="app.renderMaintenanceRecords()" style="font-size:12px; padding:7px 10px;">
-                <option value="เธ—เธฑเนเธเธซเธกเธ”" id="opt-mnt-car-all">All Vehicles</option>
+                <option value="ทั้งหมด" id="opt-mnt-car-all">All Vehicles</option>
               </select>
             </div>
           </div>
@@ -1087,16 +1087,16 @@
             <table class="custom-table">
               <thead>
                 <tr>
-                  <th id="mnt-th-id">เน€เธฅเธเธ—เธตเนเนเธเธเธฒเธ</th>
-                  <th id="mnt-th-plate">เธ—เธฐเน€เธเธตเธขเธ & เธฃเธ–เธขเธเธ•เน</th>
-                  <th id="mnt-th-type">เธเธฃเธฐเน€เธ เธ—เธเธฒเธ</th>
-                  <th id="mnt-th-items">เธฃเธฒเธขเธเธฒเธฃเธเนเธญเธก / เธฃเธฒเธขเธเธฒเธฃเธเธฃเธดเธเธฒเธฃ</th>
-                  <th id="mnt-th-cost">เธเนเธฒเธเนเธญเธกเธเธณเธฃเธธเธ (เธฟ)</th>
-                  <th id="mnt-th-center">เธญเธนเน / เธจเธนเธเธขเนเธเธฃเธดเธเธฒเธฃ</th>
-                  <th id="mnt-th-worker">เธเธเธฑเธเธเธฒเธเธเธนเนเธฃเธฑเธเธเธดเธ”เธเธญเธ</th>
-                  <th id="mnt-th-sched">เธเธณเธซเธเธ”เธเธฒเธฃ</th>
-                  <th id="mnt-th-status">เธชเธ–เธฒเธเธฐ</th>
-                  <th id="mnt-th-acts" style="text-align:center;">เธญเธญเธเนเธเธเธฒเธ & เธเธดเธ”เธเธฒเธ</th>
+                  <th id="mnt-th-id">เลขที่ใบงาน</th>
+                  <th id="mnt-th-plate">ทะเบียน & รถยนต์</th>
+                  <th id="mnt-th-type">ประเภทงาน</th>
+                  <th id="mnt-th-items">รายการซ่อม / รายการบริการ</th>
+                  <th id="mnt-th-cost">ค่าซ่อมบำรุง (฿)</th>
+                  <th id="mnt-th-center">อู่ / ศูนย์บริการ</th>
+                  <th id="mnt-th-worker">พนักงานผู้รับผิดชอบ</th>
+                  <th id="mnt-th-sched">กำหนดการ</th>
+                  <th id="mnt-th-status">สถานะ</th>
+                  <th id="mnt-th-acts" style="text-align:center;">ออกใบงาน & ปิดงาน</th>
                 </tr>
               </thead>
               <tbody id="maintenance-records-tbody">
@@ -1115,15 +1115,15 @@
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
             <div>
               <h2 style="font-size:20px; font-weight:800; color:#1E293B; margin:0;">
-                ๐‘ฅ เธเธฒเธเธเนเธญเธกเธนเธฅเธฅเธนเธเธเนเธฒ (Customer Database)
+                👥 ฐานข้อมูลลูกค้า (Customer Database)
               </h2>
               <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">
-                เธเธฑเธ”เธเธฒเธฃเธเนเธญเธกเธนเธฅเธฅเธนเธเธเนเธฒ เธเธฃเธฐเธงเธฑเธ•เธด เธเธฑเธ•เธฃเธเธฃเธฐเธเธฒเธเธ/เธเธฒเธชเธเธญเธฃเนเธ• เนเธฅเธฐเนเธเธเธฑเธเธเธตเน
+                จัดการข้อมูลลูกค้า ประวัติ บัตรประชาชน/พาสปอร์ต และใบขับขี่
               </div>
             </div>
             <div style="display:flex; gap:10px;">
-              <input type="text" id="cust-search-input" class="form-control" placeholder="๐” เธเนเธเธซเธฒเธเธทเนเธญ, เน€เธเธญเธฃเนเนเธ—เธฃ..." style="width:200px;" oninput="app.renderCustomersTable()">
-              <button onclick="app.openAddCustomerModal()" class="btn btn-primary">โ• เน€เธเธดเนเธกเธฅเธนเธเธเนเธฒเนเธซเธกเน</button>
+              <input type="text" id="cust-search-input" class="form-control" placeholder="🔍 ค้นหาชื่อ, เบอร์โทร..." style="width:200px;" oninput="app.renderCustomersTable()">
+              <button onclick="app.openAddCustomerModal()" class="btn btn-primary">➕ เพิ่มลูกค้าใหม่</button>
             </div>
           </div>
 
@@ -1131,13 +1131,13 @@
             <table class="custom-table">
               <thead>
                 <tr>
-                  <th>เธเธทเนเธญ-เธเธฒเธกเธชเธเธธเธฅ</th>
-                  <th>เน€เธเธญเธฃเนเนเธ—เธฃ / WhatsApp</th>
-                  <th>Passport / เธเธฑเธ•เธฃ เธเธเธ.</th>
-                  <th>เนเธเธเธฑเธเธเธตเน</th>
-                  <th>เธชเธฑเธเธเธฒเธ•เธด</th>
-                  <th>เธ—เธตเนเธญเธขเธนเนเนเธเนเธ—เธข</th>
-                  <th style="text-align:center;">เธเธฑเธ”เธเธฒเธฃ</th>
+                  <th>ชื่อ-นามสกุล</th>
+                  <th>เบอร์โทร / WhatsApp</th>
+                  <th>Passport / บัตร ปชช.</th>
+                  <th>ใบขับขี่</th>
+                  <th>สัญชาติ</th>
+                  <th>ที่อยู่ในไทย</th>
+                  <th style="text-align:center;">จัดการ</th>
                 </tr>
               </thead>
               <tbody id="customers-table-tbody">
@@ -1171,7 +1171,7 @@
         <div class="kpi-grid">
           <!-- Card 1: Fleet Total -> Click jumps to Car Selection / Fleet Showcase -->
           <div class="kpi-card interactive" onclick="app.onClickKpiFleetCard()" title="Click to view fleet showcase">
-            <div class="kpi-icon" style="background:#EFF6FF; color:#2563EB;">๐—</div>
+            <div class="kpi-icon" style="background:#EFF6FF; color:#2563EB;">🚗</div>
             <div>
               <div class="kpi-value" id="kpi-total-cars">0</div>
               <div class="kpi-label"><span id="dash-kpi-fleet-lbl">Total Fleet</span> <span id="dash-kpi-fleet-badge" style="font-size:10.5px; color:#2563EB; font-weight:700; background:#EFF6FF; padding:1px 6px; border-radius:8px;">Fleet Showcase</span></div>
@@ -1181,7 +1181,7 @@
 
           <!-- Card 2: Active / Booked Rentals -> Click pops up Active Rentals with Customers Table -->
           <div class="kpi-card interactive" onclick="app.openActiveRentalsModal()" title="Click to inspect active rentals">
-            <div class="kpi-icon" style="background:#ECFDF5; color:#059669;">๐”‘</div>
+            <div class="kpi-icon" style="background:#ECFDF5; color:#059669;">🔑</div>
             <div>
               <div class="kpi-value" id="kpi-active-rentals">0</div>
               <div class="kpi-label"><span id="dash-kpi-active-lbl">Active Rentals</span> <span id="dash-kpi-active-badge" style="font-size:10.5px; color:#059669; font-weight:700; background:#ECFDF5; padding:1px 6px; border-radius:8px;">View Active</span></div>
@@ -1191,7 +1191,7 @@
 
           <!-- Card 3: Utilization Rate -> Click pops up Car Profitability Ranking Table (Highest to Lowest) -->
           <div class="kpi-card interactive" onclick="app.openCarProfitabilityModal()" title="Click to view profitability ranking">
-            <div class="kpi-icon" style="background:#FFFBEB; color:#D97706;">๐“</div>
+            <div class="kpi-icon" style="background:#FFFBEB; color:#D97706;">📈</div>
             <div>
               <div class="kpi-value" id="kpi-utilization">0%</div>
               <div class="kpi-label"><span id="dash-kpi-util-lbl">Fleet Utilization</span> <span id="dash-kpi-util-badge" style="font-size:10.5px; color:#D97706; font-weight:700; background:#FFFBEB; padding:1px 6px; border-radius:8px;">Profit Ranking</span></div>
@@ -1200,18 +1200,18 @@
 
           <!-- Card 4: Total Revenue -->
           <div class="kpi-card">
-            <div class="kpi-icon" style="background:#FEF2F2; color:#DC2626;">๐’ฐ</div>
+            <div class="kpi-icon" style="background:#FEF2F2; color:#DC2626;">💰</div>
             <div>
-              <div class="kpi-value" id="kpi-total-revenue">เธฟ0.00</div>
+              <div class="kpi-value" id="kpi-total-revenue">฿0.00</div>
               <div class="kpi-label" id="dash-kpi-rev-lbl">Total Revenue</div>
             </div>
           </div>
 
           <!-- Card 5: Fleet Monthly Installments -->
           <div class="kpi-card" style="border: 1px solid #fee2e2;">
-            <div class="kpi-icon" style="background:#FFF1F2; color:#E11D48;">๐’ธ</div>
+            <div class="kpi-icon" style="background:#FFF1F2; color:#E11D48;">💸</div>
             <div>
-              <div class="kpi-value" id="kpi-monthly-installments">เธฟ0.00</div>
+              <div class="kpi-value" id="kpi-monthly-installments">฿0.00</div>
               <div class="kpi-label" id="dash-kpi-inst-lbl">Total Monthly Fleet Installments</div>
             </div>
           </div>
@@ -1423,13 +1423,13 @@
                 <div>
                   <label id="lbl-report-company" style="display:block; font-size:12px; font-weight:700; color:#334155; margin-bottom:4px;">Filter Report by Company:</label>
                   <select id="report-company-filter" class="form-control" style="width:220px;" onchange="app.renderCompletedJobsTable()">
-                    <option value="เธ—เธฑเนเธเธซเธกเธ”" id="opt-report-all-comp">All (All Companies)</option>
+                    <option value="ทั้งหมด" id="opt-report-all-comp">All (All Companies)</option>
                     <option value="Sawasdee Rent A Car">Sawasdee Rent A Car</option>
                     <option value="P.D.P. Co., Ltd.">P.D.P. Co., Ltd.</option>
                     <option value="Sawasdee Car Rent">Sawasdee Car Rent</option>
                   </select>
                 </div>
-                <button type="button" id="btn-report-all-months" onclick="document.getElementById('report-month-picker').value=''; document.getElementById('report-company-filter').value='เธ—เธฑเนเธเธซเธกเธ”'; app.loadMonthlyReports();" class="btn btn-sm btn-secondary" style="height:36px;">
+                <button type="button" id="btn-report-all-months" onclick="document.getElementById('report-month-picker').value=''; document.getElementById('report-company-filter').value='ทั้งหมด'; app.loadMonthlyReports();" class="btn btn-sm btn-secondary" style="height:36px;">
                   View All Months
                 </button>
               </div>
@@ -1448,7 +1448,7 @@
               </div>
               <div style="background:#FFFFFF; border:1px solid #EFEAE3; border-radius:10px; padding:12px; text-align:center; box-shadow:0 1px 3px rgba(0,0,0,0.04);">
                 <div id="lbl-rpt-kpi-rev" style="font-size:12px; color:#6B7280; font-weight:600;">Total Rental Revenue</div>
-                <div style="font-size:21px; font-weight:800; color:#E85826; margin-top:4px;" id="rpt-kpi-rev">เธฟ0.00</div>
+                <div style="font-size:21px; font-weight:800; color:#E85826; margin-top:4px;" id="rpt-kpi-rev">฿0.00</div>
               </div>
               <div style="background:#FFFFFF; border:1px solid #EFEAE3; border-radius:10px; padding:12px; text-align:center; box-shadow:0 1px 3px rgba(0,0,0,0.04);">
                 <div id="lbl-rpt-kpi-cars" style="font-size:12px; color:#6B7280; font-weight:600;">Active Vehicles</div>
@@ -1464,18 +1464,18 @@
               <table class="custom-table">
                 <thead>
                   <tr>
-                    <th id="th-rpt-bkid">เธฃเธซเธฑเธชเธเธฒเธฃเธเธญเธ</th>
-                    <th id="th-rpt-date">เธงเธฑเธเธ—เธตเนเน€เธชเธฃเนเธเธชเธดเนเธ</th>
-                    <th id="th-rpt-plate">เธ—เธฐเน€เธเธตเธขเธเธฃเธ–</th>
-                    <th id="th-rpt-cust">เธฅเธนเธเธเนเธฒ</th>
-                    <th id="th-rpt-comp">เธเธฃเธดเธฉเธฑเธ—</th>
-                    <th id="th-rpt-ctype">เธเธฃเธฐเน€เธ เธ—เธชเธฑเธเธเธฒ</th>
-                    <th id="th-rpt-rev" style="text-align:right;">เธฃเธฒเธขเธฃเธฑเธเธชเธธเธ—เธเธด</th>
-                    <th id="th-rpt-staff">เธเธเธฑเธเธเธฒเธเธชเนเธ-เธฃเธฑเธ</th>
-                    <th id="th-rpt-loc">เธชเธ–เธฒเธเธ—เธตเน</th>
-                    <th id="th-rpt-fuel">เน€เธเธเนเธเนเธณเธกเธฑเธ & เธชเธ เธฒเธเธฃเธ–</th>
-                    <th id="th-rpt-status">เธชเธ–เธฒเธเธฐ</th>
-                    <th id="th-rpt-docs" style="text-align:center;">เน€เธญเธเธชเธฒเธฃเธขเนเธญเธเธซเธฅเธฑเธ<br/><span style="font-size:10.5px; font-weight:normal; color:#64748B;">(๐“ เธชเธฑเธเธเธฒ | ๐งพ เนเธเน€เธชเธฃเนเธ | ๐“ เนเธเน€เธเนเธเธฃเธ–)</span></th>
+                    <th id="th-rpt-bkid">รหัสการจอง</th>
+                    <th id="th-rpt-date">วันที่เสร็จสิ้น</th>
+                    <th id="th-rpt-plate">ทะเบียนรถ</th>
+                    <th id="th-rpt-cust">ลูกค้า</th>
+                    <th id="th-rpt-comp">บริษัท</th>
+                    <th id="th-rpt-ctype">ประเภทสัญญา</th>
+                    <th id="th-rpt-rev" style="text-align:right;">รายรับสุทธิ</th>
+                    <th id="th-rpt-staff">พนักงานส่ง-รับ</th>
+                    <th id="th-rpt-loc">สถานที่</th>
+                    <th id="th-rpt-fuel">เกจ์น้ำมัน & สภาพรถ</th>
+                    <th id="th-rpt-status">สถานะ</th>
+                    <th id="th-rpt-docs" style="text-align:center;">เอกสารย้อนหลัง<br/><span style="font-size:10.5px; font-weight:normal; color:#64748B;">(📝 สัญญา | 🧾 ใบเสร็จ | 📋 ใบเช็ครถ)</span></th>
                   </tr>
                 </thead>
                 <tbody id="completed-jobs-tbody">
@@ -1496,29 +1496,29 @@
       <section id="module-users" style="display:none;">
         <div class="card">
           <div class="card-title">
-            <span>โ๏ธ</span> เธเธฑเธ”เธเธฒเธฃเธเธนเนเนเธเนเธเธฒเธเนเธฅเธฐเธญเธเธธเธกเธฑเธ•เธดเธชเธดเธ—เธเธดเนเธเธเธฑเธเธเธฒเธ & เธเธนเธเนเธเนเธเน€เธ•เธทเธญเธ LINE เธฃเธฒเธขเธเธธเธเธเธฅ
+            <span>⚙️</span> จัดการผู้ใช้งานและอนุมัติสิทธิ์พนักงาน & ผูกแจ้งเตือน LINE รายบุคคล
           </div>
           <div style="font-size:12.5px; color:var(--text-muted); margin-bottom:12px;">
-            เธญเธเธธเธกเธฑเธ•เธดเธซเธฃเธทเธญเธฃเธฐเธเธฑเธเธชเธดเธ—เธเธดเนเธเธฑเธเธเธตเธเธนเนเนเธเน เนเธฅเธฐเธ•เธฑเนเธเธเนเธฒ LINE User ID เธเธญเธเธเธเธฑเธเธเธฒเธเนเธ•เนเธฅเธฐเธเธเน€เธเธทเนเธญเธชเนเธเนเธเธเธฒเธเธ•เธฃเธเธซเธฒเน€เธเนเธฒเธเธญเธเธเธฒเธเน€เธ—เนเธฒเธเธฑเนเธ (เธเธฃเธฐเธซเธขเธฑเธ”เนเธเธงเธ•เนเธฒเธเนเธญเธเธงเธฒเธก LINE)
+            อนุมัติหรือระงับสิทธิ์บัญชีผู้ใช้ และตั้งค่า LINE User ID ของพนักงานแต่ละคนเพื่อส่งใบงานตรงหาเจ้าของงานเท่านั้น (ประหยัดโควต้าข้อความ LINE)
           </div>
 
           <div style="background:#F0FDF4; border:1px solid #BBF7D0; border-radius:10px; padding:12px 16px; margin-bottom:16px; font-size:12.5px; color:#166534; line-height:1.6;">
-            <b>๐“ฒ เธเธเธเธฒเธฃเธชเนเธเนเธเนเธเน€เธ•เธทเธญเธ LINE เนเธเธเธเธฃเธฐเธซเธขเธฑเธ”เธเนเธญเธเธงเธฒเธก (Direct Push 1:1 โ€” เธเธดเธ” Broadcast เธญเธฑเธ•เนเธเธกเธฑเธ•เธด):</b><br/>
-            โ€ข <b>๐ เนเธเธเธฒเธเธฃเธฑเธเธฃเธ– / เธชเนเธเธฃเธ– / ๐ ๏ธ เนเธเธเธฒเธเธเนเธญเธกเธเธณเธฃเธธเธ:</b> เธขเธดเธเธ•เธฃเธเธซเธฒ <b>"เน€เธเนเธฒเธเธญเธเธเธฒเธ (เธเธนเนเธฃเธฑเธเธเธดเธ”เธเธญเธเนเธเธเธฒเธ)"</b> เน€เธ—เนเธฒเธเธฑเนเธ<br/>
-            โ€ข <b>๐’ณ เน€เธเนเธเน€เธเธดเธเธกเธฑเธ”เธเธณ & เธเนเธฒเน€เธเนเธฒ / ๐’ธ เธเธฑเธเธ—เธถเธเธเนเธฒเนเธเนเธเนเธฒเธข / ๐“… เนเธเนเธเน€เธ•เธทเธญเธเธงเธฑเธเธซเธกเธ”เธญเธฒเธขเธธ:</b> เธขเธดเธเธ•เธฃเธเน€เธเนเธฒ <b>"เนเธญเธ”เธกเธดเธ (Admin)"</b> เน€เธ—เนเธฒเธเธฑเนเธ (เธงเธฑเธเธซเธกเธ”เธญเธฒเธขเธธเธฃเธญเธเธฃเธฑเธเธชเธฅเธฑเธเน€เธเนเธเธขเธดเธเธซเธฒเธฅเธนเธเธเนเธฒเนเธเธญเธเธฒเธเธ•)<br/>
-            โ€ข <b>๐”— เธงเธดเธเธตเธเธนเธ LINE เธเธเธฑเธเธเธฒเธ:</b> เนเธซเนเธเธเธฑเธเธเธฒเธเนเธญเธ” LINE OA เธเธญเธเธฃเนเธฒเธเนเธฅเนเธงเธเธดเธกเธเน <code>เธเธทเนเธญเธเธนเนเนเธเน (Username)</code> เธชเนเธเน€เธเนเธฒเนเธเธ—เธเธญเธ— (เธเธนเธเธญเธฑเธ•เนเธเธกเธฑเธ•เธดเธเธฃเธต) เธซเธฃเธทเธญเธเธ”เธเธธเนเธก <b>"๐”— เธ•เธฑเนเธเธเนเธฒ LINE ID"</b> เนเธเธ•เธฒเธฃเธฒเธเธ”เนเธฒเธเธฅเนเธฒเธ
+            <b>📲 กฎการส่งแจ้งเตือน LINE แบบประหยัดข้อความ (Direct Push 1:1 — ปิด Broadcast อัตโนมัติ):</b><br/>
+            • <b>🚚 ใบงานรับรถ / ส่งรถ / 🛠️ ใบงานซ่อมบำรุง:</b> ยิงตรงหา <b>"เจ้าของงาน (ผู้รับผิดชอบใบงาน)"</b> เท่านั้น<br/>
+            • <b>💳 เก็บเงินมัดจำ & ค่าเช่า / 💸 บันทึกค่าใช้จ่าย / 📅 แจ้งเตือนวันหมดอายุ:</b> ยิงตรงเข้า <b>"แอดมิน (Admin)"</b> เท่านั้น (วันหมดอายุรองรับสลับเป็นยิงหาลูกค้าในอนาคต)<br/>
+            • <b>🔗 วิธีผูก LINE พนักงาน:</b> ให้พนักงานแอด LINE OA ของร้านแล้วพิมพ์ <code>ชื่อผู้ใช้ (Username)</code> ส่งเข้าแชทบอท (ผูกอัตโนมัติฟรี) หรือกดปุ่ม <b>"🔗 ตั้งค่า LINE ID"</b> ในตารางด้านล่าง
           </div>
 
           <div class="table-responsive">
             <table class="custom-table">
               <thead>
                 <tr>
-                  <th>เธเธทเนเธญเธเธนเนเนเธเน (Username)</th>
-                  <th>เธเธทเนเธญ-เธเธฒเธกเธชเธเธธเธฅ</th>
-                  <th>เธเธ—เธเธฒเธ— (Role)</th>
-                  <th>๐“ฒ LINE User ID (เธฃเธฑเธเนเธเธเธฒเธเธ•เธฃเธ)</th>
-                  <th>เธชเธ–เธฒเธเธฐ (Status)</th>
-                  <th style="text-align:center;">เธเธฒเธฃเธญเธเธธเธกเธฑเธ•เธด & เธเธฑเธ”เธเธฒเธฃ</th>
+                  <th>ชื่อผู้ใช้ (Username)</th>
+                  <th>ชื่อ-นามสกุล</th>
+                  <th>บทบาท (Role)</th>
+                  <th>📲 LINE User ID (รับใบงานตรง)</th>
+                  <th>สถานะ (Status)</th>
+                  <th style="text-align:center;">การอนุมัติ & จัดการ</th>
                 </tr>
               </thead>
               <tbody id="users-table-tbody">
@@ -1541,8 +1541,8 @@
   <div id="modal-handover" class="modal-backdrop">
     <div class="modal-dialog">
       <div class="modal-header">
-        <div class="modal-title" id="modal-handover-title">๐” เธ•เธฃเธงเธเธชเธ เธฒเธเธฃเธ–เธขเธเธ•เน & เธชเนเธเธกเธญเธเธเธฒเธ</div>
-        <button class="modal-close" onclick="app.closeModal('modal-handover')">โ•</button>
+        <div class="modal-title" id="modal-handover-title">🔍 ตรวจสภาพรถยนต์ & ส่งมอบงาน</div>
+        <button class="modal-close" onclick="app.closeModal('modal-handover')">✕</button>
       </div>
 
       <input type="hidden" id="insp-bk-id">
@@ -1550,56 +1550,56 @@
 
       <!-- Fuel Level Selector -->
       <div class="form-group" style="margin-bottom:16px;">
-        <label>โฝ เธฃเธฐเธ”เธฑเธเธเนเธณเธกเธฑเธเนเธเธ–เธฑเธเน€เธเธทเนเธญเน€เธเธฅเธดเธ:</label>
+        <label>⛽ ระดับน้ำมันในถังเชื้อเพลิง:</label>
         <select id="insp-fuel-select" class="form-control">
-          <option value="โฝ เน€เธ•เนเธกเธ–เธฑเธ (Full - 8/8) [100%]">โฝ เน€เธ•เนเธกเธ–เธฑเธ (Full - 8/8) [100%]</option>
-          <option value="โฝ เน€เธเธทเธญเธเน€เธ•เนเธก (7/8 เธ–เธฑเธ) [87%]">โฝ เน€เธเธทเธญเธเน€เธ•เนเธก (7/8 เธ–เธฑเธ) [87%]</option>
-          <option value="โฝ 3/4 เธ–เธฑเธ (6/8 เธ–เธฑเธ) [75%]">โฝ 3/4 เธ–เธฑเธ (6/8 เธ–เธฑเธ) [75%]</option>
-          <option value="โฝ เธเธฃเธถเนเธเธ–เธฑเธ (1/2 เธ–เธฑเธ) [50%]">โฝ เธเธฃเธถเนเธเธ–เธฑเธ (1/2 เธ–เธฑเธ) [50%]</option>
-          <option value="โฝ 1/4 เธ–เธฑเธ (2/8 เธ–เธฑเธ) [25%]">โฝ 1/4 เธ–เธฑเธ (2/8 เธ–เธฑเธ) [25%]</option>
-          <option value="โฝ 1/8 เธ–เธฑเธ [12%]">โฝ 1/8 เธ–เธฑเธ [12%]</option>
-          <option value="โ ๏ธ เนเธเน€เธ•เธทเธญเธเธเนเธณเธกเธฑเธเธเธถเนเธ (Reserve / เนเธเธฅเนเธซเธกเธ”)">โ ๏ธ เนเธเน€เธ•เธทเธญเธเธเนเธณเธกเธฑเธเธเธถเนเธ (Reserve / เนเธเธฅเนเธซเธกเธ”)</option>
+          <option value="⛽ เต็มถัง (Full - 8/8) [100%]">⛽ เต็มถัง (Full - 8/8) [100%]</option>
+          <option value="⛽ เกือบเต็ม (7/8 ถัง) [87%]">⛽ เกือบเต็ม (7/8 ถัง) [87%]</option>
+          <option value="⛽ 3/4 ถัง (6/8 ถัง) [75%]">⛽ 3/4 ถัง (6/8 ถัง) [75%]</option>
+          <option value="⛽ ครึ่งถัง (1/2 ถัง) [50%]">⛽ ครึ่งถัง (1/2 ถัง) [50%]</option>
+          <option value="⛽ 1/4 ถัง (2/8 ถัง) [25%]">⛽ 1/4 ถัง (2/8 ถัง) [25%]</option>
+          <option value="⛽ 1/8 ถัง [12%]">⛽ 1/8 ถัง [12%]</option>
+          <option value="⚠️ ไฟเตือนน้ำมันขึ้น (Reserve / ใกล้หมด)">⚠️ ไฟเตือนน้ำมันขึ้น (Reserve / ใกล้หมด)</option>
         </select>
       </div>
 
       <!-- Mileage -->
       <div class="form-group" style="margin-bottom:16px;">
-        <label>๐”ข เน€เธฅเธเนเธกเธฅเนเธชเธฐเธชเธกเธเธฑเธเธเธธเธเธฑเธ (เธเธก.):</label>
-        <input type="text" id="insp-mileage-input" class="form-control" placeholder="เน€เธเนเธ 45,200">
+        <label>🔢 เลขไมล์สะสมปัจจุบัน (กม.):</label>
+        <input type="text" id="insp-mileage-input" class="form-control" placeholder="เช่น 45,200">
       </div>
 
       <!-- Checklist -->
       <div style="margin-bottom:16px;">
         <label style="font-size:12px; font-weight:700; color:#475569; display:block; margin-bottom:8px;">
-          ๐“ เน€เธเนเธเธฅเธดเธชเธ•เนเธเธฒเธฃเธ•เธฃเธงเธเธชเธ เธฒเธเธฃเธ–:
+          📋 เช็กลิสต์การตรวจสภาพรถ:
         </label>
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; font-size:12.5px;">
-          <label><input type="checkbox" checked id="chk-body"> เธ•เธฑเธงเธ–เธฑเธเนเธฅเธฐเธชเธตเธชเธกเธเธนเธฃเธ“เน</label>
-          <label><input type="checkbox" checked id="chk-glass"> เธเธฃเธฐเธเธเนเธกเนเนเธ•เธเธฃเนเธฒเธง</label>
-          <label><input type="checkbox" checked id="chk-tires"> เธขเธฒเธเนเธฅเธฐเธฅเธกเธขเธฒเธเธชเธกเธเธนเธฃเธ“เน</label>
-          <label><input type="checkbox" checked id="chk-clean"> เธซเนเธญเธเนเธ”เธขเธชเธฒเธฃเธชเธฐเธญเธฒเธ”</label>
-          <label><input type="checkbox" checked id="chk-tools"> เธขเธฒเธเธญเธฐเนเธซเธฅเน/เนเธกเนเนเธฃเธเธเธฃเธ</label>
-          <label><input type="checkbox" checked id="chk-docs"> เน€เธญเธเธชเธฒเธฃ/เธเนเธฒเธขเธ เธฒเธฉเธตเธเธฃเธ</label>
+          <label><input type="checkbox" checked id="chk-body"> ตัวถังและสีสมบูรณ์</label>
+          <label><input type="checkbox" checked id="chk-glass"> กระจกไม่แตกร้าว</label>
+          <label><input type="checkbox" checked id="chk-tires"> ยางและลมยางสมบูรณ์</label>
+          <label><input type="checkbox" checked id="chk-clean"> ห้องโดยสารสะอาด</label>
+          <label><input type="checkbox" checked id="chk-tools"> ยางอะไหล่/แม่แรงครบ</label>
+          <label><input type="checkbox" checked id="chk-docs"> เอกสาร/ป้ายภาษีครบ</label>
         </div>
       </div>
 
       <!-- Inspection Notes -->
       <div class="form-group" style="margin-bottom:16px;">
-        <label>๐“ เธซเธกเธฒเธขเน€เธซเธ•เธธเธชเธ เธฒเธเธฃเธ– / เธฃเธญเธขเธ•เธณเธซเธเธด:</label>
-        <input type="text" id="insp-notes-input" class="form-control" value="เธ•เธฃเธงเธเธชเธ เธฒเธเธฃเธ–เธขเธเธ•เนเน€เธฃเธตเธขเธเธฃเนเธญเธขเธ”เธต">
+        <label>📝 หมายเหตุสภาพรถ / รอยตำหนิ:</label>
+        <input type="text" id="insp-notes-input" class="form-control" value="ตรวจสภาพรถยนต์เรียบร้อยดี">
       </div>
 
       <!-- Photo Upload -->
       <div class="form-group" style="margin-bottom:20px;">
-        <label>๐“ธ เธญเธฑเธเนเธซเธฅเธ”เธ เธฒเธเธ–เนเธฒเธขเธชเธ เธฒเธเธฃเธ– / เน€เธเธเนเธเนเธณเธกเธฑเธ:</label>
+        <label>📸 อัปโหลดภาพถ่ายสภาพรถ / เกจ์น้ำมัน:</label>
         <input type="file" id="insp-photo-input" class="form-control" accept="image/*" multiple onchange="app.handlePhotoUpload(this)">
         <div id="insp-uploaded-photos" style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;"></div>
       </div>
 
       <div style="display:flex; justify-content:flex-end; gap:10px;">
-        <button onclick="app.closeModal('modal-handover')" class="btn btn-secondary">เธขเธเน€เธฅเธดเธ</button>
+        <button onclick="app.closeModal('modal-handover')" class="btn btn-secondary">ยกเลิก</button>
         <button onclick="app.submitInspection()" class="btn btn-primary" id="btn-submit-inspection">
-          โ… เธขเธทเธเธขเธฑเธเธเธฑเธเธ—เธถเธเธเธฅ & เธเธดเธ”เธเธฒเธ
+          ✅ ยืนยันบันทึกผล & ปิดงาน
         </button>
       </div>
     </div>
@@ -1609,8 +1609,8 @@
   <div id="modal-book-car" class="modal-backdrop">
     <div class="modal-dialog">
       <div class="modal-header">
-        <div class="modal-title">เธขเธทเธเธขเธฑเธเธเธฒเธฃเธเธญเธเธฃเธ–เธขเธเธ•เน</div>
-        <button class="modal-close" onclick="app.closeModal('modal-book-car')">โ•</button>
+        <div class="modal-title">ยืนยันการจองรถยนต์</div>
+        <button class="modal-close" onclick="app.closeModal('modal-book-car')">✕</button>
       </div>
 
       <input type="hidden" id="book-car-plate">
@@ -1620,11 +1620,11 @@
 
       <div class="form-group" style="margin-bottom:12px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-          <label style="margin:0;">เน€เธฅเธทเธญเธเธฅเธนเธเธเนเธฒเธเธนเนเน€เธเนเธฒ:</label>
+          <label style="margin:0;">เลือกลูกค้าผู้เช่า:</label>
           <div style="display:flex; gap:6px;">
-            <button type="button" onclick="app.openEditSelectedCustomerModal('book')" class="btn btn-sm btn-secondary" style="padding:2px 8px; font-size:11.5px; background:#FAF7F2; border:1px solid #CBD5E1; color:#374151;" title="เธ”เธนเนเธฅเธฐเนเธเนเนเธเธเนเธญเธกเธนเธฅเธฅเธนเธเธเนเธฒเธ—เธตเนเน€เธฅเธทเธญเธ">เธ”เธน/เนเธเนเนเธ</button>
-            <button type="button" onclick="app.deleteSelectedCustomer('book')" class="btn btn-sm btn-danger" style="padding:2px 8px; font-size:11.5px;" title="เธฅเธเธเนเธญเธกเธนเธฅเธฅเธนเธเธเนเธฒเธเธตเน">เธฅเธ</button>
-            <button type="button" onclick="app.openAddCustomerModal()" class="btn btn-sm btn-primary" style="padding:2px 8px; font-size:11.5px;">เน€เธเธดเนเธกเนเธซเธกเน</button>
+            <button type="button" onclick="app.openEditSelectedCustomerModal('book')" class="btn btn-sm btn-secondary" style="padding:2px 8px; font-size:11.5px; background:#FAF7F2; border:1px solid #CBD5E1; color:#374151;" title="ดูและแก้ไขข้อมูลลูกค้าที่เลือก">ดู/แก้ไข</button>
+            <button type="button" onclick="app.deleteSelectedCustomer('book')" class="btn btn-sm btn-danger" style="padding:2px 8px; font-size:11.5px;" title="ลบข้อมูลลูกค้านี้">ลบ</button>
+            <button type="button" onclick="app.openAddCustomerModal()" class="btn btn-sm btn-primary" style="padding:2px 8px; font-size:11.5px;">เพิ่มใหม่</button>
           </div>
         </div>
         <select id="book-cust-select" class="form-control" onchange="app.onSelectBookingCustomer()"></select>
@@ -1633,14 +1633,14 @@
 
       <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;">
         <div class="form-group">
-          <label>เธงเธฑเธ-เน€เธงเธฅเธฒเธฃเธฑเธเธฃเธ–:</label>
+          <label>วัน-เวลารับรถ:</label>
           <div style="display:flex; gap:4px;">
             <input type="date" id="book-modal-start-date" class="form-control" onchange="app.recalcBookingModalFromDates(true)">
             <input type="time" id="book-modal-start-time" class="form-control" style="width:105px;" onchange="app.recalcBookingModalFromDates(true)">
           </div>
         </div>
         <div class="form-group">
-          <label>เธงเธฑเธ-เน€เธงเธฅเธฒเธเธทเธเธฃเธ–:</label>
+          <label>วัน-เวลาคืนรถ:</label>
           <div style="display:flex; gap:4px;">
             <input type="date" id="book-modal-end-date" class="form-control" onchange="app.recalcBookingModalFromDates(true)">
             <input type="time" id="book-modal-end-time" class="form-control" style="width:105px;" onchange="app.recalcBookingModalFromDates(true)">
@@ -1654,34 +1654,34 @@
       </div>
 
       <div class="form-group" style="margin-bottom:12px;">
-        <label>เธเธฃเธฐเน€เธ เธ—เธชเธฑเธเธเธฒ:</label>
+        <label>ประเภทสัญญา:</label>
         <select id="book-contract-type" class="form-control" onchange="app.recalcBookingModalFromDates(false)">
-          <option value="เธฃเธฒเธขเธงเธฑเธ">เธฃเธฒเธขเธงเธฑเธ (Daily)</option>
-          <option value="เธฃเธฒเธขเธชเธฑเธเธ”เธฒเธซเน">เธฃเธฒเธขเธชเธฑเธเธ”เธฒเธซเน (Weekly)</option>
-          <option value="เธฃเธฒเธขเน€เธ”เธทเธญเธ">เธฃเธฒเธขเน€เธ”เธทเธญเธ (Monthly)</option>
+          <option value="รายวัน">รายวัน (Daily)</option>
+          <option value="รายสัปดาห์">รายสัปดาห์ (Weekly)</option>
+          <option value="รายเดือน">รายเดือน (Monthly)</option>
         </select>
       </div>
 
       <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:14px;">
         <div class="form-group">
-          <label>เธขเธญเธ”เธเนเธฒเน€เธเนเธฒ (เธเธฒเธ—):</label>
+          <label>ยอดค่าเช่า (บาท):</label>
           <input type="number" id="book-price-input" class="form-control" value="1000" oninput="app.recalcBookingModalPrice()">
         </div>
         <div class="form-group">
-          <label>เธชเนเธงเธเธฅเธ” (เธเธฒเธ—):</label>
+          <label>ส่วนลด (บาท):</label>
           <input type="number" id="book-discount-input" class="form-control" value="0" oninput="app.recalcBookingModalPrice()">
         </div>
       </div>
 
       <div style="background:#FFF7ED; padding:10px 14px; border-radius:8px; border:1px solid #FED7AA; margin-bottom:20px; display:flex; justify-content:space-between; align-items:center;">
-        <span style="font-size:13px; color:#9A3412;">เธขเธญเธ”เธเนเธฒเน€เธเนเธฒเธชเธธเธ—เธเธด:</span>
-        <b id="book-modal-net-price" style="font-size:18px; color:#D97706;">เธฟ1,000.00</b>
+        <span style="font-size:13px; color:#9A3412;">ยอดค่าเช่าสุทธิ:</span>
+        <b id="book-modal-net-price" style="font-size:18px; color:#D97706;">฿1,000.00</b>
       </div>
 
       <div style="display:flex; justify-content:flex-end; gap:10px;">
-        <button onclick="app.closeModal('modal-book-car')" class="btn btn-secondary">เธขเธเน€เธฅเธดเธ</button>
+        <button onclick="app.closeModal('modal-book-car')" class="btn btn-secondary">ยกเลิก</button>
         <button onclick="app.submitInstantBooking()" class="btn btn-primary">
-          เธขเธทเธเธขเธฑเธเธเธฒเธฃเธเธญเธเนเธฅเธฐเนเธเธซเธเนเธฒเธเธณเธฃเธฐเธกเธฑเธ”เธเธณ โ”
+          ยืนยันการจองและไปหน้าชำระมัดจำ ➔
         </button>
       </div>
     </div>
@@ -1691,33 +1691,33 @@
   <div id="modal-add-customer" class="modal-backdrop" style="z-index:2500;">
     <div class="modal-dialog" style="max-width:700px;">
       <div class="modal-header">
-        <div class="modal-title" id="modal-cust-title">เน€เธเธดเนเธกเธเนเธญเธกเธนเธฅเธฅเธนเธเธเนเธฒเนเธซเธกเน (Customer Registration)</div>
-        <button class="modal-close" onclick="app.closeModal('modal-add-customer')">โ•</button>
+        <div class="modal-title" id="modal-cust-title">เพิ่มข้อมูลลูกค้าใหม่ (Customer Registration)</div>
+        <button class="modal-close" onclick="app.closeModal('modal-add-customer')">✕</button>
       </div>
 
       <input type="hidden" id="cust-original-name">
 
       <div style="display:grid; grid-template-columns: 1fr 1fr; gap:14px; margin-bottom:16px;">
         <div class="form-group">
-          <label>เธเธทเนเธญ-เธเธฒเธกเธชเธเธธเธฅ (Full Name)*</label>
-          <input type="text" id="cust-name-in" class="form-control" placeholder="เธเธทเนเธญ-เธเธฒเธกเธชเธเธธเธฅ">
+          <label>ชื่อ-นามสกุล (Full Name)*</label>
+          <input type="text" id="cust-name-in" class="form-control" placeholder="ชื่อ-นามสกุล">
         </div>
         <div class="form-group">
-          <label>เน€เธเธญเธฃเนเนเธ—เธฃเธจเธฑเธเธ—เน (Contact No.)* <span style="color:#DC2626; font-size:11px; font-weight:700;">*(เธซเนเธฒเธกเธเนเธณ)</span></label>
+          <label>เบอร์โทรศัพท์ (Contact No.)* <span style="color:#DC2626; font-size:11px; font-weight:700;">*(ห้ามซ้ำ)</span></label>
           <input type="text" id="cust-phone-in" class="form-control" placeholder="081-234-5678" oninput="app.checkDuplicatePhone(this.value)">
           <div id="cust-phone-warn" style="font-size:11.5px; color:#DC2626; display:none; margin-top:4px; font-weight:700;"></div>
         </div>
         <div class="form-group">
-          <label>เธซเธกเธฒเธขเน€เธฅเธเธเธฑเธ•เธฃ เธเธเธ. / Passport <span style="color:#DC2626; font-size:11px; font-weight:700;">*(เธซเนเธฒเธกเธเนเธณ)</span></label>
-          <input type="text" id="cust-pass-in" class="form-control" placeholder="เธซเธกเธฒเธขเน€เธฅเธเธเธฑเธ•เธฃเธเธฃเธฐเธเธฒเธเธ เธซเธฃเธทเธญ Passport" oninput="app.checkDuplicatePassport(this.value)">
+          <label>หมายเลขบัตร ปชช. / Passport <span style="color:#DC2626; font-size:11px; font-weight:700;">*(ห้ามซ้ำ)</span></label>
+          <input type="text" id="cust-pass-in" class="form-control" placeholder="หมายเลขบัตรประชาชน หรือ Passport" oninput="app.checkDuplicatePassport(this.value)">
           <div id="cust-pass-warn" style="font-size:11.5px; color:#DC2626; display:none; margin-top:4px; font-weight:700;"></div>
         </div>
         <div class="form-group">
-          <label>เธซเธกเธฒเธขเน€เธฅเธเนเธเธเธฑเธเธเธตเน (Licence No.)</label>
-          <input type="text" id="cust-lic-in" class="form-control" placeholder="เน€เธฅเธเธ—เธตเนเนเธเธเธฑเธเธเธตเน">
+          <label>หมายเลขใบขับขี่ (Licence No.)</label>
+          <input type="text" id="cust-lic-in" class="form-control" placeholder="เลขที่ใบขับขี่">
         </div>
         <div class="form-group">
-          <label>เธชเธฑเธเธเธฒเธ•เธด (Nationality)</label>
+          <label>สัญชาติ (Nationality)</label>
           <input type="text" id="cust-nat-in" class="form-control" value="THAI">
         </div>
         <div class="form-group">
@@ -1725,25 +1725,25 @@
           <input type="text" id="cust-wa-in" class="form-control" placeholder="+66...">
         </div>
         <div class="form-group">
-          <label>เธงเธฑเธเน€เธเธดเธ” (DOB)</label>
+          <label>วันเกิด (DOB)</label>
           <input type="date" id="cust-dob-in" class="form-control">
         </div>
         <div class="form-group">
-          <label>เธงเธฑเธเธซเธกเธ”เธญเธฒเธขเธธเนเธเธเธฑเธเธเธตเน</label>
+          <label>วันหมดอายุใบขับขี่</label>
           <input type="date" id="cust-licexp-in" class="form-control">
         </div>
       </div>
       <div class="form-group" style="margin-bottom:14px;">
-        <label>เธ—เธตเนเธญเธขเธนเนเธ•เธฒเธกเธ เธนเธกเธดเธฅเธณเน€เธเธฒ (Home Address)</label>
-        <textarea id="cust-home-in" class="form-control" rows="2" placeholder="เธ—เธตเนเธญเธขเธนเนเธ•เธฒเธกเธเธฑเธ•เธฃเธเธฃเธฐเธเธฒเธเธ / เธ—เธฐเน€เธเธตเธขเธเธเนเธฒเธ..."></textarea>
+        <label>ที่อยู่ตามภูมิลำเนา (Home Address)</label>
+        <textarea id="cust-home-in" class="form-control" rows="2" placeholder="ที่อยู่ตามบัตรประชาชน / ทะเบียนบ้าน..."></textarea>
       </div>
       <div class="form-group" style="margin-bottom:14px;">
-        <label>เธ—เธตเนเธญเธขเธนเนเนเธเนเธ—เธขเธฃเธฐเธซเธงเนเธฒเธเน€เธเนเธฒ (Address in Thailand)</label>
-        <textarea id="cust-thai-in" class="form-control" rows="2" placeholder="เนเธฃเธเนเธฃเธก / เธเธญเธเนเธ” / เธ—เธตเนเธเธฑเธเธญเธฒเธจเธฑเธข..."></textarea>
+        <label>ที่อยู่ในไทยระหว่างเช่า (Address in Thailand)</label>
+        <textarea id="cust-thai-in" class="form-control" rows="2" placeholder="โรงแรม / คอนโด / ที่พักอาศัย..."></textarea>
       </div>
       <div style="display:grid; grid-template-columns: 1fr 1fr; gap:14px; margin-bottom:20px;">
         <div class="form-group">
-          <label>เธญเธตเน€เธกเธฅ (Email)</label>
+          <label>อีเมล (Email)</label>
           <input type="email" id="cust-email-in" class="form-control" placeholder="name@email.com" autocomplete="email">
         </div>
         <div class="form-group">
@@ -1753,10 +1753,10 @@
       </div>
 
       <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
-        <button type="button" id="btn-modal-cust-delete" onclick="app.deleteCurrentEditingCustomer()" class="btn btn-danger" style="display:none;">เธฅเธเธเนเธญเธกเธนเธฅเธฅเธนเธเธเนเธฒเธเธตเน</button>
+        <button type="button" id="btn-modal-cust-delete" onclick="app.deleteCurrentEditingCustomer()" class="btn btn-danger" style="display:none;">ลบข้อมูลลูกค้านี้</button>
         <div style="display:flex; justify-content:flex-end; gap:10px; margin-left:auto;">
-          <button onclick="app.closeModal('modal-add-customer')" class="btn btn-secondary">เธขเธเน€เธฅเธดเธ</button>
-          <button onclick="app.submitNewCustomer()" class="btn btn-primary" id="btn-modal-cust-save">เธเธฑเธเธ—เธถเธเธเนเธญเธกเธนเธฅเธฅเธนเธเธเนเธฒ</button>
+          <button onclick="app.closeModal('modal-add-customer')" class="btn btn-secondary">ยกเลิก</button>
+          <button onclick="app.submitNewCustomer()" class="btn btn-primary" id="btn-modal-cust-save">บันทึกข้อมูลลูกค้า</button>
         </div>
       </div>
     </div>
@@ -1766,8 +1766,8 @@
   <div id="modal-edit-car" class="modal-backdrop">
     <div class="modal-dialog" style="max-width:740px;">
       <div class="modal-header">
-        <div class="modal-title" id="modal-edit-car-title">เนเธเนเนเธเธเนเธญเธกเธนเธฅเธฃเธ–เธขเธเธ•เน & เธญเธฑเธเนเธซเธฅเธ”เธฃเธนเธเธฃเธ–</div>
-        <button class="modal-close" onclick="app.closeModal('modal-edit-car')">โ•</button>
+        <div class="modal-title" id="modal-edit-car-title">แก้ไขข้อมูลรถยนต์ & อัปโหลดรูปรถ</div>
+        <button class="modal-close" onclick="app.closeModal('modal-edit-car')">✕</button>
       </div>
 
       <form id="form-edit-car" onsubmit="app.submitEditCar(event); return false;">
@@ -1775,9 +1775,9 @@
         <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; margin-bottom:12px;">
           <div class="form-group">
             <label id="lbl-modal-car-plate">License Plate (Plate)*</label>
-            <input type="text" id="edit-car-plate" class="form-control" placeholder="5เธเธจ 5181" oninput="app.updateCarFormField('plate', this.value); app.checkDuplicatePlate(this.value);" autofocus>
+            <input type="text" id="edit-car-plate" class="form-control" placeholder="5ขศ 5181" oninput="app.updateCarFormField('plate', this.value); app.checkDuplicatePlate(this.value);" autofocus>
             <div id="edit-car-plate-warn" style="display:none; font-size:11.5px; color:#DC2626; font-weight:600; margin-top:4px;">
-              โ ๏ธ เธ—เธฐเน€เธเธตเธขเธเธเธตเนเธกเธตเธญเธขเธนเนเนเธเธฃเธฐเธเธเนเธฅเนเธง
+              ⚠️ ทะเบียนนี้มีอยู่ในระบบแล้ว
             </div>
           </div>
           <div class="form-group">
@@ -1810,21 +1810,21 @@
           <div class="form-group">
             <label id="lbl-modal-car-group">Vehicle Group*</label>
             <select id="edit-car-group" class="form-control" onchange="app.updateCarFormField('car_group', this.value)">
-              <option id="opt-modal-group-sedan" value="เธฃเธ–เน€เธเนเธ (Sedan/Hatchback)">เธฃเธ–เน€เธเนเธ (Sedan/Hatchback)</option>
+              <option id="opt-modal-group-sedan" value="รถเก๋ง (Sedan/Hatchback)">รถเก๋ง (Sedan/Hatchback)</option>
               <option id="opt-modal-group-suv" value="SUV">SUV</option>
-              <option id="opt-modal-group-van" value="เธฃเธ–เธ•เธนเน (Van)">เธฃเธ–เธ•เธนเน (Van)</option>
-              <option id="opt-modal-group-pickup" value="เธฃเธ–เธเธฃเธฐเธเธฐ">เธฃเธ–เธเธฃเธฐเธเธฐ</option>
-              <option id="opt-modal-group-sport" value="เธฃเธ–เธชเธเธญเธฃเนเธ•/เธซเธฃเธนเธซเธฃเธฒ">เธฃเธ–เธชเธเธญเธฃเนเธ•/เธซเธฃเธนเธซเธฃเธฒ</option>
+              <option id="opt-modal-group-van" value="รถตู้ (Van)">รถตู้ (Van)</option>
+              <option id="opt-modal-group-pickup" value="รถกระบะ">รถกระบะ</option>
+              <option id="opt-modal-group-sport" value="รถสปอร์ต/หรูหรา">รถสปอร์ต/หรูหรา</option>
             </select>
           </div>
           <div class="form-group">
             <label id="lbl-modal-car-fuel">Fuel System*</label>
             <select id="edit-car-fuel" class="form-control" onchange="app.updateCarFormField('fuel_type', this.value)">
-              <option id="opt-modal-fuel-gasoline" value="เน€เธเธเธเธดเธ">เน€เธเธเธเธดเธ</option>
-              <option id="opt-modal-fuel-gas-hybrid" value="เน€เธเธเธเธดเธ/Hybrid">เน€เธเธเธเธดเธ/Hybrid</option>
-              <option id="opt-modal-fuel-diesel" value="เธ”เธตเน€เธเธฅ">เธ”เธตเน€เธเธฅ</option>
-              <option id="opt-modal-fuel-die-hybrid" value="เธ”เธตเน€เธเธฅ/Hybrid">เธ”เธตเน€เธเธฅ/Hybrid</option>
-              <option id="opt-modal-fuel-ev" value="เนเธเธเนเธฒ (EV)">เนเธเธเนเธฒ (EV)</option>
+              <option id="opt-modal-fuel-gasoline" value="เบนซิน">เบนซิน</option>
+              <option id="opt-modal-fuel-gas-hybrid" value="เบนซิน/Hybrid">เบนซิน/Hybrid</option>
+              <option id="opt-modal-fuel-diesel" value="ดีเซล">ดีเซล</option>
+              <option id="opt-modal-fuel-die-hybrid" value="ดีเซล/Hybrid">ดีเซล/Hybrid</option>
+              <option id="opt-modal-fuel-ev" value="ไฟฟ้า (EV)">ไฟฟ้า (EV)</option>
             </select>
           </div>
           <div class="form-group">
@@ -1836,18 +1836,18 @@
         <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; margin-bottom:12px;">
           <div class="form-group">
             <label id="lbl-modal-car-company">Ownership / Company*</label>
-            <input type="text" id="edit-car-company" class="form-control" list="car-companies-list" placeholder="เธเธทเนเธญเธเธฃเธดเธฉเธฑเธ— / เธเธนเนเธ–เธทเธญเธเธฃเธฃเธกเธชเธดเธ—เธเธดเน" oninput="app.updateCarFormField('company', this.value)">
+            <input type="text" id="edit-car-company" class="form-control" list="car-companies-list" placeholder="ชื่อบริษัท / ผู้ถือกรรมสิทธิ์" oninput="app.updateCarFormField('company', this.value)">
             <datalist id="car-companies-list">
               <option value="Sawasdee Rent A Car"></option>
               <option value="P.D.P. Co., Ltd."></option>
               <option value="Sawasdee Car Rent"></option>
-              <option value="เธเธเธ.เธชเธงเธฑเธชเธ”เธต เน€เธฃเธเธ—เธฑเธฅ (Sawasdee Rental)"></option>
-              <option value="เนเธ•เนเธขเธ•เนเธฒ เธฅเธตเธชเธเธดเนเธ"></option>
+              <option value="บจก.สวัสดี เรนทัล (Sawasdee Rental)"></option>
+              <option value="โตโยต้า ลีสซิ่ง"></option>
             </datalist>
           </div>
           <div class="form-group">
             <label id="lbl-modal-car-color">Body Color</label>
-            <input type="text" id="edit-car-color" class="form-control" list="car-colors-list" placeholder="เธชเธตเธ•เธฑเธงเธ–เธฑเธ" oninput="app.updateCarFormField('color', this.value)">
+            <input type="text" id="edit-car-color" class="form-control" list="car-colors-list" placeholder="สีตัวถัง" oninput="app.updateCarFormField('color', this.value)">
             <datalist id="car-colors-list"></datalist>
           </div>
           <div class="form-group">
@@ -1876,7 +1876,7 @@
             <label id="lbl-modal-car-vin">VIN / Chassis Number*</label>
             <input type="text" id="edit-car-vin" class="form-control" placeholder="-" oninput="app.updateCarFormField('vin', this.value); app.checkDuplicateChassis(this.value);">
             <div id="edit-car-vin-warn" style="display:none; font-size:11px; color:#DC2626; font-weight:600; margin-top:4px;">
-              โ ๏ธ เน€เธฅเธเธ•เธฑเธงเธ–เธฑเธเธเธตเนเธเนเธณเธเธฑเธเธฃเธ–เธเธฑเธเธญเธทเนเธเนเธเธฃเธฐเธเธ
+              ⚠️ เลขตัวถังนี้ซ้ำกับรถคันอื่นในระบบ
             </div>
           </div>
           <div class="form-group">
@@ -1896,17 +1896,17 @@
         <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:12px; margin-bottom:12px;">
           <div class="form-group">
             <label id="lbl-modal-car-ins-comp">Insurance Company</label>
-            <input type="text" id="edit-car-ins-comp" class="form-control" list="car-ins-comps-list" placeholder="เธเธทเนเธญเธเธฃเธดเธฉเธฑเธ—เธเธฃเธฐเธเธฑเธเธ เธฑเธข" oninput="app.updateCarFormField('ins_company', this.value)">
+            <input type="text" id="edit-car-ins-comp" class="form-control" list="car-ins-comps-list" placeholder="ชื่อบริษัทประกันภัย" oninput="app.updateCarFormField('ins_company', this.value)">
             <datalist id="car-ins-comps-list"></datalist>
           </div>
           <div class="form-group">
             <label id="lbl-modal-car-owner">Vehicle Owner</label>
-            <input type="text" id="edit-car-owner" class="form-control" list="car-owners-list" placeholder="เธเธทเนเธญเธเธนเนเธ–เธทเธญเธเธฃเธฃเธกเธชเธดเธ—เธเธดเน" oninput="app.updateCarFormField('owner', this.value)">
+            <input type="text" id="edit-car-owner" class="form-control" list="car-owners-list" placeholder="ชื่อผู้ถือกรรมสิทธิ์" oninput="app.updateCarFormField('owner', this.value)">
             <datalist id="car-owners-list"></datalist>
           </div>
           <div class="form-group">
             <label id="lbl-modal-car-beneficiary">Beneficiary</label>
-            <input type="text" id="edit-car-beneficiary" class="form-control" list="car-beneficiaries-list" placeholder="เธเธทเนเธญเธเธนเนเธฃเธฑเธเธเธฅเธเธฃเธฐเนเธขเธเธเน" oninput="app.updateCarFormField('beneficiary', this.value)">
+            <input type="text" id="edit-car-beneficiary" class="form-control" list="car-beneficiaries-list" placeholder="ชื่อผู้รับผลประโยชน์" oninput="app.updateCarFormField('beneficiary', this.value)">
             <datalist id="car-beneficiaries-list"></datalist>
           </div>
           <div class="form-group">
@@ -1918,11 +1918,11 @@
 
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:12px;">
           <div class="form-group">
-            <label id="lbl-modal-car-prb-price">เธฃเธฒเธเธฒ เธ.เธฃ.เธ. (เธเธฒเธ—)</label>
+            <label id="lbl-modal-car-prb-price">ราคา พ.ร.บ. (บาท)</label>
             <input type="number" id="edit-car-prb-price" class="form-control" min="0" step="10" placeholder="0.00" oninput="app.updateCarFormField('prb_price', this.value)">
           </div>
           <div class="form-group">
-            <label id="lbl-modal-car-ins-premium">เน€เธเธตเนเธขเธเธฃเธฐเธเธฑเธ (เธเธฒเธ—)</label>
+            <label id="lbl-modal-car-ins-premium">เบี้ยประกัน (บาท)</label>
             <input type="number" id="edit-car-ins-premium" class="form-control" min="0" step="100" placeholder="0.00" oninput="app.updateCarFormField('insurance_premium', this.value)">
           </div>
         </div>
@@ -1935,11 +1935,11 @@
           <div class="form-group">
             <label id="lbl-modal-car-status">Vehicle Status*</label>
             <select id="edit-car-status" class="form-control" onchange="app.updateCarFormField('status', this.value)">
-              <option id="opt-modal-status-available" value="เธงเนเธฒเธเธเธฃเนเธญเธกเนเธเนเธเธฒเธ">เธงเนเธฒเธเธเธฃเนเธญเธกเนเธเนเธเธฒเธ</option>
-              <option id="opt-modal-status-maint" value="เธเนเธญเธกเธเธณเธฃเธธเธ">เธเนเธญเธกเธเธณเธฃเธธเธ</option>
-              <option id="opt-modal-status-prep-disp" value="เน€เธ•เธฃเธตเธขเธกเธชเนเธเธกเธญเธ">เน€เธ•เธฃเธตเธขเธกเธชเนเธเธกเธญเธ</option>
-              <option id="opt-modal-status-renting" value="เธเธณเธฅเธฑเธเน€เธเนเธฒ">เธเธณเธฅเธฑเธเน€เธเนเธฒ</option>
-              <option id="opt-modal-status-booked" value="เธ•เธดเธ”เธเธญเธ">เธ•เธดเธ”เธเธญเธ</option>
+              <option id="opt-modal-status-available" value="ว่างพร้อมใช้งาน">ว่างพร้อมใช้งาน</option>
+              <option id="opt-modal-status-maint" value="ซ่อมบำรุง">ซ่อมบำรุง</option>
+              <option id="opt-modal-status-prep-disp" value="เตรียมส่งมอบ">เตรียมส่งมอบ</option>
+              <option id="opt-modal-status-renting" value="กำลังเช่า">กำลังเช่า</option>
+              <option id="opt-modal-status-booked" value="ติดจอง">ติดจอง</option>
             </select>
           </div>
         </div>
@@ -1960,32 +1960,32 @@
         <div style="border:1px solid #E2E8F0; border-radius:8px; padding:12px; margin-bottom:12px; background:#F8FAFC;">
           <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
             <input type="checkbox" id="edit-car-debt-free" onchange="app.onDebtFreeToggle(this.checked); app.updateCarFormField('is_debt_free', this.checked);" style="width:16px; height:16px; cursor:pointer;">
-            <label for="edit-car-debt-free" id="lbl-modal-car-debt-free" style="margin:0; font-weight:600; cursor:pointer; color:#1E293B;">เธฃเธ–เธเธฅเธญเธ”เธ เธฒเธฃเธฐ / เธเธทเนเธญเน€เธเธดเธเธชเธ”</label>
+            <label for="edit-car-debt-free" id="lbl-modal-car-debt-free" style="margin:0; font-weight:600; cursor:pointer; color:#1E293B;">รถปลอดภาระ / ซื้อเงินสด</label>
           </div>
           <div id="edit-car-installment-fields">
             <!-- Row 1: Finance Company Single Searchable/Creatable Datalist Input (Unslop) -->
             <div class="form-group" style="margin-bottom:12px;">
-              <label id="lbl-modal-car-finance-comp">เธเธฃเธดเธฉเธฑเธ—เนเธเนเธเธเธเน</label>
-              <input type="text" id="edit-car-finance-company" class="form-control" list="finance-companies-list" placeholder="เธฃเธฐเธเธธเธเธฃเธดเธฉเธฑเธ—เนเธเนเธเธเธเน..." oninput="app.updateCarFormField('finance_company', this.value)">
+              <label id="lbl-modal-car-finance-comp">บริษัทไฟแนนซ์</label>
+              <input type="text" id="edit-car-finance-company" class="form-control" list="finance-companies-list" placeholder="ระบุบริษัทไฟแนนซ์..." oninput="app.updateCarFormField('finance_company', this.value)">
               <datalist id="finance-companies-list"></datalist>
             </div>
 
             <!-- Row 2: 4 Installment Metrics -->
             <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:12px;">
               <div class="form-group">
-                <label id="lbl-modal-car-installment-amt">เธเนเธฒเธเธงเธ”เธ•เนเธญเน€เธ”เธทเธญเธ (THB)</label>
+                <label id="lbl-modal-car-installment-amt">ค่างวดต่อเดือน (THB)</label>
                 <input type="number" id="edit-car-installment-amount" class="form-control" min="0" step="100" placeholder="0" oninput="app.updateCarFormField('installment_amount', this.value)">
               </div>
               <div class="form-group">
-                <label id="lbl-modal-car-total-inst">เธเธณเธเธงเธเธเธงเธ”เธ—เธฑเนเธเธซเธกเธ”</label>
+                <label id="lbl-modal-car-total-inst">จำนวนงวดทั้งหมด</label>
                 <input type="number" id="edit-car-total-installments" class="form-control" min="0" step="1" placeholder="48" oninput="app.updateCarFormField('total_installments', this.value)">
               </div>
               <div class="form-group">
-                <label id="lbl-modal-car-curr-inst">เธเธงเธ”เธเธฑเธเธเธธเธเธฑเธ (เธเธณเธฃเธฐเนเธฅเนเธง)</label>
+                <label id="lbl-modal-car-curr-inst">งวดปัจจุบัน (ชำระแล้ว)</label>
                 <input type="number" id="edit-car-current-installment" class="form-control" min="0" step="1" placeholder="0" oninput="app.updateCarFormField('current_installment', this.value)">
               </div>
               <div class="form-group">
-                <label id="lbl-modal-car-due-date">เธงเธฑเธเธ•เธฑเธ”เธเธงเธ” (Payment Due Date)</label>
+                <label id="lbl-modal-car-due-date">วันตัดงวด (Payment Due Date)</label>
                 <input type="date" id="edit-car-payment-due-date" class="form-control" onchange="app.updateCarFormField('payment_due_date', this.value)">
               </div>
             </div>
@@ -1994,23 +1994,23 @@
 
         <div class="form-group" style="margin-bottom:14px;">
           <label id="lbl-modal-car-notes">Additional Notes & Info</label>
-          <input type="text" id="edit-car-notes" class="form-control" placeholder="เธซเธกเธฒเธขเน€เธซเธ•เธธเน€เธเธดเนเธกเน€เธ•เธดเธก (เธ–เนเธฒเธกเธต)" oninput="app.updateCarFormField('notes', this.value)">
+          <input type="text" id="edit-car-notes" class="form-control" placeholder="หมายเหตุเพิ่มเติม (ถ้ามี)" oninput="app.updateCarFormField('notes', this.value)">
         </div>
 
         <!-- Car Photo Preview & Upload (Positioned at bottom before save button) -->
         <div style="display:flex; align-items:center; gap:16px; margin-bottom:14px; padding:12px; background:#F8FAFC; border:1px solid #E2E8F0; border-radius:10px;">
           <div id="edit-car-photo-preview" style="width:110px; height:80px; border-radius:8px; background:#E2E8F0; display:flex; align-items:center; justify-content:center; overflow:hidden; flex-shrink:0; border:1px solid #CBD5E1;">
             <img id="edit-car-img-preview" src="" alt="Car" style="width:100%; height:100%; object-fit:cover; display:none;">
-            <span id="edit-car-no-img-text" style="font-size:12px; color:#94A3B8; font-weight:600;">เธขเธฑเธเนเธกเนเธกเธตเธฃเธนเธ</span>
+            <span id="edit-car-no-img-text" style="font-size:12px; color:#94A3B8; font-weight:600;">ยังไม่มีรูป</span>
           </div>
           <input type="hidden" id="edit-car-image-url" value="">
           <div style="flex:1;">
-            <label style="font-size:12px; font-weight:700; color:#334155; margin-bottom:4px; display:block;" id="lbl-modal-car-photo">เธฃเธนเธเธฃเธ–เธขเธเธ•เน (Car Photo)</label>
+            <label style="font-size:12px; font-weight:700; color:#334155; margin-bottom:4px; display:block;" id="lbl-modal-car-photo">รูปรถยนต์ (Car Photo)</label>
             <div style="display:flex; gap:8px; align-items:center;">
               <input type="file" id="edit-car-photo-file" accept="image/*" class="form-control" onchange="app.onEditCarModalPhotoSelected(this)" style="font-size:12px; padding:4px 8px;">
-              <button type="button" class="btn btn-secondary" onclick="app.clearCarPhoto()" style="padding:6px 10px; font-size:11.5px; white-space:nowrap;" id="btn-clear-car-photo">เธฅเธเธฃเธนเธ</button>
+              <button type="button" class="btn btn-secondary" onclick="app.clearCarPhoto()" style="padding:6px 10px; font-size:11.5px; white-space:nowrap;" id="btn-clear-car-photo">ลบรูป</button>
             </div>
-            <small style="color:#64748B; font-size:11px; margin-top:2px; display:block;" id="lbl-modal-car-photo-hint">เธฃเธญเธเธฃเธฑเธเนเธเธฅเน JPG, PNG, WEBP (เธเธตเธเธญเธฑเธ”เธญเธฑเธ•เนเธเธกเธฑเธ•เธด)</small>
+            <small style="color:#64748B; font-size:11px; margin-top:2px; display:block;" id="lbl-modal-car-photo-hint">รองรับไฟล์ JPG, PNG, WEBP (บีบอัดอัตโนมัติ)</small>
           </div>
         </div>
 
@@ -2039,12 +2039,12 @@
       <div class="modal-header" style="border-bottom:1px solid #E2E8F0; padding:14px 20px; display:flex; justify-content:space-between; align-items:center;">
         <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
           <div class="modal-title" id="modal-car-details-title" style="font-size:16px; font-weight:800; color:#1E293B; margin:0;">
-            เธฃเธฒเธขเธฅเธฐเน€เธญเธตเธขเธ”เธฃเธ–เธขเธเธ•เน
+            รายละเอียดรถยนต์
           </div>
           <div id="car-details-plate-badge"></div>
           <div id="car-details-status-badge"></div>
         </div>
-        <button class="modal-close" onclick="app.closeCarDetailsModal()" style="font-size:18px; cursor:pointer;">โ•</button>
+        <button class="modal-close" onclick="app.closeCarDetailsModal()" style="font-size:18px; cursor:pointer;">✕</button>
       </div>
 
       <div class="modal-body" id="car-details-modal-body" style="padding:18px 20px; overflow-y:auto; flex:1;">
@@ -2059,31 +2059,31 @@
   <div class="modal-backdrop" id="modal-update-expiry">
     <div class="modal-box" style="max-width: 480px;">
       <div class="modal-header">
-        <div class="modal-title" id="modal-expiry-title">๐” เธญเธฑเธเน€เธ”เธ•เธงเธฑเธเธซเธกเธ”เธญเธฒเธขเธธ เธ.เธฃ.เธ. / เธเธฃเธฐเธเธฑเธเธ เธฑเธข</div>
-        <button class="modal-close" onclick="app.closeModal('modal-update-expiry')">โ•</button>
+        <div class="modal-title" id="modal-expiry-title">🔄 อัปเดตวันหมดอายุ พ.ร.บ. / ประกันภัย</div>
+        <button class="modal-close" onclick="app.closeModal('modal-update-expiry')">✕</button>
       </div>
       <input type="hidden" id="expiry-modal-plate">
       <input type="hidden" id="expiry-modal-field">
 
       <div style="background:#FFFBEB; border:1px solid #FDE68A; border-radius:10px; padding:12px 14px; margin-bottom:14px;">
-        <div style="font-size:13.5px; font-weight:800; color:#92400E;" id="expiry-modal-car-info">๐ -</div>
-        <div style="font-size:12px; color:#B45309; margin-top:4px;" id="expiry-modal-current-info">เธงเธฑเธเธซเธกเธ”เธญเธฒเธขเธธเน€เธ”เธดเธก: -</div>
+        <div style="font-size:13.5px; font-weight:800; color:#92400E;" id="expiry-modal-car-info">🚘 -</div>
+        <div style="font-size:12px; color:#B45309; margin-top:4px;" id="expiry-modal-current-info">วันหมดอายุเดิม: -</div>
       </div>
 
       <div style="margin-bottom:14px;">
-        <label style="display:block; font-size:12px; font-weight:700; color:#334155; margin-bottom:6px;">โก เน€เธฅเธทเธญเธเธ•เนเธญเธญเธฒเธขเธธเธ”เนเธงเธ (+1 เธเธต):</label>
+        <label style="display:block; font-size:12px; font-weight:700; color:#334155; margin-bottom:6px;">⚡ เลือกต่ออายุด่วน (+1 ปี):</label>
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
           <button type="button" onclick="app.applyExpiryPreset('today_1y')" class="btn btn-sm" style="background:#EFF6FF; color:#1D4ED8; border:1px solid #BFDBFE; font-weight:700; padding:8px; justify-content:center;">
-            ๐” +1 เธเธต (เธเธฒเธเธงเธฑเธเธเธตเน)
+            🔄 +1 ปี (จากวันนี้)
           </button>
           <button type="button" onclick="app.applyExpiryPreset('old_1y')" class="btn btn-sm" style="background:#ECFDF5; color:#047857; border:1px solid #A7F3D0; font-weight:700; padding:8px; justify-content:center;">
-            ๐“… +1 เธเธต (เธ•เนเธญเธเธฒเธเธงเธฑเธเน€เธ”เธดเธก)
+            📅 +1 ปี (ต่อจากวันเดิม)
           </button>
         </div>
       </div>
 
       <div class="form-group" style="margin-bottom:18px;">
-        <label style="font-weight:700;">๐“… เธซเธฃเธทเธญเน€เธฅเธทเธญเธ/เธฃเธฐเธเธธเธงเธฑเธเธซเธกเธ”เธญเธฒเธขเธธเนเธซเธกเน (เธงเธง/เธ”เธ”/เธเธเธเธ เธ.เธจ.):</label>
+        <label style="font-weight:700;">📅 หรือเลือก/ระบุวันหมดอายุใหม่ (วว/ดด/ปปปป ค.ศ.):</label>
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-top:4px;">
           <input type="date" id="expiry-modal-date-picker" class="form-control" onchange="app.onExpiryPickerChange(this.value)">
           <input type="text" id="expiry-modal-text-input" class="form-control" placeholder="DD/MM/YYYY" style="font-weight:700; color:#0F172A;">
@@ -2091,9 +2091,9 @@
       </div>
 
       <div style="display:flex; justify-content:flex-end; gap:10px;">
-        <button onclick="app.closeModal('modal-update-expiry')" class="btn btn-secondary">เธขเธเน€เธฅเธดเธ</button>
+        <button onclick="app.closeModal('modal-update-expiry')" class="btn btn-secondary">ยกเลิก</button>
         <button onclick="app.submitExpiryModal()" class="btn btn-primary">
-          เธเธฑเธเธ—เธถเธเธงเธฑเธเธซเธกเธ”เธญเธฒเธขเธธเนเธซเธกเน
+          บันทึกวันหมดอายุใหม่
         </button>
       </div>
     </div>
@@ -2105,8 +2105,8 @@
   <div class="modal-backdrop" id="modal-new-maintenance">
     <div class="modal-dialog modal-box" style="background:#ffffff !important; background-color:#ffffff !important; color:#1E293B; max-width:680px; max-height:90vh; overflow-y:auto; box-shadow:0 16px 40px rgba(0,0,0,0.18);">
       <div class="modal-header">
-        <div class="modal-title" id="modal-mnt-title" style="color:#1E293B; font-weight:800;">เธญเธญเธเนเธเธเธฒเธเธเนเธญเธกเธเธณเธฃเธธเธ / เธ•เนเธญเธ—เธฐเน€เธเธตเธขเธ-เธเธฃเธฐเธเธฑเธ</div>
-        <button class="modal-close" onclick="app.closeModal('modal-new-maintenance')">โ•</button>
+        <div class="modal-title" id="modal-mnt-title" style="color:#1E293B; font-weight:800;">ออกใบงานซ่อมบำรุง / ต่อทะเบียน-ประกัน</div>
+        <button class="modal-close" onclick="app.closeModal('modal-new-maintenance')">✕</button>
       </div>
 
       <input type="hidden" id="mnt-form-id" value="">
@@ -2115,59 +2115,59 @@
       <div style="background:#FFF7ED; border:1px solid #FFEDD5; border-radius:10px; padding:12px 14px; margin-bottom:14px;">
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
           <div style="flex:1; min-width:240px;">
-            <label style="font-size:11.5px; font-weight:700; color:#9A3412; display:block; margin-bottom:4px;">เน€เธฅเธทเธญเธเธฃเธ–เธขเธเธ•เน:</label>
+            <label style="font-size:11.5px; font-weight:700; color:#9A3412; display:block; margin-bottom:4px;">เลือกรถยนต์:</label>
             <select id="mnt-car-select" class="form-control" onchange="app.onMaintenanceCarSelected(this.value)" style="font-weight:700; font-size:13px; color:#1F2937;">
               <!-- Populated by JS -->
             </select>
           </div>
           <div id="mnt-car-expiry-pill" style="font-size:11.5px; color:#C2410C; background:white; border:1px solid #FDBA74; padding:5px 10px; border-radius:8px;">
-            เธ.เธฃ.เธ.: <span id="mnt-car-act">-</span> | เธเธฃเธฐเธเธฑเธเธ เธฑเธข: <span id="mnt-car-ins">-</span>
+            พ.ร.บ.: <span id="mnt-car-act">-</span> | ประกันภัย: <span id="mnt-car-ins">-</span>
           </div>
         </div>
       </div>
 
       <!-- Job Type Selection -->
       <div class="form-group" style="margin-bottom:12px;">
-        <label style="font-weight:700;">เธเธฃเธฐเน€เธ เธ—เนเธเธเธฒเธ (Work Order Type):</label>
+        <label style="font-weight:700;">ประเภทใบงาน (Work Order Type):</label>
         <select id="mnt-order-type" class="form-control" onchange="app.onMaintenanceTypeChange(this.value)" style="font-weight:700;">
-          <option value="เธเนเธญเธกเธเธณเธฃเธธเธเธ—เธฑเนเธงเนเธ / เน€เธเนเธเธฃเธฐเธขเธฐ">เธเนเธญเธกเธเธณเธฃเธธเธเธ—เธฑเนเธงเนเธ / เน€เธเนเธเธฃเธฐเธขเธฐ (General Maintenance / Service)</option>
-          <option value="เธเนเธญเธกเน€เธเธฃเธทเนเธญเธเธขเธเธ•เน / เธเนเธงเธเธฅเนเธฒเธ / เธฃเธฐเธเธเนเธ">เธเนเธญเธกเน€เธเธฃเธทเนเธญเธเธขเธเธ•เน / เธเนเธงเธเธฅเนเธฒเธ / เธฃเธฐเธเธเนเธ (Mechanical & Electrical)</option>
-          <option value="เธเนเธญเธกเน€เธเธฒเธฐเธเนเธเธชเธต / เธ•เธฑเธงเธ–เธฑเธ">เธเนเธญเธกเน€เธเธฒเธฐเธเนเธเธชเธต / เธ•เธฑเธงเธ–เธฑเธ (Body & Paint)</option>
-          <option value="เธ•เนเธญเธ—เธฐเน€เธเธตเธขเธเธ เธฒเธฉเธต เนเธฅเธฐ เธ.เธฃ.เธ.">เธ•เนเธญเธ—เธฐเน€เธเธตเธขเธเธ เธฒเธฉเธต เนเธฅเธฐ เธ.เธฃ.เธ. (Tax & Compulsory Motor Insurance)</option>
-          <option value="เธ•เนเธญเธเธฃเธฐเธเธฑเธเธ เธฑเธขเธฃเธ–เธขเธเธ•เน">เธ•เนเธญเธเธฃเธฐเธเธฑเธเธ เธฑเธขเธฃเธ–เธขเธเธ•เน (Car Insurance Renewal)</option>
-          <option value="เธ•เนเธญเธ—เธฐเน€เธเธตเธขเธเธ เธฒเธฉเธต เธ.เธฃ.เธ. เนเธฅเธฐ เธเธฃเธฐเธเธฑเธเธ เธฑเธข (เนเธเนเธเธเธนเน)">เธ•เนเธญเธ—เธฐเน€เธเธตเธขเธเธ เธฒเธฉเธต เธ.เธฃ.เธ. เนเธฅเธฐ เธเธฃเธฐเธเธฑเธเธ เธฑเธข (เธฃเธงเธก)</option>
-          <option value="เธ•เธฃเธงเธเธชเธ เธฒเธเธฃเธ–เธขเธเธ•เน เธ•เธฃเธญ.">เธ•เธฃเธงเธเธชเธ เธฒเธเธฃเธ–เธขเธเธ•เน เธ•เธฃเธญ. (Vehicle Inspection)</option>
+          <option value="ซ่อมบำรุงทั่วไป / เช็คระยะ">ซ่อมบำรุงทั่วไป / เช็คระยะ (General Maintenance / Service)</option>
+          <option value="ซ่อมเครื่องยนต์ / ช่วงล่าง / ระบบไฟ">ซ่อมเครื่องยนต์ / ช่วงล่าง / ระบบไฟ (Mechanical & Electrical)</option>
+          <option value="ซ่อมเคาะพ่นสี / ตัวถัง">ซ่อมเคาะพ่นสี / ตัวถัง (Body & Paint)</option>
+          <option value="ต่อทะเบียนภาษี และ พ.ร.บ.">ต่อทะเบียนภาษี และ พ.ร.บ. (Tax & Compulsory Motor Insurance)</option>
+          <option value="ต่อประกันภัยรถยนต์">ต่อประกันภัยรถยนต์ (Car Insurance Renewal)</option>
+          <option value="ต่อทะเบียนภาษี พ.ร.บ. และ ประกันภัย (แพ็กคู่)">ต่อทะเบียนภาษี พ.ร.บ. และ ประกันภัย (รวม)</option>
+          <option value="ตรวจสภาพรถยนต์ ตรอ.">ตรวจสภาพรถยนต์ ตรอ. (Vehicle Inspection)</option>
         </select>
       </div>
 
       <!-- Quick Preset Tag Buttons for Service Items -->
       <div style="margin-bottom:8px;">
-        <label style="font-size:11.5px; font-weight:700; color:#475569; display:block; margin-bottom:4px;">เธฃเธฒเธขเธเธฒเธฃเธเธฃเธดเธเธฒเธฃเธ”เนเธงเธ:</label>
+        <label style="font-size:11.5px; font-weight:700; color:#475569; display:block; margin-bottom:4px;">รายการบริการด่วน:</label>
         <div style="display:flex; flex-wrap:wrap; gap:5px;" id="mnt-quick-tags-container">
-          <button type="button" onclick="app.appendMntItem('เน€เธเธฅเธตเนเธขเธเธ–เนเธฒเธขเธเนเธณเธกเธฑเธเน€เธเธฃเธทเนเธญเธเธชเธฑเธเน€เธเธฃเธฒเธฐเธซเนเนเธ—เน + เนเธชเนเธเธฃเธญเธ')" class="btn btn-sm" style="font-size:11px; padding:3px 8px; background:#F1F5F9; border:1px solid #CBD5E1; color:#334155;">+ เธ–เนเธฒเธขเธเนเธณเธกเธฑเธเน€เธเธฃเธทเนเธญเธ</button>
-          <button type="button" onclick="app.appendMntItem('เธ•เธฃเธงเธเน€เธเนเธเธฃเธฐเธเธเน€เธเธฃเธ & เน€เธเธฅเธตเนเธขเธเธเนเธฒเน€เธเธฃเธ')" class="btn btn-sm" style="font-size:11px; padding:3px 8px; background:#F1F5F9; border:1px solid #CBD5E1; color:#334155;">+ เธฃเธฐเธเธเน€เธเธฃเธ</button>
-          <button type="button" onclick="app.appendMntItem('เธชเธฅเธฑเธเธขเธฒเธ & เธ–เนเธงเธเธฅเนเธญ 4 เน€เธชเนเธ')" class="btn btn-sm" style="font-size:11px; padding:3px 8px; background:#F1F5F9; border:1px solid #CBD5E1; color:#334155;">+ เธชเธฅเธฑเธเธขเธฒเธ</button>
-          <button type="button" onclick="app.appendMntItem('เน€เธเนเธเธฃเธฐเธขเธฐ 20,000 / 40,000 เธเธก.')" class="btn btn-sm" style="font-size:11px; padding:3px 8px; background:#F1F5F9; border:1px solid #CBD5E1; color:#334155;">+ เน€เธเนเธเธฃเธฐเธขเธฐ</button>
-          <button type="button" onclick="app.appendMntItem('เธ•เนเธญเธ เธฒเธฉเธตเธเธฃเธฐเธเธณเธเธต + เธ.เธฃ.เธ. เธเธธเนเธกเธเธฃเธญเธเธเธนเนเธเธฃเธฐเธชเธเธ เธฑเธขเธเธฒเธเธฃเธ–')" class="btn btn-sm" style="font-size:11px; padding:3px 8px; background:#EFF6FF; border:1px solid #BFDBFE; color:#1D4ED8;">+ เธ•เนเธญเธ เธฒเธฉเธต+เธเธฃเธ.</button>
-          <button type="button" onclick="app.appendMntItem('เธ•เนเธญเน€เธเธตเนเธขเธเธฃเธฐเธเธฑเธเธ เธฑเธขเธฃเธ–เธขเธเธ•เนเธเธฑเนเธ 1')" class="btn btn-sm" style="font-size:11px; padding:3px 8px; background:#EFF6FF; border:1px solid #BFDBFE; color:#1D4ED8;">+ เธ•เนเธญเธเธฃเธฐเธเธฑเธเธเธฑเนเธ 1</button>
-          <button type="button" onclick="app.appendMntItem('เธ•เธฃเธงเธเธชเธ เธฒเธ เธ•เธฃเธญ.')" class="btn btn-sm" style="font-size:11px; padding:3px 8px; background:#ECFDF5; border:1px solid #A7F3D0; color:#047857;">+ เธ•เธฃเธงเธเธชเธ เธฒเธ เธ•เธฃเธญ.</button>
+          <button type="button" onclick="app.appendMntItem('เปลี่ยนถ่ายน้ำมันเครื่องสังเคราะห์แท้ + ไส้กรอง')" class="btn btn-sm" style="font-size:11px; padding:3px 8px; background:#F1F5F9; border:1px solid #CBD5E1; color:#334155;">+ ถ่ายน้ำมันเครื่อง</button>
+          <button type="button" onclick="app.appendMntItem('ตรวจเช็คระบบเบรก & เปลี่ยนผ้าเบรก')" class="btn btn-sm" style="font-size:11px; padding:3px 8px; background:#F1F5F9; border:1px solid #CBD5E1; color:#334155;">+ ระบบเบรก</button>
+          <button type="button" onclick="app.appendMntItem('สลับยาง & ถ่วงล้อ 4 เส้น')" class="btn btn-sm" style="font-size:11px; padding:3px 8px; background:#F1F5F9; border:1px solid #CBD5E1; color:#334155;">+ สลับยาง</button>
+          <button type="button" onclick="app.appendMntItem('เช็คระยะ 20,000 / 40,000 กม.')" class="btn btn-sm" style="font-size:11px; padding:3px 8px; background:#F1F5F9; border:1px solid #CBD5E1; color:#334155;">+ เช็คระยะ</button>
+          <button type="button" onclick="app.appendMntItem('ต่อภาษีประจำปี + พ.ร.บ. คุ้มครองผู้ประสบภัยจากรถ')" class="btn btn-sm" style="font-size:11px; padding:3px 8px; background:#EFF6FF; border:1px solid #BFDBFE; color:#1D4ED8;">+ ต่อภาษี+พรบ.</button>
+          <button type="button" onclick="app.appendMntItem('ต่อเบี้ยประกันภัยรถยนต์ชั้น 1')" class="btn btn-sm" style="font-size:11px; padding:3px 8px; background:#EFF6FF; border:1px solid #BFDBFE; color:#1D4ED8;">+ ต่อประกันชั้น 1</button>
+          <button type="button" onclick="app.appendMntItem('ตรวจสภาพ ตรอ.')" class="btn btn-sm" style="font-size:11px; padding:3px 8px; background:#ECFDF5; border:1px solid #A7F3D0; color:#047857;">+ ตรวจสภาพ ตรอ.</button>
         </div>
       </div>
 
       <!-- Service Items Textarea -->
       <div class="form-group" style="margin-bottom:12px;">
-        <label style="font-weight:700;">เธฃเธฒเธขเธเธฒเธฃเธเนเธญเธก / เธเธฃเธดเธเธฒเธฃ:</label>
-        <textarea id="mnt-service-items" class="form-control" rows="3" placeholder="เธฃเธฐเธเธธเธฃเธฒเธขเธฅเธฐเน€เธญเธตเธขเธ”เธเธฒเธเธเนเธญเธกเธซเธฃเธทเธญเธฃเธฒเธขเธเธฒเธฃเธเธฃเธดเธเธฒเธฃ..."></textarea>
+        <label style="font-weight:700;">รายการซ่อม / บริการ:</label>
+        <textarea id="mnt-service-items" class="form-control" rows="3" placeholder="ระบุรายละเอียดงานซ่อมหรือรายการบริการ..."></textarea>
       </div>
 
       <!-- Cost & Mileage Grid -->
       <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:12px;">
         <div class="form-group">
-          <label style="font-weight:700;">เธเนเธฒเธเนเธญเธกเธเธณเธฃเธธเธ / เธเธเธเธฃเธฐเธกเธฒเธ“ (THB):</label>
+          <label style="font-weight:700;">ค่าซ่อมบำรุง / งบประมาณ (THB):</label>
           <input type="number" id="mnt-cost" class="form-control" placeholder="0" min="0" step="50" style="font-weight:700; color:#B45309;">
         </div>
         <div class="form-group">
-          <label style="font-weight:700;">เน€เธฅเธเนเธกเธฅเนเธเธฑเธเธเธธเธเธฑเธ (เธเธก.):</label>
+          <label style="font-weight:700;">เลขไมล์ปัจจุบัน (กม.):</label>
           <input type="text" id="mnt-mileage" class="form-control" placeholder="0">
         </div>
       </div>
@@ -2175,33 +2175,33 @@
       <!-- Garage / Service Center Info with Presets -->
       <div class="form-group" style="margin-bottom:8px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-          <label style="font-weight:700;">เธญเธนเนเธซเธฃเธทเธญเธจเธนเธเธขเนเธเธฃเธดเธเธฒเธฃ:</label>
+          <label style="font-weight:700;">อู่หรือศูนย์บริการ:</label>
           <div style="font-size:11px; color:#64748B;">
-            เนเธเธฐเธเธณ:
-            <a href="javascript:void(0)" onclick="app.fillMntGarage('เธจเธนเธเธขเนเธเธฃเธดเธเธฒเธฃ เนเธ•เนเธขเธ•เนเธฒ เธเธฑเธชเธชเน เธงเธดเธ เธฒเธงเธ”เธต', '02-555-9999', 'เธ–.เธงเธดเธ เธฒเธงเธ”เธตเธฃเธฑเธเธชเธดเธ• เนเธเธงเธเธฅเธฒเธ”เธขเธฒเธง เธเธ•เธธเธเธฑเธเธฃ เธเธ—เธก.')" style="color:#EA580C; margin-right:4px;">เนเธ•เนเธขเธ•เนเธฒ เธเธฑเธชเธชเน</a> |
-            <a href="javascript:void(0)" onclick="app.fillMntGarage('เธจเธนเธเธขเนเธเธฃเธดเธเธฒเธฃ เธฎเธญเธเธ”เนเธฒ เธเธฃเธฐเธฃเธฒเธก 3', '02-294-0000', 'เธ–.เธเธฃเธฐเธฃเธฒเธก 3 เธเธฒเธเธเธญเนเธซเธฅเธก เธเธ—เธก.')" style="color:#EA580C; margin-right:4px;">เธฎเธญเธเธ”เนเธฒ เธเธฃเธฐเธฃเธฒเธก 3</a> |
-            <a href="javascript:void(0)" onclick="app.fillMntGarage('เธเนเธญเธเธเธดเธ— (Cockpit) เธชเธฒเธเธฒเน€เธเธฉเธ•เธฃ-เธเธงเธกเธดเธเธ—เธฃเน', '02-940-1111', 'เธ–.เธเธฃเธฐเน€เธชเธฃเธดเธเธกเธเธนเธเธดเธ')" style="color:#EA580C; margin-right:4px;">เธเนเธญเธเธเธดเธ—</a> |
-            <a href="javascript:void(0)" onclick="app.fillMntGarage('เธชเธณเธเธฑเธเธเธฒเธเธเธเธชเนเธเธเธฃเธธเธเน€เธ—เธเธกเธซเธฒเธเธเธฃเธเธทเนเธเธ—เธตเน 5 (เธเธ•เธธเธเธฑเธเธฃ)', '02-271-8888', 'เธเธฃเธกเธเธฒเธฃเธเธเธชเนเธเธ—เธฒเธเธเธ เธเธ•เธธเธเธฑเธเธฃ เธเธ—เธก.')" style="color:#2563EB;">เธเธเธชเนเธ เธเธ•เธธเธเธฑเธเธฃ</a>
+            แนะนำ:
+            <a href="javascript:void(0)" onclick="app.fillMntGarage('ศูนย์บริการ โตโยต้า บัสส์ วิภาวดี', '02-555-9999', 'ถ.วิภาวดีรังสิต แขวงลาดยาว จตุจักร กทม.')" style="color:#EA580C; margin-right:4px;">โตโยต้า บัสส์</a> |
+            <a href="javascript:void(0)" onclick="app.fillMntGarage('ศูนย์บริการ ฮอนด้า พระราม 3', '02-294-0000', 'ถ.พระราม 3 บางคอแหลม กทม.')" style="color:#EA580C; margin-right:4px;">ฮอนด้า พระราม 3</a> |
+            <a href="javascript:void(0)" onclick="app.fillMntGarage('ค็อกพิท (Cockpit) สาขาเกษตร-นวมินทร์', '02-940-1111', 'ถ.ประเสริฐมนูกิจ')" style="color:#EA580C; margin-right:4px;">ค็อกพิท</a> |
+            <a href="javascript:void(0)" onclick="app.fillMntGarage('สำนักงานขนส่งกรุงเทพมหานครพื้นที่ 5 (จตุจักร)', '02-271-8888', 'กรมการขนส่งทางบก จตุจักร กทม.')" style="color:#2563EB;">ขนส่ง จตุจักร</a>
           </div>
         </div>
-        <input type="text" id="mnt-service-center" class="form-control" placeholder="เธเธทเนเธญเธจเธนเธเธขเนเธเธฃเธดเธเธฒเธฃ / เธญเธนเนเธเนเธญเธก / เธซเธเนเธงเธขเธเธฒเธ...">
+        <input type="text" id="mnt-service-center" class="form-control" placeholder="ชื่อศูนย์บริการ / อู่ซ่อม / หน่วยงาน...">
       </div>
 
       <!-- Garage Phone & Location -->
       <div style="display:grid; grid-template-columns: 1fr 2fr; gap:12px; margin-bottom:12px;">
         <div class="form-group">
-          <label style="font-size:12px; font-weight:700;">เน€เธเธญเธฃเนเนเธ—เธฃเธจเธฑเธเธ—เน:</label>
+          <label style="font-size:12px; font-weight:700;">เบอร์โทรศัพท์:</label>
           <input type="text" id="mnt-service-phone" class="form-control" placeholder="02-xxx-xxxx">
         </div>
         <div class="form-group">
-          <label style="font-size:12px; font-weight:700;">เธชเธ–เธฒเธเธ—เธตเน / เธเธดเธเธฑเธ”เธญเธนเน:</label>
-          <input type="text" id="mnt-service-loc" class="form-control" placeholder="เธ—เธตเนเธญเธขเธนเนเธญเธนเน เธซเธฃเธทเธญ เธฅเธดเธเธเน Google Maps">
+          <label style="font-size:12px; font-weight:700;">สถานที่ / พิกัดอู่:</label>
+          <input type="text" id="mnt-service-loc" class="form-control" placeholder="ที่อยู่อู่ หรือ ลิงก์ Google Maps">
         </div>
       </div>
 
       <!-- Assigned Worker -->
       <div class="form-group" style="margin-bottom:12px;">
-        <label style="font-weight:700;">เธเธเธฑเธเธเธฒเธเธเธนเนเธฃเธฑเธเธเธดเธ”เธเธญเธเธเธฒเธ:</label>
+        <label style="font-weight:700;">พนักงานผู้รับผิดชอบงาน:</label>
         <select id="mnt-assigned-worker" class="form-control" style="font-weight:700;">
           <!-- Populated by JS from users list -->
         </select>
@@ -2210,46 +2210,46 @@
       <!-- Schedule Dates and Times -->
       <div style="display:grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap:8px; margin-bottom:14px;">
         <div class="form-group">
-          <label style="font-size:11.5px; font-weight:700;">เธงเธฑเธเธ—เธตเนเธชเนเธเธเนเธญเธก:</label>
+          <label style="font-size:11.5px; font-weight:700;">วันที่ส่งซ่อม:</label>
           <input type="date" id="mnt-sched-date" class="form-control">
         </div>
         <div class="form-group">
-          <label style="font-size:11.5px; font-weight:700;">เน€เธงเธฅเธฒเธเธฑเธ”:</label>
+          <label style="font-size:11.5px; font-weight:700;">เวลานัด:</label>
           <input type="time" id="mnt-sched-time" class="form-control" value="09:00">
         </div>
         <div class="form-group">
-          <label style="font-size:11.5px; font-weight:700;">เธเธณเธซเธเธ”เน€เธชเธฃเนเธ:</label>
+          <label style="font-size:11.5px; font-weight:700;">กำหนดเสร็จ:</label>
           <input type="date" id="mnt-exp-date" class="form-control">
         </div>
         <div class="form-group">
-          <label style="font-size:11.5px; font-weight:700;">เน€เธงเธฅเธฒเน€เธชเธฃเนเธ:</label>
+          <label style="font-size:11.5px; font-weight:700;">เวลาเสร็จ:</label>
           <input type="time" id="mnt-exp-time" class="form-control" value="17:00">
         </div>
       </div>
 
       <!-- Additional Notes -->
       <div class="form-group" style="margin-bottom:14px;">
-        <label style="font-size:12px; font-weight:700;">เธซเธกเธฒเธขเน€เธซเธ•เธธเน€เธเธดเนเธกเน€เธ•เธดเธก:</label>
-        <input type="text" id="mnt-notes" class="form-control" placeholder="เธซเธกเธฒเธขเน€เธซเธ•เธธเน€เธเธดเนเธกเน€เธ•เธดเธก (เธ–เนเธฒเธกเธต)">
+        <label style="font-size:12px; font-weight:700;">หมายเหตุเพิ่มเติม:</label>
+        <input type="text" id="mnt-notes" class="form-control" placeholder="หมายเหตุเพิ่มเติม (ถ้ามี)">
       </div>
 
       <!-- Checkbox: Auto change car status to maintenance -->
       <div style="background:#FAF7F2; border:1px solid #E5E7EB; border-radius:8px; padding:10px 12px; margin-bottom:16px;">
         <label style="display:flex; align-items:center; gap:8px; font-size:12.5px; font-weight:700; color:#1F2937; cursor:pointer;">
           <input type="checkbox" id="mnt-update-car-status" checked style="width:16px; height:16px; accent-color:#EA580C;">
-          <span>เธเธฃเธฑเธเธชเธ–เธฒเธเธฐเธฃเธ–เน€เธเนเธ 'เธชเธ–เธฒเธเธฐเธเนเธญเธกเธเธณเธฃเธธเธ' เธญเธฑเธ•เนเธเธกเธฑเธ•เธด (เธเนเธญเธเธเธฑเธเธเธฒเธฃเธ–เธนเธเธเธญเธเธเนเธณเธเนเธญเธเธฃเธฐเธซเธงเนเธฒเธเธเนเธญเธก)</span>
+          <span>ปรับสถานะรถเป็น 'สถานะซ่อมบำรุง' อัตโนมัติ (ป้องกันการถูกจองซ้ำซ้อนระหว่างซ่อม)</span>
         </label>
       </div>
 
       <!-- Action Buttons -->
       <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
-        <button type="button" onclick="app.closeModal('modal-new-maintenance')" class="btn btn-secondary">เธขเธเน€เธฅเธดเธ</button>
+        <button type="button" onclick="app.closeModal('modal-new-maintenance')" class="btn btn-secondary">ยกเลิก</button>
         <div style="display:flex; gap:8px;">
           <button type="button" onclick="app.submitMaintenanceOrder(false)" class="btn btn-primary" style="background:#EA580C; border-color:#C2410C;">
-            เธเธฑเธเธ—เธถเธเนเธเธเธฒเธ
+            บันทึกใบงาน
           </button>
           <button type="button" onclick="app.submitMaintenanceOrder(true)" class="btn" style="background:#0284C7; color:white; border-color:#0369A1; font-weight:700;">
-            เธเธฑเธเธ—เธถเธเนเธฅเธฐเน€เธเธดเธ”เนเธเธเธฒเธ PDF
+            บันทึกและเปิดใบงาน PDF
           </button>
         </div>
       </div>
@@ -2262,75 +2262,75 @@
   <div class="modal-backdrop" id="modal-close-maintenance">
     <div class="modal-box" style="max-width: 520px;">
       <div class="modal-header">
-        <div class="modal-title">๐ เธ•เธฃเธงเธเธฃเธฑเธเธฃเธ–เธขเธเธ•เนเธเธฅเธฑเธ & เธเธดเธ”เธเธฒเธเธเนเธญเธกเธเธณเธฃเธธเธ</div>
-        <button class="modal-close" onclick="app.closeModal('modal-close-maintenance')">โ•</button>
+        <div class="modal-title">🏁 ตรวจรับรถยนต์กลับ & ปิดงานซ่อมบำรุง</div>
+        <button class="modal-close" onclick="app.closeModal('modal-close-maintenance')">✕</button>
       </div>
 
       <input type="hidden" id="close-mnt-id" value="">
 
       <div style="background:#F0FDF4; border:1px solid #BBF7D0; border-radius:10px; padding:12px 14px; margin-bottom:14px;">
-        <div style="font-size:14px; font-weight:800; color:#166534;" id="close-mnt-car-title">๐ -</div>
-        <div style="font-size:12px; color:#15803D; margin-top:3px;" id="close-mnt-summary-txt">เนเธเธเธฒเธ: - | เธญเธนเน: -</div>
+        <div style="font-size:14px; font-weight:800; color:#166534;" id="close-mnt-car-title">🚘 -</div>
+        <div style="font-size:12px; color:#15803D; margin-top:3px;" id="close-mnt-summary-txt">ใบงาน: - | อู่: -</div>
       </div>
 
       <!-- Renewal Specific Section (shown when closing renewal work orders) -->
       <div id="close-mnt-renewal-section" style="display:none; background:#EFF6FF; border:1px solid #BFDBFE; border-radius:10px; padding:12px 14px; margin-bottom:14px;">
         <div style="font-size:13px; font-weight:800; color:#1D4ED8; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
-          <span>๐ก๏ธ</span> <span>เธฃเธฐเธเธธเธงเธฑเธเธซเธกเธ”เธญเธฒเธขเธธเธฃเธญเธเนเธซเธกเนเธซเธฅเธฑเธเธ•เนเธญเน€เธชเธฃเนเธเธชเธดเนเธ (New Expiry Dates):</span>
+          <span>🛡️</span> <span>ระบุวันหมดอายุรอบใหม่หลังต่อเสร็จสิ้น (New Expiry Dates):</span>
         </div>
         
         <div id="close-mnt-act-wrapper" class="form-group" style="margin-bottom:10px;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:3px;">
-            <label style="font-size:12px; font-weight:700; color:#1E3A8A;">๐“… เธงเธฑเธเธซเธกเธ”เธญเธฒเธขเธธ เธ.เธฃ.เธ. เธฃเธญเธเนเธซเธกเน:</label>
-            <span id="close-mnt-act-current" style="font-size:11px; color:#6B7280;">(เน€เธ”เธดเธก: -)</span>
+            <label style="font-size:12px; font-weight:700; color:#1E3A8A;">📅 วันหมดอายุ พ.ร.บ. รอบใหม่:</label>
+            <span id="close-mnt-act-current" style="font-size:11px; color:#6B7280;">(เดิม: -)</span>
           </div>
           <input type="date" id="close-mnt-act-expiry" class="form-control" style="font-weight:700; color:#1E40AF; background:white;">
         </div>
 
         <div id="close-mnt-ins-wrapper" class="form-group" style="margin-bottom:10px;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:3px;">
-            <label style="font-size:12px; font-weight:700; color:#1E3A8A;">๐“‘ เธงเธฑเธเธซเธกเธ”เธญเธฒเธขเธธ เธเธฃเธฐเธเธฑเธเธ เธฑเธข เธฃเธญเธเนเธซเธกเน:</label>
-            <span id="close-mnt-ins-current" style="font-size:11px; color:#6B7280;">(เน€เธ”เธดเธก: -)</span>
+            <label style="font-size:12px; font-weight:700; color:#1E3A8A;">📑 วันหมดอายุ ประกันภัย รอบใหม่:</label>
+            <span id="close-mnt-ins-current" style="font-size:11px; color:#6B7280;">(เดิม: -)</span>
           </div>
           <input type="date" id="close-mnt-ins-expiry" class="form-control" style="font-weight:700; color:#1E40AF; background:white;">
         </div>
 
         <div class="form-group" style="margin-bottom:0;">
-          <label style="font-size:12px; font-weight:700; color:#1E3A8A;">๐“ เน€เธฅเธเธ—เธตเนเธเธฃเธกเธเธฃเธฃเธกเน / เน€เธฅเธเธ—เธตเนเนเธเน€เธชเธฃเนเธเธ เธฒเธฉเธต:</label>
-          <input type="text" id="close-mnt-policy-no" class="form-control" placeholder="เน€เธเนเธ BKI-2026-99881 เธซเธฃเธทเธญ เธเนเธฒเธขเธ เธฒเธฉเธตเธเธต 2570" style="background:white;">
+          <label style="font-size:12px; font-weight:700; color:#1E3A8A;">📄 เลขที่กรมธรรม์ / เลขที่ใบเสร็จภาษี:</label>
+          <input type="text" id="close-mnt-policy-no" class="form-control" placeholder="เช่น BKI-2026-99881 หรือ ป้ายภาษีปี 2570" style="background:white;">
         </div>
       </div>
 
       <div class="form-group" style="margin-bottom:12px;">
-        <label style="font-weight:700;">๐’ฐ เธเนเธฒเธเนเธญเธกเธเธณเธฃเธธเธ/เธเนเธฒเธ•เนเธญเธญเธฒเธขเธธเธเธฃเธดเธเธ—เธตเนเธเธณเธฃเธฐ (เธเธฒเธ—):</label>
+        <label style="font-weight:700;">💰 ค่าซ่อมบำรุง/ค่าต่ออายุจริงที่ชำระ (บาท):</label>
         <input type="number" id="close-mnt-actual-cost" class="form-control" placeholder="0" min="0" step="50" style="font-weight:700; color:#059669; font-size:15px;">
       </div>
 
       <div class="form-group" style="margin-bottom:12px;">
-        <label style="font-weight:700;">โฑ๏ธ เน€เธฅเธเนเธกเธฅเนเธซเธฅเธฑเธเธ•เธฃเธงเธเธฃเธฑเธเน€เธชเธฃเนเธเธชเธดเนเธ (เธเธก.):</label>
-        <input type="text" id="close-mnt-mileage" class="form-control" placeholder="เน€เธเนเธ 25,450">
+        <label style="font-weight:700;">⏱️ เลขไมล์หลังตรวจรับเสร็จสิ้น (กม.):</label>
+        <input type="text" id="close-mnt-mileage" class="form-control" placeholder="เช่น 25,450">
       </div>
 
       <div class="form-group" style="margin-bottom:14px;">
-        <label style="font-weight:700;">๐“ เธเธฅเธเธฒเธฃเธเนเธญเธกเธเธณเธฃเธธเธ / เธเธฑเธเธ—เธถเธเธเธฒเธฃเธ•เธฃเธงเธเธฃเธฑเธเธชเธ เธฒเธ:</label>
-        <textarea id="close-mnt-notes" class="form-control" rows="3" placeholder="เน€เธเนเธ เธเนเธญเธกเน€เธเธฅเธตเนเธขเธเธ–เนเธฒเธขเธเธญเธเน€เธซเธฅเธงเน€เธฃเธตเธขเธเธฃเนเธญเธขเธ”เธต เธ—เธ”เธชเธญเธเธเธฑเธเธเธตเนเธเธเธ•เธด เธเธฃเนเธญเธกเธเธณเธเธฅเธฑเธเธกเธฒเนเธซเนเธเธฃเธดเธเธฒเธฃ"></textarea>
+        <label style="font-weight:700;">📝 ผลการซ่อมบำรุง / บันทึกการตรวจรับสภาพ:</label>
+        <textarea id="close-mnt-notes" class="form-control" rows="3" placeholder="เช่น ซ่อมเปลี่ยนถ่ายของเหลวเรียบร้อยดี ทดสอบขับขี่ปกติ พร้อมนำกลับมาให้บริการ"></textarea>
       </div>
 
       <div style="background:#FAF7F2; border:1px solid #E5E7EB; border-radius:8px; padding:10px 12px; margin-bottom:16px;">
         <label style="display:flex; align-items:center; gap:8px; font-size:12.5px; font-weight:700; color:#1F2937; cursor:pointer;">
           <input type="checkbox" id="close-mnt-restore-car" checked style="width:16px; height:16px; accent-color:#10B981;">
-          <span>๐ข เธเธฅเธ”เธชเธ–เธฒเธเธฐเธฃเธ–เธขเธเธ•เนเธเธฅเธฑเธเน€เธเนเธ 'เธงเนเธฒเธเธเธฃเนเธญเธกเนเธเนเธเธฒเธ' เธ—เธฑเธเธ—เธต</span>
+          <span>🟢 ปลดสถานะรถยนต์กลับเป็น 'ว่างพร้อมใช้งาน' ทันที</span>
         </label>
         <label style="display:flex; align-items:center; gap:8px; font-size:12.5px; font-weight:700; color:#1F2937; cursor:pointer; margin-top:6px;">
           <input type="checkbox" id="close-mnt-record-expense" checked style="width:16px; height:16px; accent-color:#10B981;">
-          <span>๐’ต เธเธฑเธเธ—เธถเธเธเนเธฒเนเธเนเธเนเธฒเธขเธฅเธเธเธฑเธเธเธตเธฃเธฒเธขเธเนเธฒเธขเธฃเธฐเธเธเธเธฒเธฃเน€เธเธดเธเธญเธฑเธ•เนเธเธกเธฑเธ•เธด</span>
+          <span>💵 บันทึกค่าใช้จ่ายลงบัญชีรายจ่ายระบบการเงินอัตโนมัติ</span>
         </label>
       </div>
 
       <div style="display:flex; justify-content:flex-end; gap:10px;">
-        <button type="button" onclick="app.closeModal('modal-close-maintenance')" class="btn btn-secondary">เธขเธเน€เธฅเธดเธ</button>
+        <button type="button" onclick="app.closeModal('modal-close-maintenance')" class="btn btn-secondary">ยกเลิก</button>
         <button type="button" onclick="app.submitCloseMaintenance()" id="close-mnt-submit-btn" class="btn btn-success" style="font-weight:700;">
-          ๐ เธขเธทเธเธขเธฑเธเธ•เธฃเธงเธเธฃเธฑเธเธฃเธ– & เธเธดเธ”เธเธฒเธ
+          🏁 ยืนยันตรวจรับรถ & ปิดงาน
         </button>
       </div>
     </div>
@@ -2340,7 +2340,7 @@
   <div class="toast-container" id="toast-container"></div>
 
   <!-- Scripts with cache busting -->
-  <script src="/static/js/app.js?v=10.0"></script>
+  <script src="/static/js/app.js?v=10.1"></script>
 
   <!-- ===================================================================== -->
   <!-- MODAL: ACTIVE RENTALS / CARS WITH CUSTOMERS (POPUP FOR CARD 1) -->
@@ -2349,31 +2349,31 @@
     <div class="modal-dialog" style="max-width:1150px; width:95%;">
       <div class="modal-header" style="background:#F0FDF4; border-bottom:1px solid #BBF7D0;">
         <div class="modal-title" style="color:#166534; display:flex; align-items:center; gap:8px;">
-          <span>๐”‘</span> เธชเธ–เธฒเธเธฐเธฃเธ–เธ—เธตเนเธญเธขเธนเนเธเธฑเธเธฅเธนเธเธเนเธฒเธ—เธฑเนเธเธซเธกเธ” (Active & Booked Rentals)
+          <span>🔑</span> สถานะรถที่อยู่กับลูกค้าทั้งหมด (Active & Booked Rentals)
         </div>
-        <button class="modal-close" onclick="app.closeModal('modal-active-rentals')" title="เธเธดเธ”เธซเธเนเธฒเธ•เนเธฒเธ">โ•</button>
+        <button class="modal-close" onclick="app.closeModal('modal-active-rentals')" title="ปิดหน้าต่าง">✕</button>
       </div>
 
       <!-- Filter & Search Toolbar inside Active Rentals Modal -->
       <div style="background:#FAF7F2; padding:12px 16px; border-radius:8px; margin-bottom:16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
         <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-          <input type="text" id="active-rentals-search" class="form-control" style="width:240px; font-size:12.5px;" placeholder="๐” เธเนเธเธซเธฒเธ—เธฐเน€เธเธตเธขเธ / เธฃเธธเนเธเธฃเธ– / เธเธทเนเธญเธฅเธนเธเธเนเธฒ..." oninput="app.renderActiveRentalsTable()">
+          <input type="text" id="active-rentals-search" class="form-control" style="width:240px; font-size:12.5px;" placeholder="🔍 ค้นหาทะเบียน / รุ่นรถ / ชื่อลูกค้า..." oninput="app.renderActiveRentalsTable()">
           <select id="active-rentals-company-filter" class="form-control" style="width:auto; font-size:12.5px; font-weight:600;" onchange="app.renderActiveRentalsTable()">
-            <option value="เธ—เธฑเนเธเธซเธกเธ”">๐ข เธ—เธธเธเธเธฃเธดเธฉเธฑเธ—</option>
+            <option value="ทั้งหมด">🏢 ทุกบริษัท</option>
             <option value="Sawasdee Rent A Car">Sawasdee Rent A Car</option>
             <option value="P.D.P. Co., Ltd.">P.D.P. Co., Ltd.</option>
             <option value="Sawasdee Car Rent">Sawasdee Car Rent</option>
           </select>
           <select id="active-rentals-status-filter" class="form-control" style="width:auto; font-size:12.5px; font-weight:600;" onchange="app.renderActiveRentalsTable()">
-            <option value="เธ—เธฑเนเธเธซเธกเธ”">๐ฆ เธ—เธธเธเธชเธ–เธฒเธเธฐ (เธเธณเธฅเธฑเธเน€เธเนเธฒ/เธ•เธดเธ”เธเธญเธ/เธเนเธญเธกเธเธณเธฃเธธเธ)</option>
-            <option value="เธเธณเธฅเธฑเธเน€เธเนเธฒ">เธเธณเธฅเธฑเธเน€เธเนเธฒ</option>
-            <option value="เน€เธ•เธฃเธตเธขเธกเธฃเธฑเธเธเธทเธ">เน€เธ•เธฃเธตเธขเธกเธฃเธฑเธเธเธทเธ</option>
-            <option value="เธ•เธดเธ”เธเธญเธ">เธ•เธดเธ”เธเธญเธ / เน€เธ•เธฃเธตเธขเธกเธชเนเธเธกเธญเธ</option>
-            <option value="เธเนเธญเธกเธเธณเธฃเธธเธ">เธเนเธญเธกเธเธณเธฃเธธเธ / เธ•เนเธญเธ เธฒเธฉเธต</option>
+            <option value="ทั้งหมด">🚦 ทุกสถานะ (กำลังเช่า/ติดจอง/ซ่อมบำรุง)</option>
+            <option value="กำลังเช่า">กำลังเช่า</option>
+            <option value="เตรียมรับคืน">เตรียมรับคืน</option>
+            <option value="ติดจอง">ติดจอง / เตรียมส่งมอบ</option>
+            <option value="ซ่อมบำรุง">ซ่อมบำรุง / ต่อภาษี</option>
           </select>
         </div>
         <div style="font-size:12.5px; font-weight:700; color:#15803D;">
-          เธเธเธฃเธ–เธ—เธตเนเธญเธขเธนเนเธเธฑเธเธฅเธนเธเธเนเธฒ: <span id="active-rentals-count-badge" style="background:#DCFCE7; color:#166534; padding:3px 10px; border-radius:12px; border:1px solid #86EFAC;">0 เธเธฑเธ</span>
+          พบรถที่อยู่กับลูกค้า: <span id="active-rentals-count-badge" style="background:#DCFCE7; color:#166534; padding:3px 10px; border-radius:12px; border:1px solid #86EFAC;">0 คัน</span>
         </div>
       </div>
 
@@ -2383,13 +2383,13 @@
           <thead>
             <tr>
               <th style="width:40px; text-align:center;">#</th>
-              <th>๐ เธฃเธ–เธขเธเธ•เน (เธ—เธฐเน€เธเธตเธขเธ / เธฃเธธเนเธ / เธชเธต)</th>
-              <th>๐‘ค เธฅเธนเธเธเนเธฒเธเธนเนเน€เธเนเธฒ</th>
-              <th>๐“… เธฃเธฐเธขเธฐเน€เธงเธฅเธฒเน€เธเนเธฒ (เธงเธฑเธเธฃเธฑเธ โ” เธงเธฑเธเธเธทเธ)</th>
-              <th>๐ฆ เธชเธ–เธฒเธเธฐ</th>
-              <th>๐“ เธชเธ–เธฒเธเธ—เธตเน & เธเธนเนเธฃเธฑเธเธเธดเธ”เธเธญเธ</th>
-              <th style="text-align:right;">๐’ฐ เธเนเธฒเน€เธเนเธฒเธชเธธเธ—เธเธด</th>
-              <th style="text-align:center;">เธเธฑเธ”เธเธฒเธฃ</th>
+              <th>🚘 รถยนต์ (ทะเบียน / รุ่น / สี)</th>
+              <th>👤 ลูกค้าผู้เช่า</th>
+              <th>📅 ระยะเวลาเช่า (วันรับ ➔ วันคืน)</th>
+              <th>🚦 สถานะ</th>
+              <th>📍 สถานที่ & ผู้รับผิดชอบ</th>
+              <th style="text-align:right;">💰 ค่าเช่าสุทธิ</th>
+              <th style="text-align:center;">จัดการ</th>
             </tr>
           </thead>
           <tbody id="active-rentals-tbody">
@@ -2400,10 +2400,10 @@
 
       <div style="display:flex; justify-content:space-between; align-items:center; margin-top:16px; padding-top:12px; border-top:1px solid #E2E8F0;">
         <div style="font-size:12px; color:#64748B;">
-          ๐’ก เธ•เธฒเธฃเธฒเธเธเธตเนเนเธชเธ”เธเธเนเธญเธกเธนเธฅเธฃเธ–เธ—เธธเธเธเธฑเธเธ—เธตเนเธ•เธดเธ”เธชเธฑเธเธเธฒเน€เธเนเธฒเนเธฅเธฐเธญเธขเธนเนเธเธฑเธเธฅเธนเธเธเนเธฒเนเธเธ Real-time
+          💡 ตารางนี้แสดงข้อมูลรถทุกคันที่ติดสัญญาเช่าและอยู่กับลูกค้าแบบ Real-time
         </div>
         <button onclick="app.closeModal('modal-active-rentals')" class="btn btn-secondary">
-          เธเธดเธ”เธซเธเนเธฒเธ•เนเธฒเธ (โ•)
+          ปิดหน้าต่าง (✕)
         </button>
       </div>
     </div>
@@ -2416,49 +2416,49 @@
     <div class="modal-dialog" style="max-width:1150px; width:95%;">
       <div class="modal-header" style="background:#FFFBEB; border-bottom:1px solid #FDE68A;">
         <div class="modal-title" style="color:#92400E; display:flex; align-items:center; gap:8px;">
-          <span>๐“</span> เธญเธฑเธเธ”เธฑเธเธฃเธ–เธ—เธตเนเธชเธฃเนเธฒเธเธฃเธฒเธขเนเธ”เนเธซเธฅเธฑเธเธซเธฑเธเธเนเธฒเนเธเนเธเนเธฒเธขเธกเธฒเธเธ—เธตเนเธชเธธเธ” (Car Profitability Ranking)
+          <span>📈</span> อันดับรถที่สร้างรายได้หลังหักค่าใช้จ่ายมากที่สุด (Car Profitability Ranking)
         </div>
-        <button class="modal-close" onclick="app.closeModal('modal-car-profitability')" title="เธเธดเธ”เธซเธเนเธฒเธ•เนเธฒเธ">โ•</button>
+        <button class="modal-close" onclick="app.closeModal('modal-car-profitability')" title="ปิดหน้าต่าง">✕</button>
       </div>
 
       <!-- Top Summary Metrics Strip -->
       <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:12px; margin-bottom:16px;">
         <div style="background:#F0FDF4; border:1px solid #BBF7D0; border-radius:8px; padding:12px 14px;">
-          <div style="font-size:11.5px; font-weight:700; color:#15803D;">๐’ต เธฃเธฒเธขเธฃเธฑเธเธเนเธฒเน€เธเนเธฒเธชเธฐเธชเธกเธฃเธงเธก</div>
-          <b id="prof-kpi-gross-rev" style="font-size:18px; color:#15803D; display:block; margin-top:4px;">เธฟ0.00</b>
+          <div style="font-size:11.5px; font-weight:700; color:#15803D;">💵 รายรับค่าเช่าสะสมรวม</div>
+          <b id="prof-kpi-gross-rev" style="font-size:18px; color:#15803D; display:block; margin-top:4px;">฿0.00</b>
         </div>
         <div style="background:#FEF2F2; border:1px solid #FECACA; border-radius:8px; padding:12px 14px;">
-          <div style="font-size:11.5px; font-weight:700; color:#B91C1C;">๐’ธ เธซเธฑเธเธเนเธฒเนเธเนเธเนเธฒเธข/เธเนเธญเธกเธเธณเธฃเธธเธเธฃเธงเธก</div>
-          <b id="prof-kpi-total-exp" style="font-size:18px; color:#DC2626; display:block; margin-top:4px;">-เธฟ0.00</b>
+          <div style="font-size:11.5px; font-weight:700; color:#B91C1C;">💸 หักค่าใช้จ่าย/ซ่อมบำรุงรวม</div>
+          <b id="prof-kpi-total-exp" style="font-size:18px; color:#DC2626; display:block; margin-top:4px;">-฿0.00</b>
         </div>
         <div style="background:#FFF7ED; border:1px solid #FED7AA; border-radius:8px; padding:12px 14px;">
-          <div style="font-size:11.5px; font-weight:700; color:#C2410C;">๐ เธเธณเนเธฃเธชเธธเธ—เธเธดเธฃเธงเธกเธซเธฅเธฑเธเธซเธฑเธเธเนเธฒเนเธเนเธเนเธฒเธข</div>
-          <b id="prof-kpi-net-profit" style="font-size:18px; color:#EA580C; display:block; margin-top:4px;">เธฟ0.00</b>
+          <div style="font-size:11.5px; font-weight:700; color:#C2410C;">🏆 กำไรสุทธิรวมหลังหักค่าใช้จ่าย</div>
+          <b id="prof-kpi-net-profit" style="font-size:18px; color:#EA580C; display:block; margin-top:4px;">฿0.00</b>
         </div>
         <div style="background:#EFF6FF; border:1px solid #BFDBFE; border-radius:8px; padding:12px 14px;">
-          <div style="font-size:11.5px; font-weight:700; color:#1E40AF;">๐— เธเธณเธเธงเธเธฃเธ–เนเธเธเธญเธเธขเธฒเธเธเธฒเธซเธเธฐ</div>
-          <b id="prof-kpi-total-cars" style="font-size:18px; color:#2563EB; display:block; margin-top:4px;">56 เธเธฑเธ</b>
+          <div style="font-size:11.5px; font-weight:700; color:#1E40AF;">🚗 จำนวนรถในกองยานพาหนะ</div>
+          <b id="prof-kpi-total-cars" style="font-size:18px; color:#2563EB; display:block; margin-top:4px;">56 คัน</b>
         </div>
       </div>
 
       <!-- Filter Toolbar inside Profitability Modal -->
       <div style="background:#FAF7F2; padding:12px 16px; border-radius:8px; margin-bottom:16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
         <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-          <input type="text" id="prof-search-input" class="form-control" style="width:240px; font-size:12.5px;" placeholder="๐” เธเนเธเธซเธฒเธ—เธฐเน€เธเธตเธขเธ / เธขเธตเนเธซเนเธญ / เธฃเธธเนเธ..." oninput="app.renderCarProfitabilityTable()">
+          <input type="text" id="prof-search-input" class="form-control" style="width:240px; font-size:12.5px;" placeholder="🔍 ค้นหาทะเบียน / ยี่ห้อ / รุ่น..." oninput="app.renderCarProfitabilityTable()">
           <select id="prof-company-filter" class="form-control" style="width:auto; font-size:12.5px; font-weight:600;" onchange="app.renderCarProfitabilityTable()">
-            <option value="เธ—เธฑเนเธเธซเธกเธ”">๐ข เธ—เธธเธเธเธฃเธดเธฉเธฑเธ—</option>
+            <option value="ทั้งหมด">🏢 ทุกบริษัท</option>
             <option value="Sawasdee Rent A Car">Sawasdee Rent A Car</option>
             <option value="P.D.P. Co., Ltd.">P.D.P. Co., Ltd.</option>
             <option value="Sawasdee Car Rent">Sawasdee Car Rent</option>
           </select>
           <select id="prof-sort-select" class="form-control" style="width:auto; font-size:12.5px; font-weight:700;" onchange="app.renderCarProfitabilityTable()">
-            <option value="profit_desc">๐ เน€เธฃเธตเธขเธ: เธเธณเนเธฃเธชเธธเธ—เธเธดเธซเธฅเธฑเธเธซเธฑเธ เธเธเธ. (เธกเธฒเธ โ” เธเนเธญเธข)</option>
-            <option value="revenue_desc">๐’ต เน€เธฃเธตเธขเธ: เธฃเธฒเธขเธฃเธฑเธเธเนเธฒเน€เธเนเธฒเธฃเธงเธก (เธกเธฒเธ โ” เธเนเธญเธข)</option>
-            <option value="rentals_desc">๐“ เน€เธฃเธตเธขเธ: เธเธณเธเธงเธเธเธฒเธเน€เธเนเธฒ (เธกเธฒเธ โ” เธเนเธญเธข)</option>
+            <option value="profit_desc">🏆 เรียง: กำไรสุทธิหลังหัก คชจ. (มาก ➔ น้อย)</option>
+            <option value="revenue_desc">💵 เรียง: รายรับค่าเช่ารวม (มาก ➔ น้อย)</option>
+            <option value="rentals_desc">📋 เรียง: จำนวนงานเช่า (มาก ➔ น้อย)</option>
           </select>
         </div>
         <div style="font-size:12px; color:#64748B;">
-          เน€เธฃเธตเธขเธเธฅเธณเธ”เธฑเธเธเธฒเธเธฃเธ–เธ—เธตเนเธชเธฃเนเธฒเธเธฃเธฒเธขเนเธ”เนเธซเธฅเธฑเธเธซเธฑเธเธเนเธฒเนเธเนเธเนเธฒเธขเธกเธฒเธเธ—เธตเนเธชเธธเธ” โ” เธเนเธญเธขเธ—เธตเนเธชเธธเธ”
+          เรียงลำดับจากรถที่สร้างรายได้หลังหักค่าใช้จ่ายมากที่สุด ➔ น้อยที่สุด
         </div>
       </div>
 
@@ -2467,14 +2467,14 @@
         <table class="custom-table">
           <thead>
             <tr>
-              <th style="width:60px; text-align:center;">เธญเธฑเธเธ”เธฑเธ</th>
-              <th>๐ เธฃเธ–เธขเธเธ•เน (เธ—เธฐเน€เธเธตเธขเธ / เธขเธตเนเธซเนเธญ-เธฃเธธเนเธ / เธเธฃเธดเธฉเธฑเธ—)</th>
-              <th style="text-align:center;">เธชเธ–เธฒเธเธฐ</th>
-              <th style="text-align:center;">เธเธฒเธเน€เธเนเธฒ</th>
-              <th style="text-align:right;">๐’ต เธฃเธฒเธขเธฃเธฑเธเธเนเธฒเน€เธเนเธฒเธฃเธงเธก</th>
-              <th style="text-align:right;">๐’ธ เธเนเธฒเนเธเนเธเนเธฒเธข/เธเนเธญเธกเธเธณเธฃเธธเธ</th>
-              <th style="text-align:right; background:#FEF3C7; color:#92400E;">๐ เธฃเธฒเธขเนเธ”เนเธชเธธเธ—เธเธด (เธซเธฅเธฑเธเธซเธฑเธ เธเธเธ.)</th>
-              <th style="text-align:center;">เธ”เธนเธเนเธญเธกเธนเธฅเธฃเธ–</th>
+              <th style="width:60px; text-align:center;">อันดับ</th>
+              <th>🚘 รถยนต์ (ทะเบียน / ยี่ห้อ-รุ่น / บริษัท)</th>
+              <th style="text-align:center;">สถานะ</th>
+              <th style="text-align:center;">งานเช่า</th>
+              <th style="text-align:right;">💵 รายรับค่าเช่ารวม</th>
+              <th style="text-align:right;">💸 ค่าใช้จ่าย/ซ่อมบำรุง</th>
+              <th style="text-align:right; background:#FEF3C7; color:#92400E;">🏆 รายได้สุทธิ (หลังหัก คชจ.)</th>
+              <th style="text-align:center;">ดูข้อมูลรถ</th>
             </tr>
           </thead>
           <tbody id="car-profitability-tbody">
@@ -2485,10 +2485,10 @@
 
       <div style="display:flex; justify-content:space-between; align-items:center; margin-top:16px; padding-top:12px; border-top:1px solid #E2E8F0;">
         <div style="font-size:12px; color:#64748B;">
-          ๐’ก เธฃเธฒเธขเนเธ”เนเธชเธธเธ—เธเธดเธเธณเธเธงเธ“เธเธฒเธ (เธฃเธฒเธขเธฃเธฑเธเธเนเธฒเน€เธเนเธฒเธ—เธฑเนเธเธซเธกเธ”เธเธญเธเธฃเธ–เธเธฑเธเธเธฑเนเธ โ’ เธเนเธฒเนเธเนเธเนเธฒเธขเธเนเธญเธกเธเธณเธฃเธธเธเนเธฅเธฐเธ”เธนเนเธฅเธฃเธฑเธเธฉเธฒเธเธญเธเธฃเธ–เธเธฑเธเธเธฑเนเธ)
+          💡 รายได้สุทธิคำนวณจาก (รายรับค่าเช่าทั้งหมดของรถคันนั้น − ค่าใช้จ่ายซ่อมบำรุงและดูแลรักษาของรถคันนั้น)
         </div>
         <button onclick="app.closeModal('modal-car-profitability')" class="btn btn-secondary">
-          เธเธดเธ”เธซเธเนเธฒเธ•เนเธฒเธ (โ•)
+          ปิดหน้าต่าง (✕)
         </button>
       </div>
     </div>
