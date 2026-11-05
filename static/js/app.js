@@ -2272,66 +2272,30 @@ class App {
   }
 
   populateFinanceCompanyDropdown(selectedVal = "") {
-    const selectEl = document.getElementById("edit-car-finance-company");
-    const customWrap = document.getElementById("edit-car-custom-finance-wrap");
-    const customInp = document.getElementById("edit-car-custom-finance");
-    if (!selectEl) return;
-
-    const isEn = (this.currentLang === "EN");
-    const placeholderText = isEn ? "-- Select or Add Finance --" : "-- เลือกรถปลอดภาระ หรือระบุไฟแนนซ์ --";
-    const addNewText = isEn ? "➕ Add New Finance Company" : "➕ เพิ่มบริษัทไฟแนนซ์ใหม่ (Add New)";
+    const inputEl = document.getElementById("edit-car-finance-company");
+    const datalistEl = document.getElementById("finance-companies-list");
+    if (!inputEl) return;
 
     const companies = this.getExistingFinanceCompanies();
+    if (datalistEl) {
+      datalistEl.innerHTML = "";
+      companies.forEach(comp => {
+        const opt = document.createElement("option");
+        opt.value = comp;
+        datalistEl.appendChild(opt);
+      });
+    }
+
     const cleanSel = String(selectedVal || "").trim();
-
-    selectEl.innerHTML = "";
-    const optDefault = document.createElement("option");
-    optDefault.value = "";
-    optDefault.textContent = placeholderText;
-    selectEl.appendChild(optDefault);
-
-    companies.forEach(comp => {
-      const opt = document.createElement("option");
-      opt.value = comp;
-      opt.textContent = comp;
-      selectEl.appendChild(opt);
-    });
-
-    const optNew = document.createElement("option");
-    optNew.value = "__ADD_NEW__";
-    optNew.textContent = addNewText;
-    selectEl.appendChild(optNew);
-
     if (cleanSel && !["-", "None", "none", "null"].includes(cleanSel)) {
-      if (companies.includes(cleanSel)) {
-        selectEl.value = cleanSel;
-        if (customWrap) customWrap.style.display = "none";
-        if (customInp) customInp.value = "";
-      } else {
-        selectEl.value = "__ADD_NEW__";
-        if (customWrap) customWrap.style.display = "block";
-        if (customInp) customInp.value = cleanSel;
-      }
+      inputEl.value = cleanSel;
     } else {
-      selectEl.value = "";
-      if (customWrap) customWrap.style.display = "none";
-      if (customInp) customInp.value = "";
+      inputEl.value = "";
     }
   }
 
   onFinanceCompanyChange(val) {
-    const customWrap = document.getElementById("edit-car-custom-finance-wrap");
-    const customInp = document.getElementById("edit-car-custom-finance");
-    if (val === "__ADD_NEW__") {
-      if (customWrap) customWrap.style.display = "block";
-      if (customInp) {
-        customInp.value = "";
-        customInp.focus();
-      }
-    } else {
-      if (customWrap) customWrap.style.display = "none";
-      if (customInp) customInp.value = "";
-    }
+    // Handled natively by single creatable/searchable datalist input
   }
 
   onCarImageUrlInput(val) {
@@ -2395,8 +2359,11 @@ class App {
     }
 
     if (this.checkDuplicatePlate(plate)) {
-      alert(`⚠️ ไม่สามารถบันทึกได้!\nเลขทะเบียนรถ '${plate}' ซ้ำกับรถคันอื่นที่มีอยู่ในระบบแล้ว กรุณาตรวจสอบและแก้ไขเลขทะเบียน`);
-      this.showToast(`⚠️ เลขทะเบียนรถ '${plate}' ซ้ำกับรถคันอื่นในระบบแล้ว`, "danger");
+      const msg = (this.currentLang === "EN")
+        ? "Duplicate Data: Vehicle plate or VIN (Chassis No) already exists in system"
+        : "ข้อมูลซ้ำ: พบเลขทะเบียนหรือเลขตัวถังนี้ในระบบแล้ว";
+      alert(`⚠️ ${msg}`);
+      this.showToast(`⚠️ ${msg}`, "danger");
       const plateEl = document.getElementById("edit-car-plate");
       if (plateEl) {
         plateEl.focus();
@@ -2407,8 +2374,11 @@ class App {
 
     const vinVal = (document.getElementById("edit-car-vin")?.value || "-").trim();
     if (this.checkDuplicateChassis(vinVal)) {
-      alert(`⚠️ ไม่สามารถบันทึกได้!\nเลขตัวถัง (VIN) '${vinVal}' ซ้ำกับรถคันอื่นที่มีอยู่ในระบบแล้ว กรุณาตรวจสอบอีกครั้ง`);
-      this.showToast(`⚠️ เลขตัวถัง (VIN) '${vinVal}' ซ้ำกับรถคันอื่นในระบบแล้ว`, "danger");
+      const msg = (this.currentLang === "EN")
+        ? "Duplicate Data: Vehicle plate or VIN (Chassis No) already exists in system"
+        : "ข้อมูลซ้ำ: พบเลขทะเบียนหรือเลขตัวถังนี้ในระบบแล้ว";
+      alert(`⚠️ ${msg}`);
+      this.showToast(`⚠️ ${msg}`, "danger");
       const vinEl = document.getElementById("edit-car-vin");
       if (vinEl) {
         vinEl.focus();
@@ -2448,7 +2418,7 @@ class App {
       status: document.getElementById("edit-car-status")?.value || "ว่างพร้อมใช้งาน",
       image: imgUrl,
       is_debt_free: Boolean(document.getElementById("edit-car-debt-free")?.checked),
-      finance_company: Boolean(document.getElementById("edit-car-debt-free")?.checked) ? "-" : ((document.getElementById("edit-car-finance-company")?.value === "__ADD_NEW__" ? (document.getElementById("edit-car-custom-finance")?.value || "").trim() : (document.getElementById("edit-car-finance-company")?.value || "").trim()) || "-"),
+      finance_company: Boolean(document.getElementById("edit-car-debt-free")?.checked) ? "-" : ((document.getElementById("edit-car-finance-company")?.value || "").trim() || "-"),
       installment_amount: Boolean(document.getElementById("edit-car-debt-free")?.checked) ? 0 : (parseFloat(document.getElementById("edit-car-installment-amount")?.value || 0) || 0),
       total_installments: Boolean(document.getElementById("edit-car-debt-free")?.checked) ? 0 : (parseInt(document.getElementById("edit-car-total-installments")?.value || 0, 10) || 0),
       current_installment: Boolean(document.getElementById("edit-car-debt-free")?.checked) ? 0 : (parseInt(document.getElementById("edit-car-current-installment")?.value || 0, 10) || 0),

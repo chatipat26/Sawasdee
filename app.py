@@ -1743,9 +1743,10 @@ translations = {
         "current_installment": "งวดปัจจุบัน (ชำระแล้ว)",
         "dashboard_monthly_expense": "รายจ่ายค่างวดรถรวมต่อเดือน",
         "finance_company": "บริษัทไฟแนนซ์",
-        "add_new_finance": "➕ เพิ่มบริษัทไฟแนนซ์ใหม่ (Add New)",
+        "add_new_finance": "เพิ่มบริษัทไฟแนนซ์ใหม่ (Add New)",
         "new_finance_name": "ระบุชื่อบริษัทไฟแนนซ์ใหม่",
         "select_finance_placeholder": "-- เลือกรถปลอดภาระ หรือระบุไฟแนนซ์ --",
+        "duplicate_vehicle_error": "ข้อมูลซ้ำ: พบเลขทะเบียนหรือเลขตัวถังนี้ในระบบแล้ว",
 
         # Tab 2: Deposit & Finance
         "deposit_title": "เงินมัดจำ & การเงิน (Deposit & Payment)",
@@ -1957,9 +1958,10 @@ translations = {
         "current_installment": "Current Paid Installment",
         "dashboard_monthly_expense": "Total Monthly Fleet Installments",
         "finance_company": "Finance Company",
-        "add_new_finance": "➕ Add New Finance Company",
+        "add_new_finance": "Add New Finance Company",
         "new_finance_name": "Enter new finance company name",
         "select_finance_placeholder": "-- Select or Add Finance --",
+        "duplicate_vehicle_error": "Duplicate Data: Vehicle plate or VIN (Chassis No) already exists in system",
 
         # Tab 2: Deposit & Finance
         "deposit_title": "Deposit & Payment",
@@ -4314,7 +4316,7 @@ else:
                         add_status = st.selectbox("สถานะเริ่มต้น*", ["ว่างพร้อมใช้งาน", "ซ่อมบำรุง", "เตรียมส่งมอบ"], key="add_car_status")
                     
                     st.markdown("<hr style='margin:12px 0; border:0.5px solid #EFEAE3;'>", unsafe_allow_html=True)
-                    doc_c1, doc_c2, doc_c3 = st.columns(3)
+                    doc_c1, doc_c2 = st.columns(2)
                     with doc_c1:
                         add_chassis = st.text_input("เลขตัวถัง (VIN / Chassis No)", placeholder="เช่น MRXGWM...", key="add_car_chassis").strip()
                         add_mileage = st.text_input("เลขไมล์ปัจจุบัน (km)", value="10,000", key="add_car_mileage").strip()
@@ -4322,35 +4324,28 @@ else:
                         add_tax = st.date_input("วันหมดอายุภาษี", value=None, format="DD/MM/YYYY", key="add_car_tax")
                         add_act = st.date_input("วันหมดอายุ พ.ร.บ.", value=None, format="DD/MM/YYYY", key="add_car_act")
                         add_ins = st.date_input("วันหมดอายุประกันภัย", value=None, format="DD/MM/YYYY", key="add_car_ins")
-                    with doc_c3:
-                        add_img_file = st.file_uploader("รูปถ่ายรถ (JPG, PNG, WEBP):", type=["jpg", "jpeg", "png", "webp"], key="add_car_img_file")
-                        if add_img_file is not None:
-                            st.image(add_img_file, caption="ตัวอย่างรูปรถใหม่", use_container_width=True)
                     
                     st.markdown("<hr style='margin:12px 0; border:0.5px solid #EFEAE3;'>", unsafe_allow_html=True)
                     add_debt_free = st.checkbox(translations[st.session_state.language].get("is_debt_free", "รถปลอดภาระ / ซื้อเงินสด"), value=True, key="add_car_debt_free")
                     if not add_debt_free:
                         dyn_fin_list = get_existing_finance_companies(cars_db)
-                        add_new_fin_lbl = translations[st.session_state.language].get("add_new_finance", "➕ เพิ่มบริษัทไฟแนนซ์ใหม่ (Add New)")
+                        add_new_fin_lbl = translations[st.session_state.language].get("add_new_finance", "เพิ่มบริษัทไฟแนนซ์ใหม่ (Add New)")
                         fin_opts = dyn_fin_list + [add_new_fin_lbl]
 
-                        f_col1, f_col2 = st.columns([1.5, 1.5])
-                        with f_col1:
-                            add_sel_fin = st.selectbox(
-                                translations[st.session_state.language].get("finance_company", "บริษัทไฟแนนซ์"),
-                                fin_opts,
-                                key="add_car_fin_sel"
-                            )
-                        with f_col2:
-                            if add_sel_fin == add_new_fin_lbl:
-                                add_custom_fin = st.text_input(
-                                    translations[st.session_state.language].get("new_finance_name", "ระบุชื่อบริษัทไฟแนนซ์ใหม่"),
-                                    placeholder="เช่น โตโยต้า ลีสซิ่ง, กรุงศรี ออโต้...",
-                                    key="add_car_fin_custom"
-                                ).strip()
-                                add_final_fin = add_custom_fin or "-"
-                            else:
-                                add_final_fin = add_sel_fin
+                        add_sel_fin = st.selectbox(
+                            translations[st.session_state.language].get("finance_company", "บริษัทไฟแนนซ์"),
+                            fin_opts,
+                            key="add_car_fin_sel"
+                        )
+                        if add_sel_fin == add_new_fin_lbl:
+                            add_custom_fin = st.text_input(
+                                translations[st.session_state.language].get("new_finance_name", "ระบุชื่อบริษัทไฟแนนซ์ใหม่"),
+                                placeholder="เช่น โตโยต้า ลีสซิ่ง, กรุงศรี ออโต้...",
+                                key="add_car_fin_custom"
+                            ).strip()
+                            add_final_fin = add_custom_fin or "-"
+                        else:
+                            add_final_fin = add_sel_fin
 
                         inst_c1, inst_c2, inst_c3, inst_c4 = st.columns(4)
                         with inst_c1:
@@ -4368,6 +4363,11 @@ else:
                         add_curr_inst = 0
                         add_due_date = None
 
+                    st.markdown("<hr style='margin:12px 0; border:0.5px solid #EFEAE3;'>", unsafe_allow_html=True)
+                    add_img_file = st.file_uploader("รูปถ่ายรถยนต์ (Car Photo - JPG, PNG, WEBP):", type=["jpg", "jpeg", "png", "webp"], key="add_car_img_file")
+                    if add_img_file is not None:
+                        st.image(add_img_file, caption="ตัวอย่างรูปรถใหม่", use_container_width=True)
+
                     btn_c_save, btn_c_tip = st.columns([1.5, 2])
                     with btn_c_save:
                         if st.button("💾 บันทึกรถยนต์ใหม่เข้าสู่ฐานข้อมูล", type="primary", key="btn_save_new_vehicle", use_container_width=True):
@@ -4375,9 +4375,23 @@ else:
                                 st.error("⚠️ กรุณาระบุทะเบียนรถ")
                             elif not add_model:
                                 st.error("⚠️ กรุณาระบุรุ่นรถ")
-                            elif add_plate in cars_db:
-                                st.error(f"⚠️ ทะเบียนรถ '{add_plate}' มีอยู่ในฐานข้อมูลแล้ว ไม่สามารถเพิ่มซ้ำได้")
                             else:
+                                # Duplicate Plate & VIN Check
+                                norm_curr_plate = re.sub(r"[\s\-\.]+", "", add_plate).lower()
+                                plate_exists = any(
+                                    (car.get('plate') == add_plate or re.sub(r"[\s\-\.]+", "", str(car.get('plate') or '')).lower() == norm_curr_plate)
+                                    for car in cars_db.values()
+                                )
+                                curr_vin = str(add_chassis or "").strip().upper()
+                                has_vin = bool(curr_vin and curr_vin not in ("-", "NONE", "") and len(curr_vin) >= 6)
+                                vin_exists = has_vin and any(
+                                    (str(car.get('chassis_no') or car.get('vin') or '').strip().upper() == curr_vin)
+                                    for car in cars_db.values()
+                                )
+                                if plate_exists or vin_exists:
+                                    st.error(translations[st.session_state.language].get("duplicate_vehicle_error", "ข้อมูลซ้ำ: พบเลขทะเบียนหรือเลขตัวถังนี้ในระบบแล้ว"))
+                                    st.stop()
+                                
                                 new_car_img = ""
                                 if add_img_file is not None:
                                     car_bytes = add_img_file.read()
@@ -4805,27 +4819,24 @@ else:
                                                 if curr_car_fin and curr_car_fin not in ("-", "None", "none", "null", "") and curr_car_fin not in e_dyn_fin_list:
                                                     e_dyn_fin_list.append(curr_car_fin)
                                                 
-                                                e_add_new_lbl = translations[st.session_state.language].get("add_new_finance", "➕ เพิ่มบริษัทไฟแนนซ์ใหม่ (Add New)")
+                                                e_add_new_lbl = translations[st.session_state.language].get("add_new_finance", "เพิ่มบริษัทไฟแนนซ์ใหม่ (Add New)")
                                                 e_fin_opts = e_dyn_fin_list + [e_add_new_lbl]
                                                 e_def_idx = e_fin_opts.index(curr_car_fin) if curr_car_fin in e_fin_opts else 0
 
-                                                e_fc1, e_fc2 = st.columns([1.5, 1.5])
-                                                with e_fc1:
-                                                    e_sel_fin = st.selectbox(
-                                                        translations[st.session_state.language].get("finance_company", "บริษัทไฟแนนซ์"),
-                                                        e_fin_opts,
-                                                        index=e_def_idx,
-                                                        key=f"gefc_{_p}"
-                                                    )
-                                                with e_fc2:
-                                                    if e_sel_fin == e_add_new_lbl:
-                                                        e_custom_fin = st.text_input(
-                                                            translations[st.session_state.language].get("new_finance_name", "ระบุชื่อบริษัทไฟแนนซ์ใหม่"),
-                                                            key=f"gecf_{_p}"
-                                                        ).strip()
-                                                        e_final_fin = e_custom_fin or "-"
-                                                    else:
-                                                        e_final_fin = e_sel_fin
+                                                e_sel_fin = st.selectbox(
+                                                    translations[st.session_state.language].get("finance_company", "บริษัทไฟแนนซ์"),
+                                                    e_fin_opts,
+                                                    index=e_def_idx,
+                                                    key=f"gefc_{_p}"
+                                                )
+                                                if e_sel_fin == e_add_new_lbl:
+                                                    e_custom_fin = st.text_input(
+                                                        translations[st.session_state.language].get("new_finance_name", "ระบุชื่อบริษัทไฟแนนซ์ใหม่"),
+                                                        key=f"gecf_{_p}"
+                                                    ).strip()
+                                                    e_final_fin = e_custom_fin or "-"
+                                                else:
+                                                    e_final_fin = e_sel_fin
 
                                                 e_ia1, e_ia2 = st.columns(2)
                                                 with e_ia1:
@@ -4847,6 +4858,16 @@ else:
                                             if not e_model:
                                                 st.error("⚠️ กรุณาระบุรุ่นรถยนต์")
                                             else:
+                                                curr_vin = str(e_vin or "").strip().upper()
+                                                has_vin = bool(curr_vin and curr_vin not in ("-", "NONE", "") and len(curr_vin) >= 6)
+                                                vin_exists = has_vin and any(
+                                                    p_other != _p and (str(car.get('chassis_no') or car.get('vin') or '').strip().upper() == curr_vin)
+                                                    for p_other, car in cars_db.items()
+                                                )
+                                                if vin_exists:
+                                                    st.error(translations[st.session_state.language].get("duplicate_vehicle_error", "ข้อมูลซ้ำ: พบเลขทะเบียนหรือเลขตัวถังนี้ในระบบแล้ว"))
+                                                    st.stop()
+                                                
                                                 up_car = dict(_c)
                                                 up_car["brand"] = e_brand
                                                 up_car["model"] = e_model
