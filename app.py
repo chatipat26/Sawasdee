@@ -1689,7 +1689,76 @@ translations = {
         # Dashboard & Analytics
         "dash_title": "📊 สรุปแดชบอร์ด & การเงิน",
         "dash_subtitle_badge": "INTERACTIVE EXECUTIVE DASHBOARD",
-        "dash_subtitle": "รายงานภาพรวมอัตราการใช้งานรถยนต์ (Utilization Rate) รายรับ รายจ่าย และผลกำไรสุทธิ"
+        "dash_subtitle": "รายงานภาพรวมอัตราการใช้งานรถยนต์ (Utilization Rate) รายรับ รายจ่าย และผลกำไรสุทธิ",
+
+        # Dashboard HP & Property Insurance & Completed Jobs
+        "dash_hp_title": "ตารางผ่อนชำระค่างวดรถยนต์ (HP / Leasing ...)",
+        "dash_prop_ins_title": "🏠 กรมธรรม์ประกันภัยทรัพย์สินและประกันอุบัติเหตุส่วนบุคคล",
+        "dash_hp_col_no": "ลำดับ",
+        "dash_hp_col_model": "รุ่นรถยนต์",
+        "dash_hp_col_plate": "ทะเบียน / เลขถัง",
+        "dash_hp_col_contract": "เลขที่สัญญา",
+        "dash_hp_col_down": "วันดาวน์ / เงินดาวน์",
+        "dash_hp_col_due": "งวดแรก / กำหนดชำระ",
+        "dash_hp_col_installment": "ค่างวด/เดือน",
+        "dash_hp_col_terms": "จำนวนงวด",
+        "dash_hp_col_paid": "ชำระแล้ว (บาท)",
+        "dash_hp_col_remaining": "คงเหลือ (บาท)",
+        "dash_hp_col_total_price": "ราคารถรวมดาวน์",
+        "dash_prop_col_id": "รหัส",
+        "dash_prop_col_title": "รายการกรมธรรม์ / ทรัพย์สิน",
+        "dash_prop_col_owner": "ผู้เอาประกัน / เจ้าของ",
+        "dash_prop_col_company": "บริษัทประกันภัย",
+        "dash_prop_col_expiry": "วันหมดอายุ",
+        "dash_prop_col_notes": "หมายเหตุ",
+        "dash_archive_title": "📑 คลังประวัติงานเสร็จสิ้น & รีพอร์ตรายเดือน (Completed Jobs Archive)",
+        "dash_archive_filter_month": "📅 เลือกเดือนที่ต้องการดูรายงาน:",
+        "dash_archive_filter_comp": "🏢 เลือกรีพอร์ตตามบริษัท:",
+        "dash_archive_all_comp": "ทั้งหมด (ทุกบริษัท)",
+        "dash_archive_all_months": "🔄 ดูทุกเดือนทั้งหมด",
+        "dash_archive_download_csv": "📥 ดาวน์โหลดรายงานสรุปงานเสร็จสิ้น (CSV สำหรับ Excel)",
+        "dash_archive_kpi_jobs": "🏁 งานเสร็จสิ้นทั้งหมด",
+        "dash_archive_kpi_rev": "💰 รายรับรวมจากงานเช่า",
+        "dash_archive_kpi_cars": "🚘 รถที่ให้บริการ",
+        "dash_archive_kpi_custs": "👥 ลูกค้าที่ใช้บริการ",
+        "dash_archive_col_bkid": "รหัสการจอง",
+        "dash_archive_col_date": "วันที่เสร็จสิ้น",
+        "dash_archive_col_plate": "ทะเบียนรถ",
+        "dash_archive_col_cust": "ลูกค้า",
+        "dash_archive_col_comp": "บริษัท",
+        "dash_archive_col_ctype": "ประเภทสัญญา",
+        "dash_archive_col_rev": "รายรับสุทธิ",
+        "dash_archive_col_staff": "พนักงานส่ง-รับ",
+        "dash_archive_col_loc": "สถานที่",
+        "dash_archive_col_fuel": "เกจ์น้ำมัน & สภาพรถ",
+        "dash_archive_col_status": "สถานะ",
+        "dash_archive_col_docs": "เอกสารย้อนหลัง",
+
+        # Maintenance & Service Center
+        "mnt_title": "🔧 โมดูลซ่อมบำรุง & บริการ (Fleet Maintenance & Service Center)",
+        "mnt_subtitle": "ศูนย์จัดการงานซ่อมบำรุง ตรวจเช็คสภาพ เปลี่ยนถ่ายของเหลว และบันทึกประวัติการต่อภาษี/พรบ./ประกันภัยรถยนต์",
+        "mnt_btn_new": "➕ ออกใบงานซ่อมบำรุงใหม่",
+        "mnt_btn_renewal": "📄 ออกใบงานต่อทะเบียน-พรบ.-ประกัน",
+        "mnt_btn_refresh": "🔄 รีเฟรช",
+        "mnt_kpi_inprog": "🚗 กำลังซ่อมบำรุงในอู่/ศูนย์",
+        "mnt_kpi_pending": "⏳ ใบงานรอดำเนินการ",
+        "mnt_kpi_cost": "💰 รวมค่าซ่อมบำรุงและบริการ",
+        "mnt_kpi_renewals": "🛡️ งานต่อทะเบียน / พรบ. / ประกัน",
+        "mnt_lbl_search": "🔍 ค้นหาใบงาน (เลขที่ / ทะเบียน / รายการ):",
+        "mnt_lbl_type": "ประเภทงาน:",
+        "mnt_lbl_status": "สถานะงาน:",
+        "mnt_lbl_car": "เลือกรถยนต์:",
+        "mnt_table_title": "📋 รายการประวัติการซ่อมบำรุงและบริการทั้งหมด",
+        "mnt_col_id": "เลขที่ใบงาน",
+        "mnt_col_car": "ทะเบียน & รถยนต์",
+        "mnt_col_type": "ประเภทงาน",
+        "mnt_col_desc": "รายการซ่อม / รายการบริการ",
+        "mnt_col_cost": "ค่าซ่อมบำรุง (฿)",
+        "mnt_col_garage": "อู่ / ศูนย์บริการ",
+        "mnt_col_staff": "พนักงานผู้รับผิดชอบ",
+        "mnt_col_sched": "กำหนดการ",
+        "mnt_col_status": "สถานะ",
+        "mnt_col_action": "ออกใบงาน & ปิดงาน"
     },
     "EN": {
         # Sidebar & Global Navigation
@@ -1796,7 +1865,76 @@ translations = {
         # Dashboard & Analytics
         "dash_title": "📊 Fleet Performance & Financials",
         "dash_subtitle_badge": "INTERACTIVE EXECUTIVE DASHBOARD",
-        "dash_subtitle": "Overview of fleet utilization rates, total revenue, operating expenses, and net profit"
+        "dash_subtitle": "Overview of fleet utilization rates, total revenue, operating expenses, and net profit",
+
+        # Dashboard HP & Property Insurance & Completed Jobs
+        "dash_hp_title": "Vehicle Installment Plan (HP / Leasing ...)",
+        "dash_prop_ins_title": "🏠 Property & Personal Accident Insurance Policies",
+        "dash_hp_col_no": "No.",
+        "dash_hp_col_model": "Vehicle Model",
+        "dash_hp_col_plate": "Plate / Chassis No.",
+        "dash_hp_col_contract": "Contract No.",
+        "dash_hp_col_down": "Down Date / Down",
+        "dash_hp_col_due": "First Payment / Due Date",
+        "dash_hp_col_installment": "Installment/Mo",
+        "dash_hp_col_terms": "Terms",
+        "dash_hp_col_paid": "Paid (THB)",
+        "dash_hp_col_remaining": "Remaining (THB)",
+        "dash_hp_col_total_price": "Total Price (Down Inc.)",
+        "dash_prop_col_id": "Code",
+        "dash_prop_col_title": "Policy / Property Item",
+        "dash_prop_col_owner": "Insured / Owner",
+        "dash_prop_col_company": "Insurance Company",
+        "dash_prop_col_expiry": "Expiry Date",
+        "dash_prop_col_notes": "Notes",
+        "dash_archive_title": "📑 Completed Jobs Archive & Monthly Reports",
+        "dash_archive_filter_month": "📅 Select Report Month:",
+        "dash_archive_filter_comp": "🏢 Filter Report by Company:",
+        "dash_archive_all_comp": "All (Every Company)",
+        "dash_archive_all_months": "🔄 View All Months",
+        "dash_archive_download_csv": "📥 Download Completed Jobs Summary (CSV for Excel)",
+        "dash_archive_kpi_jobs": "🏁 Total Completed Jobs",
+        "dash_archive_kpi_rev": "💰 Total Rental Revenue",
+        "dash_archive_kpi_cars": "🚘 Fleet Deployed",
+        "dash_archive_kpi_custs": "👥 Customers Served",
+        "dash_archive_col_bkid": "Booking ID",
+        "dash_archive_col_date": "Completed Date",
+        "dash_archive_col_plate": "License Plate",
+        "dash_archive_col_cust": "Customer",
+        "dash_archive_col_comp": "Company",
+        "dash_archive_col_ctype": "Contract Type",
+        "dash_archive_col_rev": "Net Revenue",
+        "dash_archive_col_staff": "Dispatch & Return Staff",
+        "dash_archive_col_loc": "Location",
+        "dash_archive_col_fuel": "Fuel & Inspection",
+        "dash_archive_col_status": "Status",
+        "dash_archive_col_docs": "Historical Documents",
+
+        # Maintenance & Service Center
+        "mnt_title": "🔧 Fleet Maintenance & Service Center",
+        "mnt_subtitle": "Maintenance management center for fleet inspection, fluid service, and tax/ACT/insurance renewal logs",
+        "mnt_btn_new": "➕ Create Maintenance Order",
+        "mnt_btn_renewal": "📄 Tax/ACT/Insurance Order",
+        "mnt_btn_refresh": "🔄 Refresh",
+        "mnt_kpi_inprog": "🚗 In Repair / Workshop",
+        "mnt_kpi_pending": "⏳ Pending Work Orders",
+        "mnt_kpi_cost": "💰 Total Maintenance & Services",
+        "mnt_kpi_renewals": "🛡️ Tax / ACT / Insurance Jobs",
+        "mnt_lbl_search": "🔍 Search Work Orders (ID / Plate / Item):",
+        "mnt_lbl_type": "Work Type:",
+        "mnt_lbl_status": "Status:",
+        "mnt_lbl_car": "Select Vehicle:",
+        "mnt_table_title": "📋 All Maintenance & Service History Records",
+        "mnt_col_id": "Order ID",
+        "mnt_col_car": "Vehicle & Plate",
+        "mnt_col_type": "Work Type",
+        "mnt_col_desc": "Service Description",
+        "mnt_col_cost": "Cost (฿)",
+        "mnt_col_garage": "Service Center / Garage",
+        "mnt_col_staff": "Assigned Staff",
+        "mnt_col_sched": "Schedule",
+        "mnt_col_status": "Status",
+        "mnt_col_action": "Actions & Work Order"
     }
 }
 
@@ -7523,8 +7661,11 @@ else:
             st.markdown("<div style='height: 15px;'></div>", unsafe_allow_html=True)
             
             # --- 📑 คลังประวัติงานเสร็จสิ้น & รีพอร์ตรายเดือน (พับได้เหมือนตารางรถ) ---
-            with st.expander(f"📑 คลังประวัติงานเสร็จสิ้น & รีพอร์ตรายเดือน (Monthly Completed Jobs Archive & Revenue Report) — คลิกเพื่อพับเก็บ / ขยายตาราง ({len(st.session_state.completed_jobs_db)} รายการ)", expanded=True):
-                st.markdown("<h3 class='dash-section-title' style='margin-top:0;'>คลังประวัติงานเสร็จสิ้น & รายงานสรุปรายเดือน</h3>", unsafe_allow_html=True)
+            cur_lang = st.session_state.get("language", "TH")
+            tr_dash = translations.get(cur_lang, translations["TH"])
+            archive_exp_title = f"{tr_dash.get('dash_archive_title', '📑 คลังประวัติงานเสร็จสิ้น & รีพอร์ตรายเดือน')} — ({len(st.session_state.completed_jobs_db)} {'รายการ' if cur_lang == 'TH' else 'Records'})"
+            with st.expander(archive_exp_title, expanded=True):
+                st.markdown(f"<h3 class='dash-section-title' style='margin-top:0;'>{tr_dash.get('dash_archive_title', 'คลังประวัติงานเสร็จสิ้น & รายงานสรุปรายเดือน')}</h3>", unsafe_allow_html=True)
                 
                 # --- 1. Monthly Filter & Controls ---
                 c_m1, c_m2 = st.columns(2)
@@ -7546,9 +7687,10 @@ else:
                     month_options.append(ym_map[k])
                     
                 with c_m1:
-                    sel_month_label = st.selectbox("📅 เลือกเดือนที่ต้องการดูรายงาน:", month_options, index=0, key="dash_report_month")
+                    sel_month_label = st.selectbox(tr_dash.get("dash_archive_filter_month", "📅 เลือกเดือนที่ต้องการดูรายงาน:"), month_options, index=0, key="dash_report_month")
                 with c_m2:
-                    sel_comp_filter = st.selectbox("🏢 เลือกรีพอร์ตตามบริษัท:", ["ทั้งหมด (ทุกบริษัท)", "Sawasdee Rent A Car", "P.D.P. Co., Ltd.", "Sawasdee Car Rent"], index=0, key="dash_report_company")
+                    all_comp_lbl = tr_dash.get("dash_archive_all_comp", "ทั้งหมด (ทุกบริษัท)")
+                    sel_comp_filter = st.selectbox(tr_dash.get("dash_archive_filter_comp", "🏢 เลือกรีพอร์ตตามบริษัท:"), [all_comp_lbl, "Sawasdee Rent A Car", "P.D.P. Co., Ltd.", "Sawasdee Car Rent"], index=0, key="dash_report_company")
                 
                 sb_dash_kw = st.session_state.get("global_search_kw", "").strip()
                 if sb_dash_kw:
@@ -7569,7 +7711,7 @@ else:
                             continue
                             
                     # Filter by company
-                    if sel_comp_filter != "ทั้งหมด (ทุกบริษัท)":
+                    if sel_comp_filter not in [all_comp_lbl, "ทั้งหมด (ทุกบริษัท)"]:
                         if cj.get("company") != sel_comp_filter:
                             continue
                             
@@ -7589,33 +7731,37 @@ else:
                 unique_cars_cnt = len(set(x.get("car_id") for x in filtered_reports if x.get("car_id")))
                 unique_cust_cnt = len(set(x.get("customer") for x in filtered_reports if x.get("customer")))
                 
+                job_unit_txt = "งาน" if cur_lang == "TH" else "jobs"
+                car_unit_txt = "คัน" if cur_lang == "TH" else "cars"
+                cust_unit_txt = "ราย" if cur_lang == "TH" else "customers"
+
                 kpi_c1, kpi_c2, kpi_c3, kpi_c4 = st.columns(4)
                 with kpi_c1:
                     st.markdown(f"""
 <div style="background:white; border:1px solid #EFEAE3; border-radius:10px; padding:12px; text-align:center; box-shadow:0 1px 3px rgba(0,0,0,0.04);">
-<div style="font-size:12px; color:#6B7280; font-weight:600;">🏁 งานเสร็จสิ้นทั้งหมด</div>
-<div style="font-size:22px; font-weight:800; color:#10B981; margin-top:4px;">{total_jobs_cnt} <span style="font-size:13px; font-weight:500;">งาน</span></div>
+<div style="font-size:12px; color:#6B7280; font-weight:600;">{tr_dash.get('dash_archive_kpi_jobs', '🏁 งานเสร็จสิ้นทั้งหมด')}</div>
+<div style="font-size:22px; font-weight:800; color:#10B981; margin-top:4px;">{total_jobs_cnt} <span style="font-size:13px; font-weight:500;">{job_unit_txt}</span></div>
 </div>
 """, unsafe_allow_html=True)
                 with kpi_c2:
                     st.markdown(f"""
 <div style="background:white; border:1px solid #EFEAE3; border-radius:10px; padding:12px; text-align:center; box-shadow:0 1px 3px rgba(0,0,0,0.04);">
-<div style="font-size:12px; color:#6B7280; font-weight:600;">💰 รายรับรวมจากงานเช่า</div>
+<div style="font-size:12px; color:#6B7280; font-weight:600;">{tr_dash.get('dash_archive_kpi_rev', '💰 รายรับรวมจากงานเช่า')}</div>
 <div style="font-size:22px; font-weight:800; color:#E85826; margin-top:4px;">฿{total_rev_sum:,.2f}</div>
 </div>
 """, unsafe_allow_html=True)
                 with kpi_c3:
                     st.markdown(f"""
 <div style="background:white; border:1px solid #EFEAE3; border-radius:10px; padding:12px; text-align:center; box-shadow:0 1px 3px rgba(0,0,0,0.04);">
-<div style="font-size:12px; color:#6B7280; font-weight:600;">🚘 รถที่ให้บริการ</div>
-<div style="font-size:22px; font-weight:800; color:#3B82F6; margin-top:4px;">{unique_cars_cnt} <span style="font-size:13px; font-weight:500;">คัน</span></div>
+<div style="font-size:12px; color:#6B7280; font-weight:600;">{tr_dash.get('dash_archive_kpi_cars', '🚘 รถที่ให้บริการ')}</div>
+<div style="font-size:22px; font-weight:800; color:#3B82F6; margin-top:4px;">{unique_cars_cnt} <span style="font-size:13px; font-weight:500;">{car_unit_txt}</span></div>
 </div>
 """, unsafe_allow_html=True)
                 with kpi_c4:
                     st.markdown(f"""
 <div style="background:white; border:1px solid #EFEAE3; border-radius:10px; padding:12px; text-align:center; box-shadow:0 1px 3px rgba(0,0,0,0.04);">
-<div style="font-size:12px; color:#6B7280; font-weight:600;">👥 ลูกค้าที่ใช้บริการ</div>
-<div style="font-size:22px; font-weight:800; color:#8B5CF6; margin-top:4px;">{unique_cust_cnt} <span style="font-size:13px; font-weight:500;">ราย</span></div>
+<div style="font-size:12px; color:#6B7280; font-weight:600;">{tr_dash.get('dash_archive_kpi_custs', '👥 ลูกค้าที่ใช้บริการ')}</div>
+<div style="font-size:22px; font-weight:800; color:#8B5CF6; margin-top:4px;">{unique_cust_cnt} <span style="font-size:13px; font-weight:500;">{cust_unit_txt}</span></div>
 </div>
 """, unsafe_allow_html=True)
                     
@@ -7623,24 +7769,24 @@ else:
                 
                 # --- 3. Completed Jobs Table & PDF Documents ---
                 if not filtered_reports:
-                    st.info("ไม่มีข้อมูลงานที่เสร็จสิ้นตรงกับเงื่อนไขที่เลือก")
+                    st.info("ไม่มีข้อมูลงานที่เสร็จสิ้นตรงกับเงื่อนไขที่เลือก" if cur_lang == "TH" else "No completed jobs matching the selected criteria")
                 else:
                     rpt_table_html = (
                         '<div style="max-height: 250px; overflow-y: auto; overflow-x: auto; border-radius: 8px; border: 1px solid #EFEAE3;">'
                         '<table class="bo-table">'
                         '<tr>'
-                        '<th>รหัสการจอง</th>'
-                        '<th>วันที่เสร็จสิ้น</th>'
-                        '<th>ทะเบียนรถ</th>'
-                        '<th>ลูกค้า</th>'
-                        '<th>บริษัท</th>'
-                        '<th>ประเภทสัญญา</th>'
-                        '<th style="text-align:right;">รายรับสุทธิ</th>'
-                        '<th>พนักงานส่ง-รับ</th>'
-                        '<th>สถานที่</th>'
-                        '<th>เกจ์น้ำมัน & สภาพรถ</th>'
-                        '<th>สถานะ</th>'
-                        '<th style="text-align:center;">เอกสารย้อนหลัง<br/><span style="font-size:11px; font-weight:normal; color:#8C827A;">(📝 สัญญา | 🧾 ใบเสร็จ | 📋 ลิสต์เช็ครถ)</span></th>'
+                        f'<th>{tr_dash.get("dash_archive_col_bkid", "รหัสการจอง")}</th>'
+                        f'<th>{tr_dash.get("dash_archive_col_date", "วันที่เสร็จสิ้น")}</th>'
+                        f'<th>{tr_dash.get("dash_archive_col_plate", "ทะเบียนรถ")}</th>'
+                        f'<th>{tr_dash.get("dash_archive_col_cust", "ลูกค้า")}</th>'
+                        f'<th>{tr_dash.get("dash_archive_col_comp", "บริษัท")}</th>'
+                        f'<th>{tr_dash.get("dash_archive_col_ctype", "ประเภทสัญญา")}</th>'
+                        f'<th style="text-align:right;">{tr_dash.get("dash_archive_col_rev", "รายรับสุทธิ")}</th>'
+                        f'<th>{tr_dash.get("dash_archive_col_staff", "พนักงานส่ง-รับ")}</th>'
+                        f'<th>{tr_dash.get("dash_archive_col_loc", "สถานที่")}</th>'
+                        f'<th>{tr_dash.get("dash_archive_col_fuel", "เกจ์น้ำมัน & สภาพรถ")}</th>'
+                        f'<th>{tr_dash.get("dash_archive_col_status", "สถานะ")}</th>'
+                        f'<th style="text-align:center;">{tr_dash.get("dash_archive_col_docs", "เอกสารย้อนหลัง")}<br/><span style="font-size:11px; font-weight:normal; color:#8C827A;">(📝 สัญญา | 🧾 ใบเสร็จ | 📋 ลิสต์เช็ครถ)</span></th>'
                         '</tr>'
                     )
                     for item in filtered_reports:

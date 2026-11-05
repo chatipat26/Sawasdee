@@ -179,84 +179,92 @@ class App {
     }
 
     // 10. Maintenance & Services Module Localization
-    const mTitle = document.getElementById("maint-title-text");
-    if (mTitle) mTitle.textContent = isEn ? "Maintenance & Vehicle Services" : "โมดูลซ่อมบำรุง & บริการ (Maintenance & Services)";
-    const mSubtitle = document.getElementById("maint-subtitle-text");
-    if (mSubtitle) mSubtitle.textContent = isEn ? "Vehicle Maintenance Tracking, Service Records & Expense System" : "ระบบบันทึกและติดตามการเข้าศูนย์บริการ อู่ซ่อม และค่าใช้จ่ายการดูแลรถ";
-    const btnMaintAdd = document.getElementById("btn-maint-open-modal");
-    if (btnMaintAdd) btnMaintAdd.textContent = isEn ? "➕ New Service / Work Order" : "➕ บันทึกส่งซ่อม / สร้างใบงานซ่อม";
-    const btnMaintRef = document.getElementById("btn-maint-refresh");
-    if (btnMaintRef) btnMaintRef.textContent = isEn ? "🔄 Refresh" : "🔄 รีเฟรชข้อมูล";
+    const mTitle = document.getElementById("mnt-title-text") || document.getElementById("maint-title-text");
+    if (mTitle) mTitle.textContent = isEn ? "Fleet Maintenance & Service Center" : "โมดูลซ่อมบำรุง & บริการ (Fleet Maintenance & Service Center)";
+    const mSubtitle = document.getElementById("mnt-subtitle-text") || document.getElementById("maint-subtitle-text");
+    if (mSubtitle) mSubtitle.textContent = isEn ? "Maintenance management center for fleet inspection, work orders, and vehicle tax/ACT/insurance renewals" : "ศูนย์จัดการงานซ่อมบำรุง ตรวจเช็คสภาพ ออกใบงานให้พนักงาน และต่อทะเบียนภาษี-พรบ.-ประกันภัยรถยนต์";
+    const btnMntNew = document.getElementById("btn-mnt-new") || document.getElementById("btn-maint-open-modal");
+    if (btnMntNew) btnMntNew.textContent = isEn ? "➕ New Service / Work Order" : "➕ ออกใบงานซ่อมบำรุงใหม่";
+    const btnMntRenew = document.getElementById("btn-mnt-renewal");
+    if (btnMntRenew) btnMntRenew.textContent = isEn ? "📄 Tax/ACT/Ins Renewal Order" : "📄 ออกใบงานต่อทะเบียน-พรบ.-ประกัน";
+    const btnMntRef = document.getElementById("btn-mnt-refresh") || document.getElementById("btn-maint-refresh");
+    if (btnMntRef) btnMntRef.textContent = isEn ? "🔄 Refresh" : "🔄 รีเฟรช";
 
     // Maintenance KPI labels
-    const mKpi1 = document.getElementById("maint-kpi-in-garage-lbl");
-    if (mKpi1) mKpi1.textContent = isEn ? "In Garage / Active Repair" : "กำลังซ่อมบำรุงในอู่";
-    const mKpi2 = document.getElementById("maint-kpi-pending-lbl");
-    if (mKpi2) mKpi2.textContent = isEn ? "Pending Work Orders" : "ใบงานรอดำเนินการ";
-    const mKpi3 = document.getElementById("maint-kpi-total-cost-lbl");
-    if (mKpi3) mKpi3.textContent = isEn ? "Total Maintenance Cost" : "รวมค่าซ่อมบำรุงทั้งหมด";
-    const mKpi4 = document.getElementById("maint-kpi-renewal-lbl");
-    if (mKpi4) mKpi4.textContent = isEn ? "Upcoming Tax/ACT/Ins Renewals" : "งานต่อทะเบียน/พรบ./ประกัน";
+    const mKpi1 = document.getElementById("mnt-kpi-inprog-lbl") || document.getElementById("maint-kpi-in-garage-lbl");
+    if (mKpi1) mKpi1.textContent = isEn ? "🚗 In Garage / Service Center" : "🚗 กำลังซ่อมบำรุงในอู่/ศูนย์";
+    const mKpi2 = document.getElementById("mnt-kpi-pending-lbl") || document.getElementById("maint-kpi-pending-lbl");
+    if (mKpi2) mKpi2.textContent = isEn ? "⏳ Pending Work Orders" : "⏳ ใบงานรอดำเนินการ";
+    const mKpi3 = document.getElementById("mnt-kpi-total-lbl") || document.getElementById("maint-kpi-total-cost-lbl");
+    if (mKpi3) mKpi3.textContent = isEn ? "💰 Total Maintenance & Services Cost" : "💰 รวมค่าซ่อมบำรุงและบริการ";
+    const mKpi4 = document.getElementById("mnt-kpi-renewal-lbl") || document.getElementById("maint-kpi-renewal-lbl");
+    if (mKpi4) mKpi4.textContent = isEn ? "🛡️ Tax / ACT / Insurance Renewals" : "🛡️ งานต่อทะเบียน / พรบ. / ประกัน";
 
     // Maintenance filter bar
-    const mFiltStat = document.getElementById("maint-filter-status-lbl");
-    if (mFiltStat) mFiltStat.textContent = isEn ? "Service Status:" : "สถานะงานซ่อม:";
-    const optMStatAll = document.getElementById("opt-maint-status-all");
-    if (optMStatAll) optMStatAll.textContent = isEn ? "All Statuses" : "ทั้งหมดทุกสถานะ";
-    const optMStatRep = document.getElementById("opt-maint-status-in-repair");
-    if (optMStatRep) optMStatRep.textContent = isEn ? "In Repair" : "กำลังซ่อมบำรุง";
-    const optMStatPend = document.getElementById("opt-maint-status-pending");
-    if (optMStatPend) optMStatPend.textContent = isEn ? "Pending" : "รอดำเนินการ";
-    const optMStatDone = document.getElementById("opt-maint-status-done");
-    if (optMStatDone) optMStatDone.textContent = isEn ? "Completed" : "ซ่อมเสร็จสิ้น";
-    const optMStatCancel = document.getElementById("opt-maint-status-cancel");
-    if (optMStatCancel) optMStatCancel.textContent = isEn ? "Cancelled" : "ยกเลิกงานซ่อม";
-
-    const mFiltType = document.getElementById("maint-filter-type-lbl");
-    if (mFiltType) mFiltType.textContent = isEn ? "Job Category:" : "ประเภทรายการ:";
-    const optMTypeAll = document.getElementById("opt-maint-type-all");
-    if (optMTypeAll) optMTypeAll.textContent = isEn ? "All Categories" : "ทั้งหมดทุกประเภท";
-    const optMTypeRout = document.getElementById("opt-maint-type-routine");
-    if (optMTypeRout) optMTypeRout.textContent = isEn ? "Routine / Oil Change" : "เช็คระยะ / ถ่ายน้ำมันเครื่อง";
-    const optMTypeRep = document.getElementById("opt-maint-type-repair");
-    if (optMTypeRep) optMTypeRep.textContent = isEn ? "Mechanical Repair" : "ซ่อมแซมทั่วไป / อะไหล่";
-    const optMTypeBody = document.getElementById("opt-maint-type-body");
-    if (optMTypeBody) optMTypeBody.textContent = isEn ? "Body & Paint" : "ซ่อมสี & ตัวถัง / อุบัติเหตุ";
-    const optMTypeTire = document.getElementById("opt-maint-type-tire");
-    if (optMTypeTire) optMTypeTire.textContent = isEn ? "Tires / Battery" : "เปลี่ยนยาง / แบตเตอรี่";
-    const optMTypeClean = document.getElementById("opt-maint-type-clean");
-    if (optMTypeClean) optMTypeClean.textContent = isEn ? "Car Detailing / Spa" : "คาร์แคร์ / สปาฟอกเบาะ";
-    const optMTypeTax = document.getElementById("opt-maint-type-tax");
-    if (optMTypeTax) optMTypeTax.textContent = isEn ? "Tax / ACT / Insurance" : "ต่อภาษี / พ.ร.บ. / ประกันภัย";
-    const optMTypeOth = document.getElementById("opt-maint-type-other");
-    if (optMTypeOth) optMTypeOth.textContent = isEn ? "Other" : "อื่นๆ";
-
+    const mLblSearch = document.getElementById("mnt-lbl-search");
+    if (mLblSearch) mLblSearch.textContent = isEn ? "🔍 Search (Plate / Work Order / Garage / Issue):" : "🔍 ค้นหา (ทะเบียน / เลขใบงาน / อู่ / รายการซ่อม):";
     const mSearch = document.getElementById("mnt-search-input");
-    if (mSearch) mSearch.placeholder = isEn ? "🔍 Search plate, garage, work order, details..." : "🔍 ค้นหาทะเบียน, อู่ซ่อม, เลขใบงาน, รายละเอียด...";
+    if (mSearch) mSearch.placeholder = isEn ? "Search plate, garage, work order, details..." : "พิมพ์ค้นหา...";
 
-    // Maintenance Table Headers
-    const mTblTitle = document.getElementById("maint-table-title");
-    if (mTblTitle) mTblTitle.textContent = isEn ? "Maintenance & Service Work Orders History" : "ประวัติและรายการใบงานซ่อมบำรุงทั้งหมด";
-    const thMwo = document.getElementById("maint-th-wo");
-    if (thMwo) thMwo.textContent = isEn ? "WO Number" : "เลขที่ใบงาน";
-    const thMplate = document.getElementById("maint-th-plate");
-    if (thMplate) thMplate.textContent = isEn ? "Plate / Brand" : "ทะเบียน / ยี่ห้อ-รุ่น";
-    const thMtype = document.getElementById("maint-th-type");
-    if (thMtype) thMtype.textContent = isEn ? "Category" : "ประเภทรายการ";
-    const thMdetail = document.getElementById("maint-th-detail");
-    if (thMdetail) thMdetail.textContent = isEn ? "Details & Issue" : "รายการซ่อม / อาการ";
-    const thMcost = document.getElementById("maint-th-cost");
-    if (thMcost) thMcost.textContent = isEn ? "Cost (THB)" : "ค่าซ่อม (บาท)";
-    const thMgarage = document.getElementById("maint-th-garage");
-    if (thMgarage) thMgarage.textContent = isEn ? "Garage / Center" : "อู่ / ศูนย์บริการ";
-    const thMstaff = document.getElementById("maint-th-staff");
-    if (thMstaff) thMstaff.textContent = isEn ? "Assigned Staff" : "พนักงานผู้ดูแล";
-    const thMdate = document.getElementById("maint-th-date");
-    if (thMdate) thMdate.textContent = isEn ? "Date In / Expected Out" : "วันที่ส่งซ่อม - กำหนดเสร็จ";
-    const thMstatus = document.getElementById("maint-th-status");
+    const mLblType = document.getElementById("mnt-lbl-type") || document.getElementById("maint-filter-type-lbl");
+    if (mLblType) mLblType.textContent = isEn ? "📋 Filter Job Category:" : "📋 กรองประเภทงาน:";
+    const optMTypeAll = document.getElementById("opt-mnt-type-all");
+    if (optMTypeAll) optMTypeAll.textContent = isEn ? "All" : "ทั้งหมด";
+    const optMTypeRout = document.getElementById("opt-mnt-type-routine");
+    if (optMTypeRout) optMTypeRout.textContent = isEn ? "Routine / Oil Change" : "ซ่อมบำรุงทั่วไป / เช็คระยะ";
+    const optMTypeEng = document.getElementById("opt-mnt-type-engine");
+    if (optMTypeEng) optMTypeEng.textContent = isEn ? "Engine & Suspension" : "ซ่อมเครื่องยนต์ / ช่วงล่าง";
+    const optMTypeBody = document.getElementById("opt-mnt-type-body");
+    if (optMTypeBody) optMTypeBody.textContent = isEn ? "Body & Paint" : "เคาะพ่นสี / ตัวถัง";
+    const optMTypeTax = document.getElementById("opt-mnt-type-tax");
+    if (optMTypeTax) optMTypeTax.textContent = isEn ? "Vehicle Tax & ACT" : "ต่อทะเบียนภาษี / พ.ร.บ.";
+    const optMTypeIns = document.getElementById("opt-mnt-type-ins");
+    if (optMTypeIns) optMTypeIns.textContent = isEn ? "Car Insurance Renewal" : "ต่อประกันภัยรถยนต์";
+    const optMTypeInsp = document.getElementById("opt-mnt-type-inspect");
+    if (optMTypeInsp) optMTypeInsp.textContent = isEn ? "Vehicle Inspection (Tor Ror Or)" : "ตรวจสภาพรถ ตรอ.";
+
+    const mLblStat = document.getElementById("mnt-lbl-status") || document.getElementById("maint-filter-status-lbl");
+    if (mLblStat) mLblStat.textContent = isEn ? "🚦 Filter Status:" : "🚦 กรองสถานะ:";
+    const optMStatAll = document.getElementById("opt-mnt-status-all");
+    if (optMStatAll) optMStatAll.textContent = isEn ? "All" : "ทั้งหมด";
+    const optMStatRep = document.getElementById("opt-mnt-status-repairing");
+    if (optMStatRep) optMStatRep.textContent = isEn ? "In Repair" : "กำลังซ่อมบำรุง";
+    const optMStatPend = document.getElementById("opt-mnt-status-pending");
+    if (optMStatPend) optMStatPend.textContent = isEn ? "Pending" : "รอดำเนินการ";
+    const optMStatDone = document.getElementById("opt-mnt-status-done");
+    if (optMStatDone) optMStatDone.textContent = isEn ? "Completed" : "เสร็จสิ้น";
+
+    const mLblCar = document.getElementById("mnt-lbl-car");
+    if (mLblCar) mLblCar.textContent = isEn ? "🚘 Select Vehicle:" : "🚘 เลือกรถ:";
+    const optMCarAll = document.getElementById("opt-mnt-car-all");
+    if (optMCarAll) optMCarAll.textContent = isEn ? "All Vehicles" : "ทุกคัน";
+
+    // Maintenance Table Title & Headers
+    const mTblTitlePfx = document.getElementById("mnt-table-title-prefix");
+    if (mTblTitlePfx) mTblTitlePfx.textContent = isEn ? "📋 All Maintenance & Service History Records (" : "📋 รายการประวัติการซ่อมบำรุงและบริการทั้งหมด (";
+    const mTblTitleSfx = document.getElementById("mnt-table-title-suffix");
+    if (mTblTitleSfx) mTblTitleSfx.textContent = isEn ? " Records)" : " รายการ)";
+
+    const thMid = document.getElementById("mnt-th-id") || document.getElementById("maint-th-wo");
+    if (thMid) thMid.textContent = isEn ? "Work Order No." : "เลขที่ใบงาน";
+    const thMplate = document.getElementById("mnt-th-plate") || document.getElementById("maint-th-plate");
+    if (thMplate) thMplate.textContent = isEn ? "Plate & Vehicle" : "ทะเบียน & รถยนต์";
+    const thMtype = document.getElementById("mnt-th-type") || document.getElementById("maint-th-type");
+    if (thMtype) thMtype.textContent = isEn ? "Category" : "ประเภทงาน";
+    const thMitems = document.getElementById("mnt-th-items") || document.getElementById("maint-th-detail");
+    if (thMitems) thMitems.textContent = isEn ? "Service Items / Issues" : "รายการซ่อม / รายการบริการ";
+    const thMcost = document.getElementById("mnt-th-cost") || document.getElementById("maint-th-cost");
+    if (thMcost) thMcost.textContent = isEn ? "Cost (฿)" : "ค่าซ่อมบำรุง (฿)";
+    const thMcenter = document.getElementById("mnt-th-center") || document.getElementById("maint-th-garage");
+    if (thMcenter) thMcenter.textContent = isEn ? "Garage / Center" : "อู่ / ศูนย์บริการ";
+    const thMworker = document.getElementById("mnt-th-worker") || document.getElementById("maint-th-staff");
+    if (thMworker) thMworker.textContent = isEn ? "Assigned Staff" : "พนักงานผู้รับผิดชอบ";
+    const thMsched = document.getElementById("mnt-th-sched") || document.getElementById("maint-th-date");
+    if (thMsched) thMsched.textContent = isEn ? "Schedule" : "กำหนดการ";
+    const thMstatus = document.getElementById("mnt-th-status") || document.getElementById("maint-th-status");
     if (thMstatus) thMstatus.textContent = isEn ? "Status" : "สถานะ";
-    const thMaction = document.getElementById("maint-th-action");
-    if (thMaction) thMaction.textContent = isEn ? "Actions" : "จัดการ";
+    const thMacts = document.getElementById("mnt-th-acts") || document.getElementById("maint-th-action");
+    if (thMacts) thMacts.textContent = isEn ? "Issue & Close Job" : "ออกใบงาน & ปิดงาน";
 
     // 11. Dashboard Module Localization
     const dTitle = document.getElementById("dash-main-title");
@@ -358,9 +366,120 @@ class App {
       ? 'Automatic duplicate prevention (Plate and VIN). Click <b>✏️</b> to edit expiry dates or click <b>📋 Work Order</b> to assign staff immediately.' 
       : 'ระบบตรวจสอบและป้องกันรถซ้ำอัตโนมัติ (ทั้งเลขทะเบียนและเลขตัวถัง VIN) สามารถคลิก <b>✏️</b> เพื่อแก้ไขวันหมดอายุภาษี/พ.ร.บ./ประกันภัย หรือกด <b>📋 ออกใบงาน</b> เพื่อมอบหมายพนักงานได้ทันที';
 
-    // 12. Trigger active module re-rendering with new language
-    if (this.activeModule === "maintenance" && this.renderMaintenanceRecords) {
+    // 12. Dashboard Sub-tables (HP / Leasing & Completed Jobs)
+    const thHpNo = document.getElementById("th-hp-no");
+    if (thHpNo) thHpNo.textContent = isEn ? "No." : "ลำดับ";
+    const thHpModel = document.getElementById("th-hp-model");
+    if (thHpModel) thHpModel.textContent = isEn ? "Vehicle Model" : "รุ่นรถยนต์";
+    const thHpPlate = document.getElementById("th-hp-plate");
+    if (thHpPlate) thHpPlate.textContent = isEn ? "Plate / VIN" : "ทะเบียน / เลขถัง";
+    const thHpContract = document.getElementById("th-hp-contract");
+    if (thHpContract) thHpContract.textContent = isEn ? "Contract No." : "เลขที่สัญญา";
+    const thHpDown = document.getElementById("th-hp-down");
+    if (thHpDown) thHpDown.textContent = isEn ? "Down Date / Payment" : "วันดาวน์ / เงินดาวน์";
+    const thHpDue = document.getElementById("th-hp-due");
+    if (thHpDue) thHpDue.textContent = isEn ? "First Due / Due Date" : "งวดแรก / กำหนดชำระ";
+    const thHpInst = document.getElementById("th-hp-inst");
+    if (thHpInst) thHpInst.textContent = isEn ? "Monthly Installment" : "ค่างวด/เดือน";
+    const thHpTerms = document.getElementById("th-hp-terms");
+    if (thHpTerms) thHpTerms.textContent = isEn ? "Total Terms" : "จำนวนงวด";
+    const thHpPaid = document.getElementById("th-hp-paid");
+    if (thHpPaid) thHpPaid.textContent = isEn ? "Paid (THB)" : "ชำระแล้ว (บาท)";
+    const thHpRem = document.getElementById("th-hp-rem");
+    if (thHpRem) thHpRem.textContent = isEn ? "Remaining (THB)" : "คงเหลือ (บาท)";
+    const thHpTotal = document.getElementById("th-hp-total");
+    if (thHpTotal) thHpTotal.textContent = isEn ? "Total Price incl. Down" : "ราคารถรวมดาวน์";
+
+    const titlePropIns = document.getElementById("title-property-insurance");
+    if (titlePropIns) titlePropIns.textContent = isEn ? "Property & Personal Accident Insurance Policies" : "กรมธรรม์ประกันภัยทรัพย์สินและประกันอุบัติเหตุส่วนบุคคล";
+
+    const thPropCode = document.getElementById("th-prop-code");
+    if (thPropCode) thPropCode.textContent = isEn ? "Code" : "รหัส";
+    const thPropItem = document.getElementById("th-prop-item");
+    if (thPropItem) thPropItem.textContent = isEn ? "Policy / Property Item" : "รายการกรมธรรม์ / ทรัพย์สิน";
+    const thPropOwner = document.getElementById("th-prop-owner");
+    if (thPropOwner) thPropOwner.textContent = isEn ? "Insured / Owner" : "ผู้เอาประกัน / เจ้าของ";
+    const thPropComp = document.getElementById("th-prop-comp");
+    if (thPropComp) thPropComp.textContent = isEn ? "Insurance Company" : "บริษัทประกันภัย";
+    const thPropExp = document.getElementById("th-prop-exp");
+    if (thPropExp) thPropExp.textContent = isEn ? "Expiry Date" : "วันหมดอายุ";
+    const thPropNotes = document.getElementById("th-prop-notes");
+    if (thPropNotes) thPropNotes.textContent = isEn ? "Remarks" : "หมายเหตุ";
+
+    // Completed Jobs Filters & Monthly KPI Labels
+    const lblRptMonth = document.getElementById("lbl-report-month");
+    if (lblRptMonth) lblRptMonth.textContent = isEn ? "📅 Select Month for Report:" : "📅 เลือกเดือนที่ต้องการดูรายงาน:";
+    const lblRptComp = document.getElementById("lbl-report-company");
+    if (lblRptComp) lblRptComp.textContent = isEn ? "🏢 Filter Report by Company:" : "🏢 เลือกรีพอร์ตตามบริษัท:";
+    const optRptAllComp = document.getElementById("opt-report-all-comp");
+    if (optRptAllComp) optRptAllComp.textContent = isEn ? "All (All Companies)" : "ทั้งหมด (ทุกบริษัท)";
+    const btnRptAllM = document.getElementById("btn-report-all-months");
+    if (btnRptAllM) btnRptAllM.textContent = isEn ? "🔄 View All Months" : "🔄 ดูทุกเดือนทั้งหมด";
+    const btnExpCsv = document.getElementById("btn-export-csv");
+    if (btnExpCsv) btnExpCsv.textContent = isEn ? "📥 Download Completed Jobs Summary (CSV for Excel)" : "📥 ดาวน์โหลดรายงานสรุปงานเสร็จสิ้น (CSV สำหรับ Excel)";
+
+    const lblKpiJobs = document.getElementById("lbl-rpt-kpi-jobs");
+    if (lblKpiJobs) lblKpiJobs.textContent = isEn ? "🏁 Total Completed Jobs" : "🏁 งานเสร็จสิ้นทั้งหมด";
+    const lblKpiRev = document.getElementById("lbl-rpt-kpi-rev");
+    if (lblKpiRev) lblKpiRev.textContent = isEn ? "💰 Total Rental Revenue" : "💰 รายรับรวมจากงานเช่า";
+    const lblKpiCars = document.getElementById("lbl-rpt-kpi-cars");
+    if (lblKpiCars) lblKpiCars.textContent = isEn ? "🚘 Active Vehicles" : "🚘 รถที่ให้บริการ";
+    const lblKpiCusts = document.getElementById("lbl-rpt-kpi-custs");
+    if (lblKpiCusts) lblKpiCusts.textContent = isEn ? "👥 Total Customers" : "👥 ลูกค้าที่ใช้บริการ";
+
+    // Completed Jobs Table Headers
+    const thRptBkid = document.getElementById("th-rpt-bkid");
+    if (thRptBkid) thRptBkid.textContent = isEn ? "Booking ID" : "รหัสการจอง";
+    const thRptDate = document.getElementById("th-rpt-date");
+    if (thRptDate) thRptDate.textContent = isEn ? "Completed Date" : "วันที่เสร็จสิ้น";
+    const thRptPlate = document.getElementById("th-rpt-plate");
+    if (thRptPlate) thRptPlate.textContent = isEn ? "Plate No." : "ทะเบียนรถ";
+    const thRptCust = document.getElementById("th-rpt-cust");
+    if (thRptCust) thRptCust.textContent = isEn ? "Customer" : "ลูกค้า";
+    const thRptComp = document.getElementById("th-rpt-comp");
+    if (thRptComp) thRptComp.textContent = isEn ? "Company" : "บริษัท";
+    const thRptCtype = document.getElementById("th-rpt-ctype");
+    if (thRptCtype) thRptCtype.textContent = isEn ? "Contract Type" : "ประเภทสัญญา";
+    const thRptRev = document.getElementById("th-rpt-rev");
+    if (thRptRev) thRptRev.textContent = isEn ? "Net Revenue" : "รายรับสุทธิ";
+    const thRptStaff = document.getElementById("th-rpt-staff");
+    if (thRptStaff) thRptStaff.textContent = isEn ? "Staff (Dispatch/Return)" : "พนักงานส่ง-รับ";
+    const thRptLoc = document.getElementById("th-rpt-loc");
+    if (thRptLoc) thRptLoc.textContent = isEn ? "Location" : "สถานที่";
+    const thRptFuel = document.getElementById("th-rpt-fuel");
+    if (thRptFuel) thRptFuel.textContent = isEn ? "Fuel & Condition" : "เกจ์น้ำมัน & สภาพรถ";
+    const thRptStatus = document.getElementById("th-rpt-status");
+    if (thRptStatus) thRptStatus.textContent = isEn ? "Status" : "สถานะ";
+    const thRptDocs = document.getElementById("th-rpt-docs");
+    if (thRptDocs) thRptDocs.innerHTML = isEn 
+      ? 'Archived Documents<br/><span style="font-size:10.5px; font-weight:normal; color:#64748B;">(📝 Contract | 🧾 Receipt | 📋 Checklist)</span>' 
+      : 'เอกสารย้อนหลัง<br/><span style="font-size:10.5px; font-weight:normal; color:#64748B;">(📝 สัญญา | 🧾 ใบเสร็จ | 📋 ใบเช็ครถ)</span>';
+
+    // 13. Expander Indicators Translation
+    document.querySelectorAll(".expander-card").forEach(card => {
+      const body = card.querySelector(".expander-body");
+      const indicator = card.querySelector(".expander-indicator span");
+      if (!indicator) return;
+      const isOpen = body && body.style.display !== "none";
+      if (isOpen) {
+        indicator.textContent = isEn ? "▲ Click to collapse" : "▲ คลิกเพื่อพับเก็บ";
+      } else {
+        indicator.textContent = isEn ? "▼ Click to expand" : "▼ คลิกเพื่อแสดงเนื้อหา";
+      }
+    });
+
+    // 14. Trigger active module re-rendering with new language
+    if (this.populateMaintenanceDropdowns) {
+      this.populateMaintenanceDropdowns();
+    }
+    if (this.renderMaintenanceRecords) {
       this.renderMaintenanceRecords();
+    }
+    if (this.renderHpLeasingTable) {
+      this.renderHpLeasingTable();
+    }
+    if (this.renderCompletedJobsTable) {
+      this.renderCompletedJobsTable();
     }
     if (this.activeModule === "dashboard") {
       this.updateDashboardKPIsFromScope();
@@ -4055,27 +4174,28 @@ class App {
     const summary = data.summary || {};
     const propIns = data.property_insurance || [];
 
+    const isEn = (this.currentLang === "EN");
     const cardsEl = document.getElementById("hp-leasing-summary-cards");
     if (cardsEl && summary.total_contracts) {
       cardsEl.innerHTML = `
         <div style="background:#FFFFFF; border:1px solid #E2E8F0; border-radius:10px; padding:10px 12px;">
-          <div style="font-size:11.5px; color:#64748B; font-weight:600;">📋 จำนวนสัญญาเช่าซื้อ</div>
-          <div style="font-size:18px; font-weight:800; color:#1E293B; margin-top:2px;">${summary.total_contracts} สัญญา</div>
+          <div style="font-size:11.5px; color:#64748B; font-weight:600;">${isEn ? '📋 Total HP Contracts' : '📋 จำนวนสัญญาเช่าซื้อ'}</div>
+          <div style="font-size:18px; font-weight:800; color:#1E293B; margin-top:2px;">${summary.total_contracts} ${isEn ? 'Contracts' : 'สัญญา'}</div>
         </div>
         <div style="background:#FFFFFF; border:1px solid #E2E8F0; border-radius:10px; padding:10px 12px;">
-          <div style="font-size:11.5px; color:#64748B; font-weight:600;">💳 ค่างวดต่อเดือนรวม</div>
+          <div style="font-size:11.5px; color:#64748B; font-weight:600;">${isEn ? '💳 Total Monthly Installments' : '💳 ค่างวดต่อเดือนรวม'}</div>
           <div style="font-size:18px; font-weight:800; color:#EA580C; margin-top:2px;">฿${Number(summary.total_monthly_installment || 0).toLocaleString('th-TH', {minimumFractionDigits: 2})}</div>
         </div>
         <div style="background:#FFFFFF; border:1px solid #E2E8F0; border-radius:10px; padding:10px 12px;">
-          <div style="font-size:11.5px; color:#64748B; font-weight:600;">✅ ชำระค่างวดแล้วรวม</div>
+          <div style="font-size:11.5px; color:#64748B; font-weight:600;">${isEn ? '✅ Total Paid Installments' : '✅ ชำระค่างวดแล้วรวม'}</div>
           <div style="font-size:18px; font-weight:800; color:#10B981; margin-top:2px;">฿${Number(summary.total_paid_amount || 0).toLocaleString('th-TH', {minimumFractionDigits: 2})}</div>
         </div>
         <div style="background:#FFFFFF; border:1px solid #E2E8F0; border-radius:10px; padding:10px 12px;">
-          <div style="font-size:11.5px; color:#64748B; font-weight:600;">⏳ ยอดคงเหลือผ่อนชำระ</div>
+          <div style="font-size:11.5px; color:#64748B; font-weight:600;">${isEn ? '⏳ Total Remaining Balance' : '⏳ ยอดคงเหลือผ่อนชำระ'}</div>
           <div style="font-size:18px; font-weight:800; color:#DC2626; margin-top:2px;">฿${Number(summary.total_remaining_amount || 0).toLocaleString('th-TH', {minimumFractionDigits: 2})}</div>
         </div>
         <div style="background:#FFFFFF; border:1px solid #E2E8F0; border-radius:10px; padding:10px 12px;">
-          <div style="font-size:11.5px; color:#64748B; font-weight:600;">🏦 ราคารถรวมเงินดาวน์</div>
+          <div style="font-size:11.5px; color:#64748B; font-weight:600;">${isEn ? '🏦 Total Vehicle Price (Inc. Down)' : '🏦 ราคารถรวมเงินดาวน์'}</div>
           <div style="font-size:18px; font-weight:800; color:#3B82F6; margin-top:2px;">฿${Number(summary.total_car_price || 0).toLocaleString('th-TH', {minimumFractionDigits: 2})}</div>
         </div>
       `;
@@ -4083,13 +4203,15 @@ class App {
 
     const titleEl = document.getElementById("title-expander-hp");
     if (titleEl) {
-      titleEl.textContent = `ตารางผ่อนชำระค่างวดรถยนต์ (HP / Leasing — ${contracts.length} สัญญา) & กรมธรรม์ประกันภัยทรัพย์สิน (${propIns.length} รายการ)`;
+      titleEl.textContent = isEn
+        ? `Vehicle Installment Plan (HP / Leasing — ${contracts.length} Contracts) & Property Insurance Policies (${propIns.length} Policies)`
+        : `ตารางผ่อนชำระค่างวดรถยนต์ (HP / Leasing — ${contracts.length} สัญญา) & กรมธรรม์ประกันภัยทรัพย์สิน (${propIns.length} รายการ)`;
     }
 
     const hpTbody = document.getElementById("hp-leasing-tbody");
     if (hpTbody) {
       if (contracts.length === 0) {
-        hpTbody.innerHTML = `<tr><td colspan="11" style="text-align:center; padding:30px; color:#64748B;">💡 ยังไม่มีข้อมูลสัญญาเช่าซื้อ (HP / Leasing) ในระบบ... คุณสามารถเพิ่มข้อมูลใหม่เพื่อเริ่มต้นใช้งานได้ครับ</td></tr>`;
+        hpTbody.innerHTML = `<tr><td colspan="11" style="text-align:center; padding:30px; color:#64748B;">${isEn ? '💡 No HP/Leasing contract data available in the system... You can add new data to get started.' : '💡 ยังไม่มีข้อมูลสัญญาเช่าซื้อ (HP / Leasing) ในระบบ... คุณสามารถเพิ่มข้อมูลใหม่เพื่อเริ่มต้นใช้งานได้ครับ'}</td></tr>`;
       } else {
         hpTbody.innerHTML = contracts.map(item => `
         <tr>
@@ -4105,13 +4227,13 @@ class App {
             <div style="font-weight:700;">฿${Number(item.down_payment || 0).toLocaleString('th-TH', {minimumFractionDigits: 2})}</div>
           </td>
           <td>
-            <div style="font-size:11.5px;">เริ่ม: ${item.first_payment_date}</div>
+            <div style="font-size:11.5px;">${isEn ? 'Start:' : 'เริ่ม:'} ${item.first_payment_date}</div>
             <div style="font-size:11px; color:#B45309; font-weight:700;">${item.due_day}</div>
           </td>
           <td style="text-align:right; font-weight:700; color:#EA580C;">฿${Number(item.installment || 0).toLocaleString('th-TH', {minimumFractionDigits: 2})}</td>
           <td style="text-align:center;">
-            <span style="font-weight:700; color:#047857;">${item.paid_months}</span> / ${item.total_months} งวด
-            <div style="font-size:10.5px; color:#64748B;">(เหลือ ${item.remaining_months} งวด)</div>
+            <span style="font-weight:700; color:#047857;">${item.paid_months}</span> / ${item.total_months} ${isEn ? 'terms' : 'งวด'}
+            <div style="font-size:10.5px; color:#64748B;">(${isEn ? 'left' : 'เหลือ'} ${item.remaining_months} ${isEn ? 'terms' : 'งวด'})</div>
           </td>
           <td style="text-align:right; font-weight:700; color:#059669;">฿${Number(item.paid_amount || 0).toLocaleString('th-TH', {minimumFractionDigits: 2})}</td>
           <td style="text-align:right; font-weight:700; color:#DC2626;">฿${Number(item.remaining_amount || 0).toLocaleString('th-TH', {minimumFractionDigits: 2})}</td>
@@ -4124,7 +4246,7 @@ class App {
     const propTbody = document.getElementById("property-insurance-tbody");
     if (propTbody) {
       if (propIns.length === 0) {
-        propTbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:30px; color:#64748B;">💡 ยังไม่มีข้อมูลกรมธรรม์ประกันภัยทรัพย์สินในระบบ</td></tr>`;
+        propTbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:30px; color:#64748B;">${isEn ? '💡 No property insurance policy data available in the system.' : '💡 ยังไม่มีข้อมูลกรมธรรม์ประกันภัยทรัพย์สินในระบบ'}</td></tr>`;
       } else {
         propTbody.innerHTML = propIns.map(p => `
         <tr>
@@ -4453,16 +4575,17 @@ class App {
     const header = card.querySelector(".expander-header");
     const body = card.querySelector(".expander-body");
     const indicator = card.querySelector(".expander-indicator span");
+    const isEn = (this.currentLang === "EN");
 
     const isVisible = body && body.style.display !== "none";
     if (isVisible) {
       if (body) body.style.display = "none";
       if (header) header.classList.remove("open");
-      if (indicator) indicator.textContent = "▼ คลิกเพื่อขยาย";
+      if (indicator) indicator.textContent = isEn ? "▼ Click to expand" : "▼ คลิกเพื่อแสดงเนื้อหา";
     } else {
       if (body) body.style.display = "block";
       if (header) header.classList.add("open");
-      if (indicator) indicator.textContent = "▲ คลิกเพื่อพับเก็บ";
+      if (indicator) indicator.textContent = isEn ? "▲ Click to collapse" : "▲ คลิกเพื่อพับเก็บ";
     }
   }
 
@@ -4712,9 +4835,12 @@ class App {
     });
 
     // Update Expander Title Count
+    const isEn = (this.currentLang === "EN");
     const titleEl = document.getElementById("title-expander-completed");
     if (titleEl) {
-      titleEl.textContent = `คลังประวัติงานเสร็จสิ้น & รีพอร์ตรายเดือน (Completed Jobs Archive) — (${filtered.length} รายการ)`;
+      titleEl.textContent = isEn
+        ? `Completed Jobs Archive & Monthly Reports — (${filtered.length} Records)`
+        : `คลังประวัติงานเสร็จสิ้น & รีพอร์ตรายเดือน (Completed Jobs Archive) — (${filtered.length} รายการ)`;
     }
 
     // Update 4 Monthly Summary KPI Cards (matching app.py lines 7344-7378)
@@ -4728,15 +4854,15 @@ class App {
     const elCars = document.getElementById("rpt-kpi-cars");
     const elCusts = document.getElementById("rpt-kpi-custs");
 
-    if (elJobs) elJobs.innerHTML = `${totalJobsCnt} <span style="font-size:13px; font-weight:500;">งาน</span>`;
+    if (elJobs) elJobs.innerHTML = `${totalJobsCnt} <span style="font-size:13px; font-weight:500;">${isEn ? 'jobs' : 'งาน'}</span>`;
     if (elRev) elRev.textContent = `฿${totalRevSum.toLocaleString('th-TH', { minimumFractionDigits: 2 })}`;
-    if (elCars) elCars.innerHTML = `${uniqueCarsCnt} <span style="font-size:13px; font-weight:500;">คัน</span>`;
-    if (elCusts) elCusts.innerHTML = `${uniqueCustCnt} <span style="font-size:13px; font-weight:500;">ราย</span>`;
+    if (elCars) elCars.innerHTML = `${uniqueCarsCnt} <span style="font-size:13px; font-weight:500;">${isEn ? 'cars' : 'คัน'}</span>`;
+    if (elCusts) elCusts.innerHTML = `${uniqueCustCnt} <span style="font-size:13px; font-weight:500;">${isEn ? 'customers' : 'ราย'}</span>`;
 
     const photosContainer = document.getElementById("completed-jobs-photos-container");
 
     if (filtered.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="12" style="text-align:center; padding:30px; color:#64748B;">💡 ยังไม่มีข้อมูลประวัติงานที่เสร็จสิ้นในระบบครับ</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="12" style="text-align:center; padding:30px; color:#64748B;">${isEn ? '💡 No completed jobs archive data available in the system.' : '💡 ยังไม่มีข้อมูลประวัติงานที่เสร็จสิ้นในระบบครับ'}</td></tr>`;
       if (photosContainer) photosContainer.innerHTML = "";
       return;
     }
@@ -4747,9 +4873,19 @@ class App {
       const locStr = j.loc_return || j.loc_delivery || "-";
       const photos = Array.isArray(j.inspection_photos) ? j.inspection_photos : [];
       const pBadge = photos.length > 0
-        ? `<span style="background:#E0E7FF; color:#4338CA; padding:2px 7px; border-radius:10px; font-size:11px; font-weight:700; margin-left:4px;">📸 ${photos.length} รูป</span>`
+        ? `<span style="background:#E0E7FF; color:#4338CA; padding:2px 7px; border-radius:10px; font-size:11px; font-weight:700; margin-left:4px;">📸 ${photos.length} ${isEn ? 'photos' : 'รูป'}</span>`
         : "";
-      const notes = j.inspection_notes || "ตรวจสภาพปกติ";
+      let cType = j.contract_type || 'รายวัน';
+      if (isEn) {
+        if (cType === 'รายวัน') cType = 'Daily';
+        else if (cType === 'รายสัปดาห์') cType = 'Weekly';
+        else if (cType === 'รายเดือน') cType = 'Monthly';
+      }
+      let fuelDisp = j.fuel_level || (isEn ? '⛽ Full Tank (100%)' : '⛽ เต็มถัง (100%)');
+      if (isEn && fuelDisp.includes('เต็มถัง')) {
+        fuelDisp = fuelDisp.replace('เต็มถัง', 'Full Tank');
+      }
+      const notes = j.inspection_notes || (isEn ? "Normal inspection" : "ตรวจสภาพปกติ");
 
       return `
         <tr>
@@ -4761,19 +4897,19 @@ class App {
             ${phone}
           </td>
           <td>${j.company || '-'}</td>
-          <td><span class="badge badge-gray">${j.contract_type || 'รายวัน'}</span></td>
+          <td><span class="badge badge-gray">${cType}</span></td>
           <td style="text-align:right; font-weight:700; color:#E85826;">฿${parseFloat(j.net_price || 0).toLocaleString('th-TH', { minimumFractionDigits: 2 })}</td>
           <td style="font-size:12px;">${j.worker_delivery || '-'} / ${j.worker_return || '-'}</td>
           <td style="font-size:12px; max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${locStr}">${locStr}</td>
           <td>
-            <div style="font-size:12px; white-space:nowrap;"><b>${j.fuel_level || '⛽ เต็มถัง (100%)'}</b>${pBadge}</div>
+            <div style="font-size:12px; white-space:nowrap;"><b>${fuelDisp}</b>${pBadge}</div>
             <div style="font-size:11px; color:#64748B; max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${notes}">${notes}</div>
           </td>
-          <td><span class="badge badge-success">เสร็จสิ้น</span></td>
+          <td><span class="badge badge-success">${isEn ? 'Completed' : 'เสร็จสิ้น'}</span></td>
           <td style="text-align:center; white-space:nowrap;">
-            <a href="/api/pdf/contract/${j.booking_id}" target="_blank" class="btn btn-sm btn-secondary" title="โหลดสัญญาเช่า PDF">📝</a>
-            <a href="/api/pdf/receipt/${j.booking_id}" target="_blank" class="btn btn-sm btn-secondary" title="โหลดใบเสร็จ PDF">🧾</a>
-            <a href="/api/pdf/job/${j.booking_id}" target="_blank" class="btn btn-sm btn-secondary" title="โหลดลิสต์ตรวจเช็ครถ PDF">📋</a>
+            <a href="/api/pdf/contract/${j.booking_id}" target="_blank" class="btn btn-sm btn-secondary" title="${isEn ? 'Download Rental Agreement PDF' : 'โหลดสัญญาเช่า PDF'}">📝</a>
+            <a href="/api/pdf/receipt/${j.booking_id}" target="_blank" class="btn btn-sm btn-secondary" title="${isEn ? 'Download Receipt PDF' : 'โหลดใบเสร็จ PDF'}">🧾</a>
+            <a href="/api/pdf/job/${j.booking_id}" target="_blank" class="btn btn-sm btn-secondary" title="${isEn ? 'Download Vehicle Checklist PDF' : 'โหลดลิสต์ตรวจเช็ครถ PDF'}">📋</a>
           </td>
         </tr>
       `;
@@ -4789,7 +4925,7 @@ class App {
         const galleryItems = jobsWithPhotos.map(j => {
           const imgsHtml = j.inspection_photos.map(p => {
             const src = typeof p === "string" ? p : (p.data || p.url || "");
-            const cap = typeof p === "object" && p.name ? p.name : "ภาพสภาพรถ";
+            const cap = typeof p === "object" && p.name ? p.name : (isEn ? "Vehicle inspection photo" : "ภาพสภาพรถ");
             return `
               <div style="border:1px solid #E2E8F0; border-radius:8px; padding:6px; background:#FFFFFF; text-align:center;">
                 <a href="${src}" target="_blank">
@@ -4803,7 +4939,7 @@ class App {
           return `
             <div style="margin-bottom:14px;">
               <div style="font-size:13px; font-weight:700; color:#1F2937; margin-bottom:6px;">
-                🚘 ${j.car_id} | รหัส: ${j.booking_id} (${j.customer}) — ระดับน้ำมัน: ${j.fuel_level || '-'}
+                🚘 ${j.car_id} | ${isEn ? 'Booking:' : 'รหัส:'} ${j.booking_id} (${j.customer}) — ${isEn ? 'Fuel Level:' : 'ระดับน้ำมัน:'} ${j.fuel_level || '-'}
               </div>
               <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap:10px;">
                 ${imgsHtml}
@@ -4815,7 +4951,7 @@ class App {
         photosContainer.innerHTML = `
           <details style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:10px; padding:10px 14px;">
             <summary style="cursor:pointer; font-weight:700; font-size:13px; color:#334155;">
-              📸 คลังรูปภาพสภาพรถ & เกจ์น้ำมันตอนส่งงานปิดจ๊อบ (${totalPhotoCnt} รูป) — คลิกเพื่อดูภาพหลักฐาน
+              📸 ${isEn ? 'Vehicle Inspection & Fuel Gauge Photos on Return' : 'คลังรูปภาพสภาพรถ & เกจ์น้ำมันตอนส่งงานปิดจ๊อบ'} (${totalPhotoCnt} ${isEn ? 'Photos' : 'รูป'}) — ${isEn ? 'Click to view evidence photos' : 'คลิกเพื่อดูภาพหลักฐาน'}
             </summary>
             <div style="margin-top:12px;">
               ${galleryItems}
@@ -5138,7 +5274,8 @@ class App {
     const carSel = document.getElementById("mnt-filter-car");
     if (carSel) {
       const cur = carSel.value;
-      const opts = ['<option value="ทั้งหมด">ทุกคัน</option>'];
+      const isEn = (this.currentLang === "EN");
+      const opts = [`<option value="ทั้งหมด">${isEn ? 'All Vehicles' : 'ทุกคัน'}</option>`];
       (this.cars || []).forEach(c => {
         opts.push(`<option value="${c.plate}">${c.plate} - ${c.brand || ''} ${c.model || ''}</option>`);
       });

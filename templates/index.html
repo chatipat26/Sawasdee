@@ -937,28 +937,28 @@
             <div>
               <label id="mnt-lbl-type" style="font-size:11px; font-weight:700; color:#475569; display:block; margin-bottom:3px;">📋 กรองประเภทงาน:</label>
               <select id="mnt-filter-type" class="form-control" onchange="app.renderMaintenanceRecords()" style="font-size:12px; padding:7px 10px;">
-                <option value="ทั้งหมด">ทั้งหมด</option>
-                <option value="ซ่อมบำรุง">ซ่อมบำรุงทั่วไป / เช็คระยะ</option>
-                <option value="เครื่องยนต์">ซ่อมเครื่องยนต์ / ช่วงล่าง</option>
-                <option value="ตัวถัง">เคาะพ่นสี / ตัวถัง</option>
-                <option value="ต่อทะเบียน">ต่อทะเบียนภาษี / พ.ร.บ.</option>
-                <option value="ประกันภัย">ต่อประกันภัยรถยนต์</option>
-                <option value="ตรวจสภาพ">ตรวจสภาพรถ ตรอ.</option>
+                <option value="ทั้งหมด" id="opt-mnt-type-all">ทั้งหมด</option>
+                <option value="ซ่อมบำรุง" id="opt-mnt-type-routine">ซ่อมบำรุงทั่วไป / เช็คระยะ</option>
+                <option value="เครื่องยนต์" id="opt-mnt-type-engine">ซ่อมเครื่องยนต์ / ช่วงล่าง</option>
+                <option value="ตัวถัง" id="opt-mnt-type-body">เคาะพ่นสี / ตัวถัง</option>
+                <option value="ต่อทะเบียน" id="opt-mnt-type-tax">ต่อทะเบียนภาษี / พ.ร.บ.</option>
+                <option value="ประกันภัย" id="opt-mnt-type-ins">ต่อประกันภัยรถยนต์</option>
+                <option value="ตรวจสภาพ" id="opt-mnt-type-inspect">ตรวจสภาพรถ ตรอ.</option>
               </select>
             </div>
             <div>
               <label id="mnt-lbl-status" style="font-size:11px; font-weight:700; color:#475569; display:block; margin-bottom:3px;">🚦 กรองสถานะ:</label>
               <select id="mnt-filter-status" class="form-control" onchange="app.renderMaintenanceRecords()" style="font-size:12px; padding:7px 10px;">
-                <option value="ทั้งหมด">ทั้งหมด</option>
-                <option value="กำลังซ่อมบำรุง">กำลังซ่อมบำรุง</option>
-                <option value="รอดำเนินการ">รอดำเนินการ</option>
-                <option value="เสร็จสิ้น">เสร็จสิ้น</option>
+                <option value="ทั้งหมด" id="opt-mnt-status-all">ทั้งหมด</option>
+                <option value="กำลังซ่อมบำรุง" id="opt-mnt-status-repairing">กำลังซ่อมบำรุง</option>
+                <option value="รอดำเนินการ" id="opt-mnt-status-pending">รอดำเนินการ</option>
+                <option value="เสร็จสิ้น" id="opt-mnt-status-done">เสร็จสิ้น</option>
               </select>
             </div>
             <div>
               <label id="mnt-lbl-car" style="font-size:11px; font-weight:700; color:#475569; display:block; margin-bottom:3px;">🚘 เลือกรถ:</label>
               <select id="mnt-filter-car" class="form-control" onchange="app.renderMaintenanceRecords()" style="font-size:12px; padding:7px 10px;">
-                <option value="ทั้งหมด">ทุกคัน</option>
+                <option value="ทั้งหมด" id="opt-mnt-car-all">ทุกคัน</option>
               </select>
             </div>
           </div>
@@ -1238,17 +1238,17 @@
               <table class="custom-table">
                 <thead>
                   <tr>
-                    <th style="text-align:center;">ลำดับ</th>
-                    <th>รุ่นรถยนต์</th>
-                    <th>ทะเบียน / เลขถัง</th>
-                    <th>เลขที่สัญญา</th>
-                    <th>วันดาวน์ / เงินดาวน์</th>
-                    <th>งวดแรก / กำหนดชำระ</th>
-                    <th style="text-align:right;">ค่างวด/เดือน</th>
-                    <th style="text-align:center;">จำนวนงวด</th>
-                    <th style="text-align:right;">ชำระแล้ว (บาท)</th>
-                    <th style="text-align:right;">คงเหลือ (บาท)</th>
-                    <th style="text-align:right;">ราคารถรวมดาวน์</th>
+                    <th id="th-hp-no" style="text-align:center;">ลำดับ</th>
+                    <th id="th-hp-model">รุ่นรถยนต์</th>
+                    <th id="th-hp-plate">ทะเบียน / เลขถัง</th>
+                    <th id="th-hp-contract">เลขที่สัญญา</th>
+                    <th id="th-hp-down">วันดาวน์ / เงินดาวน์</th>
+                    <th id="th-hp-due">งวดแรก / กำหนดชำระ</th>
+                    <th id="th-hp-inst" style="text-align:right;">ค่างวด/เดือน</th>
+                    <th id="th-hp-terms" style="text-align:center;">จำนวนงวด</th>
+                    <th id="th-hp-paid" style="text-align:right;">ชำระแล้ว (บาท)</th>
+                    <th id="th-hp-rem" style="text-align:right;">คงเหลือ (บาท)</th>
+                    <th id="th-hp-total" style="text-align:right;">ราคารถรวมดาวน์</th>
                   </tr>
                 </thead>
                 <tbody id="hp-leasing-tbody">
@@ -1258,18 +1258,18 @@
             </div>
 
             <div style="font-size:13.5px; font-weight:800; color:#1E293B; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
-              <span>🏠</span> กรมธรรม์ประกันภัยทรัพย์สินและประกันอุบัติเหตุส่วนบุคคล
+              <span>🏠</span> <span id="title-property-insurance">กรมธรรม์ประกันภัยทรัพย์สินและประกันอุบัติเหตุส่วนบุคคล</span>
             </div>
             <div class="table-responsive" style="max-height: 250px; overflow-y: auto;">
               <table class="custom-table">
                 <thead>
                   <tr>
-                    <th>รหัส</th>
-                    <th>รายการกรมธรรม์ / ทรัพย์สิน</th>
-                    <th>ผู้เอาประกัน / เจ้าของ</th>
-                    <th>บริษัทประกันภัย</th>
-                    <th>วันหมดอายุ</th>
-                    <th>หมายเหตุ</th>
+                    <th id="th-prop-code">รหัส</th>
+                    <th id="th-prop-item">รายการกรมธรรม์ / ทรัพย์สิน</th>
+                    <th id="th-prop-owner">ผู้เอาประกัน / เจ้าของ</th>
+                    <th id="th-prop-comp">บริษัทประกันภัย</th>
+                    <th id="th-prop-exp">วันหมดอายุ</th>
+                    <th id="th-prop-notes">หมายเหตุ</th>
                   </tr>
                 </thead>
                 <tbody id="property-insurance-tbody">
@@ -1295,19 +1295,19 @@
             <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:14px; flex-wrap:wrap; gap:12px;">
               <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end;">
                 <div>
-                  <label style="display:block; font-size:12px; font-weight:700; color:#334155; margin-bottom:4px;">📅 เลือกเดือนที่ต้องการดูรายงาน:</label>
+                  <label id="lbl-report-month" style="display:block; font-size:12px; font-weight:700; color:#334155; margin-bottom:4px;">📅 เลือกเดือนที่ต้องการดูรายงาน:</label>
                   <input type="month" id="report-month-picker" class="form-control" style="width:180px;" onchange="app.loadMonthlyReports()">
                 </div>
                 <div>
-                  <label style="display:block; font-size:12px; font-weight:700; color:#334155; margin-bottom:4px;">🏢 เลือกรีพอร์ตตามบริษัท:</label>
+                  <label id="lbl-report-company" style="display:block; font-size:12px; font-weight:700; color:#334155; margin-bottom:4px;">🏢 เลือกรีพอร์ตตามบริษัท:</label>
                   <select id="report-company-filter" class="form-control" style="width:220px;" onchange="app.renderCompletedJobsTable()">
-                    <option value="ทั้งหมด">ทั้งหมด (ทุกบริษัท)</option>
+                    <option value="ทั้งหมด" id="opt-report-all-comp">ทั้งหมด (ทุกบริษัท)</option>
                     <option value="Sawasdee Rent A Car">Sawasdee Rent A Car</option>
                     <option value="P.D.P. Co., Ltd.">P.D.P. Co., Ltd.</option>
                     <option value="Sawasdee Car Rent">Sawasdee Car Rent</option>
                   </select>
                 </div>
-                <button type="button" onclick="document.getElementById('report-month-picker').value=''; document.getElementById('report-company-filter').value='ทั้งหมด'; app.loadMonthlyReports();" class="btn btn-sm btn-secondary" style="height:36px;">
+                <button type="button" id="btn-report-all-months" onclick="document.getElementById('report-month-picker').value=''; document.getElementById('report-company-filter').value='ทั้งหมด'; app.loadMonthlyReports();" class="btn btn-sm btn-secondary" style="height:36px;">
                   🔄 ดูทุกเดือนทั้งหมด
                 </button>
               </div>
@@ -1321,19 +1321,19 @@
             <!-- 4 Monthly Summary KPI Cards (matching app.py lines 7349-7378) -->
             <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:12px; margin-bottom:16px;">
               <div style="background:#FFFFFF; border:1px solid #EFEAE3; border-radius:10px; padding:12px; text-align:center; box-shadow:0 1px 3px rgba(0,0,0,0.04);">
-                <div style="font-size:12px; color:#6B7280; font-weight:600;">🏁 งานเสร็จสิ้นทั้งหมด</div>
+                <div id="lbl-rpt-kpi-jobs" style="font-size:12px; color:#6B7280; font-weight:600;">🏁 งานเสร็จสิ้นทั้งหมด</div>
                 <div style="font-size:21px; font-weight:800; color:#10B981; margin-top:4px;" id="rpt-kpi-jobs">0 <span style="font-size:13px; font-weight:500;">งาน</span></div>
               </div>
               <div style="background:#FFFFFF; border:1px solid #EFEAE3; border-radius:10px; padding:12px; text-align:center; box-shadow:0 1px 3px rgba(0,0,0,0.04);">
-                <div style="font-size:12px; color:#6B7280; font-weight:600;">💰 รายรับรวมจากงานเช่า</div>
+                <div id="lbl-rpt-kpi-rev" style="font-size:12px; color:#6B7280; font-weight:600;">💰 รายรับรวมจากงานเช่า</div>
                 <div style="font-size:21px; font-weight:800; color:#E85826; margin-top:4px;" id="rpt-kpi-rev">฿0.00</div>
               </div>
               <div style="background:#FFFFFF; border:1px solid #EFEAE3; border-radius:10px; padding:12px; text-align:center; box-shadow:0 1px 3px rgba(0,0,0,0.04);">
-                <div style="font-size:12px; color:#6B7280; font-weight:600;">🚘 รถที่ให้บริการ</div>
+                <div id="lbl-rpt-kpi-cars" style="font-size:12px; color:#6B7280; font-weight:600;">🚘 รถที่ให้บริการ</div>
                 <div style="font-size:21px; font-weight:800; color:#3B82F6; margin-top:4px;" id="rpt-kpi-cars">0 <span style="font-size:13px; font-weight:500;">คัน</span></div>
               </div>
               <div style="background:#FFFFFF; border:1px solid #EFEAE3; border-radius:10px; padding:12px; text-align:center; box-shadow:0 1px 3px rgba(0,0,0,0.04);">
-                <div style="font-size:12px; color:#6B7280; font-weight:600;">👥 ลูกค้าที่ใช้บริการ</div>
+                <div id="lbl-rpt-kpi-custs" style="font-size:12px; color:#6B7280; font-weight:600;">👥 ลูกค้าที่ใช้บริการ</div>
                 <div style="font-size:21px; font-weight:800; color:#8B5CF6; margin-top:4px;" id="rpt-kpi-custs">0 <span style="font-size:13px; font-weight:500;">ราย</span></div>
               </div>
             </div>
@@ -1342,18 +1342,18 @@
               <table class="custom-table">
                 <thead>
                   <tr>
-                    <th>รหัสการจอง</th>
-                    <th>วันที่เสร็จสิ้น</th>
-                    <th>ทะเบียนรถ</th>
-                    <th>ลูกค้า</th>
-                    <th>บริษัท</th>
-                    <th>ประเภทสัญญา</th>
-                    <th style="text-align:right;">รายรับสุทธิ</th>
-                    <th>พนักงานส่ง-รับ</th>
-                    <th>สถานที่</th>
-                    <th>เกจ์น้ำมัน & สภาพรถ</th>
-                    <th>สถานะ</th>
-                    <th style="text-align:center;">เอกสารย้อนหลัง<br/><span style="font-size:10.5px; font-weight:normal; color:#64748B;">(📝 สัญญา | 🧾 ใบเสร็จ | 📋 ใบเช็ครถ)</span></th>
+                    <th id="th-rpt-bkid">รหัสการจอง</th>
+                    <th id="th-rpt-date">วันที่เสร็จสิ้น</th>
+                    <th id="th-rpt-plate">ทะเบียนรถ</th>
+                    <th id="th-rpt-cust">ลูกค้า</th>
+                    <th id="th-rpt-comp">บริษัท</th>
+                    <th id="th-rpt-ctype">ประเภทสัญญา</th>
+                    <th id="th-rpt-rev" style="text-align:right;">รายรับสุทธิ</th>
+                    <th id="th-rpt-staff">พนักงานส่ง-รับ</th>
+                    <th id="th-rpt-loc">สถานที่</th>
+                    <th id="th-rpt-fuel">เกจ์น้ำมัน & สภาพรถ</th>
+                    <th id="th-rpt-status">สถานะ</th>
+                    <th id="th-rpt-docs" style="text-align:center;">เอกสารย้อนหลัง<br/><span style="font-size:10.5px; font-weight:normal; color:#64748B;">(📝 สัญญา | 🧾 ใบเสร็จ | 📋 ใบเช็ครถ)</span></th>
                   </tr>
                 </thead>
                 <tbody id="completed-jobs-tbody">
