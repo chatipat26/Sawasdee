@@ -283,7 +283,7 @@ body::before {
 .app-content {
   flex: 1;
   padding: 26px 36px;
-  overflow-y: auto;
+  overflow: visible;
 }
 
 /* =========================================================================
@@ -391,8 +391,8 @@ body::before {
 /* The Booking Bar Hero - Sticky Header */
 .booking-bar {
   position: sticky;
-  top: 10px;
-  z-index: 90;
+  top: 0;
+  z-index: 100;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   background: rgba(255, 247, 237, 0.98);
@@ -616,27 +616,27 @@ body::before {
   display: inline-block;
 }
 
-/* Fleet Card Collapsible Price & Actions Footer */
+/* Fleet Card Collapsible Price & Actions Footer (Compact Text Strip) */
 .car-footer-toggle-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 4px;
   width: 100%;
-  margin-top: 10px;
-  padding: 6px 12px;
-  background: #F8FAFC;
-  border: 1px solid #E2E8F0;
-  border-radius: 8px;
-  color: #475569;
-  font-size: 11.5px;
-  font-weight: 700;
+  margin-top: 6px;
+  padding: 4px 0;
+  background: transparent;
+  border: none;
+  color: #64748B;
+  font-size: 0.8rem;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: color 0.15s ease;
+  text-decoration: none;
 }
 .car-footer-toggle-btn:hover {
-  background: #FFF7ED;
-  border-color: #FED7AA;
+  background: transparent;
+  border: none;
   color: #EA580C;
 }
 

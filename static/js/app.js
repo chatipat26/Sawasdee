@@ -2322,19 +2322,27 @@ class App {
     const isAvail = (c.status === "ว่างพร้อมใช้งาน" || c.fleet_status_key === "available");
     const carImg = c.image && c.image !== "-" ? c.image : "";
 
-    const prbVal = (c.prb_price !== undefined && c.prb_price !== null && c.prb_price !== '')
+    const prbVal = (c.prb_price !== undefined && c.prb_price !== null && c.prb_price !== '' && Number(c.prb_price) > 0)
       ? Number(c.prb_price)
-      : ((c.act_price !== undefined && c.act_price !== null && c.act_price !== '') ? Number(c.act_price) : null);
-    const prbFormatted = (prbVal !== null && !isNaN(prbVal))
+      : ((c.act_price !== undefined && c.act_price !== null && c.act_price !== '' && Number(c.act_price) > 0) ? Number(c.act_price) : null);
+    const prbFormatted = (prbVal !== null && !isNaN(prbVal) && prbVal > 0)
       ? '฿' + prbVal.toLocaleString(undefined, {minimumFractionDigits: (prbVal % 1 === 0 ? 0 : 2), maximumFractionDigits: 2})
       : '-';
 
-    const insVal = (c.insurance_premium !== undefined && c.insurance_premium !== null && c.insurance_premium !== '')
+    const insVal = (c.insurance_premium !== undefined && c.insurance_premium !== null && c.insurance_premium !== '' && Number(c.insurance_premium) > 0)
       ? Number(c.insurance_premium)
-      : ((c.ins_premium !== undefined && c.ins_premium !== null && c.ins_premium !== '') ? Number(c.ins_premium) : null);
-    const insFormatted = (insVal !== null && !isNaN(insVal))
+      : ((c.ins_premium !== undefined && c.ins_premium !== null && c.ins_premium !== '' && Number(c.ins_premium) > 0) ? Number(c.ins_premium) : null);
+    const insFormatted = (insVal !== null && !isNaN(insVal) && insVal > 0)
       ? '฿' + insVal.toLocaleString(undefined, {minimumFractionDigits: (insVal % 1 === 0 ? 0 : 2), maximumFractionDigits: 2})
       : '-';
+
+    const regYearDisplay = (c.register_year && c.register_year !== '-') ? c.register_year : (c.reg_year || '-');
+    const insCompanyDisplay = (c.insurance_company && c.insurance_company !== '-') ? c.insurance_company : (c.ins_company || c.insurance_brand || '-');
+    const financeCompanyDisplay = (c.finance_company && c.finance_company !== '-') ? c.finance_company : (c.is_debt_free ? (isEn ? 'Debt Free' : 'ปลอดภาระ') : '-');
+    const nextServiceMil = (c.next_service_mileage !== undefined && c.next_service_mileage !== null && Number(c.next_service_mileage) > 0)
+      ? Number(c.next_service_mileage)
+      : ((c.next_engine_oil_mileage && Number(c.next_engine_oil_mileage) > 0) ? Number(c.next_engine_oil_mileage) : null);
+    const nextServiceMilFormatted = (nextServiceMil !== null && !isNaN(nextServiceMil) && nextServiceMil > 0) ? nextServiceMil.toLocaleString() + ' km' : '-';
 
     const titleEl = document.getElementById("modal-car-details-title");
     if (titleEl) {
@@ -2424,13 +2432,13 @@ class App {
           </div>
           <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px; font-size:11.5px;">
             <div><b style="color:#64748B;">${isEn ? 'Group:' : 'กลุ่มรถ:'}</b> ${c.car_group || '-'}</div>
-            <div><b style="color:#64748B;">${isEn ? 'Reg Year:' : 'ปีจดทะเบียน:'}</b> ${c.reg_year || '-'}</div>
+            <div><b style="color:#64748B;">${isEn ? 'Reg Year:' : 'ปีจดทะเบียน:'}</b> ${regYearDisplay}</div>
             <div><b style="color:#64748B;">${isEn ? 'Color:' : 'สีตัวถัง:'}</b> ${c.color || '-'}</div>
-            <div><b style="color:#64748B;">${isEn ? 'Fuel:' : 'เชื้อเพลิง:'}</b> ${c.fuel_type || '-'}</div>
-            <div><b style="color:#64748B;">${isEn ? 'Engine CC:' : 'ขนาด CC:'}</b> ${c.engine_cc || '-'}</div>
+            <div><b style="color:#64748B;">${isEn ? 'Fuel:' : 'เชื้อเพลิง:'}</b> ${c.fuel_type || c.fuel_system || '-'}</div>
+            <div><b style="color:#64748B;">${isEn ? 'Engine CC:' : 'ขนาด CC:'}</b> ${c.engine_cc || c.cc_ev || '-'}</div>
             <div><b style="color:#64748B;">${isEn ? 'Mileage:' : 'เลขไมล์:'}</b> ${Number(String(c.mileage || '0').replace(/,/g, '')).toLocaleString()} km</div>
-            <div style="grid-column: span 2;"><b style="color:#64748B;">${isEn ? 'VIN (Chassis):' : 'เลขตัวถัง:'}</b> <code>${c.chassis_no || '-'}</code></div>
-            <div style="grid-column: span 2;"><b style="color:#64748B;">${isEn ? 'Owner / Company:' : 'ผู้ถือกรรมสิทธิ์:'}</b> ${c.company || c.owner || '-'}</div>
+            <div style="grid-column: span 2;"><b style="color:#64748B;">${isEn ? 'VIN (Chassis):' : 'เลขตัวถัง:'}</b> <code>${c.chassis_no || c.vin || '-'}</code></div>
+            <div style="grid-column: span 2;"><b style="color:#64748B;">${isEn ? 'Owner / Company:' : 'ผู้ถือกรรมสิทธิ์:'}</b> ${c.company || c.owner_company || c.owner || c.car_owner || '-'}</div>
           </div>
         </div>
 
@@ -2441,9 +2449,9 @@ class App {
           </div>
           <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px; font-size:11.5px;">
             <div><b style="color:#64748B;">${isEn ? 'Last Service:' : 'เช็คล่าสุด:'}</b> ${c.last_service_date || '-'}</div>
-            <div><b style="color:#64748B;">${isEn ? 'Next Service Date:' : 'เช็คถัดไป (วันที่):'}</b> <span style="font-weight:700; color:#0369A1;">${c.next_service_date || c.next_service || '-'}</span></div>
-            <div><b style="color:#64748B;">${isEn ? 'Next Mileage:' : 'เช็คถัดไป (ไมล์):'}</b> <span style="font-weight:700; color:#0369A1;">${c.next_service_mileage ? Number(c.next_service_mileage).toLocaleString() + ' km' : '-'}</span></div>
-            <div><b style="color:#64748B;">${isEn ? 'Finance Co:' : 'บริษัทไฟแนนซ์:'}</b> ${c.finance_company || (c.is_debt_free ? 'ปลอดภาระ' : '-')}</div>
+            <div><b style="color:#64748B;">${isEn ? 'Next Service Date:' : 'เช็คถัดไป (วันที่):'}</b> <span style="font-weight:700; color:#0369A1;">${c.next_service_date || c.next_engine_oil_date || c.next_service || '-'}</span></div>
+            <div><b style="color:#64748B;">${isEn ? 'Next Mileage:' : 'เช็คถัดไป (ไมล์):'}</b> <span style="font-weight:700; color:#0369A1;">${nextServiceMilFormatted}</span></div>
+            <div><b style="color:#64748B;">${isEn ? 'Finance Co:' : 'บริษัทไฟแนนซ์:'}</b> ${financeCompanyDisplay}</div>
             <div><b style="color:#64748B;">${isEn ? 'Installment/Mo:' : 'ค่างวด/เดือน:'}</b> ${(c.installment_amount || c.hp_installment) ? Number(c.installment_amount || c.hp_installment).toLocaleString() + ' ฿' : '-'}</div>
             <div><b style="color:#64748B;">${isEn ? 'Due Date:' : 'วันตัดงวด:'}</b> ${c.payment_due_date || '-'}</div>
           </div>
@@ -2455,8 +2463,8 @@ class App {
             <span>${isEn ? 'Insurance Policy' : 'ข้อมูลกรมธรรม์ประกันภัย'}</span>
           </div>
           <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px; font-size:11.5px;">
-            <div><b style="color:#64748B;">${isEn ? 'Company:' : 'บริษัทประกัน:'}</b> ${c.ins_company || c.insurance_brand || '-'}</div>
-            <div><b style="color:#64748B;">${isEn ? 'Expiry:' : 'วันหมดอายุ:'}</b> <span style="color:#DC2626; font-weight:700;">${c.ins_expiry || '-'}</span></div>
+            <div><b style="color:#64748B;">${isEn ? 'Company:' : 'บริษัทประกัน:'}</b> ${insCompanyDisplay}</div>
+            <div><b style="color:#64748B;">${isEn ? 'Expiry:' : 'วันหมดอายุ:'}</b> <span style="color:#DC2626; font-weight:700;">${c.ins_expiry || c.insurance_expire_date || '-'}</span></div>
             <div><b style="color:#64748B;">${isEn ? 'Premium:' : 'เบี้ยประกัน:'}</b> <span style="font-weight:700; color:#0F172A;">${insFormatted}</span></div>
           </div>
         </div>
@@ -2467,8 +2475,8 @@ class App {
             <span>${isEn ? 'ACT & Tax Registration' : 'ข้อมูล พ.ร.บ. และภาษี'}</span>
           </div>
           <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px; font-size:11.5px;">
-            <div><b style="color:#64748B;">${isEn ? 'ACT Expiry:' : 'หมดอายุ พ.ร.บ.:'}</b> <span style="color:#DC2626; font-weight:700;">${c.act_expiry || '-'}</span></div>
-            <div><b style="color:#64748B;">${isEn ? 'Tax Expiry:' : 'หมดอายุภาษี:'}</b> <span style="color:#DC2626; font-weight:700;">${c.tax_expiry || '-'}</span></div>
+            <div><b style="color:#64748B;">${isEn ? 'ACT Expiry:' : 'หมดอายุ พ.ร.บ.:'}</b> <span style="color:#DC2626; font-weight:700;">${c.act_expiry || c.prb_expire_date || '-'}</span></div>
+            <div><b style="color:#64748B;">${isEn ? 'Tax Expiry:' : 'หมดอายุภาษี:'}</b> <span style="color:#DC2626; font-weight:700;">${c.tax_expiry || c.tax_expire_date || '-'}</span></div>
             <div><b style="color:#64748B;">${isEn ? 'PRB Price:' : 'ราคา พ.ร.บ.:'}</b> <span style="font-weight:700; color:#0F172A;">${prbFormatted}</span></div>
           </div>
         </div>
@@ -2611,6 +2619,27 @@ class App {
   updateCarFormField(field, val) {
     if (!this.carFormData) this.carFormData = {};
     this.carFormData[field] = val;
+    if (field === 'reg_year' || field === 'register_year') {
+      this.carFormData.register_year = val;
+      this.carFormData.reg_year = val;
+    } else if (field === 'ins_company' || field === 'insurance_company') {
+      this.carFormData.insurance_company = val;
+      this.carFormData.ins_company = val;
+    } else if (field === 'prb_price' || field === 'act_price') {
+      this.carFormData.prb_price = val;
+      this.carFormData.act_price = val;
+    } else if (field === 'insurance_premium' || field === 'ins_premium') {
+      this.carFormData.insurance_premium = val;
+      this.carFormData.ins_premium = val;
+    } else if (field === 'next_service_mileage' || field === 'next_engine_oil_mileage') {
+      this.carFormData.next_service_mileage = val;
+      this.carFormData.next_engine_oil_mileage = val;
+    } else if (field === 'next_service_date' || field === 'next_engine_oil_date') {
+      this.carFormData.next_service_date = val;
+      this.carFormData.next_engine_oil_date = val;
+    } else if (field === 'finance_company') {
+      this.carFormData.finance_company = val;
+    }
   }
 
   clearCarPhoto() {
@@ -2633,44 +2662,70 @@ class App {
     const isNew = !plate;
     const car = (!isNew && this.cars.find(c => c.plate === plate)) || {};
 
+    const regYearInit = (car.register_year && car.register_year !== '-') ? car.register_year : (car.reg_year || "-");
+    const insCompInit = (car.insurance_company && car.insurance_company !== '-') ? car.insurance_company : (car.ins_company || "-");
+    const prbPriceInit = car.prb_price !== undefined && car.prb_price !== null && car.prb_price !== "" ? car.prb_price : (car.act_price !== undefined && car.act_price !== null && car.act_price !== "" ? car.act_price : "");
+    const insPremInit = car.insurance_premium !== undefined && car.insurance_premium !== null && car.insurance_premium !== "" ? car.insurance_premium : (car.ins_premium !== undefined && car.ins_premium !== null && car.ins_premium !== "" ? car.ins_premium : "");
+    const nextMileageInit = car.next_service_mileage !== undefined && car.next_service_mileage !== null && Number(car.next_service_mileage) > 0
+      ? car.next_service_mileage
+      : (car.next_engine_oil_mileage && Number(car.next_engine_oil_mileage) > 0 ? car.next_engine_oil_mileage : "");
+    const finCompInit = car.finance_company || "-";
+
     // Initialize carFormData state to prevent data loss on editing/typing
     this.carFormData = {
       plate: car.plate || "",
       brand: car.brand || "Toyota",
       model: car.model || "",
       car_group: car.car_group || "รถเก๋ง (Sedan/Hatchback)",
-      fuel_type: car.fuel_type || "เบนซิน",
-      engine_cc: car.engine_cc || "1200",
-      company: car.company || "บจก.สวัสดี เรนทัล (Sawasdee Rental)",
+      fuel_type: car.fuel_system || car.fuel_type || "เบนซิน",
+      fuel_system: car.fuel_system || car.fuel_type || "เบนซิน",
+      engine_cc: car.cc_ev || car.engine_cc || "1200",
+      cc_ev: car.cc_ev || car.engine_cc || "1200",
+      company: car.owner_company || car.company || "บจก.สวัสดี เรนทัล (Sawasdee Rental)",
+      owner_company: car.owner_company || car.company || "บจก.สวัสดี เรนทัล (Sawasdee Rental)",
       color: car.color || "",
       mileage: car.mileage || "15,000",
-      price_day: car.price_day !== undefined ? car.price_day : 1000,
-      price_week: car.price_week !== undefined ? car.price_week : 6000,
-      price_month: car.price_month !== undefined ? car.price_month : 20000,
-      chassis_no: car.chassis_no || "-",
-      tax_expiry: this.dmyToYmd(car.tax_expiry),
-      act_expiry: this.dmyToYmd(car.act_expiry),
-      ins_expiry: this.dmyToYmd(car.ins_expiry),
-      ins_company: car.ins_company || "-",
-      owner: car.owner || "-",
-      beneficiary: car.beneficiary || car.company || "-",
-      reg_year: car.reg_year || "-",
-      prb_price: car.prb_price !== undefined && car.prb_price !== null ? car.prb_price : (car.act_price !== undefined && car.act_price !== null ? car.act_price : ""),
-      insurance_premium: car.insurance_premium !== undefined && car.insurance_premium !== null ? car.insurance_premium : (car.ins_premium !== undefined && car.ins_premium !== null ? car.ins_premium : ""),
+      price_day: car.daily_rate !== undefined ? car.daily_rate : (car.price_day !== undefined ? car.price_day : 1000),
+      daily_rate: car.daily_rate !== undefined ? car.daily_rate : (car.price_day !== undefined ? car.price_day : 1000),
+      price_week: car.weekly_rate !== undefined ? car.weekly_rate : (car.price_week !== undefined ? car.price_week : 6000),
+      weekly_rate: car.weekly_rate !== undefined ? car.weekly_rate : (car.price_week !== undefined ? car.price_week : 6000),
+      price_month: car.monthly_rate !== undefined ? car.monthly_rate : (car.price_month !== undefined ? car.price_month : 20000),
+      monthly_rate: car.monthly_rate !== undefined ? car.monthly_rate : (car.price_month !== undefined ? car.price_month : 20000),
+      chassis_no: car.vin || car.chassis_no || "-",
+      vin: car.vin || car.chassis_no || "-",
+      tax_expiry: this.dmyToYmd(car.tax_expire_date || car.tax_expiry),
+      tax_expire_date: this.dmyToYmd(car.tax_expire_date || car.tax_expiry),
+      act_expiry: this.dmyToYmd(car.prb_expire_date || car.act_expiry),
+      prb_expire_date: this.dmyToYmd(car.prb_expire_date || car.act_expiry),
+      ins_expiry: this.dmyToYmd(car.insurance_expire_date || car.ins_expiry),
+      insurance_expire_date: this.dmyToYmd(car.insurance_expire_date || car.ins_expiry),
+      ins_company: insCompInit,
+      insurance_company: insCompInit,
+      owner: car.car_owner || car.owner || "-",
+      car_owner: car.car_owner || car.owner || "-",
+      beneficiary: car.beneficiary || car.owner_company || car.company || "-",
+      reg_year: regYearInit,
+      register_year: regYearInit,
+      prb_price: prbPriceInit,
+      act_price: prbPriceInit,
+      insurance_premium: insPremInit,
+      ins_premium: insPremInit,
       last_service_date: this.dmyToYmd(car.last_service_date),
       next_service_date: this.dmyToYmd(car.next_service_date || car.next_engine_oil_date || car.next_service || ""),
-      next_service_mileage: car.next_service_mileage !== undefined && car.next_service_mileage !== null && Number(car.next_service_mileage) > 0
-        ? car.next_service_mileage
-        : (car.next_engine_oil_mileage && Number(car.next_engine_oil_mileage) > 0 ? car.next_engine_oil_mileage : ""),
+      next_engine_oil_date: this.dmyToYmd(car.next_service_date || car.next_engine_oil_date || car.next_service || ""),
+      next_service_mileage: nextMileageInit,
+      next_engine_oil_mileage: nextMileageInit,
       notes: car.notes || "",
-      status: car.status || "ว่างพร้อมใช้งาน",
+      status: car.car_status || car.status || "ว่างพร้อมใช้งาน",
+      car_status: car.car_status || car.status || "ว่างพร้อมใช้งาน",
       is_debt_free: car.is_debt_free !== undefined ? Boolean(car.is_debt_free) : (!car.installment_amount),
-      finance_company: car.finance_company || "-",
+      finance_company: finCompInit,
       installment_amount: car.installment_amount !== undefined ? car.installment_amount : 0,
       total_installments: car.total_installments !== undefined ? car.total_installments : 48,
       current_installment: car.current_installment !== undefined ? car.current_installment : 0,
       payment_due_date: this.dmyToYmd(car.payment_due_date),
-      image: car.image || ""
+      image: car.image_url || car.image || "",
+      image_url: car.image_url || car.image || ""
     };
 
     const titleEl = document.getElementById("modal-edit-car-title");
@@ -3042,17 +3097,20 @@ class App {
     const existing = this.cars.find(c => c.plate === (origPlate || plate)) || {};
     const imgUrl = (document.getElementById("edit-car-image-url")?.value || "").trim() || fd.image || existing.image || "";
 
-    const rawPrb = getVal("edit-car-prb-price", "prb_price", "");
-    const prbPrice = (rawPrb !== "" && rawPrb !== null && !isNaN(rawPrb)) ? parseFloat(rawPrb) : null;
-    const rawInsPrem = getVal("edit-car-ins-premium", "insurance_premium", "");
-    const insPremium = (rawInsPrem !== "" && rawInsPrem !== null && !isNaN(rawInsPrem)) ? parseFloat(rawInsPrem) : null;
+    const rawPrb = getVal("edit-car-prb-price", "prb_price", getVal("edit-car-prb-price", "act_price", ""));
+    const prbPrice = (rawPrb !== "" && rawPrb !== null && !isNaN(rawPrb)) ? parseFloat(rawPrb) : 0.0;
+    const rawInsPrem = getVal("edit-car-ins-premium", "insurance_premium", getVal("edit-car-ins-premium", "ins_premium", ""));
+    const insPremium = (rawInsPrem !== "" && rawInsPrem !== null && !isNaN(rawInsPrem)) ? parseFloat(rawInsPrem) : 0.0;
 
-    const rawNextSrvDate = getVal("edit-car-next-srv-date", "next_service_date", "");
+    const rawNextSrvDate = getVal("edit-car-next-srv-date", "next_service_date", getVal("edit-car-next-srv-date", "next_engine_oil_date", ""));
     const dmyNextSrvDate = rawNextSrvDate ? (rawNextSrvDate.includes("-") ? this.ymdToDmy(rawNextSrvDate) : rawNextSrvDate) : "-";
-    const rawNextSrvMileage = getVal("edit-car-next-srv-mileage", "next_service_mileage", "0");
-    const nextSrvMileage = parseInt(rawNextSrvMileage || "0", 10) || 0;
+    const rawNextSrvMileage = getVal("edit-car-next-srv-mileage", "next_service_mileage", getVal("edit-car-next-srv-mileage", "next_engine_oil_mileage", "0"));
+    const nextSrvMileage = parseFloat(rawNextSrvMileage || "0") || 0;
 
     const isDebtFree = document.getElementById("edit-car-debt-free") ? Boolean(document.getElementById("edit-car-debt-free").checked) : Boolean(fd.is_debt_free);
+    const regYearVal = String(getVal("edit-car-reg-year", "register_year", getVal("edit-car-reg-year", "reg_year", "-"))).trim() || "-";
+    const insCompVal = String(getVal("edit-car-ins-comp", "insurance_company", getVal("edit-car-ins-comp", "ins_company", "-"))).trim() || "-";
+    const finCompVal = isDebtFree ? "-" : (String(getVal("edit-car-finance-company", "finance_company", "-")).trim() || "-");
 
     const payload = {
       original_plate: origPlate,
@@ -3060,35 +3118,35 @@ class App {
       brand: brand,
       model: model,
       car_group: getVal("edit-car-group", "car_group", "รถเก๋ง (Sedan/Hatchback)"),
-      fuel_system: getVal("edit-car-fuel", "fuel_type", "เบนซิน"),
-      fuel_type: getVal("edit-car-fuel", "fuel_type", "เบนซิน"),
-      cc_ev: String(getVal("edit-car-cc", "engine_cc", "1200")).trim(),
-      engine_cc: String(getVal("edit-car-cc", "engine_cc", "1200")).trim(),
-      owner_company: String(getVal("edit-car-company", "company", "Sawasdee Rent A Car")).trim(),
-      company: String(getVal("edit-car-company", "company", "Sawasdee Rent A Car")).trim(),
+      fuel_system: getVal("edit-car-fuel", "fuel_system", getVal("edit-car-fuel", "fuel_type", "เบนซิน")),
+      fuel_type: getVal("edit-car-fuel", "fuel_system", getVal("edit-car-fuel", "fuel_type", "เบนซิน")),
+      cc_ev: String(getVal("edit-car-cc", "cc_ev", getVal("edit-car-cc", "engine_cc", "1200"))).trim(),
+      engine_cc: String(getVal("edit-car-cc", "cc_ev", getVal("edit-car-cc", "engine_cc", "1200"))).trim(),
+      owner_company: String(getVal("edit-car-company", "owner_company", getVal("edit-car-company", "company", "Sawasdee Rent A Car"))).trim(),
+      company: String(getVal("edit-car-company", "owner_company", getVal("edit-car-company", "company", "Sawasdee Rent A Car"))).trim(),
       color: String(getVal("edit-car-color", "color", "-")).trim(),
       mileage: String(getVal("edit-car-mileage", "mileage", "0")).trim(),
-      daily_rate: parseInt(getVal("edit-car-pday", "price_day", 1000) || "1000", 10),
-      price_day: parseInt(getVal("edit-car-pday", "price_day", 1000) || "1000", 10),
-      weekly_rate: parseInt(getVal("edit-car-pweek", "price_week", 6000) || "6000", 10),
-      price_week: parseInt(getVal("edit-car-pweek", "price_week", 6000) || "6000", 10),
-      monthly_rate: parseInt(getVal("edit-car-pmonth", "price_month", 20000) || "20000", 10),
-      price_month: parseInt(getVal("edit-car-pmonth", "price_month", 20000) || "20000", 10),
+      daily_rate: parseInt(getVal("edit-car-pday", "daily_rate", getVal("edit-car-pday", "price_day", 1000)) || "1000", 10),
+      price_day: parseInt(getVal("edit-car-pday", "daily_rate", getVal("edit-car-pday", "price_day", 1000)) || "1000", 10),
+      weekly_rate: parseInt(getVal("edit-car-pweek", "weekly_rate", getVal("edit-car-pweek", "price_week", 6000)) || "6000", 10),
+      price_week: parseInt(getVal("edit-car-pweek", "weekly_rate", getVal("edit-car-pweek", "price_week", 6000)) || "6000", 10),
+      monthly_rate: parseInt(getVal("edit-car-pmonth", "monthly_rate", getVal("edit-car-pmonth", "price_month", 20000)) || "20000", 10),
+      price_month: parseInt(getVal("edit-car-pmonth", "monthly_rate", getVal("edit-car-pmonth", "price_month", 20000)) || "20000", 10),
       vin: vinVal,
       chassis_no: vinVal,
-      tax_expire_date: this.ymdToDmy(getVal("edit-car-tax", "tax_expiry", "")) || "-",
-      tax_expiry: this.ymdToDmy(getVal("edit-car-tax", "tax_expiry", "")) || "-",
-      prb_expire_date: this.ymdToDmy(getVal("edit-car-act", "act_expiry", "")) || "-",
-      act_expiry: this.ymdToDmy(getVal("edit-car-act", "act_expiry", "")) || "-",
-      insurance_expire_date: this.ymdToDmy(getVal("edit-car-ins", "ins_expiry", "")) || "-",
-      ins_expiry: this.ymdToDmy(getVal("edit-car-ins", "ins_expiry", "")) || "-",
-      insurance_company: String(getVal("edit-car-ins-comp", "ins_company", "-")).trim(),
-      ins_company: String(getVal("edit-car-ins-comp", "ins_company", "-")).trim(),
-      car_owner: String(getVal("edit-car-owner", "owner", "-")).trim(),
-      owner: String(getVal("edit-car-owner", "owner", "-")).trim(),
+      tax_expire_date: this.ymdToDmy(getVal("edit-car-tax", "tax_expire_date", getVal("edit-car-tax", "tax_expiry", ""))) || "-",
+      tax_expiry: this.ymdToDmy(getVal("edit-car-tax", "tax_expire_date", getVal("edit-car-tax", "tax_expiry", ""))) || "-",
+      prb_expire_date: this.ymdToDmy(getVal("edit-car-act", "prb_expire_date", getVal("edit-car-act", "act_expiry", ""))) || "-",
+      act_expiry: this.ymdToDmy(getVal("edit-car-act", "prb_expire_date", getVal("edit-car-act", "act_expiry", ""))) || "-",
+      insurance_expire_date: this.ymdToDmy(getVal("edit-car-ins", "insurance_expire_date", getVal("edit-car-ins", "ins_expiry", ""))) || "-",
+      ins_expiry: this.ymdToDmy(getVal("edit-car-ins", "insurance_expire_date", getVal("edit-car-ins", "ins_expiry", ""))) || "-",
+      insurance_company: insCompVal,
+      ins_company: insCompVal,
+      car_owner: String(getVal("edit-car-owner", "car_owner", getVal("edit-car-owner", "owner", "-"))).trim(),
+      owner: String(getVal("edit-car-owner", "car_owner", getVal("edit-car-owner", "owner", "-"))).trim(),
       beneficiary: String(getVal("edit-car-beneficiary", "beneficiary", "-")).trim(),
-      register_year: String(getVal("edit-car-reg-year", "reg_year", "-")).trim(),
-      reg_year: String(getVal("edit-car-reg-year", "reg_year", "-")).trim(),
+      register_year: regYearVal,
+      reg_year: regYearVal,
       prb_price: prbPrice,
       act_price: prbPrice,
       insurance_premium: insPremium,
@@ -3100,12 +3158,12 @@ class App {
       next_engine_oil_mileage: nextSrvMileage,
       next_service: dmyNextSrvDate !== "-" ? dmyNextSrvDate : (nextSrvMileage > 0 ? String(nextSrvMileage) : "-"),
       notes: String(getVal("edit-car-notes", "notes", "")).trim(),
-      car_status: getVal("edit-car-status", "status", "ว่างพร้อมใช้งาน"),
-      status: getVal("edit-car-status", "status", "ว่างพร้อมใช้งาน"),
+      car_status: getVal("edit-car-status", "car_status", getVal("edit-car-status", "status", "ว่างพร้อมใช้งาน")),
+      status: getVal("edit-car-status", "car_status", getVal("edit-car-status", "status", "ว่างพร้อมใช้งาน")),
       image_url: imgUrl,
       image: imgUrl,
       is_debt_free: isDebtFree,
-      finance_company: isDebtFree ? "-" : (String(getVal("edit-car-finance-company", "finance_company", "-")).trim() || "-"),
+      finance_company: finCompVal,
       installment_amount: isDebtFree ? 0 : (parseFloat(getVal("edit-car-installment-amount", "installment_amount", 0)) || 0),
       total_installments: isDebtFree ? 0 : (parseInt(getVal("edit-car-total-installments", "total_installments", 0), 10) || 0),
       current_installment: isDebtFree ? 0 : (parseInt(getVal("edit-car-current-installment", "current_installment", 0), 10) || 0),

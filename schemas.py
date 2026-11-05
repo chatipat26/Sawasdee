@@ -38,6 +38,27 @@ class VehicleBase(BaseModel):
     notes: Optional[str] = ""
     image_url: Optional[str] = ""
 
+    # Backward compatibility / Frontend payload aliases
+    reg_year: Optional[str] = "-"
+    ins_company: Optional[str] = "-"
+    act_price: Optional[float] = 0.0
+    ins_premium: Optional[float] = 0.0
+    next_engine_oil_mileage: Optional[float] = 0.0
+    next_engine_oil_date: Optional[str] = "-"
+    chassis_no: Optional[str] = "-"
+    tax_expiry: Optional[str] = "-"
+    act_expiry: Optional[str] = "-"
+    ins_expiry: Optional[str] = "-"
+    fuel_type: Optional[str] = "เบนซิน"
+    engine_cc: Optional[str] = "1200"
+    company: Optional[str] = "Sawasdee Rent A Car"
+    owner: Optional[str] = "-"
+    price_day: Optional[float] = 1000.0
+    price_week: Optional[float] = 6000.0
+    price_month: Optional[float] = 20000.0
+    status: Optional[str] = "ว่างพร้อมใช้งาน"
+    image: Optional[str] = ""
+
     model_config = ConfigDict(extra="allow", populate_by_name=True)
 
 

@@ -544,45 +544,37 @@ class DataStore:
                                     merged_c[k] = v
                                 elif k not in merged_c:
                                     merged_c[k] = v
-                            # Synchronize aliases bidirectionally
-                            if 'fuel_system' in merged_c and 'fuel_type' not in merged_c: merged_c['fuel_type'] = merged_c['fuel_system']
-                            if 'fuel_type' in merged_c and 'fuel_system' not in merged_c: merged_c['fuel_system'] = merged_c['fuel_type']
-                            if 'cc_ev' in merged_c and 'engine_cc' not in merged_c: merged_c['engine_cc'] = merged_c['cc_ev']
-                            if 'engine_cc' in merged_c and 'cc_ev' not in merged_c: merged_c['cc_ev'] = merged_c['engine_cc']
-                            if 'owner_company' in merged_c and 'company' not in merged_c: merged_c['company'] = merged_c['owner_company']
-                            if 'company' in merged_c and 'owner_company' not in merged_c: merged_c['owner_company'] = merged_c['company']
-                            if 'daily_rate' in merged_c and 'price_day' not in merged_c: merged_c['price_day'] = merged_c['daily_rate']
-                            if 'price_day' in merged_c and 'daily_rate' not in merged_c: merged_c['daily_rate'] = merged_c['price_day']
-                            if 'weekly_rate' in merged_c and 'price_week' not in merged_c: merged_c['price_week'] = merged_c['weekly_rate']
-                            if 'price_week' in merged_c and 'weekly_rate' not in merged_c: merged_c['weekly_rate'] = merged_c['price_week']
-                            if 'monthly_rate' in merged_c and 'price_month' not in merged_c: merged_c['price_month'] = merged_c['monthly_rate']
-                            if 'price_month' in merged_c and 'monthly_rate' not in merged_c: merged_c['monthly_rate'] = merged_c['price_month']
-                            if 'vin' in merged_c and 'chassis_no' not in merged_c: merged_c['chassis_no'] = merged_c['vin']
-                            if 'chassis_no' in merged_c and 'vin' not in merged_c: merged_c['vin'] = merged_c['chassis_no']
-                            if 'tax_expire_date' in merged_c and 'tax_expiry' not in merged_c: merged_c['tax_expiry'] = merged_c['tax_expire_date']
-                            if 'tax_expiry' in merged_c and 'tax_expire_date' not in merged_c: merged_c['tax_expire_date'] = merged_c['tax_expiry']
-                            if 'prb_expire_date' in merged_c and 'act_expiry' not in merged_c: merged_c['act_expiry'] = merged_c['prb_expire_date']
-                            if 'act_expiry' in merged_c and 'prb_expire_date' not in merged_c: merged_c['prb_expire_date'] = merged_c['act_expiry']
-                            if 'insurance_expire_date' in merged_c and 'ins_expiry' not in merged_c: merged_c['ins_expiry'] = merged_c['insurance_expire_date']
-                            if 'ins_expiry' in merged_c and 'insurance_expire_date' not in merged_c: merged_c['insurance_expire_date'] = merged_c['ins_expiry']
-                            if 'insurance_company' in merged_c and 'ins_company' not in merged_c: merged_c['ins_company'] = merged_c['insurance_company']
-                            if 'ins_company' in merged_c and 'insurance_company' not in merged_c: merged_c['insurance_company'] = merged_c['ins_company']
-                            if 'car_owner' in merged_c and 'owner' not in merged_c: merged_c['owner'] = merged_c['car_owner']
-                            if 'owner' in merged_c and 'car_owner' not in merged_c: merged_c['car_owner'] = merged_c['owner']
-                            if 'register_year' in merged_c and 'reg_year' not in merged_c: merged_c['reg_year'] = merged_c['register_year']
-                            if 'reg_year' in merged_c and 'register_year' not in merged_c: merged_c['register_year'] = merged_c['reg_year']
-                            if 'car_status' in merged_c and 'status' not in merged_c: merged_c['status'] = merged_c['car_status']
-                            if 'status' in merged_c and 'car_status' not in merged_c: merged_c['car_status'] = merged_c['status']
-                            if 'image_url' in merged_c and 'image' not in merged_c: merged_c['image'] = merged_c['image_url']
-                            if 'image' in merged_c and 'image_url' not in merged_c: merged_c['image_url'] = merged_c['image']
-                            if 'prb_price' in merged_c and 'act_price' not in merged_c: merged_c['act_price'] = merged_c['prb_price']
-                            if 'act_price' in merged_c and 'prb_price' not in merged_c: merged_c['prb_price'] = merged_c['act_price']
-                            if 'insurance_premium' in merged_c and 'ins_premium' not in merged_c: merged_c['ins_premium'] = merged_c['insurance_premium']
-                            if 'ins_premium' in merged_c and 'insurance_premium' not in merged_c: merged_c['insurance_premium'] = merged_c['ins_premium']
-                            if 'next_service_mileage' in merged_c and 'next_engine_oil_mileage' not in merged_c: merged_c['next_engine_oil_mileage'] = merged_c['next_service_mileage']
-                            if 'next_engine_oil_mileage' in merged_c and 'next_service_mileage' not in merged_c: merged_c['next_service_mileage'] = merged_c['next_engine_oil_mileage']
-                            if 'next_service_date' in merged_c and 'next_engine_oil_date' not in merged_c: merged_c['next_engine_oil_date'] = merged_c['next_service_date']
-                            if 'next_engine_oil_date' in merged_c and 'next_service_date' not in merged_c: merged_c['next_service_date'] = merged_c['next_engine_oil_date']
+                            # Synchronize aliases bidirectionally (robust against placeholder '-')
+                            def _pair(d, k1, k2):
+                                v1, v2 = d.get(k1), d.get(k2)
+                                h1 = v1 is not None and v1 != "" and v1 != "-"
+                                h2 = v2 is not None and v2 != "" and v2 != "-"
+                                if h1 and not h2: d[k2] = v1
+                                elif h2 and not h1: d[k1] = v2
+                                elif k1 not in d and k2 in d: d[k1] = v2
+                                elif k2 not in d and k1 in d: d[k2] = v1
+
+                            _pair(merged_c, 'fuel_system', 'fuel_type')
+                            _pair(merged_c, 'cc_ev', 'engine_cc')
+                            _pair(merged_c, 'owner_company', 'company')
+                            _pair(merged_c, 'daily_rate', 'price_day')
+                            _pair(merged_c, 'weekly_rate', 'price_week')
+                            _pair(merged_c, 'monthly_rate', 'price_month')
+                            _pair(merged_c, 'vin', 'chassis_no')
+                            _pair(merged_c, 'tax_expire_date', 'tax_expiry')
+                            _pair(merged_c, 'prb_expire_date', 'act_expiry')
+                            _pair(merged_c, 'insurance_expire_date', 'ins_expiry')
+                            _pair(merged_c, 'insurance_company', 'ins_company')
+                            _pair(merged_c, 'car_owner', 'owner')
+                            _pair(merged_c, 'register_year', 'reg_year')
+                            _pair(merged_c, 'car_status', 'status')
+                            _pair(merged_c, 'image_url', 'image')
+                            _pair(merged_c, 'prb_price', 'act_price')
+                            _pair(merged_c, 'insurance_premium', 'ins_premium')
+                            _pair(merged_c, 'next_service_mileage', 'next_engine_oil_mileage')
+                            _pair(merged_c, 'next_service_date', 'next_engine_oil_date')
+                            if 'next_service_date' in merged_c and 'next_service' not in merged_c:
+                                merged_c['next_service'] = merged_c['next_service_date']
                             fresh_cars[pl] = merged_c
                     if fresh_cars is not None:
                         with self.lock:
@@ -767,66 +759,37 @@ class DataStore:
             existing.update(car_dict)
             existing["plate"] = plate
 
-            # Bidirectional alias synchronization
-            if 'fuel_system' in existing and 'fuel_type' not in existing: existing['fuel_type'] = existing['fuel_system']
-            if 'fuel_type' in existing and 'fuel_system' not in existing: existing['fuel_system'] = existing['fuel_type']
-            if 'cc_ev' in existing and 'engine_cc' not in existing: existing['engine_cc'] = existing['cc_ev']
-            if 'engine_cc' in existing and 'cc_ev' not in existing: existing['cc_ev'] = existing['engine_cc']
-            if 'owner_company' in existing and 'company' not in existing: existing['company'] = existing['owner_company']
-            if 'company' in existing and 'owner_company' not in existing: existing['owner_company'] = existing['company']
-            if 'daily_rate' in existing and 'price_day' not in existing: existing['price_day'] = existing['daily_rate']
-            if 'price_day' in existing and 'daily_rate' not in existing: existing['daily_rate'] = existing['price_day']
-            if 'weekly_rate' in existing and 'price_week' not in existing: existing['price_week'] = existing['weekly_rate']
-            if 'price_week' in existing and 'weekly_rate' not in existing: existing['weekly_rate'] = existing['price_week']
-            if 'monthly_rate' in existing and 'price_month' not in existing: existing['price_month'] = existing['monthly_rate']
-            if 'price_month' in existing and 'monthly_rate' not in existing: existing['monthly_rate'] = existing['price_month']
-            if 'vin' in existing and 'chassis_no' not in existing: existing['chassis_no'] = existing['vin']
-            if 'chassis_no' in existing and 'vin' not in existing: existing['vin'] = existing['chassis_no']
-            if 'tax_expire_date' in existing and 'tax_expiry' not in existing: existing['tax_expiry'] = existing['tax_expire_date']
-            if 'tax_expiry' in existing and 'tax_expire_date' not in existing: existing['tax_expire_date'] = existing['tax_expiry']
-            if 'prb_expire_date' in existing and 'act_expiry' not in existing: existing['act_expiry'] = existing['prb_expire_date']
-            if 'act_expiry' in existing and 'prb_expire_date' not in existing: existing['prb_expire_date'] = existing['act_expiry']
-            if 'insurance_expire_date' in existing and 'ins_expiry' not in existing: existing['ins_expiry'] = existing['insurance_expire_date']
-            if 'ins_expiry' in existing and 'insurance_expire_date' not in existing: existing['insurance_expire_date'] = existing['ins_expiry']
-            if 'insurance_company' in existing and 'ins_company' not in existing: existing['ins_company'] = existing['insurance_company']
-            if 'ins_company' in existing and 'insurance_company' not in existing: existing['insurance_company'] = existing['ins_company']
-            if 'car_owner' in existing and 'owner' not in existing: existing['owner'] = existing['car_owner']
-            if 'owner' in existing and 'car_owner' not in existing: existing['car_owner'] = existing['owner']
-            if 'register_year' in existing and 'reg_year' not in existing: existing['reg_year'] = existing['register_year']
-            if 'reg_year' in existing and 'register_year' not in existing: existing['register_year'] = existing['reg_year']
-            if 'car_status' in existing and 'status' not in existing: existing['status'] = existing['car_status']
-            if 'status' in existing and 'car_status' not in existing: existing['car_status'] = existing['status']
-            if 'image_url' in existing and 'image' not in existing: existing['image'] = existing['image_url']
-            if 'image' in existing and 'image_url' not in existing: existing['image_url'] = existing['image']
-            if 'prb_price' in car_dict and car_dict['prb_price'] is not None:
-                existing['prb_price'] = car_dict['prb_price']
-                existing['act_price'] = car_dict['prb_price']
-            elif 'act_price' in car_dict and car_dict['act_price'] is not None:
-                existing['prb_price'] = car_dict['act_price']
-                existing['act_price'] = car_dict['act_price']
-            elif 'prb_price' in existing and 'act_price' not in existing:
-                existing['act_price'] = existing['prb_price']
-            elif 'act_price' in existing and 'prb_price' not in existing:
-                existing['prb_price'] = existing['act_price']
+            # Bidirectional alias synchronization (robust against placeholder '-')
+            def _pair_sync(d, k1, k2):
+                v1, v2 = d.get(k1), d.get(k2)
+                h1 = v1 is not None and v1 != "" and v1 != "-"
+                h2 = v2 is not None and v2 != "" and v2 != "-"
+                if h1 and not h2: d[k2] = v1
+                elif h2 and not h1: d[k1] = v2
+                elif k1 not in d and k2 in d: d[k1] = v2
+                elif k2 not in d and k1 in d: d[k2] = v1
 
-            if 'insurance_premium' in car_dict and car_dict['insurance_premium'] is not None:
-                existing['insurance_premium'] = car_dict['insurance_premium']
-                existing['ins_premium'] = car_dict['insurance_premium']
-            elif 'ins_premium' in car_dict and car_dict['ins_premium'] is not None:
-                existing['insurance_premium'] = car_dict['ins_premium']
-                existing['ins_premium'] = car_dict['ins_premium']
-            elif 'insurance_premium' in existing and 'ins_premium' not in existing:
-                existing['ins_premium'] = existing['insurance_premium']
-            elif 'ins_premium' in existing and 'insurance_premium' not in existing:
-                existing['insurance_premium'] = existing['ins_premium']
-
-            if 'next_service_mileage' in car_dict and car_dict['next_service_mileage'] is not None:
-                existing['next_service_mileage'] = car_dict['next_service_mileage']
-                existing['next_engine_oil_mileage'] = car_dict['next_service_mileage']
-            if 'next_service_date' in car_dict and car_dict['next_service_date'] is not None:
-                existing['next_service_date'] = car_dict['next_service_date']
-                existing['next_engine_oil_date'] = car_dict['next_service_date']
-                existing['next_service'] = car_dict['next_service_date']
+            _pair_sync(existing, 'fuel_system', 'fuel_type')
+            _pair_sync(existing, 'cc_ev', 'engine_cc')
+            _pair_sync(existing, 'owner_company', 'company')
+            _pair_sync(existing, 'daily_rate', 'price_day')
+            _pair_sync(existing, 'weekly_rate', 'price_week')
+            _pair_sync(existing, 'monthly_rate', 'price_month')
+            _pair_sync(existing, 'vin', 'chassis_no')
+            _pair_sync(existing, 'tax_expire_date', 'tax_expiry')
+            _pair_sync(existing, 'prb_expire_date', 'act_expiry')
+            _pair_sync(existing, 'insurance_expire_date', 'ins_expiry')
+            _pair_sync(existing, 'insurance_company', 'ins_company')
+            _pair_sync(existing, 'car_owner', 'owner')
+            _pair_sync(existing, 'register_year', 'reg_year')
+            _pair_sync(existing, 'car_status', 'status')
+            _pair_sync(existing, 'image_url', 'image')
+            _pair_sync(existing, 'prb_price', 'act_price')
+            _pair_sync(existing, 'insurance_premium', 'ins_premium')
+            _pair_sync(existing, 'next_service_mileage', 'next_engine_oil_mileage')
+            _pair_sync(existing, 'next_service_date', 'next_engine_oil_date')
+            if 'next_service_date' in existing and 'next_service' not in existing:
+                existing['next_service'] = existing['next_service_date']
 
             clean_mem = {k: v for k, v in existing.items() if k in ALL_CAR_COLS}
             self.cars[plate] = clean_mem

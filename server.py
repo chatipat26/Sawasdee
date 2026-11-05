@@ -618,17 +618,24 @@ async def create_or_update_car(payload: Union[VehicleCreate, Dict[str, Any]], pl
             print(f"Car image compression note: {e}")
 
     # Sanitize service interval fields (date string and mileage number)
-    raw_ns_date = payload.get("next_service_date")
+    raw_ns_date = payload.get("next_service_date") or payload.get("next_engine_oil_date")
     if raw_ns_date:
         payload["next_service_date"] = str(raw_ns_date).strip()
-    raw_ns_mileage = payload.get("next_service_mileage")
-    if raw_ns_mileage is not None:
+        payload["next_engine_oil_date"] = str(raw_ns_date).strip()
+    raw_ns_mileage = payload.get("next_service_mileage") if payload.get("next_service_mileage") is not None else payload.get("next_engine_oil_mileage")
+    if raw_ns_mileage is not None and str(raw_ns_mileage).strip() != "":
         try:
-            payload["next_service_mileage"] = int(float(str(raw_ns_mileage).replace(",", "").strip()))
+            val_m = float(str(raw_ns_mileage).replace(",", "").strip())
+            payload["next_service_mileage"] = val_m
+            payload["next_engine_oil_mileage"] = val_m
         except Exception:
-            payload["next_service_mileage"] = 0
+            payload["next_service_mileage"] = 0.0
+            payload["next_engine_oil_mileage"] = 0.0
+    else:
+        payload["next_service_mileage"] = 0.0
+        payload["next_engine_oil_mileage"] = 0.0
 
-    # Sanitize prb_price (float or None) and insurance_premium (float or None)
+    # Sanitize prb_price (float) and insurance_premium (float)
     raw_prb_price = payload.get("prb_price") if payload.get("prb_price") is not None else payload.get("act_price")
     if raw_prb_price is not None and str(raw_prb_price).strip() != "":
         try:
@@ -639,8 +646,8 @@ async def create_or_update_car(payload: Union[VehicleCreate, Dict[str, Any]], pl
             payload["prb_price"] = 0.0
             payload["act_price"] = 0.0
     else:
-        payload["prb_price"] = None
-        payload["act_price"] = None
+        payload["prb_price"] = 0.0
+        payload["act_price"] = 0.0
 
     raw_ins_premium = payload.get("insurance_premium") if payload.get("insurance_premium") is not None else payload.get("ins_premium")
     if raw_ins_premium is not None and str(raw_ins_premium).strip() != "":
@@ -652,8 +659,20 @@ async def create_or_update_car(payload: Union[VehicleCreate, Dict[str, Any]], pl
             payload["insurance_premium"] = 0.0
             payload["ins_premium"] = 0.0
     else:
-        payload["insurance_premium"] = None
-        payload["ins_premium"] = None
+        payload["insurance_premium"] = 0.0
+        payload["ins_premium"] = 0.0
+
+    # Sanitize register_year & insurance_company & finance_company
+    reg_year_val = str(payload.get("register_year") or payload.get("reg_year") or "-").strip() or "-"
+    payload["register_year"] = reg_year_val
+    payload["reg_year"] = reg_year_val
+
+    ins_comp_val = str(payload.get("insurance_company") or payload.get("ins_company") or "-").strip() or "-"
+    payload["insurance_company"] = ins_comp_val
+    payload["ins_company"] = ins_comp_val
+
+    fin_comp_val = str(payload.get("finance_company") or "-").strip() or "-"
+    payload["finance_company"] = fin_comp_val
 
     payload["plate"] = plate
     store.async_sync_car(plate, payload)
