@@ -417,10 +417,47 @@ section,
   -webkit-backdrop-filter: blur(8px);
   border: 1.5px solid #FDBA74;
   border-radius: var(--radius-lg);
-  padding: 16px 22px;
-  margin-bottom: 22px;
-  box-shadow: 0 4px 16px rgba(234, 88, 12, 0.10);
+  padding: 10px 14px 12px;
+  margin-bottom: 14px;
+  box-shadow: 0 1px 3px rgba(234, 88, 12, 0.08);
   transition: all 0.2s ease-in-out;
+}
+
+.booking-bar-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+.booking-bar-head-meta {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+.booking-bar-meta-dur {
+  font-size: 12px;
+  color: #78716C;
+}
+.booking-bar-meta-dur b {
+  color: #C2410C;
+  font-weight: 700;
+}
+#calc-cars-count {
+  font-size: 12px;
+  color: #059669;
+  font-weight: 700;
+}
+.booking-bar .form-group {
+  gap: 3px;
+}
+.booking-bar .form-control {
+  padding: 7px 10px;
+  border-radius: 8px;
 }
 
 .booking-bar-grid {
@@ -533,7 +570,8 @@ section,
   border: 1px solid #E7E2DA;
   border-radius: 12px;
   padding: 10px 12px 10px;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 20px rgba(120, 53, 15, 0.05);
+  height: 100%;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
   display: flex;
   flex-direction: column;
   gap: 0;
@@ -541,8 +579,7 @@ section,
 }
 .car-card-modern:hover {
   border-color: #F0D9C8;
-  box-shadow: 0 14px 32px rgba(120, 53, 15, 0.1);
-  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(120, 53, 15, 0.08);
 }
 
 .car-top-row {
@@ -602,8 +639,8 @@ section,
 
 .thai-plate-badge {
   border: 1px solid #D1D5DB;
-  border-radius: 10px;
-  padding: 4px 10px 3px;
+  border-radius: 999px;
+  padding: 3px 12px 2px;
   background: #FFFFFF;
   text-align: center;
   min-width: 88px;
@@ -612,8 +649,14 @@ section,
   user-select: none;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.thai-plate-text {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1;
 }
 .thai-plate-badge:hover {
   transform: scale(1.05);
@@ -666,8 +709,8 @@ section,
   font-size: 14.5px;
   font-weight: 700;
   color: #1F2937;
-  margin-top: 8px;
-  line-height: 1.25;
+  margin-top: 6px;
+  line-height: 1.2;
 }
 .car-specs-subtitle {
   font-size: 12px;

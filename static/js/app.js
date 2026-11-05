@@ -2213,8 +2213,8 @@ class App {
         : "";
       const eyeIcon = `<svg class="car-plate-eye" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>`;
       const plateInner = isRed
-        ? `<div class="thai-plate-num">${isEn ? "Red Plate" : "ป้ายแดง"}</div><div class="thai-plate-prov">${isEn ? "Red plate" : "ป้ายแดง"}</div>`
-        : `<div class="thai-plate-num">${plateNo}</div><div class="thai-plate-prov">${province}</div>`;
+        ? `<div class="thai-plate-text"><div class="thai-plate-num">${isEn ? "Red Plate" : "ป้ายแดง"}</div><div class="thai-plate-prov">${isEn ? "Red plate" : "ป้ายแดง"}</div></div>`
+        : `<div class="thai-plate-text"><div class="thai-plate-num">${plateNo}</div><div class="thai-plate-prov">${province}</div></div>`;
       const plateHtml = `<div class="thai-plate-badge${isRed ? " red-plate" : ""}" id="plate-badge-${safeId}" role="button" tabindex="0" title="${detailsLabel}" onclick="app.openCarDetailsModal('${safePlate}')">${eyeIcon}${plateInner}</div>`;
 
       return `
