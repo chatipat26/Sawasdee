@@ -887,20 +887,20 @@
           <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
             <div>
               <h2 style="font-size:19px; font-weight:800; color:#1F2937; margin:0; display:flex; align-items:center; gap:8px;">
-                🛠️ โมดุลซ่อมบำรุง & บริการ (Fleet Maintenance & Service Center)
+                <span>🛠️</span> <span id="mnt-title-text">โมดูลซ่อมบำรุง & บริการ (Fleet Maintenance & Service Center)</span>
               </h2>
-              <div style="font-size:12px; color:#6B7280; margin-top:3px;">
+              <div id="mnt-subtitle-text" style="font-size:12px; color:#6B7280; margin-top:3px;">
                 ศูนย์จัดการงานซ่อมบำรุง ตรวจเช็คสภาพ ออกใบงานให้พนักงาน และต่อทะเบียนภาษี-พรบ.-ประกันภัยรถยนต์
               </div>
             </div>
             <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-              <button onclick="app.openNewMaintenanceModal()" class="btn btn-sm btn-primary" style="background:#EA580C; border-color:#C2410C;">
+              <button id="btn-mnt-new" onclick="app.openNewMaintenanceModal()" class="btn btn-sm btn-primary" style="background:#EA580C; border-color:#C2410C;">
                 ➕ ออกใบงานซ่อมบำรุงใหม่
               </button>
-              <button onclick="app.openNewMaintenanceModal(null, 'renewal')" class="btn btn-sm" style="background:#059669; color:white; border-color:#047857; font-weight:700;">
+              <button id="btn-mnt-renewal" onclick="app.openNewMaintenanceModal(null, 'renewal')" class="btn btn-sm" style="background:#059669; color:white; border-color:#047857; font-weight:700;">
                 📄 ออกใบงานต่อทะเบียน-พรบ.-ประกัน
               </button>
-              <button onclick="app.loadMaintenanceRecords()" class="btn btn-secondary btn-sm" style="padding:6px 12px; font-size:12px;">
+              <button id="btn-mnt-refresh" onclick="app.loadMaintenanceRecords()" class="btn btn-secondary btn-sm" style="padding:6px 12px; font-size:12px;">
                 🔄 รีเฟรช
               </button>
             </div>
@@ -910,19 +910,19 @@
         <!-- 4 KPI Stat Cards for Maintenance -->
         <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap:12px; margin-bottom:14px;">
           <div class="card" style="padding:14px; border-left: 4px solid #EA580C; margin-bottom:0;">
-            <div style="font-size:11.5px; font-weight:700; color:#64748B;">🚗 กำลังซ่อมบำรุงในอู่/ศูนย์</div>
+            <div id="mnt-kpi-inprog-lbl" style="font-size:11.5px; font-weight:700; color:#64748B;">🚗 กำลังซ่อมบำรุงในอู่/ศูนย์</div>
             <div style="font-size:22px; font-weight:800; color:#EA580C; margin-top:4px;" id="mnt-kpi-in-progress">0 <span style="font-size:13px; font-weight:500; color:#64748B;">คัน</span></div>
           </div>
           <div class="card" style="padding:14px; border-left: 4px solid #F59E0B; margin-bottom:0;">
-            <div style="font-size:11.5px; font-weight:700; color:#64748B;">⏳ ใบงานรอดำเนินการ</div>
+            <div id="mnt-kpi-pending-lbl" style="font-size:11.5px; font-weight:700; color:#64748B;">⏳ ใบงานรอดำเนินการ</div>
             <div style="font-size:22px; font-weight:800; color:#D97706; margin-top:4px;" id="mnt-kpi-pending">0 <span style="font-size:13px; font-weight:500; color:#64748B;">รายการ</span></div>
           </div>
           <div class="card" style="padding:14px; border-left: 4px solid #10B981; margin-bottom:0;">
-            <div style="font-size:11.5px; font-weight:700; color:#64748B;">💰 รวมค่าซ่อมบำรุงและบริการ</div>
+            <div id="mnt-kpi-total-lbl" style="font-size:11.5px; font-weight:700; color:#64748B;">💰 รวมค่าซ่อมบำรุงและบริการ</div>
             <div style="font-size:22px; font-weight:800; color:#059669; margin-top:4px;" id="mnt-kpi-total-cost">฿0</div>
           </div>
           <div class="card" style="padding:14px; border-left: 4px solid #3B82F6; margin-bottom:0;">
-            <div style="font-size:11.5px; font-weight:700; color:#64748B;">🛡️ งานต่อทะเบียน / พรบ. / ประกัน</div>
+            <div id="mnt-kpi-renewal-lbl" style="font-size:11.5px; font-weight:700; color:#64748B;">🛡️ งานต่อทะเบียน / พรบ. / ประกัน</div>
             <div style="font-size:22px; font-weight:800; color:#2563EB; margin-top:4px;" id="mnt-kpi-renewals">0 <span style="font-size:13px; font-weight:500; color:#64748B;">รายการ</span></div>
           </div>
         </div>
@@ -931,11 +931,11 @@
         <div class="card" style="margin-bottom:14px; padding:14px;">
           <div style="display:grid; grid-template-columns: 2fr 1.5fr 1fr 1fr; gap:10px; align-items:center;">
             <div>
-              <label style="font-size:11px; font-weight:700; color:#475569; display:block; margin-bottom:3px;">🔍 ค้นหา (ทะเบียน / เลขใบงาน / อู่ / รายการซ่อม):</label>
+              <label id="mnt-lbl-search" style="font-size:11px; font-weight:700; color:#475569; display:block; margin-bottom:3px;">🔍 ค้นหา (ทะเบียน / เลขใบงาน / อู่ / รายการซ่อม):</label>
               <input type="text" id="mnt-search-input" class="form-control" placeholder="พิมพ์ค้นหา..." oninput="app.renderMaintenanceRecords()" style="font-size:12px; padding:7px 10px;">
             </div>
             <div>
-              <label style="font-size:11px; font-weight:700; color:#475569; display:block; margin-bottom:3px;">📋 กรองประเภทงาน:</label>
+              <label id="mnt-lbl-type" style="font-size:11px; font-weight:700; color:#475569; display:block; margin-bottom:3px;">📋 กรองประเภทงาน:</label>
               <select id="mnt-filter-type" class="form-control" onchange="app.renderMaintenanceRecords()" style="font-size:12px; padding:7px 10px;">
                 <option value="ทั้งหมด">ทั้งหมด</option>
                 <option value="ซ่อมบำรุง">ซ่อมบำรุงทั่วไป / เช็คระยะ</option>
@@ -947,7 +947,7 @@
               </select>
             </div>
             <div>
-              <label style="font-size:11px; font-weight:700; color:#475569; display:block; margin-bottom:3px;">🚦 กรองสถานะ:</label>
+              <label id="mnt-lbl-status" style="font-size:11px; font-weight:700; color:#475569; display:block; margin-bottom:3px;">🚦 กรองสถานะ:</label>
               <select id="mnt-filter-status" class="form-control" onchange="app.renderMaintenanceRecords()" style="font-size:12px; padding:7px 10px;">
                 <option value="ทั้งหมด">ทั้งหมด</option>
                 <option value="กำลังซ่อมบำรุง">กำลังซ่อมบำรุง</option>
@@ -956,7 +956,7 @@
               </select>
             </div>
             <div>
-              <label style="font-size:11px; font-weight:700; color:#475569; display:block; margin-bottom:3px;">🚘 เลือกรถ:</label>
+              <label id="mnt-lbl-car" style="font-size:11px; font-weight:700; color:#475569; display:block; margin-bottom:3px;">🚘 เลือกรถ:</label>
               <select id="mnt-filter-car" class="form-control" onchange="app.renderMaintenanceRecords()" style="font-size:12px; padding:7px 10px;">
                 <option value="ทั้งหมด">ทุกคัน</option>
               </select>
@@ -967,22 +967,22 @@
         <!-- Table of Maintenance Records -->
         <div class="card">
           <div class="card-title" style="font-size:15px; color:#1F2937; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
-            <span>📋 รายการประวัติการซ่อมบำรุงและบริการทั้งหมด (<span id="mnt-table-count">0</span> รายการ)</span>
+            <span><span id="mnt-table-title-prefix">📋 รายการประวัติการซ่อมบำรุงและบริการทั้งหมด (</span><span id="mnt-table-count">0</span><span id="mnt-table-title-suffix"> รายการ)</span></span>
           </div>
           <div class="table-responsive">
             <table class="custom-table">
               <thead>
                 <tr>
-                  <th>เลขที่ใบงาน</th>
-                  <th>ทะเบียน & รถยนต์</th>
-                  <th>ประเภทงาน</th>
-                  <th>รายการซ่อม / รายการบริการ</th>
-                  <th>ค่าซ่อมบำรุง (฿)</th>
-                  <th>อู่ / ศูนย์บริการ</th>
-                  <th>พนักงานผู้รับผิดชอบ</th>
-                  <th>กำหนดการ</th>
-                  <th>สถานะ</th>
-                  <th style="text-align:center;">ออกใบงาน & ปิดงาน</th>
+                  <th id="mnt-th-id">เลขที่ใบงาน</th>
+                  <th id="mnt-th-plate">ทะเบียน & รถยนต์</th>
+                  <th id="mnt-th-type">ประเภทงาน</th>
+                  <th id="mnt-th-items">รายการซ่อม / รายการบริการ</th>
+                  <th id="mnt-th-cost">ค่าซ่อมบำรุง (฿)</th>
+                  <th id="mnt-th-center">อู่ / ศูนย์บริการ</th>
+                  <th id="mnt-th-worker">พนักงานผู้รับผิดชอบ</th>
+                  <th id="mnt-th-sched">กำหนดการ</th>
+                  <th id="mnt-th-status">สถานะ</th>
+                  <th id="mnt-th-acts" style="text-align:center;">ออกใบงาน & ปิดงาน</th>
                 </tr>
               </thead>
               <tbody id="maintenance-records-tbody">
@@ -1038,16 +1038,15 @@
       <!-- 4. MODULE: EXECUTIVE DASHBOARD & REPORTS -->
       <!-- =================================================================== -->
       <section id="module-dashboard" style="display:none;">
-        <!-- Top Organization Scope Filter (matching app.py) -->
-        <div class="card" style="margin-bottom:16px; padding:12px 18px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
-          <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-            <span style="font-size:13px; font-weight:700; color:#1E293B;">🏢 มุมมององค์กร (Company Scope):</span>
-            <select id="dash-company-scope" class="form-control" style="width:auto; min-width:240px; font-weight:600;" onchange="app.onDashboardScopeChange()">
-              <option value="ทั้งหมด">ทั้งหมด (รวมทุกบริษัท)</option>
-              <option value="Sawasdee Rent A Car">Sawasdee Rent A Car</option>
-              <option value="P.D.P. Co., Ltd.">P.D.P. Co., Ltd.</option>
-              <option value="Sawasdee Car Rent">Sawasdee Car Rent</option>
-            </select>
+        <!-- Unified Dashboard Header (Total Fleet across all companies) -->
+        <div class="card" style="margin-bottom:16px; padding:14px 20px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; border-left:4px solid #E85826;">
+          <div>
+            <div id="dash-main-title" style="font-size:16px; font-weight:700; color:#1E293B; display:flex; align-items:center; gap:8px;">
+              <span>📊</span> ภาพรวมและแดชบอร์ดผู้บริหาร (Executive Dashboard & Total Fleet)
+            </div>
+            <div id="dash-main-subtitle" style="font-size:12px; color:#64748B; margin-top:2px;">
+              สรุปภาพรวมยานพาหนะ รายรับ และประสิทธิภาพการดำเนินงานรวมทุกสาขาและบริษัทในเครือ (Unified Real-Time Fleet)
+            </div>
           </div>
           <div style="font-size:12px; color:#64748B; font-weight:600;" id="dash-last-updated-txt">
             🕒 ข้อมูลอัปเดตล่าสุด Real-time
@@ -1061,7 +1060,7 @@
             <div class="kpi-icon" style="background:#EFF6FF; color:#2563EB;">🚗</div>
             <div>
               <div class="kpi-value" id="kpi-total-cars">0</div>
-              <div class="kpi-label">กองยานพาหนะ (Fleet) <span style="font-size:10.5px; color:#2563EB; font-weight:700; background:#EFF6FF; padding:1px 6px; border-radius:8px;">➔ ไปหน้าเลือกรถ</span></div>
+              <div class="kpi-label"><span id="dash-kpi-fleet-lbl">กองยานพาหนะ (Fleet)</span> <span id="dash-kpi-fleet-badge" style="font-size:10.5px; color:#2563EB; font-weight:700; background:#EFF6FF; padding:1px 6px; border-radius:8px;">➔ ไปหน้าเลือกรถ</span></div>
               <div id="kpi-avail-pill" style="margin-top:4px; font-size:11px; font-weight:700; color:#059669; background:#ECFDF5; display:inline-block; padding:2px 8px; border-radius:10px;">พร้อมให้บริการ 0 คัน</div>
             </div>
           </div>
@@ -1071,7 +1070,7 @@
             <div class="kpi-icon" style="background:#ECFDF5; color:#059669;">🔑</div>
             <div>
               <div class="kpi-value" id="kpi-active-rentals">0</div>
-              <div class="kpi-label">รถกำลังเช่า/ติดจอง (Active) <span style="font-size:10.5px; color:#059669; font-weight:700; background:#ECFDF5; padding:1px 6px; border-radius:8px;">🔍 ดูรถที่อยู่กับลูกค้า</span></div>
+              <div class="kpi-label"><span id="dash-kpi-active-lbl">รถกำลังเช่า/ติดจอง (Active)</span> <span id="dash-kpi-active-badge" style="font-size:10.5px; color:#059669; font-weight:700; background:#ECFDF5; padding:1px 6px; border-radius:8px;">🔍 ดูรถที่อยู่กับลูกค้า</span></div>
               <div id="kpi-maint-pill" style="margin-top:4px; font-size:11px; font-weight:700; color:#D97706; background:#FFFBEB; display:inline-block; padding:2px 8px; border-radius:10px;">ซ่อมบำรุง 0 คัน</div>
             </div>
           </div>
@@ -1081,7 +1080,7 @@
             <div class="kpi-icon" style="background:#FFFBEB; color:#D97706;">📈</div>
             <div>
               <div class="kpi-value" id="kpi-utilization">0%</div>
-              <div class="kpi-label">อัตราการใช้รถ (Utilization) <span style="font-size:10.5px; color:#D97706; font-weight:700; background:#FFFBEB; padding:1px 6px; border-radius:8px;">🏆 อันดับกำไรสุทธิ</span></div>
+              <div class="kpi-label"><span id="dash-kpi-util-lbl">อัตราการใช้รถ (Utilization)</span> <span id="dash-kpi-util-badge" style="font-size:10.5px; color:#D97706; font-weight:700; background:#FFFBEB; padding:1px 6px; border-radius:8px;">🏆 อันดับกำไรสุทธิ</span></div>
             </div>
           </div>
 
@@ -1090,7 +1089,7 @@
             <div class="kpi-icon" style="background:#FEF2F2; color:#DC2626;">💰</div>
             <div>
               <div class="kpi-value" id="kpi-total-revenue">฿0.00</div>
-              <div class="kpi-label">รายรับสะสมรวม (Revenue)</div>
+              <div class="kpi-label" id="dash-kpi-rev-lbl">รายรับสะสมรวม (Revenue)</div>
             </div>
           </div>
         </div>
@@ -1099,12 +1098,12 @@
         <div class="card" style="background:#FFF7ED; border-color:#FED7AA;">
           <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
             <div>
-              <b style="font-size:15px; color:#C2410C;">🚨 ระบบตรวจสอบ พ.ร.บ. / ประกันภัย ผ่าน LINE อัตโนมัติ (Broadcast 20:00 น.)</b>
-              <div style="font-size:12px; color:#9A3412; margin-top:2px;">
+              <b style="font-size:15px; color:#C2410C;" id="dash-alert-title">🚨 ระบบตรวจสอบ พ.ร.บ. / ประกันภัย ผ่าน LINE อัตโนมัติ (Broadcast 20:00 น.)</b>
+              <div style="font-size:12px; color:#9A3412; margin-top:2px;" id="dash-alert-desc">
                 ส่งแจ้งเตือนอัตโนมัติทุกวันเวลา 20:00 น. (ล่วงหน้า 30 วัน, 7 วัน และวันหมดอายุ) • เมื่อกด 🔄 อัปเดตต่ออายุในตารางด้านล่างแล้ว ระบบจะหยุดส่งแจ้งเตือนรายการนั้นทันที
               </div>
             </div>
-            <button onclick="app.triggerLineExpiryCheck()" class="btn btn-sm btn-primary">
+            <button onclick="app.triggerLineExpiryCheck()" class="btn btn-sm btn-primary" id="btn-dash-line-check">
               📲 ตรวจสอบ & ส่ง LINE ทันที
             </button>
           </div>
@@ -1117,9 +1116,9 @@
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:8px;">
               <div>
                 <div class="card-title" style="margin:0;">
-                  <span>🍩</span> สถานะกองยานพาหนะปัจจุบัน (Total Fleet Status)
+                  <span>🍩</span> <span id="dash-donut-title">สถานะกองยานพาหนะปัจจุบัน (Total Fleet Status)</span>
                 </div>
-                <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">
+                <div style="font-size:12px; color:var(--text-muted); margin-top:2px;" id="dash-donut-subtitle">
                   สัดส่วนสถานะรถทั้งหมดในระบบ (Interactive Donut Chart)
                 </div>
               </div>
@@ -1138,9 +1137,9 @@
             <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:14px;">
               <div>
                 <div class="card-title" style="margin:0;">
-                  <span>📈</span> แนวโน้มรายรับสะสมรวม (Total Revenue Trend)
+                  <span>📈</span> <span id="dash-trend-title">แนวโน้มรายรับสะสมรวม (Total Revenue Trend)</span>
                 </div>
-                <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">
+                <div style="font-size:12px; color:var(--text-muted); margin-top:2px;" id="dash-trend-subtitle">
                   ยอดรายรับรวมย้อนหลังรายเดือน (Interactive Total Revenue Chart)
                 </div>
               </div>
@@ -1174,19 +1173,19 @@
             <!-- Sort & Filter Toolbar -->
             <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px; background:#F8FAFC; padding:10px 14px; border-radius:10px; border:1px solid #E2E8F0;">
               <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-                <span style="font-size:12.5px; font-weight:700; color:#334155;">🔽 เรียงลำดับตาราง:</span>
+                <span id="dash-fleet-sort-lbl" style="font-size:12.5px; font-weight:700; color:#334155;">🔽 เรียงลำดับตาราง:</span>
                 <select id="dash-fleet-sort-select" class="form-control" style="width:auto; min-width:270px; padding:5px 10px; font-size:12.5px; font-weight:600;" onchange="app.renderFleetOverviewTable()">
-                  <option value="expiry_asc" selected>⏳ วันหมดอายุ ภาษี / พ.ร.บ. / ประกัน ใกล้หมดก่อน (ค่าเริ่มต้น)</option>
-                  <option value="tax_asc">🏷️ วันหมดอายุ ภาษีรถยนต์ ใกล้หมดก่อน</option>
-                  <option value="act_asc">🛡️ วันหมดอายุ พ.ร.บ. ใกล้หมดก่อน</option>
-                  <option value="ins_asc">📑 วันหมดอายุ ประกันภัย ใกล้หมดก่อน</option>
-                  <option value="plate_asc">🚘 เลขทะเบียนรถ (ก-ฮ / 0-9)</option>
+                  <option value="expiry_asc" selected id="opt-dash-sort-exp">⏳ วันหมดอายุ ภาษี / พ.ร.บ. / ประกัน ใกล้หมดก่อน (ค่าเริ่มต้น)</option>
+                  <option value="tax_asc" id="opt-dash-sort-tax">🏷️ วันหมดอายุ ภาษีรถยนต์ ใกล้หมดก่อน</option>
+                  <option value="act_asc" id="opt-dash-sort-act">🛡️ วันหมดอายุ พ.ร.บ. ใกล้หมดก่อน</option>
+                  <option value="ins_asc" id="opt-dash-sort-ins">📑 วันหมดอายุ ประกันภัย ใกล้หมดก่อน</option>
+                  <option value="plate_asc" id="opt-dash-sort-plate">🚘 เลขทะเบียนรถ (ก-ฮ / 0-9)</option>
                 </select>
                 <div id="dash-fleet-expiry-summary" style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;"></div>
               </div>
               <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
                 <input type="text" id="dash-fleet-search-input" class="form-control" style="width:260px; padding:5px 10px; font-size:12.5px;" placeholder="🔍 ค้นหาทะเบียน / เลขถัง / รุ่น / ประกัน / หมายเหตุ..." oninput="app.renderFleetOverviewTable()">
-                <button type="button" onclick="app.openEditCarModal('')" class="btn btn-sm btn-primary" style="padding:5px 10px; font-size:12px;">
+                <button type="button" onclick="app.openEditCarModal('')" class="btn btn-sm btn-primary" id="btn-dash-add-car" style="padding:5px 10px; font-size:12px;">
                   ➕ เพิ่มรถใหม่
                 </button>
               </div>
@@ -1196,17 +1195,17 @@
               <table class="custom-table">
                 <thead>
                   <tr>
-                    <th>ทะเบียน / ปีจด</th>
-                    <th>ยี่ห้อ / รุ่น / สี</th>
-                    <th>หมายเลขตัวถัง (VIN)</th>
-                    <th>เจ้าของ / ผู้รับผลประโยชน์</th>
-                    <th>สถานะ</th>
-                    <th>วันหมดอายุ ภาษี</th>
-                    <th>วันหมดอายุ พ.ร.บ.</th>
-                    <th>วันหมดอายุ ประกันภัย & บ.ประกัน</th>
-                    <th>เช็คระยะ / เลขไมล์</th>
-                    <th>หมายเหตุ / สัญญาเช่าซื้อ</th>
-                    <th style="text-align:center;">จัดการ</th>
+                    <th id="th-fleet-plate">ทะเบียน / ปีจด</th>
+                    <th id="th-fleet-brand">ยี่ห้อ / รุ่น / สี</th>
+                    <th id="th-fleet-vin">หมายเลขตัวถัง (VIN)</th>
+                    <th id="th-fleet-owner">เจ้าของ / ผู้รับผลประโยชน์</th>
+                    <th id="th-fleet-status">สถานะ</th>
+                    <th id="th-fleet-tax">วันหมดอายุ ภาษี</th>
+                    <th id="th-fleet-act">วันหมดอายุ พ.ร.บ.</th>
+                    <th id="th-fleet-ins">วันหมดอายุ ประกันภัย & บ.ประกัน</th>
+                    <th id="th-fleet-mileage">เช็คระยะ / เลขไมล์</th>
+                    <th id="th-fleet-note">หมายเหตุ / สัญญาเช่าซื้อ</th>
+                    <th id="th-fleet-action" style="text-align:center;">จัดการ</th>
                   </tr>
                 </thead>
                 <tbody id="fleet-overview-tbody">
@@ -1216,7 +1215,7 @@
             </div>
             <div style="font-size:12px; color:#64748B; margin-top:10px; display:flex; align-items:center; gap:6px;">
               <span>💡</span>
-              <span>ระบบตรวจสอบและป้องกันรถซ้ำอัตโนมัติ (ทั้งเลขทะเบียนและเลขตัวถัง VIN) สามารถคลิก <b>✏️</b> เพื่อแก้ไขวันหมดอายุภาษี/พ.ร.บ./ประกันภัย หรือกด <b>📋 ออกใบงาน</b> เพื่อมอบหมายพนักงานได้ทันที</span>
+              <span id="dash-fleet-footer-tip">ระบบตรวจสอบและป้องกันรถซ้ำอัตโนมัติ (ทั้งเลขทะเบียนและเลขตัวถัง VIN) สามารถคลิก <b>✏️</b> เพื่อแก้ไขวันหมดอายุภาษี/พ.ร.บ./ประกันภัย หรือกด <b>📋 ออกใบงาน</b> เพื่อมอบหมายพนักงานได้ทันที</span>
             </div>
           </div>
         </div>

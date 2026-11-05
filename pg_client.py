@@ -237,11 +237,18 @@ class PgClient:
             if not self._schema_checked:
                 self._schema_checked = True
                 try:
-                    with self._conn.cursor() as cur:
-                        cur.execute("ALTER TABLE IF EXISTS public.users ADD COLUMN IF NOT EXISTS line_user_id TEXT;")
-                        cur.execute("ALTER TABLE IF EXISTS public.customers ADD COLUMN IF NOT EXISTS line_user_id TEXT;")
+                    schema_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "schema.sql")
+                    if os.path.exists(schema_path):
+                        with open(schema_path, "r", encoding="utf-8") as sf:
+                            schema_sql = sf.read()
+                        with self._conn.cursor() as cur:
+                            cur.execute(schema_sql)
+                    else:
+                        with self._conn.cursor() as cur:
+                            cur.execute("ALTER TABLE IF EXISTS public.users ADD COLUMN IF NOT EXISTS line_user_id TEXT;")
+                            cur.execute("ALTER TABLE IF EXISTS public.customers ADD COLUMN IF NOT EXISTS line_user_id TEXT;")
                 except Exception as e:
-                    print(f"Schema check note: {e}")
+                    print(f"PostgreSQL Schema check note: {e}")
         return self._conn
 
     def run(self, statements):

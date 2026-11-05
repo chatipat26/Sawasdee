@@ -177,6 +177,196 @@ class App {
     if (this.renderBackOfficeJobs) {
       this.renderBackOfficeJobs();
     }
+
+    // 10. Maintenance & Services Module Localization
+    const mTitle = document.getElementById("maint-title-text");
+    if (mTitle) mTitle.textContent = isEn ? "Maintenance & Vehicle Services" : "โมดูลซ่อมบำรุง & บริการ (Maintenance & Services)";
+    const mSubtitle = document.getElementById("maint-subtitle-text");
+    if (mSubtitle) mSubtitle.textContent = isEn ? "Vehicle Maintenance Tracking, Service Records & Expense System" : "ระบบบันทึกและติดตามการเข้าศูนย์บริการ อู่ซ่อม และค่าใช้จ่ายการดูแลรถ";
+    const btnMaintAdd = document.getElementById("btn-maint-open-modal");
+    if (btnMaintAdd) btnMaintAdd.textContent = isEn ? "➕ New Service / Work Order" : "➕ บันทึกส่งซ่อม / สร้างใบงานซ่อม";
+    const btnMaintRef = document.getElementById("btn-maint-refresh");
+    if (btnMaintRef) btnMaintRef.textContent = isEn ? "🔄 Refresh" : "🔄 รีเฟรชข้อมูล";
+
+    // Maintenance KPI labels
+    const mKpi1 = document.getElementById("maint-kpi-in-garage-lbl");
+    if (mKpi1) mKpi1.textContent = isEn ? "In Garage / Active Repair" : "กำลังซ่อมบำรุงในอู่";
+    const mKpi2 = document.getElementById("maint-kpi-pending-lbl");
+    if (mKpi2) mKpi2.textContent = isEn ? "Pending Work Orders" : "ใบงานรอดำเนินการ";
+    const mKpi3 = document.getElementById("maint-kpi-total-cost-lbl");
+    if (mKpi3) mKpi3.textContent = isEn ? "Total Maintenance Cost" : "รวมค่าซ่อมบำรุงทั้งหมด";
+    const mKpi4 = document.getElementById("maint-kpi-renewal-lbl");
+    if (mKpi4) mKpi4.textContent = isEn ? "Upcoming Tax/ACT/Ins Renewals" : "งานต่อทะเบียน/พรบ./ประกัน";
+
+    // Maintenance filter bar
+    const mFiltStat = document.getElementById("maint-filter-status-lbl");
+    if (mFiltStat) mFiltStat.textContent = isEn ? "Service Status:" : "สถานะงานซ่อม:";
+    const optMStatAll = document.getElementById("opt-maint-status-all");
+    if (optMStatAll) optMStatAll.textContent = isEn ? "All Statuses" : "ทั้งหมดทุกสถานะ";
+    const optMStatRep = document.getElementById("opt-maint-status-in-repair");
+    if (optMStatRep) optMStatRep.textContent = isEn ? "In Repair" : "กำลังซ่อมบำรุง";
+    const optMStatPend = document.getElementById("opt-maint-status-pending");
+    if (optMStatPend) optMStatPend.textContent = isEn ? "Pending" : "รอดำเนินการ";
+    const optMStatDone = document.getElementById("opt-maint-status-done");
+    if (optMStatDone) optMStatDone.textContent = isEn ? "Completed" : "ซ่อมเสร็จสิ้น";
+    const optMStatCancel = document.getElementById("opt-maint-status-cancel");
+    if (optMStatCancel) optMStatCancel.textContent = isEn ? "Cancelled" : "ยกเลิกงานซ่อม";
+
+    const mFiltType = document.getElementById("maint-filter-type-lbl");
+    if (mFiltType) mFiltType.textContent = isEn ? "Job Category:" : "ประเภทรายการ:";
+    const optMTypeAll = document.getElementById("opt-maint-type-all");
+    if (optMTypeAll) optMTypeAll.textContent = isEn ? "All Categories" : "ทั้งหมดทุกประเภท";
+    const optMTypeRout = document.getElementById("opt-maint-type-routine");
+    if (optMTypeRout) optMTypeRout.textContent = isEn ? "Routine / Oil Change" : "เช็คระยะ / ถ่ายน้ำมันเครื่อง";
+    const optMTypeRep = document.getElementById("opt-maint-type-repair");
+    if (optMTypeRep) optMTypeRep.textContent = isEn ? "Mechanical Repair" : "ซ่อมแซมทั่วไป / อะไหล่";
+    const optMTypeBody = document.getElementById("opt-maint-type-body");
+    if (optMTypeBody) optMTypeBody.textContent = isEn ? "Body & Paint" : "ซ่อมสี & ตัวถัง / อุบัติเหตุ";
+    const optMTypeTire = document.getElementById("opt-maint-type-tire");
+    if (optMTypeTire) optMTypeTire.textContent = isEn ? "Tires / Battery" : "เปลี่ยนยาง / แบตเตอรี่";
+    const optMTypeClean = document.getElementById("opt-maint-type-clean");
+    if (optMTypeClean) optMTypeClean.textContent = isEn ? "Car Detailing / Spa" : "คาร์แคร์ / สปาฟอกเบาะ";
+    const optMTypeTax = document.getElementById("opt-maint-type-tax");
+    if (optMTypeTax) optMTypeTax.textContent = isEn ? "Tax / ACT / Insurance" : "ต่อภาษี / พ.ร.บ. / ประกันภัย";
+    const optMTypeOth = document.getElementById("opt-maint-type-other");
+    if (optMTypeOth) optMTypeOth.textContent = isEn ? "Other" : "อื่นๆ";
+
+    const mSearch = document.getElementById("mnt-search-input");
+    if (mSearch) mSearch.placeholder = isEn ? "🔍 Search plate, garage, work order, details..." : "🔍 ค้นหาทะเบียน, อู่ซ่อม, เลขใบงาน, รายละเอียด...";
+
+    // Maintenance Table Headers
+    const mTblTitle = document.getElementById("maint-table-title");
+    if (mTblTitle) mTblTitle.textContent = isEn ? "Maintenance & Service Work Orders History" : "ประวัติและรายการใบงานซ่อมบำรุงทั้งหมด";
+    const thMwo = document.getElementById("maint-th-wo");
+    if (thMwo) thMwo.textContent = isEn ? "WO Number" : "เลขที่ใบงาน";
+    const thMplate = document.getElementById("maint-th-plate");
+    if (thMplate) thMplate.textContent = isEn ? "Plate / Brand" : "ทะเบียน / ยี่ห้อ-รุ่น";
+    const thMtype = document.getElementById("maint-th-type");
+    if (thMtype) thMtype.textContent = isEn ? "Category" : "ประเภทรายการ";
+    const thMdetail = document.getElementById("maint-th-detail");
+    if (thMdetail) thMdetail.textContent = isEn ? "Details & Issue" : "รายการซ่อม / อาการ";
+    const thMcost = document.getElementById("maint-th-cost");
+    if (thMcost) thMcost.textContent = isEn ? "Cost (THB)" : "ค่าซ่อม (บาท)";
+    const thMgarage = document.getElementById("maint-th-garage");
+    if (thMgarage) thMgarage.textContent = isEn ? "Garage / Center" : "อู่ / ศูนย์บริการ";
+    const thMstaff = document.getElementById("maint-th-staff");
+    if (thMstaff) thMstaff.textContent = isEn ? "Assigned Staff" : "พนักงานผู้ดูแล";
+    const thMdate = document.getElementById("maint-th-date");
+    if (thMdate) thMdate.textContent = isEn ? "Date In / Expected Out" : "วันที่ส่งซ่อม - กำหนดเสร็จ";
+    const thMstatus = document.getElementById("maint-th-status");
+    if (thMstatus) thMstatus.textContent = isEn ? "Status" : "สถานะ";
+    const thMaction = document.getElementById("maint-th-action");
+    if (thMaction) thMaction.textContent = isEn ? "Actions" : "จัดการ";
+
+    // 11. Dashboard Module Localization
+    const dTitle = document.getElementById("dash-main-title");
+    if (dTitle) dTitle.innerHTML = isEn 
+      ? '<span>📊</span> Executive Dashboard & Total Fleet' 
+      : '<span>📊</span> ภาพรวมและแดชบอร์ดผู้บริหาร (Executive Dashboard & Total Fleet)';
+    const dSubtitle = document.getElementById("dash-main-subtitle");
+    if (dSubtitle) dSubtitle.textContent = isEn 
+      ? "Real-time summary of fleet metrics, revenues, and operational performance across all companies" 
+      : "สรุปภาพรวมยานพาหนะ รายรับ และประสิทธิภาพการดำเนินงานรวมทุกสาขาและบริษัทในเครือ (Unified Real-Time Fleet)";
+
+    const dKpiFleet = document.getElementById("dash-kpi-fleet-lbl");
+    if (dKpiFleet) dKpiFleet.textContent = isEn ? "Total Fleet" : "กองยานพาหนะ (Fleet)";
+    const dKpiFleetBdg = document.getElementById("dash-kpi-fleet-badge");
+    if (dKpiFleetBdg) dKpiFleetBdg.textContent = isEn ? "➔ Fleet Showcase" : "➔ ไปหน้าเลือกรถ";
+
+    const dKpiActive = document.getElementById("dash-kpi-active-lbl");
+    if (dKpiActive) dKpiActive.textContent = isEn ? "Active / Booked Rentals" : "รถกำลังเช่า/ติดจอง (Active)";
+    const dKpiActiveBdg = document.getElementById("dash-kpi-active-badge");
+    if (dKpiActiveBdg) dKpiActiveBdg.textContent = isEn ? "🔍 View Active Rentals" : "🔍 ดูรถที่อยู่กับลูกค้า";
+
+    const dKpiUtil = document.getElementById("dash-kpi-util-lbl");
+    if (dKpiUtil) dKpiUtil.textContent = isEn ? "Fleet Utilization" : "อัตราการใช้รถ (Utilization)";
+    const dKpiUtilBdg = document.getElementById("dash-kpi-util-badge");
+    if (dKpiUtilBdg) dKpiUtilBdg.textContent = isEn ? "🏆 Net Profit Rank" : "🏆 อันดับกำไรสุทธิ";
+
+    const dKpiRev = document.getElementById("dash-kpi-rev-lbl");
+    if (dKpiRev) dKpiRev.textContent = isEn ? "Total Revenue (Revenue)" : "รายรับสะสมรวม (Revenue)";
+
+    const dAlertTitle = document.getElementById("dash-alert-title");
+    if (dAlertTitle) dAlertTitle.textContent = isEn 
+      ? "🚨 Automated Tax / ACT / Insurance LINE Notification (Broadcast 20:00)" 
+      : "🚨 ระบบตรวจสอบ พ.ร.บ. / ประกันภัย ผ่าน LINE อัตโนมัติ (Broadcast 20:00 น.)";
+    const dAlertDesc = document.getElementById("dash-alert-desc");
+    if (dAlertDesc) dAlertDesc.textContent = isEn 
+      ? "Automated broadcast daily at 20:00 (30 days, 7 days prior, and expiration date) • Once renewed in the table below, alerts for that vehicle stop immediately." 
+      : "ส่งแจ้งเตือนอัตโนมัติทุกวันเวลา 20:00 น. (ล่วงหน้า 30 วัน, 7 วัน และวันหมดอายุ) • เมื่อกด 🔄 อัปเดตต่ออายุในตารางด้านล่างแล้ว ระบบจะหยุดส่งแจ้งเตือนรายการนั้นทันที";
+    const btnLineCheck = document.getElementById("btn-dash-line-check");
+    if (btnLineCheck) btnLineCheck.textContent = isEn ? "📲 Check & Send LINE Now" : "📲 ตรวจสอบ & ส่ง LINE ทันที";
+
+    const dDonutTitle = document.getElementById("dash-donut-title");
+    if (dDonutTitle) dDonutTitle.textContent = isEn ? "Current Fleet Status" : "สถานะกองยานพาหนะปัจจุบัน (Total Fleet Status)";
+    const dDonutSubtitle = document.getElementById("dash-donut-subtitle");
+    if (dDonutSubtitle) dDonutSubtitle.textContent = isEn ? "Fleet status breakdown (Interactive Donut Chart)" : "สัดส่วนสถานะรถทั้งหมดในระบบ (Interactive Donut Chart)";
+
+    const dTrendTitle = document.getElementById("dash-trend-title");
+    if (dTrendTitle) dTrendTitle.textContent = isEn ? "Total Revenue Trend" : "แนวโน้มรายรับสะสมรวม (Total Revenue Trend)";
+    const dTrendSubtitle = document.getElementById("dash-trend-subtitle");
+    if (dTrendSubtitle) dTrendSubtitle.textContent = isEn ? "Monthly revenue trend (Interactive Total Revenue Chart)" : "ยอดรายรับรวมย้อนหลังรายเดือน (Interactive Total Revenue Chart)";
+
+    const btnTrendBar = document.getElementById("btn-trend-bar");
+    if (btnTrendBar) btnTrendBar.textContent = isEn ? "📊 Bar Chart" : "📊 กราฟแท่ง (Bar)";
+    const btnTrendArea = document.getElementById("btn-trend-area");
+    if (btnTrendArea) btnTrendArea.textContent = isEn ? "📈 Area Chart" : "📈 กราฟพื้นที่ (Area)";
+
+    const dFleetSortLbl = document.getElementById("dash-fleet-sort-lbl");
+    if (dFleetSortLbl) dFleetSortLbl.textContent = isEn ? "🔽 Sort By:" : "🔽 เรียงลำดับตาราง:";
+    const optSortExp = document.getElementById("opt-dash-sort-exp");
+    if (optSortExp) optSortExp.textContent = isEn ? "⏳ Expiry Date (Tax / ACT / Ins nearest first)" : "⏳ วันหมดอายุ ภาษี / พ.ร.บ. / ประกัน ใกล้หมดก่อน (ค่าเริ่มต้น)";
+    const optSortTax = document.getElementById("opt-dash-sort-tax");
+    if (optSortTax) optSortTax.textContent = isEn ? "🏷️ Tax Expiry Date nearest first" : "🏷️ วันหมดอายุ ภาษีรถยนต์ ใกล้หมดก่อน";
+    const optSortAct = document.getElementById("opt-dash-sort-act");
+    if (optSortAct) optSortAct.textContent = isEn ? "🛡️ ACT Expiry Date nearest first" : "🛡️ วันหมดอายุ พ.ร.บ. ใกล้หมดก่อน";
+    const optSortIns = document.getElementById("opt-dash-sort-ins");
+    if (optSortIns) optSortIns.textContent = isEn ? "📑 Insurance Expiry Date nearest first" : "📑 วันหมดอายุ ประกันภัย ใกล้หมดก่อน";
+    const optSortPlate = document.getElementById("opt-dash-sort-plate");
+    if (optSortPlate) optSortPlate.textContent = isEn ? "🚘 Plate No. (A-Z / 0-9)" : "🚘 เลขทะเบียนรถ (ก-ฮ / 0-9)";
+
+    const dFleetSearch = document.getElementById("dash-fleet-search-input");
+    if (dFleetSearch) dFleetSearch.placeholder = isEn ? "🔍 Search plate / VIN / model / insurance / notes..." : "🔍 ค้นหาทะเบียน / เลขถัง / รุ่น / ประกัน / หมายเหตุ...";
+    const btnAddCar = document.getElementById("btn-dash-add-car");
+    if (btnAddCar) btnAddCar.textContent = isEn ? "➕ Add New Vehicle" : "➕ เพิ่มรถใหม่";
+
+    const thFPlate = document.getElementById("th-fleet-plate");
+    if (thFPlate) thFPlate.textContent = isEn ? "Plate / Year" : "ทะเบียน / ปีจด";
+    const thFBrand = document.getElementById("th-fleet-brand");
+    if (thFBrand) thFBrand.textContent = isEn ? "Make / Model / Color" : "ยี่ห้อ / รุ่น / สี";
+    const thFVin = document.getElementById("th-fleet-vin");
+    if (thFVin) thFVin.textContent = isEn ? "VIN / Chassis No." : "หมายเลขตัวถัง (VIN)";
+    const thFOwner = document.getElementById("th-fleet-owner");
+    if (thFOwner) thFOwner.textContent = isEn ? "Owner / Beneficiary" : "เจ้าของ / ผู้รับผลประโยชน์";
+    const thFStatus = document.getElementById("th-fleet-status");
+    if (thFStatus) thFStatus.textContent = isEn ? "Status" : "สถานะ";
+    const thFTax = document.getElementById("th-fleet-tax");
+    if (thFTax) thFTax.textContent = isEn ? "Tax Expiry" : "วันหมดอายุ ภาษี";
+    const thFAct = document.getElementById("th-fleet-act");
+    if (thFAct) thFAct.textContent = isEn ? "ACT Expiry" : "วันหมดอายุ พ.ร.บ.";
+    const thFIns = document.getElementById("th-fleet-ins");
+    if (thFIns) thFIns.textContent = isEn ? "Insurance Expiry & Insurer" : "วันหมดอายุ ประกันภัย & บ.ประกัน";
+    const thFMileage = document.getElementById("th-fleet-mileage");
+    if (thFMileage) thFMileage.textContent = isEn ? "Service Mileage" : "เช็คระยะ / เลขไมล์";
+    const thFNote = document.getElementById("th-fleet-note");
+    if (thFNote) thFNote.textContent = isEn ? "Remarks / HP Lease" : "หมายเหตุ / สัญญาเช่าซื้อ";
+    const thFAction = document.getElementById("th-fleet-action");
+    if (thFAction) thFAction.textContent = isEn ? "Action" : "จัดการ";
+
+    const dFleetTip = document.getElementById("dash-fleet-footer-tip");
+    if (dFleetTip) dFleetTip.innerHTML = isEn 
+      ? 'Automatic duplicate prevention (Plate and VIN). Click <b>✏️</b> to edit expiry dates or click <b>📋 Work Order</b> to assign staff immediately.' 
+      : 'ระบบตรวจสอบและป้องกันรถซ้ำอัตโนมัติ (ทั้งเลขทะเบียนและเลขตัวถัง VIN) สามารถคลิก <b>✏️</b> เพื่อแก้ไขวันหมดอายุภาษี/พ.ร.บ./ประกันภัย หรือกด <b>📋 ออกใบงาน</b> เพื่อมอบหมายพนักงานได้ทันที';
+
+    // 12. Trigger active module re-rendering with new language
+    if (this.activeModule === "maintenance" && this.renderMaintenanceRecords) {
+      this.renderMaintenanceRecords();
+    }
+    if (this.activeModule === "dashboard") {
+      this.updateDashboardKPIsFromScope();
+      this.renderDashboardCharts();
+      this.renderFleetOverviewTable();
+    }
   }
 
   initGlobalEnterKeyNavigation() {
@@ -587,8 +777,8 @@ class App {
   }
 
   updateDashboardKPIsFromScope() {
-    const scopeVal = document.getElementById("dash-company-scope")?.value || "ทั้งหมด";
-    const scopedCars = (this.cars || []).filter(c => this.matchesCompanyScope(c.company, scopeVal));
+    const isEn = (this.currentLang === "EN");
+    const scopedCars = this.cars || [];
 
     const totalCars = scopedCars.length;
     const availCars = scopedCars.filter(c => c.fleet_status_key === "available" || c.status === "ว่างพร้อมใช้งาน").length;
@@ -597,12 +787,10 @@ class App {
     const utilRate = totalCars > 0 ? ((activeRentals / totalCars) * 100).toFixed(1) : "0.0";
 
     let totalRev = 0;
-    if (scopeVal === "ทั้งหมด" && this.rawKpiData && this.rawKpiData.total_revenue !== undefined) {
+    if (this.rawKpiData && this.rawKpiData.total_revenue !== undefined) {
       totalRev = parseFloat(this.rawKpiData.total_revenue || 0);
     } else {
-      totalRev = (this.completedJobs || [])
-        .filter(j => this.matchesCompanyScope(j.company, scopeVal))
-        .reduce((sum, j) => sum + parseFloat(j.net_price || 0), 0);
+      totalRev = (this.completedJobs || []).reduce((sum, j) => sum + parseFloat(j.net_price || 0), 0);
     }
 
     const elTotal = document.getElementById("kpi-total-cars");
@@ -614,9 +802,9 @@ class App {
     const elUpd = document.getElementById("dash-last-updated-txt");
 
     if (elTotal) elTotal.textContent = totalCars;
-    if (elAvail) elAvail.textContent = `พร้อมให้บริการ ${availCars} คัน`;
+    if (elAvail) elAvail.textContent = isEn ? `Available ${availCars} cars` : `พร้อมให้บริการ ${availCars} คัน`;
     if (elActive) elActive.textContent = activeRentals;
-    if (elMaint) elMaint.textContent = `ซ่อมบำรุง ${maintCars} คัน`;
+    if (elMaint) elMaint.textContent = isEn ? `Maintenance ${maintCars} cars` : `ซ่อมบำรุง ${maintCars} คัน`;
     if (elUtil) elUtil.textContent = `${utilRate}%`;
     if (elRev) elRev.textContent = `฿${totalRev.toLocaleString('th-TH', { minimumFractionDigits: 2 })}`;
     if (elUpd) {
@@ -626,7 +814,9 @@ class App {
       const yyyy = now.getFullYear();
       const hh = String(now.getHours()).padStart(2, "0");
       const min = String(now.getMinutes()).padStart(2, "0");
-      elUpd.textContent = `🕒 ข้อมูลอัปเดตล่าสุด ณ ${dd}/${mm}/${yyyy} ${hh}:${min}`;
+      elUpd.textContent = isEn 
+        ? `🕒 Real-time updated at ${dd}/${mm}/${yyyy} ${hh}:${min}` 
+        : `🕒 ข้อมูลอัปเดตล่าสุด ณ ${dd}/${mm}/${yyyy} ${hh}:${min}`;
     }
   }
 
@@ -3632,14 +3822,14 @@ class App {
     const tbody = document.getElementById("fleet-overview-tbody");
     if (!tbody) return;
 
+    const isEn = (this.currentLang === "EN");
     const summaryEl = document.getElementById("dash-fleet-expiry-summary");
     const sortMode = document.getElementById("dash-fleet-sort-select")?.value || "expiry_asc";
     const localKw = (document.getElementById("dash-fleet-search-input")?.value || "").toLowerCase().trim();
     const sbKw = (this.sidebarSearchKw || "").toLowerCase().trim();
-    const scopeVal = document.getElementById("dash-company-scope")?.value || "ทั้งหมด";
 
-    // 1. Filter by Company Scope first (matching app.py)
-    const scopedCars = (this.cars || []).filter(c => this.matchesCompanyScope(c.company, scopeVal));
+    // 1. Total Fleet across all companies (Unified Dashboard)
+    const scopedCars = this.cars || [];
 
     let expiredCount = 0;
     let warningCount = 0;
@@ -3683,22 +3873,24 @@ class App {
 
     const titleEl = document.getElementById("title-expander-fleet");
     if (titleEl) {
-      titleEl.textContent = `ฐานข้อมูลทะเบียนรถ, ภาษี, พ.ร.บ., ประกันภัย และเช็คระยะ (Fleet Database — ${scopedCars.length} คัน)`;
+      titleEl.textContent = isEn 
+        ? `Fleet Database Overview (Tax, ACT, Ins & Service — ${scopedCars.length} cars)` 
+        : `ฐานข้อมูลทะเบียนรถ, ภาษี, พ.ร.บ., ประกันภัย และเช็คระยะ (Fleet Database — ${scopedCars.length} คัน)`;
     }
 
     if (summaryEl) {
       summaryEl.innerHTML = `
         <span style="background:#FEE2E2; color:#991B1B; border:1px solid #FECACA; padding:3px 9px; border-radius:12px; font-size:11.5px; font-weight:700;">
-          🔴 หมดอายุ: ${expiredCount} คัน
+          🔴 ${isEn ? `Expired: ${expiredCount} cars` : `หมดอายุ: ${expiredCount} คัน`}
         </span>
         <span style="background:#FEF3C7; color:#B45309; border:1px solid #FDE68A; padding:3px 9px; border-radius:12px; font-size:11.5px; font-weight:700;">
-          🟡 ใกล้หมด (≤30 วัน): ${warningCount} คัน
+          🟡 ${isEn ? `Due soon (≤30d): ${warningCount} cars` : `ใกล้หมด (≤30 วัน): ${warningCount} คัน`}
         </span>
         <span style="background:#ECFDF5; color:#065F46; border:1px solid #A7F3D0; padding:3px 9px; border-radius:12px; font-size:11.5px; font-weight:700;">
-          🟢 ปกติ: ${normalCount} คัน
+          🟢 ${isEn ? `Normal: ${normalCount} cars` : `ปกติ: ${normalCount} คัน`}
         </span>
         <span style="background:#EFF6FF; color:#1E40AF; border:1px solid #BFDBFE; padding:3px 9px; border-radius:12px; font-size:11.5px; font-weight:700;" title="ตรวจสอบทะเบียนซ้ำและเลขตัวถังซ้ำอัตโนมัติ">
-          ${dupCount === 0 ? '🛡️ ไม่พบรถซ้ำ (0 คัน)' : `⚠️ พบรถซ้ำ (${dupCount} คัน)`}
+          ${dupCount === 0 ? (isEn ? '🛡️ No Duplicates (0 cars)' : '🛡️ ไม่พบรถซ้ำ (0 คัน)') : (isEn ? `⚠️ Duplicates (${dupCount} cars)` : `⚠️ พบรถซ้ำ (${dupCount} คัน)`)}
         </span>
       `;
     }
@@ -3735,7 +3927,7 @@ class App {
     });
 
     if (filtered.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="11" style="text-align:center; padding:28px; color:#64748B;">ไม่พบข้อมูลรถยนต์ที่ค้นหา</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="11" style="text-align:center; padding:28px; color:#64748B;">${isEn ? '🔍 No vehicles found matching the search criteria' : 'ไม่พบข้อมูลรถยนต์ที่ค้นหา'}</td></tr>`;
       return;
     }
 
@@ -3754,20 +3946,20 @@ class App {
       let renewBtnHtml = '';
       if (activePairMnt) {
         renewBtnHtml = `
-          <button type="button" onclick="app.openCloseMaintenanceModal('${activePairMnt.id}')" class="btn btn-sm" style="padding:3px 7px; font-size:11px; font-weight:800; background:#ECFDF5; color:#047857; border:1px solid #10B981;" title="พนักงานต่อเสร็จแล้ว: ส่งงาน & อัปเดตวันหมดอายุ">
-            🏁 ส่งงานต่ออายุ
+          <button type="button" onclick="app.openCloseMaintenanceModal('${activePairMnt.id}')" class="btn btn-sm" style="padding:3px 7px; font-size:11px; font-weight:800; background:#ECFDF5; color:#047857; border:1px solid #10B981;" title="${isEn ? 'Renewal completed: Submit & update dates' : 'พนักงานต่อเสร็จแล้ว: ส่งงาน & อัปเดตวันหมดอายุ'}">
+            ${isEn ? '🏁 Submit Renewal' : '🏁 ส่งงานต่ออายุ'}
           </button>
         `;
       } else {
         renewBtnHtml = `
-          <button type="button" onclick="app.openRenewalOrderModal('${safePlate}', 'both')" class="btn btn-sm" style="padding:3px 7px; font-size:11px; font-weight:700; background:#FFF7ED; color:#EA580C; border:1px solid #FDBA74;" title="ออกใบงานต่ออายุทั้ง พ.ร.บ. และ ประกันภัย มอบหมายพนักงาน (ขึ้นหน้าตารางงาน)">
-            📋 ต่อคู่
+          <button type="button" onclick="app.openRenewalOrderModal('${safePlate}', 'both')" class="btn btn-sm" style="padding:3px 7px; font-size:11px; font-weight:700; background:#FFF7ED; color:#EA580C; border:1px solid #FDBA74;" title="${isEn ? 'Create dual work order for ACT & Insurance' : 'ออกใบงานต่ออายุทั้ง พ.ร.บ. และ ประกันภัย มอบหมายพนักงาน (ขึ้นหน้าตารางงาน)'}">
+            ${isEn ? '📋 Dual Order' : '📋 ต่อคู่'}
           </button>
         `;
       }
 
       const regYearBadge = c.reg_year && c.reg_year !== "-"
-        ? `<div style="font-size:10.5px; color:#64748B;">ปีจด: <b>${c.reg_year}</b></div>`
+        ? `<div style="font-size:10.5px; color:#64748B;">${isEn ? 'Reg Year:' : 'ปีจด:'} <b>${c.reg_year}</b></div>`
         : "";
 
       const ownerTxt = c.owner && c.owner !== "-" ? c.owner : (c.company || "-");
@@ -4304,6 +4496,7 @@ class App {
     const legend = document.getElementById("fleet-status-legend");
     if (!canvas || typeof Chart === "undefined") return;
 
+    const isEn = (this.currentLang === "EN");
     const totalCars = (this.cars || []).length;
     let availCount = 0;
     let rentCount = 0;
@@ -4325,11 +4518,13 @@ class App {
     });
 
     if (badge) {
-      badge.textContent = `${totalCars} คัน`;
+      badge.textContent = isEn ? `${totalCars} cars` : `${totalCars} คัน`;
     }
 
     const dataArr = [availCount, rentCount, bookCount, maintCount];
-    const labels = ["ว่างพร้อมให้บริการ", "กำลังเช่า", "ติดจอง", "ซ่อมบำรุง"];
+    const labels = isEn 
+      ? ["Available", "Rented", "Reserved", "Maintenance"]
+      : ["ว่างพร้อมให้บริการ", "กำลังเช่า", "ติดจอง", "ซ่อมบำรุง"];
     const colors = ["#10B981", "#EF4444", "#F59E0B", "#F97316"]; // เขียว, แดง, เหลือง, ส้ม
 
     if (this.donutChart) {
@@ -4359,7 +4554,7 @@ class App {
               label: function(ctx) {
                 const val = ctx.raw || 0;
                 const pct = totalCars > 0 ? ((val / totalCars) * 100).toFixed(1) : "0.0";
-                return ` ${ctx.label}: ${val} คัน (${pct}%)`;
+                return isEn ? ` ${ctx.label}: ${val} cars (${pct}%)` : ` ${ctx.label}: ${val} คัน (${pct}%)`;
               }
             }
           }
@@ -4375,7 +4570,7 @@ class App {
         return `
           <div style="display:flex; justify-content:space-between; align-items:center; font-size:12.5px; padding:3px 0;">
             <span><span style="color:${cDot}; font-size:14px; margin-right:6px;">●</span>${lbl}</span>
-            <span style="font-weight:700; color:#1F2937;">${val} คัน <span style="font-weight:400; color:#6B7280; font-size:11px;">(${pct}%)</span></span>
+            <span style="font-weight:700; color:#1F2937;">${val} ${isEn ? 'cars' : 'คัน'} <span style="font-weight:400; color:#6B7280; font-size:11px;">(${pct}%)</span></span>
           </div>
         `;
       }).join("");
@@ -4386,7 +4581,11 @@ class App {
     const canvas = document.getElementById("chart-revenue-trend");
     if (!canvas || typeof Chart === "undefined") return;
 
+    const isEn = (this.currentLang === "EN");
     const thMonthNames = ["", "ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
+    const enMonthNames = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const monthNames = isEn ? enMonthNames : thMonthNames;
+
     const now = new Date();
     const monthBins = [];
     for (let i = 5; i >= 0; i--) {
@@ -4397,7 +4596,7 @@ class App {
         y -= 1;
       }
       monthBins.push({
-        label: `${m}. ${thMonthNames[m]}`,
+        label: isEn ? `${monthNames[m]} ${y}` : `${m}. ${monthNames[m]}`,
         month: m,
         year: y,
         rev: 0,
@@ -4441,7 +4640,7 @@ class App {
       data: {
         labels: labels,
         datasets: [{
-          label: 'รายรับรวม (THB)',
+          label: isEn ? 'Total Revenue (THB)' : 'รายรับรวม (THB)',
           data: dataRev,
           backgroundColor: isBar ? '#E85826' : 'rgba(232, 88, 38, 0.12)',
           borderColor: '#E85826',
@@ -4465,7 +4664,10 @@ class App {
                 const idx = ctx.dataIndex;
                 const val = ctx.raw || 0;
                 const jCount = dataJobs[idx] || 0;
-                return [
+                return isEn ? [
+                  ` Total Revenue: ฿${val.toLocaleString()} THB`,
+                  ` Jobs Completed: ${jCount} jobs`
+                ] : [
                   ` รายรับรวม: ฿${val.toLocaleString()} บาท`,
                   ` จำนวนงาน: ${jCount} งาน`
                 ];
@@ -4964,14 +5166,18 @@ class App {
       return t.includes("ต่อทะเบียน") || t.includes("พ.ร.บ.") || t.includes("พรบ") || t.includes("ประกัน");
     }).length;
 
+    const isEn = (this.currentLang === "EN");
+    const carUnit = isEn ? "cars" : "คัน";
+    const jobUnit = isEn ? "jobs" : "รายการ";
+
     const elInProg = document.getElementById("mnt-kpi-in-progress");
-    if (elInProg) elInProg.innerHTML = `${inProg} <span style="font-size:13px; font-weight:500; color:#64748B;">คัน</span>`;
+    if (elInProg) elInProg.innerHTML = `${inProg} <span style="font-size:13px; font-weight:500; color:#64748B;">${carUnit}</span>`;
     const elPending = document.getElementById("mnt-kpi-pending");
-    if (elPending) elPending.innerHTML = `${pending} <span style="font-size:13px; font-weight:500; color:#64748B;">รายการ</span>`;
+    if (elPending) elPending.innerHTML = `${pending} <span style="font-size:13px; font-weight:500; color:#64748B;">${jobUnit}</span>`;
     const elCost = document.getElementById("mnt-kpi-total-cost");
     if (elCost) elCost.textContent = `฿${totalCost.toLocaleString()}`;
     const elRen = document.getElementById("mnt-kpi-renewals");
-    if (elRen) elRen.innerHTML = `${renewals} <span style="font-size:13px; font-weight:500; color:#64748B;">รายการ</span>`;
+    if (elRen) elRen.innerHTML = `${renewals} <span style="font-size:13px; font-weight:500; color:#64748B;">${jobUnit}</span>`;
 
     // Filter records
     const filtered = allRecords.filter(m => {
@@ -4991,7 +5197,7 @@ class App {
     if (countTxt) countTxt.textContent = filtered.length;
 
     if (filtered.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding:32px; color:#64748B;">🔍 ไม่พบรายการใบงานซ่อมบำรุงตามเงื่อนไขที่เลือก</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding:32px; color:#64748B;">${isEn ? '🔍 No maintenance work orders match the selected filters' : '🔍 ไม่พบรายการใบงานซ่อมบำรุงตามเงื่อนไขที่เลือก'}</td></tr>`;
       return;
     }
 
@@ -5006,17 +5212,21 @@ class App {
 
       let statusBadge = '';
       if (m.status === "เสร็จสิ้น") {
-        statusBadge = '<span class="badge badge-success">✅ เสร็จสิ้น</span>';
+        statusBadge = `<span class="badge badge-success">${isEn ? '✅ Completed' : '✅ เสร็จสิ้น'}</span>`;
       } else if (m.status === "กำลังซ่อมบำรุง") {
-        statusBadge = '<span class="badge" style="background:#FFF7ED; color:#C2410C; border:1px solid #FDBA74;">🛠️ กำลังซ่อมบำรุง</span>';
+        statusBadge = `<span class="badge" style="background:#FFF7ED; color:#C2410C; border:1px solid #FDBA74;">${isEn ? '🛠️ In Repair' : '🛠️ กำลังซ่อมบำรุง'}</span>`;
       } else if (m.status === "กำลังต่อภาษี/ประกัน") {
-        statusBadge = '<span class="badge" style="background:#FEF3C7; color:#D97706; border:1px solid #FCD34D;">⏳ กำลังต่อภาษี/ประกัน</span>';
+        statusBadge = `<span class="badge" style="background:#FEF3C7; color:#D97706; border:1px solid #FCD34D;">${isEn ? '⏳ Renewing Tax/Ins.' : '⏳ กำลังต่อภาษี/ประกัน'}</span>`;
       } else {
-        statusBadge = '<span class="badge badge-warning">⏳ ' + m.status + '</span>';
+        statusBadge = `<span class="badge badge-warning">${isEn ? '⏳ Pending' : '⏳ ' + m.status}</span>`;
       }
 
       const costDisp = Number(m.actual_cost || m.cost || 0);
       const schedStr = `${this.formatDateDmy(m.schedule_date)} ➔ ${this.formatDateDmy(m.expected_finish_date)}`;
+
+      const pdfBtnText = isEn ? "📄 Work Order PDF" : "📄 ใบงาน PDF";
+      const finishBtnText = isRenewal ? (isEn ? '🏁 Submit & Renew' : '🏁 ส่งงาน/อัปเดตวัน') : (isEn ? '🏁 Close Job' : '🏁 ปิดงาน');
+      const finishBtnTitle = isRenewal ? (isEn ? 'Submit job & specify new expiry date' : 'ส่งงาน & ระบุวันหมดอายุใหม่') : (isEn ? 'Inspect car & close work order' : 'ตรวจรับรถ & ปิดงาน');
 
       return `
         <tr>
@@ -5036,14 +5246,14 @@ class App {
           <td style="font-size:11.5px; color:#475569;">${schedStr}</td>
           <td>${statusBadge}</td>
           <td style="text-align:center; white-space:nowrap;">
-            <a href="/api/pdf/maintenance/${m.id}" target="_blank" class="btn btn-sm btn-secondary" title="พิมพ์ใบสั่งงาน PDF">📄 ใบงาน PDF</a>
+            <a href="/api/pdf/maintenance/${m.id}" target="_blank" class="btn btn-sm btn-secondary" title="${pdfBtnText}">${pdfBtnText}</a>
             ${m.status !== "เสร็จสิ้น" ? `
-              <button onclick="app.openCloseMaintenanceModal('${m.id}')" class="btn btn-sm btn-success" style="font-weight:700;" title="${isRenewal ? 'ส่งงาน & ระบุวันหมดอายุใหม่' : 'ตรวจรับรถ & ปิดงาน'}">
-                ${isRenewal ? '🏁 ส่งงาน/อัปเดตวัน' : '🏁 ปิดงาน'}
+              <button onclick="app.openCloseMaintenanceModal('${m.id}')" class="btn btn-sm btn-success" style="font-weight:700;" title="${finishBtnTitle}">
+                ${finishBtnText}
               </button>
             ` : ''}
-            <button onclick="app.openEditMaintenanceModal('${m.id}')" class="btn btn-sm btn-secondary" title="แก้ไขใบงาน">✏️</button>
-            <button onclick="app.deleteMaintenanceRecord('${m.id}')" class="btn btn-sm btn-danger" title="ลบใบงาน">🗑️</button>
+            <button onclick="app.openEditMaintenanceModal('${m.id}')" class="btn btn-sm btn-secondary" title="${isEn ? 'Edit Order' : 'แก้ไขใบงาน'}">✏️</button>
+            <button onclick="app.deleteMaintenanceRecord('${m.id}')" class="btn btn-sm btn-danger" title="${isEn ? 'Delete Order' : 'ลบใบงาน'}">🗑️</button>
           </td>
         </tr>
       `;
