@@ -1820,9 +1820,10 @@ class App {
   // --- Rate Engine for Daily, Weekly, Monthly ---
   getCarRates(car) {
     const c = car || {};
-    const priceDay = parseFloat(c.price_day !== undefined ? c.price_day : (c.daily_rate || 1000));
-    const rawWeek = parseFloat(c.price_week || 0);
-    const rawMonth = parseFloat(c.price_month || 0);
+    const dayRaw = parseFloat(c.price_day);
+    const priceDay = dayRaw > 0 ? dayRaw : parseFloat(c.daily_rate || 1000);
+    const rawWeek = parseFloat(c.price_week) > 0 ? parseFloat(c.price_week) : parseFloat(c.weekly_rate || 0);
+    const rawMonth = parseFloat(c.price_month) > 0 ? parseFloat(c.price_month) : parseFloat(c.monthly_rate || 0);
     const priceWeek = rawWeek > 0 ? rawWeek : (priceDay * 6);
     const priceMonth = rawMonth > 0 ? rawMonth : (priceDay * 20);
     return { priceDay, priceWeek, priceMonth };

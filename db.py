@@ -776,7 +776,15 @@ class DataStore:
             sb = get_supabase_client()
             if not sb: return
             try:
-                sb.table("cars").upsert(sb_payload).execute()
+                db_cols = None
+                if hasattr(sb, "run"):
+                    from psycopg import sql as _sql
+                    rows = sb.run([(_sql.SQL(
+                        "SELECT column_name FROM information_schema.columns "
+                        "WHERE table_schema = 'public' AND table_name = 'cars'"), [])])
+                    db_cols = {r["column_name"] for r in rows} or None
+                payload_to_save = {k: v for k, v in sb_payload.items() if db_cols is None or k in db_cols}
+                sb.table("cars").upsert(payload_to_save).execute()
             except Exception as e:
                 print(f"sb_sync_car error: {e}")
                 try:
