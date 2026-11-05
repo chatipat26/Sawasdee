@@ -620,18 +620,28 @@ class DataStore:
                                     cust_obj[k] = v
                                 elif k not in cust_obj:
                                     cust_obj[k] = v
-                            phone_val = cust_obj.get("contact_no") or cust_obj.get("phone") or "-"
-                            id_val = cust_obj.get("passport_id") or cust_obj.get("id_card") or "-"
-                            lic_val = cust_obj.get("licence_no") or cust_obj.get("driver_license") or "-"
+                            phone_val = cust_obj.get("phone_number") or cust_obj.get("contact_no") or cust_obj.get("phone") or "-"
+                            id_val = cust_obj.get("id_card_no") or cust_obj.get("passport_id") or cust_obj.get("id_card") or "-"
+                            lic_val = cust_obj.get("driver_license_no") or cust_obj.get("licence_no") or cust_obj.get("driver_license") or "-"
+                            lic_exp = cust_obj.get("license_expire_date") or cust_obj.get("licence_expiry") or "-"
                             home_val = cust_obj.get("home_address") or cust_obj.get("address") or "-"
+                            curr_val = cust_obj.get("current_address") or cust_obj.get("thai_address") or "-"
+
+                            cust_obj["phone_number"] = phone_val
                             cust_obj["contact_no"] = phone_val
                             cust_obj["phone"] = phone_val
+                            cust_obj["id_card_no"] = id_val
                             cust_obj["passport_id"] = id_val
                             cust_obj["id_card"] = id_val
+                            cust_obj["driver_license_no"] = lic_val
                             cust_obj["licence_no"] = lic_val
                             cust_obj["driver_license"] = lic_val
+                            cust_obj["license_expire_date"] = lic_exp
+                            cust_obj["licence_expiry"] = lic_exp
                             cust_obj["home_address"] = home_val
                             cust_obj["address"] = home_val
+                            cust_obj["current_address"] = curr_val
+                            cust_obj["thai_address"] = curr_val
                             fresh_cust[fn] = cust_obj
                     with self.lock:
                         self.customers = fresh_cust
@@ -859,22 +869,29 @@ class DataStore:
         threading.Thread(target=_task, daemon=True).start()
 
     def async_sync_customer(self, name, cust_dict):
-        phone_val = cust_dict.get("contact_no") or cust_dict.get("phone") or "-"
-        id_val = cust_dict.get("passport_id") or cust_dict.get("id_card") or "-"
-        lic_val = cust_dict.get("licence_no") or cust_dict.get("driver_license") or "-"
+        phone_val = cust_dict.get("phone_number") or cust_dict.get("contact_no") or cust_dict.get("phone") or "-"
+        id_val = cust_dict.get("id_card_no") or cust_dict.get("passport_id") or cust_dict.get("id_card") or "-"
+        lic_val = cust_dict.get("driver_license_no") or cust_dict.get("licence_no") or cust_dict.get("driver_license") or "-"
+        lic_exp = cust_dict.get("license_expire_date") or cust_dict.get("licence_expiry") or "-"
         home_val = cust_dict.get("home_address") or cust_dict.get("address") or "-"
-        thai_val = cust_dict.get("thai_address") or "-"
+        curr_val = cust_dict.get("current_address") or cust_dict.get("thai_address") or "-"
 
         cust_dict["full_name"] = name
+        cust_dict["phone_number"] = phone_val
         cust_dict["contact_no"] = phone_val
         cust_dict["phone"] = phone_val
+        cust_dict["id_card_no"] = id_val
         cust_dict["passport_id"] = id_val
         cust_dict["id_card"] = id_val
+        cust_dict["driver_license_no"] = lic_val
         cust_dict["licence_no"] = lic_val
         cust_dict["driver_license"] = lic_val
+        cust_dict["license_expire_date"] = lic_exp
+        cust_dict["licence_expiry"] = lic_exp
         cust_dict["home_address"] = home_val
         cust_dict["address"] = home_val
-        cust_dict["thai_address"] = thai_val
+        cust_dict["current_address"] = curr_val
+        cust_dict["thai_address"] = curr_val
 
         with self.lock:
             self.customers[name] = cust_dict
@@ -891,9 +908,13 @@ class DataStore:
                     fallback_row = {
                         "full_name": name,
                         "phone": phone_val,
+                        "contact_no": phone_val,
                         "id_card": id_val,
+                        "passport_id": id_val,
                         "driver_license": lic_val,
+                        "licence_no": lic_val,
                         "address": home_val,
+                        "home_address": home_val,
                         "notes": cust_dict.get("notes", "")
                     }
                     sb.table("customers").upsert(fallback_row).execute()

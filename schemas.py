@@ -55,19 +55,27 @@ class VehicleResponse(VehicleBase):
 
 class CustomerBase(BaseModel):
     full_name: str
+    phone_number: Optional[str] = "-"
+    id_card_no: Optional[str] = "-"
+    driver_license_no: Optional[str] = "-"
+    nationality: Optional[str] = "THAI"
+    whatsapp: Optional[str] = "-"
+    dob: Optional[str] = "-"
+    license_expire_date: Optional[str] = "-"
+    home_address: Optional[str] = "-"
+    current_address: Optional[str] = "-"
+
+    # Backward compatibility aliases
     contact_no: Optional[str] = "-"
     phone: Optional[str] = "-"
     passport_id: Optional[str] = "-"
     id_card: Optional[str] = "-"
     licence_no: Optional[str] = "-"
     driver_license: Optional[str] = "-"
-    nationality: Optional[str] = "THAI"
-    whatsapp: Optional[str] = "-"
-    dob: Optional[str] = "-"
     licence_expiry: Optional[str] = "-"
-    home_address: Optional[str] = "-"
-    address: Optional[str] = "-"
     thai_address: Optional[str] = "-"
+    address: Optional[str] = "-"
+    nickname: Optional[str] = None
     line_id: Optional[str] = "-"
     line_user_id: Optional[str] = None
     notes: Optional[str] = ""
@@ -80,7 +88,7 @@ class CustomerCreate(CustomerBase):
 
 
 class CustomerUpdate(CustomerBase):
-    pass
+    full_name: Optional[str] = None
 
 
 class CustomerResponse(CustomerBase):

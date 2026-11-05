@@ -762,7 +762,7 @@ async def create_or_update_customer(payload: Union[CustomerCreate, Dict[str, Any
         )
     
     # 1. Block duplicate Phone Number (Contact No.)
-    contact_no = str(payload.get("contact_no", "")).strip()
+    contact_no = str(payload.get("phone_number") or payload.get("contact_no") or payload.get("phone") or "").strip()
     if contact_no and contact_no not in ["-", "none", "None", ""]:
         clean_phone = "".join(ch for ch in contact_no if ch.isdigit())
         if len(clean_phone) >= 9:
@@ -770,7 +770,7 @@ async def create_or_update_customer(payload: Union[CustomerCreate, Dict[str, Any
             for c_name, c_obj in store.customers.items():
                 if original_name and c_name.strip() == original_name:
                     continue # editing existing customer is allowed
-                existing_phone = str(c_obj.get("contact_no", "")).strip()
+                existing_phone = str(c_obj.get("phone_number") or c_obj.get("contact_no") or c_obj.get("phone") or "").strip()
                 if existing_phone and existing_phone not in ["-", "none", "None", ""]:
                     clean_exist_phone = "".join(ch for ch in existing_phone if ch.isdigit())
                     norm_exist = "0" + clean_exist_phone[2:] if clean_exist_phone.startswith("66") else clean_exist_phone
@@ -781,13 +781,13 @@ async def create_or_update_customer(payload: Union[CustomerCreate, Dict[str, Any
                         )
     
     # 2. Block duplicate Citizen ID / Passport No.
-    passport_id = str(payload.get("passport_id", "")).strip()
+    passport_id = str(payload.get("id_card_no") or payload.get("passport_id") or payload.get("id_card") or "").strip()
     if passport_id and passport_id not in ["-", "none", "None", ""]:
         clean_pass = passport_id.replace(" ", "").replace("-", "").lower()
         for c_name, c_obj in store.customers.items():
             if original_name and c_name.strip() == original_name:
                 continue # editing existing customer is allowed
-            existing_pass = str(c_obj.get("passport_id", "")).strip()
+            existing_pass = str(c_obj.get("id_card_no") or c_obj.get("passport_id") or c_obj.get("id_card") or "").strip()
             if existing_pass and existing_pass not in ["-", "none", "None", ""]:
                 clean_exist = existing_pass.replace(" ", "").replace("-", "").lower()
                 if clean_exist == clean_pass:

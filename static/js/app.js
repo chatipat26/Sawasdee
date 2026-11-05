@@ -5289,15 +5289,19 @@ class App {
     }
     document.getElementById("cust-original-name").value = cust.full_name;
     document.getElementById("cust-name-in").value = cust.full_name || "";
-    document.getElementById("cust-phone-in").value = cust.contact_no !== "-" ? (cust.contact_no || "") : "";
-    document.getElementById("cust-pass-in").value = cust.passport_id !== "-" ? (cust.passport_id || "") : "";
-    document.getElementById("cust-lic-in").value = cust.licence_no !== "-" ? (cust.licence_no || "") : "";
+    const pVal = cust.phone_number || cust.contact_no || cust.phone;
+    document.getElementById("cust-phone-in").value = (pVal && pVal !== "-") ? pVal : "";
+    const idVal = cust.id_card_no || cust.passport_id || cust.id_card;
+    document.getElementById("cust-pass-in").value = (idVal && idVal !== "-") ? idVal : "";
+    const licVal = cust.driver_license_no || cust.licence_no || cust.driver_license;
+    document.getElementById("cust-lic-in").value = (licVal && licVal !== "-") ? licVal : "";
     document.getElementById("cust-nat-in").value = cust.nationality || "THAI";
-    document.getElementById("cust-wa-in").value = cust.whatsapp !== "-" ? (cust.whatsapp || "") : "";
+    document.getElementById("cust-wa-in").value = (cust.whatsapp && cust.whatsapp !== "-") ? cust.whatsapp : "";
     document.getElementById("cust-dob-in").value = this.dmyToYmd(cust.dob) || "";
-    document.getElementById("cust-licexp-in").value = this.dmyToYmd(cust.licence_expiry) || "";
-    document.getElementById("cust-home-in").value = cust.home_address !== "-" ? (cust.home_address || "") : "";
-    document.getElementById("cust-thai-in").value = cust.thai_address !== "-" ? (cust.thai_address || "") : "";
+    document.getElementById("cust-licexp-in").value = this.dmyToYmd(cust.license_expire_date || cust.licence_expiry) || "";
+    document.getElementById("cust-home-in").value = (cust.home_address && cust.home_address !== "-") ? cust.home_address : "";
+    const currVal = cust.current_address || cust.thai_address || cust.address;
+    document.getElementById("cust-thai-in").value = (currVal && currVal !== "-") ? currVal : "";
 
     document.getElementById("modal-cust-title").textContent = `✏️ ดูและแก้ไขข้อมูลลูกค้า (${cust.full_name})`;
     const btnSave = document.getElementById("btn-modal-cust-save");
@@ -5494,18 +5498,41 @@ class App {
       }
     }
 
+    const licNo = document.getElementById("cust-lic-in")?.value.trim() || "-";
+    const nat = document.getElementById("cust-nat-in")?.value.trim() || "THAI";
+    const wa = document.getElementById("cust-wa-in")?.value.trim() || "-";
+    const dobVal = (document.getElementById("cust-dob-in")?.value || "").trim();
+    const dobFormatted = dobVal ? (this.ymdToDmy(dobVal) || dobVal) : "-";
+    const licExpVal = (document.getElementById("cust-licexp-in")?.value || "").trim();
+    const licExpFormatted = licExpVal ? (this.ymdToDmy(licExpVal) || licExpVal) : "-";
+    const homeAddr = document.getElementById("cust-home-in")?.value.trim() || "-";
+    const currAddr = document.getElementById("cust-thai-in")?.value.trim() || "-";
+
     const payload = {
+      // 10 Standard Customer Fields
       full_name: name,
+      phone_number: phone || "-",
+      id_card_no: passId || "-",
+      driver_license_no: licNo,
+      nationality: nat,
+      whatsapp: wa,
+      dob: dobFormatted,
+      license_expire_date: licExpFormatted,
+      home_address: homeAddr,
+      current_address: currAddr,
+
+      // Compatibility Aliases
       original_name: origName || name,
       contact_no: phone || "-",
+      phone: phone || "-",
       passport_id: passId || "-",
-      licence_no: document.getElementById("cust-lic-in")?.value.trim() || "-",
-      nationality: document.getElementById("cust-nat-in")?.value.trim() || "THAI",
-      whatsapp: document.getElementById("cust-wa-in")?.value.trim() || "-",
-      dob: this.ymdToDmy((document.getElementById("cust-dob-in")?.value || "").trim()) || "-",
-      licence_expiry: this.ymdToDmy((document.getElementById("cust-licexp-in")?.value || "").trim()) || "-",
-      home_address: document.getElementById("cust-home-in")?.value.trim() || "-",
-      thai_address: document.getElementById("cust-thai-in")?.value.trim() || "-"
+      id_card: passId || "-",
+      licence_no: licNo,
+      driver_license: licNo,
+      licence_expiry: licExpFormatted,
+      home_address: homeAddr,
+      thai_address: currAddr,
+      address: homeAddr
     };
 
     try {
