@@ -2072,13 +2072,11 @@ class App {
   toggleCardFooter(badgeEl) {
     const card = badgeEl && badgeEl.closest ? badgeEl.closest(".car-card-modern") : null;
     if (!card) return;
-    const nowExpanded = card.dataset.expanded !== "true";
-    card.dataset.expanded = nowExpanded ? "true" : "false";
-
+    card.dataset.expanded = "true";
     const panel = card.querySelector(".car-card-collapsible-footer");
-    if (panel) panel.style.display = nowExpanded ? "block" : "none";
+    if (panel) panel.style.display = "block";
     const badge = card.querySelector(".thai-plate-badge");
-    if (badge) badge.classList.toggle("active", nowExpanded);
+    if (badge) badge.classList.add("active");
   }
 
   // --- Rendering: Fleet Cards ---
@@ -2157,11 +2155,6 @@ class App {
       return;
     }
 
-    const collapsedIds = new Set(
-      Array.from(container.querySelectorAll('.car-card-modern[data-expanded="false"] .car-card-collapsible-footer'))
-        .map(el => el.id)
-    );
-
     const buildCardHtml = (c, idx) => {
       const isAvail = c.fleet_status_key === "available" || c.fleet_status_key === "reserved";
       const autoType = dur.days >= 30 ? (isEn ? "Monthly" : "รายเดือน") : (dur.days >= 7 ? (isEn ? "Weekly" : "รายสัปดาห์") : (isEn ? "Daily" : "รายวัน"));
@@ -2189,7 +2182,7 @@ class App {
       }
 
       // 2. Thai License Plate Badge (Clickable Toggle Trigger)
-      const isExpanded = !collapsedIds.has(`card-footer-${safeId}`);
+      const isExpanded = true;
       const { plateNo, province, isRed } = this.formatPlateDisplay(c.plate);
       const plateTooltip = isEn ? "Click to toggle price & actions" : "คลิกป้ายทะเบียนเพื่อเปิด/ปิดราคาและปุ่มทำรายการ";
       const plateHtml = isRed

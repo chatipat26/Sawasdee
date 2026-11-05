@@ -708,6 +708,7 @@ section,
 }
 
 .car-card-collapsible-footer {
+  display: block !important;
   animation: carFooterFadeIn 0.2s ease-in-out;
   margin-top: 12px;
   padding-top: 10px;
