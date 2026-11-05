@@ -2163,6 +2163,7 @@ class App {
     );
 
     const buildCardHtml = (c, idx) => {
+      const isAvail = c.fleet_status_key === "available" || c.fleet_status_key === "reserved";
       const autoType = dur.days >= 30 ? (isEn ? "Monthly" : "รายเดือน") : (dur.days >= 7 ? (isEn ? "Weekly" : "รายสัปดาห์") : (isEn ? "Daily" : "รายวัน"));
       const _rp = this.calculateCarRentalPrice(c, dur.days, autoType) || {};
       const basePrice = Number(_rp.basePrice) || 0;
@@ -2227,7 +2228,8 @@ class App {
           `).join("")
         : "";
 
-      const carSpecsSub = `${c.reg_year || c.year || '2024'} · ${String(c.color || 'WHITE').toUpperCase()} · ${c.fuel_type || 'Petrol'}`;
+      const fuelLabel = String(c.fuel_type || '').trim() || (isEn ? 'Petrol' : 'เบนซิน');
+      const carSpecsSub = `${c.reg_year || c.year || '2024'} · ${String(c.color || 'WHITE').toUpperCase()} · ${fuelLabel}`;
       const dailyRateLabel = (dict && dict.daily_rate) || (isEn ? 'Daily Rate' : 'ค่าเช่ารายวัน');
       const detailsLabel = (dict && dict.details) || (isEn ? 'Details' : 'ดูรายละเอียด');
       const bookNowLabel = isAvail
@@ -2255,25 +2257,22 @@ class App {
             ${alertPillHtml}
           </div>
 
-          <!-- MISSION 2: Collapsible Price and Action Buttons Footer -->
           <div class="car-card-collapsible-footer" 
                id="card-footer-${safeId}" 
                style="${isExpanded ? 'display:block;' : 'display:none;'}">
-            <!-- Rate summary & View Details / Book Modal Button (Unslop) -->
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px; padding-top:10px; border-top:1px dashed #E2E8F0;">
-              <div style="font-size:11.5px; color:#64748B;">
-                ${dailyRateLabel}: <b style="color:#0F172A; font-size:13.5px;">฿${priceDay.toLocaleString()}</b>
+            <div class="car-card-rate-row">
+              <div class="car-card-rate-label">
+                ${dailyRateLabel}: <b>฿${priceDay.toLocaleString()}</b>
               </div>
-              <div style="font-size:11.5px; color:#E85826; font-weight:700;">
+              <div class="car-card-rate-total">
                 ${dur.days > 0 ? (isEn ? `${dur.days}d: ฿${basePrice.toLocaleString()}` : `${dur.days} วัน: ฿${basePrice.toLocaleString()}`) : ''}
               </div>
             </div>
-
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-top:10px;">
-              <button type="button" class="btn btn-secondary" onclick="app.openCarDetailsModal('${safePlate}')" style="width:100%; font-weight:700; font-size:12px; padding:8px 6px; border-radius:8px; display:flex; align-items:center; justify-content:center; gap:5px; cursor:pointer; background:#FAF7F2; border:1px solid #CBD5E1; color:#334155;">
+            <div class="car-card-actions">
+              <button type="button" class="btn btn-secondary car-card-btn-details" onclick="app.openCarDetailsModal('${safePlate}')">
                 <span>${detailsLabel}</span>
               </button>
-              <button type="button" class="btn btn-primary" onclick="app.openBookModal('${safePlate}')" style="width:100%; font-weight:700; font-size:12px; padding:8px 6px; border-radius:8px; display:flex; align-items:center; justify-content:center; gap:5px; cursor:pointer; box-shadow:0 1px 3px rgba(232,88,38,0.25);" ${!isAvail ? `title="${isEn ? 'Reserved - click to reserve queue' : 'ติดจอง - คลิกเพื่อจองคิวต่อ'}"` : ''}>
+              <button type="button" class="btn btn-primary car-card-btn-book" onclick="app.openBookModal('${safePlate}')" ${!isAvail ? `title="${isEn ? 'Reserved - click to reserve queue' : 'ติดจอง - คลิกเพื่อจองคิวต่อ'}"` : ''}>
                 <span>${bookNowLabel}</span>
               </button>
             </div>
