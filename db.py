@@ -817,12 +817,18 @@ class DataStore:
         threading.Thread(target=_task, daemon=True).start()
 
     def async_sync_customer(self, name, cust_dict):
-        phone_val = cust_dict.get("phone_number") or cust_dict.get("contact_no") or cust_dict.get("phone") or "-"
-        id_val = cust_dict.get("id_card_no") or cust_dict.get("passport_id") or cust_dict.get("id_card") or "-"
-        lic_val = cust_dict.get("driver_license_no") or cust_dict.get("licence_no") or cust_dict.get("driver_license") or "-"
-        lic_exp = cust_dict.get("license_expire_date") or cust_dict.get("licence_expiry") or "-"
-        home_val = cust_dict.get("home_address") or cust_dict.get("address") or "-"
-        curr_val = cust_dict.get("current_address") or cust_dict.get("thai_address") or "-"
+        def _pick(*keys):
+            for k in keys:
+                v = cust_dict.get(k)
+                if v is not None and str(v).strip() not in ("", "-"):
+                    return v
+            return "-"
+        phone_val = _pick("phone_number", "contact_no", "phone")
+        id_val = _pick("id_card_no", "passport_id", "id_card")
+        lic_val = _pick("driver_license_no", "licence_no", "driver_license")
+        lic_exp = _pick("license_expire_date", "licence_expiry")
+        home_val = _pick("home_address", "address")
+        curr_val = _pick("current_address", "thai_address")
 
         cust_dict["full_name"] = name
         cust_dict["phone_number"] = phone_val
@@ -859,6 +865,14 @@ class DataStore:
             }
             try:
                 row = {k: v for k, v in cust_dict.items() if k in ALL_CUSTOMER_COLS}
+                if hasattr(sb, "run"):
+                    from psycopg import sql as _sql
+                    rows = sb.run([(_sql.SQL(
+                        "SELECT column_name FROM information_schema.columns "
+                        "WHERE table_schema = 'public' AND table_name = 'customers'"), [])])
+                    db_cols = {r["column_name"] for r in rows}
+                    if db_cols:
+                        row = {k: v for k, v in row.items() if k in db_cols}
                 row["full_name"] = name
                 sb.table("customers").upsert(row).execute()
             except Exception as e:

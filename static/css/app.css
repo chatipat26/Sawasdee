@@ -412,7 +412,6 @@ section,
   background-color: #FFF7ED !important;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  background: rgba(255, 247, 237, 0.98);
   border: 1.5px solid #FDBA74;
   border-radius: var(--radius-lg);
   padding: 16px 22px;
