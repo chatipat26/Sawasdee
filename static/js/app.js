@@ -375,6 +375,17 @@ class App {
     const optDepMPaypal = document.getElementById("opt-dep-method-paypal");
     if (optDepMPaypal) optDepMPaypal.textContent = isEn ? "PayPal / Other" : "PayPal / อื่นๆ";
 
+    const lblDepType = document.getElementById("lbl-deposit-type");
+    if (lblDepType) lblDepType.textContent = isEn ? "Payment type" : "ประเภทการชำระ";
+    const optDepTypeDep = document.getElementById("opt-dep-type-deposit");
+    if (optDepTypeDep) optDepTypeDep.textContent = isEn ? "Security deposit" : "มัดจำประกันสัญญา";
+    const optDepTypeRent = document.getElementById("opt-dep-type-rental");
+    if (optDepTypeRent) optDepTypeRent.textContent = isEn ? "Rental fee" : "ค่าเช่า";
+    const optDepTypeBoth = document.getElementById("opt-dep-type-both");
+    if (optDepTypeBoth) optDepTypeBoth.textContent = isEn ? "Deposit and rental" : "มัดจำและค่าเช่า";
+    const lblDepGdrive = document.getElementById("lbl-deposit-gdrive");
+    if (lblDepGdrive) lblDepGdrive.textContent = isEn ? "Google Drive link" : "ลิงก์ Google Drive";
+
     const lblDepRef = document.getElementById("lbl-deposit-ref");
     if (lblDepRef) lblDepRef.textContent = isEn ? "Slip Ref / Transaction Code (Optional)" : "เลขที่อ้างอิงสลิป / รหัสธุรกรรม (ถ้ามี)";
     const hintDepRef = document.getElementById("hint-deposit-ref");
@@ -3651,6 +3662,10 @@ class App {
     if (refEl) {
       refEl.value = b.deposit_ref || b.rental_ref || "";
     }
+    const typeEl = document.getElementById("deposit-type-input");
+    if (typeEl) typeEl.value = b.payment_type || "มัดจำประกันสัญญา";
+    const gdriveEl = document.getElementById("deposit-gdrive-input");
+    if (gdriveEl) gdriveEl.value = b.google_drive_link || "";
 
     // 3. Populate slip URL and preview
     if (b.deposit_slip) {
@@ -3686,6 +3701,8 @@ class App {
         <div class="deposit-summary-row"><span>${isEn ? 'Customer' : 'ลูกค้า'}</span><b>${b.customer || '-'}</b><span>${b.customer_phone || ''}</span></div>
         <div class="deposit-summary-row"><span>${isEn ? 'Dates' : 'ระยะเวลา'}</span><b>${b.start_date_formatted || b.start_date || '-'} – ${b.end_date_formatted || b.end_date || '-'}</b></div>
         <div class="deposit-summary-row"><span>${isEn ? 'Net' : 'ค่าเช่าสุทธิ'}</span><b class="deposit-summary-price">฿${netP.toLocaleString()}</b><span style="color:${isDep ? '#059669' : '#DC2626'};">${isDep ? (isEn ? 'Deposit paid' : 'มัดจำชำระแล้ว') : (isEn ? 'Deposit pending' : 'รอมัดจำ')}</span></div>
+        ${b.payment_type ? `<div class="deposit-summary-row"><span>${isEn ? 'Type' : 'ประเภท'}</span><b>${b.payment_type}</b></div>` : ''}
+        ${b.google_drive_link ? `<a class="deposit-summary-slip" href="${b.google_drive_link}" target="_blank">${isEn ? 'Google Drive' : 'Google Drive'}</a>` : ''}
         ${b.deposit_slip ? `<a class="deposit-summary-slip" href="${b.deposit_slip}" target="_blank">${isEn ? 'View slip' : 'ดูสลิป'}</a>` : ''}
         ${slipBadges.length > 0 ? `<div class="deposit-summary-extra">${slipBadges.join("")}</div>` : ''}
       </div>
@@ -3766,6 +3783,8 @@ class App {
     const depMethod = document.getElementById("deposit-method-input").value;
     const depRef = (document.getElementById("deposit-ref-input")?.value || "").trim();
     const slipUrl = (document.getElementById("deposit-slip-url")?.value || "").trim();
+    const payType = document.getElementById("deposit-type-input")?.value || "";
+    const gdriveLink = (document.getElementById("deposit-gdrive-input")?.value || "").trim();
     const alsoRent = document.getElementById("deposit-also-rent").checked;
 
     try {
@@ -3778,6 +3797,8 @@ class App {
           payment_method: depMethod,
           payment_ref: depRef,
           slip_url: slipUrl,
+          payment_type: payType,
+          google_drive_link: gdriveLink,
           also_pay_rental: alsoRent
         })
       });
@@ -3832,6 +3853,8 @@ class App {
     const bkId = this.currentSelectedBooking.booking_id;
     const depRef = (document.getElementById("deposit-ref-input")?.value || "").trim();
     const slipUrl = (document.getElementById("deposit-slip-url")?.value || "").trim();
+    const payType = document.getElementById("deposit-type-input")?.value || "";
+    const gdriveLink = (document.getElementById("deposit-gdrive-input")?.value || "").trim();
 
     try {
       this.showToast(`⏳ กำลังอัปเดตสลิปและเลข Ref สำหรับ ${bkId}...`, "info");
@@ -3840,7 +3863,9 @@ class App {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           payment_ref: depRef,
-          slip_url: slipUrl
+          slip_url: slipUrl,
+          payment_type: payType,
+          google_drive_link: gdriveLink
         })
       });
       const data = await res.json();

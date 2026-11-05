@@ -126,9 +126,14 @@ CREATE TABLE IF NOT EXISTS public.bookings (
     dispatch_photos JSONB DEFAULT '[]'::jsonb,
     return_photos JSONB DEFAULT '[]'::jsonb,
     payment_slip_url TEXT,
+    payment_type VARCHAR(50),
+    google_drive_link TEXT,
     created_by VARCHAR(100),
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
+
+ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS payment_type VARCHAR(50);
+ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS google_drive_link TEXT;
 
 -- 5. Completed Jobs Table (Historical Archive)
 CREATE TABLE IF NOT EXISTS public.completed_jobs (

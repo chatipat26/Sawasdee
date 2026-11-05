@@ -272,6 +272,8 @@ class PgClient:
                         ]
                         for m_sql in car_migrations:
                             cur.execute(m_sql)
+                        cur.execute("ALTER TABLE IF EXISTS public.bookings ADD COLUMN IF NOT EXISTS payment_type VARCHAR(50);")
+                        cur.execute("ALTER TABLE IF EXISTS public.bookings ADD COLUMN IF NOT EXISTS google_drive_link TEXT;")
 
                     print("✅ PostgreSQL cars (34 cols) schema ensured via ALTER TABLE.")
                 except Exception as e:

@@ -455,6 +455,10 @@ class DataStore:
                                     b_copy["deposit_method"] = item["deposit_method"]
                                 if item.get("deposit_date") and not b_copy.get("deposit_date"):
                                     b_copy["deposit_date"] = item["deposit_date"]
+                                if item.get("payment_type") and not b_copy.get("payment_type"):
+                                    b_copy["payment_type"] = item["payment_type"]
+                                if item.get("google_drive_link") and not b_copy.get("google_drive_link"):
+                                    b_copy["google_drive_link"] = item["google_drive_link"]
                         fresh_b.append(b_copy)
                     with self.lock:
                         self.bookings = fresh_b
@@ -653,7 +657,9 @@ class DataStore:
                     "rental_ref": row.get("rental_ref", ""),
                     "rental_slip": row.get("rental_slip", ""),
                     "deposit_method": row.get("deposit_method", ""),
-                    "deposit_date": row.get("deposit_date", "")
+                    "deposit_date": row.get("deposit_date", ""),
+                    "payment_type": row.get("payment_type", ""),
+                    "google_drive_link": row.get("google_drive_link", "")
                 }
                 ext_list = [x for x in ext_list if not (isinstance(x, dict) and x.get("type") == "payment_meta")]
                 ext_list.append(meta_item)
@@ -665,9 +671,19 @@ class DataStore:
                     'net_price', 'deposit_paid', 'deposit_amount', 'rental_paid',
                     'remaining_rental', 'created_by', 'status', 'dispatch_closed',
                     'return_closed', 'worker_delivery', 'worker_return', 'loc_delivery',
-                    'loc_return', 'extension_history', 'is_fully_paid', 'rental_payment_method'
+                    'loc_return', 'extension_history', 'is_fully_paid', 'rental_payment_method',
+                    'payment_type', 'google_drive_link'
                 }
                 filtered_row = {k: v for k, v in row.items() if k in VALID_COLS}
+                db_cols = None
+                if hasattr(sb, "run"):
+                    from psycopg import sql as _sql
+                    col_rows = sb.run([(_sql.SQL(
+                        "SELECT column_name FROM information_schema.columns "
+                        "WHERE table_schema = 'public' AND table_name = 'bookings'"), [])])
+                    db_cols = {r["column_name"] for r in col_rows} or None
+                if db_cols:
+                    filtered_row = {k: v for k, v in filtered_row.items() if k in db_cols}
                 sb.table("bookings").upsert(filtered_row).execute()
             except Exception as e:
                 print(f"sb_sync_booking error: {e}")

@@ -86,9 +86,13 @@ def init_db():
         "ALTER TABLE public.cars ADD COLUMN IF NOT EXISTS notes TEXT;",
         "ALTER TABLE public.cars ADD COLUMN IF NOT EXISTS image_url TEXT;"
     ]
+    booking_migrations = [
+        "ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS payment_type VARCHAR(50);",
+        "ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS google_drive_link TEXT;"
+    ]
     try:
         with engine.begin() as conn:
-            for sql_stmt in customer_migrations + car_migrations:
+            for sql_stmt in customer_migrations + car_migrations + booking_migrations:
                 try:
                     conn.execute(text(sql_stmt))
                 except Exception:

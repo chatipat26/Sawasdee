@@ -1106,6 +1106,8 @@ async def record_deposit(bk_id: str, payload: Dict[str, Any]):
     dep_method = str(payload.get("payment_method", "โอนเงิน / สแกน QR"))
     dep_ref = str(payload.get("payment_ref") or payload.get("deposit_ref") or "").strip()
     dep_slip = convert_gdrive_url(str(payload.get("slip_url") or payload.get("deposit_slip") or "").strip())
+    pay_type = str(payload.get("payment_type") or "").strip()
+    gdrive_link = str(payload.get("google_drive_link") or "").strip()
     also_pay_rental = bool(payload.get("also_pay_rental", False))
     net_p = float(target.get("net_price", 0.0))
 
@@ -1116,6 +1118,8 @@ async def record_deposit(bk_id: str, payload: Dict[str, Any]):
     target["deposit_method"] = dep_method
     target["deposit_ref"] = dep_ref
     target["deposit_slip"] = dep_slip
+    target["payment_type"] = pay_type
+    target["google_drive_link"] = gdrive_link
 
     if also_pay_rental:
         target["rental_paid"] = True
@@ -1240,6 +1244,10 @@ async def update_payment_slip(bk_id: str, payload: Dict[str, Any]):
         target["rental_ref"] = str(payload.get("rental_ref") or "").strip()
     if "rental_slip" in payload:
         target["rental_slip"] = convert_gdrive_url(str(payload.get("rental_slip") or "").strip())
+    if "payment_type" in payload:
+        target["payment_type"] = str(payload.get("payment_type") or "").strip()
+    if "google_drive_link" in payload:
+        target["google_drive_link"] = str(payload.get("google_drive_link") or "").strip()
 
     store.async_sync_booking(target)
     return {"success": True, "booking": target}

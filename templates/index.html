@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sawasdee Rental - ระบบบริหารจัดการรถเช่าระดับพรีเมียม</title>
-  <link rel="stylesheet" href="/static/css/app.css?v=4.5">
+  <link rel="stylesheet" href="/static/css/app.css?v=4.6">
   <link rel="icon" type="image/png" href="/static/sawasdee-logo.png">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
@@ -419,18 +419,30 @@
                   </select>
                 </div>
                 <div class="form-group">
+                  <label id="lbl-deposit-type">ประเภทการชำระ:</label>
+                  <select id="deposit-type-input" class="form-control">
+                    <option id="opt-dep-type-deposit" value="มัดจำประกันสัญญา">มัดจำประกันสัญญา</option>
+                    <option id="opt-dep-type-rental" value="ค่าเช่า">ค่าเช่า</option>
+                    <option id="opt-dep-type-both" value="มัดจำและค่าเช่า">มัดจำและค่าเช่า</option>
+                  </select>
+                </div>
+                <div class="form-group">
                   <label id="lbl-deposit-ref">🧾 เลข Ref สลิปโอนเงิน / รายการสลิปบัตร:</label>
                   <input type="text" id="deposit-ref-input" class="form-control" placeholder="เช่น 2026101912345678 / App Ref / EDC Trace No.">
                   <small id="hint-deposit-ref" style="font-size:11px; color:#64748B;">ระบุเลขอ้างอิงจากสลิปธนาคาร หรือสลิปรูดบัตรเพื่อใช้เป็นหลักฐาน</small>
                 </div>
                 <div class="form-group">
+                  <label id="lbl-deposit-gdrive">ลิงก์ Google Drive:</label>
+                  <input type="url" id="deposit-gdrive-input" class="form-control" placeholder="https://drive.google.com/...">
+                </div>
+                <div class="form-group">
                   <label id="lbl-deposit-slip">📎 แนบรูปสลิปหลักฐานการชำระเงิน:</label>
-                  <div style="display:flex; align-items:center; gap:8px;">
+                  <div class="deposit-slip-row">
                     <input type="file" id="deposit-slip-file" accept="image/*,application/pdf" style="display:none;" onchange="app.onDepositSlipSelected(this)">
-                    <button type="button" id="btn-choose-slip" onclick="document.getElementById('deposit-slip-file').click()" class="btn btn-secondary" style="font-size:12.5px; padding:6px 12px; display:inline-flex; align-items:center; gap:6px; background:#F8FAFC; border:1px solid #CBD5E1; color:#334155; white-space:nowrap;">
-                      📁 เลือกไฟล์สลิป...
+                    <button type="button" id="btn-choose-slip" onclick="document.getElementById('deposit-slip-file').click()" class="btn btn-secondary deposit-slip-btn">
+                      เลือกไฟล์สลิป
                     </button>
-                    <span id="deposit-slip-status" style="font-size:12px; color:#64748B;">ยังไม่ได้แนบสลิป</span>
+                    <span id="deposit-slip-status" class="deposit-slip-status">ยังไม่ได้แนบสลิป</span>
                   </div>
                   <input type="hidden" id="deposit-slip-url">
                 </div>
@@ -2325,7 +2337,7 @@
   <div class="toast-container" id="toast-container"></div>
 
   <!-- Scripts with cache busting -->
-  <script src="/static/js/app.js?v=9.8"></script>
+  <script src="/static/js/app.js?v=9.9"></script>
 
   <!-- ===================================================================== -->
   <!-- MODAL: ACTIVE RENTALS / CARS WITH CUSTOMERS (POPUP FOR CARD 1) -->
