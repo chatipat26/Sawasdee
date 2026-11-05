@@ -104,6 +104,26 @@ class App {
       select_or_enter_finance: {
         TH: "เลือกจากรายการ หรือพิมพ์ชื่อบริษัทไฟแนนซ์ใหม่...",
         EN: "Select or type new finance company..."
+      },
+      next_engine_oil_date: {
+        TH: "กำหนดถ่ายน้ำมันเครื่องครั้งต่อไป (วันที่)",
+        EN: "Next Engine Oil Change (Date)"
+      },
+      next_engine_oil_mileage: {
+        TH: "กำหนดถ่ายน้ำมันเครื่องครั้งต่อไป (เลขไมล์)",
+        EN: "Next Engine Oil Change (Mileage)"
+      },
+      next_tire_change_date: {
+        TH: "กำหนดเปลี่ยนยางครั้งต่อไป (วันที่)",
+        EN: "Next Tire Change (Date)"
+      },
+      next_tire_change_mileage: {
+        TH: "กำหนดเปลี่ยนยางครั้งต่อไป (เลขไมล์)",
+        EN: "Next Tire Change (Mileage)"
+      },
+      service_interval_header: {
+        TH: "กำหนดการเช็คระยะ (น้ำมันเครื่อง & ยาง)",
+        EN: "Service Intervals (Engine Oil & Tires)"
       }
     };
     const lang = this.currentLang === "EN" ? "EN" : "TH";
@@ -557,10 +577,21 @@ class App {
     const inpCarLastSrv = document.getElementById("edit-car-last-srv");
     if (inpCarLastSrv) inpCarLastSrv.placeholder = isEn ? "DD/MM/YYYY or -" : "DD/MM/YYYY หรือ -";
 
-    const lblCarNextSrv = document.getElementById("lbl-modal-car-next-srv");
-    if (lblCarNextSrv) lblCarNextSrv.textContent = isEn ? "Next Scheduled Service" : "กำหนดเช็คระยะครั้งต่อไป";
-    const inpCarNextSrv = document.getElementById("edit-car-next-srv");
-    if (inpCarNextSrv) inpCarNextSrv.placeholder = isEn ? "DD/MM/YYYY or Mileage" : "DD/MM/YYYY หรือ เลขไมล์";
+    const lblCarSrvHeader = document.getElementById("lbl-modal-car-srv-header");
+    if (lblCarSrvHeader) lblCarSrvHeader.textContent = isEn ? "Service Intervals (Engine Oil & Tires)" : "กำหนดการเช็คระยะ (น้ำมันเครื่อง & ยาง)";
+    const lblCarOilDate = document.getElementById("lbl-modal-car-oil-date");
+    if (lblCarOilDate) lblCarOilDate.textContent = isEn ? "Next Engine Oil Change (Date)" : "กำหนดถ่ายน้ำมันเครื่องครั้งต่อไป (วันที่)";
+    const lblCarOilMileage = document.getElementById("lbl-modal-car-oil-mileage");
+    if (lblCarOilMileage) lblCarOilMileage.textContent = isEn ? "Next Engine Oil Change (Mileage)" : "กำหนดถ่ายน้ำมันเครื่องครั้งต่อไป (เลขไมล์)";
+    const inpCarOilMileage = document.getElementById("edit-car-oil-mileage");
+    if (inpCarOilMileage) inpCarOilMileage.placeholder = isEn ? "e.g. 20000" : "เช่น 20000";
+
+    const lblCarTireDate = document.getElementById("lbl-modal-car-tire-date");
+    if (lblCarTireDate) lblCarTireDate.textContent = isEn ? "Next Tire Change (Date)" : "กำหนดเปลี่ยนยางครั้งต่อไป (วันที่)";
+    const lblCarTireMileage = document.getElementById("lbl-modal-car-tire-mileage");
+    if (lblCarTireMileage) lblCarTireMileage.textContent = isEn ? "Next Tire Change (Mileage)" : "กำหนดเปลี่ยนยางครั้งต่อไป (เลขไมล์)";
+    const inpCarTireMileage = document.getElementById("edit-car-tire-mileage");
+    if (inpCarTireMileage) inpCarTireMileage.placeholder = isEn ? "e.g. 50000" : "เช่น 50000";
 
     const lblCarStatus = document.getElementById("lbl-modal-car-status");
     if (lblCarStatus) lblCarStatus.textContent = isEn ? "Vehicle Status*" : "สถานะรถยนต์*";
@@ -2235,7 +2266,10 @@ class App {
     setVal("edit-car-beneficiary", car.beneficiary || car.company || "-");
     setVal("edit-car-reg-year", car.reg_year || "-");
     setVal("edit-car-last-srv", this.dmyToYmd(car.last_service_date));
-    setVal("edit-car-next-srv", car.next_service || "-");
+    setVal("edit-car-oil-date", this.dmyToYmd(car.next_engine_oil_date));
+    setVal("edit-car-oil-mileage", car.next_engine_oil_mileage !== undefined && car.next_engine_oil_mileage !== null && Number(car.next_engine_oil_mileage) > 0 ? car.next_engine_oil_mileage : "");
+    setVal("edit-car-tire-date", this.dmyToYmd(car.next_tire_change_date));
+    setVal("edit-car-tire-mileage", car.next_tire_change_mileage !== undefined && car.next_tire_change_mileage !== null && Number(car.next_tire_change_mileage) > 0 ? car.next_tire_change_mileage : "");
     setVal("edit-car-notes", car.notes || "");
     setVal("edit-car-status", car.status || "ว่างพร้อมใช้งาน");
 
@@ -2453,7 +2487,10 @@ class App {
       beneficiary: (document.getElementById("edit-car-beneficiary")?.value || "-").trim(),
       reg_year: (document.getElementById("edit-car-reg-year")?.value || "-").trim(),
       last_service_date: this.ymdToDmy((document.getElementById("edit-car-last-srv")?.value || "").trim()) || "-",
-      next_service: (document.getElementById("edit-car-next-srv")?.value || "-").trim(),
+      next_engine_oil_date: this.ymdToDmy((document.getElementById("edit-car-oil-date")?.value || "").trim()) || "-",
+      next_engine_oil_mileage: parseInt(document.getElementById("edit-car-oil-mileage")?.value || "0", 10) || 0,
+      next_tire_change_date: this.ymdToDmy((document.getElementById("edit-car-tire-date")?.value || "").trim()) || "-",
+      next_tire_change_mileage: parseInt(document.getElementById("edit-car-tire-mileage")?.value || "0", 10) || 0,
       notes: (document.getElementById("edit-car-notes")?.value || "").trim(),
       status: document.getElementById("edit-car-status")?.value || "ว่างพร้อมใช้งาน",
       image: imgUrl,
@@ -5045,6 +5082,10 @@ class App {
       const srvInfo = [];
       if (c.last_service_date && c.last_service_date !== "-") srvInfo.push(`ล่าสุด: ${c.last_service_date}`);
       if (c.next_service && c.next_service !== "-") srvInfo.push(`ถัดไป: ${c.next_service}`);
+      if (c.next_engine_oil_date && c.next_engine_oil_date !== "-") srvInfo.push(`น/ม: ${c.next_engine_oil_date}`);
+      if (c.next_engine_oil_mileage && Number(c.next_engine_oil_mileage) > 0) srvInfo.push(`ไมล์ น/ม: ${Number(c.next_engine_oil_mileage).toLocaleString()}`);
+      if (c.next_tire_change_date && c.next_tire_change_date !== "-") srvInfo.push(`ยาง: ${c.next_tire_change_date}`);
+      if (c.next_tire_change_mileage && Number(c.next_tire_change_mileage) > 0) srvInfo.push(`ไมล์ยาง: ${Number(c.next_tire_change_mileage).toLocaleString()}`);
       const srvHtml = srvInfo.length > 0
         ? `<div style="font-size:10.5px; color:#475569;">${srvInfo.join(" | ")}</div>`
         : "";

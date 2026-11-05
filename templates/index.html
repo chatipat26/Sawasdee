@@ -1785,14 +1785,10 @@
         </div>
       </div>
 
-      <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; margin-bottom:12px;">
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:12px;">
         <div class="form-group">
           <label id="lbl-modal-car-last-srv">Last Service Date</label>
           <input type="date" id="edit-car-last-srv" class="form-control">
-        </div>
-        <div class="form-group">
-          <label id="lbl-modal-car-next-srv">Next Scheduled Service</label>
-          <input type="text" id="edit-car-next-srv" class="form-control" placeholder="DD/MM/YYYY หรือ เลขไมล์">
         </div>
         <div class="form-group">
           <label id="lbl-modal-car-status">Vehicle Status*</label>
@@ -1803,6 +1799,35 @@
             <option id="opt-modal-status-renting" value="กำลังเช่า">กำลังเช่า</option>
             <option id="opt-modal-status-booked" value="ติดจอง">ติดจอง</option>
           </select>
+        </div>
+      </div>
+
+      <!-- Service Intervals Section (Dual-Trigger: Date & Mileage for Engine Oil & Tires) -->
+      <div style="background:#FAF7F2; border:1px solid #E2E8F0; border-radius:8px; padding:12px; margin-bottom:12px;">
+        <div style="font-size:12.5px; font-weight:700; color:#92400E; margin-bottom:10px; display:flex; align-items:center; gap:6px;">
+          <span>🔧</span> <span id="lbl-modal-car-srv-header">กำหนดการเช็คระยะ (น้ำมันเครื่อง & ยาง)</span>
+        </div>
+        <!-- Row 1: Engine Oil -->
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:10px;">
+          <div class="form-group" style="margin-bottom:0;">
+            <label id="lbl-modal-car-oil-date" style="font-size:11.5px; font-weight:600; color:#334155;">กำหนดถ่ายน้ำมันเครื่องครั้งต่อไป (วันที่)</label>
+            <input type="date" id="edit-car-oil-date" class="form-control">
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label id="lbl-modal-car-oil-mileage" style="font-size:11.5px; font-weight:600; color:#334155;">กำหนดถ่ายน้ำมันเครื่องครั้งต่อไป (เลขไมล์)</label>
+            <input type="number" id="edit-car-oil-mileage" class="form-control" min="0" step="500" placeholder="เช่น 20000">
+          </div>
+        </div>
+        <!-- Row 2: Tires -->
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+          <div class="form-group" style="margin-bottom:0;">
+            <label id="lbl-modal-car-tire-date" style="font-size:11.5px; font-weight:600; color:#334155;">กำหนดเปลี่ยนยางครั้งต่อไป (วันที่)</label>
+            <input type="date" id="edit-car-tire-date" class="form-control">
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label id="lbl-modal-car-tire-mileage" style="font-size:11.5px; font-weight:600; color:#334155;">กำหนดเปลี่ยนยางครั้งต่อไป (เลขไมล์)</label>
+            <input type="number" id="edit-car-tire-mileage" class="form-control" min="0" step="500" placeholder="เช่น 50000">
+          </div>
         </div>
       </div>
 
@@ -2165,7 +2190,7 @@
   <div class="toast-container" id="toast-container"></div>
 
   <!-- Scripts with cache busting -->
-  <script src="/static/js/app.js?v=7.0"></script>
+  <script src="/static/js/app.js?v=7.1"></script>
 
   <!-- ===================================================================== -->
   <!-- MODAL: ACTIVE RENTALS / CARS WITH CUSTOMERS (POPUP FOR CARD 1) -->
