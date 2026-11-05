@@ -1793,6 +1793,17 @@
 
       <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:12px;">
         <div class="form-group">
+          <label id="lbl-modal-car-prb-price">ราคา พ.ร.บ. (บาท)</label>
+          <input type="number" id="edit-car-prb-price" class="form-control" min="0" step="10" placeholder="เช่น 645.21">
+        </div>
+        <div class="form-group">
+          <label id="lbl-modal-car-ins-premium">เบี้ยประกัน (บาท)</label>
+          <input type="number" id="edit-car-ins-premium" class="form-control" min="0" step="100" placeholder="เช่น 15000">
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:12px;">
+        <div class="form-group">
           <label id="lbl-modal-car-last-srv">Last Service Date</label>
           <input type="date" id="edit-car-last-srv" class="form-control">
         </div>
@@ -2201,7 +2212,7 @@
   <div class="toast-container" id="toast-container"></div>
 
   <!-- Scripts with cache busting -->
-  <script src="/static/js/app.js?v=7.5"></script>
+  <script src="/static/js/app.js?v=7.6"></script>
 
   <!-- ===================================================================== -->
   <!-- MODAL: ACTIVE RENTALS / CARS WITH CUSTOMERS (POPUP FOR CARD 1) -->

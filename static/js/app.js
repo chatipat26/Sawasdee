@@ -156,6 +156,14 @@ class App {
       car_details_modal_title: {
         TH: "รายละเอียดรถยนต์",
         EN: "Vehicle Details"
+      },
+      prb_price: {
+        TH: "ราคา พ.ร.บ. (บาท)",
+        EN: "PRB Price (THB)"
+      },
+      insurance_premium: {
+        TH: "เบี้ยประกัน (บาท)",
+        EN: "Insurance Premium (THB)"
       }
     };
     const lang = this.currentLang === "EN" ? "EN" : "TH";
@@ -603,6 +611,16 @@ class App {
     if (lblCarRegYear) lblCarRegYear.textContent = isEn ? "Registration Year (B.E./A.D.)" : "จดทะเบียนปี (พ.ศ.)";
     const inpCarRegYear = document.getElementById("edit-car-reg-year");
     if (inpCarRegYear) inpCarRegYear.placeholder = isEn ? "e.g. 2024 or 2567" : "เช่น 2567";
+
+    const lblCarPrbPrice = document.getElementById("lbl-modal-car-prb-price");
+    if (lblCarPrbPrice) lblCarPrbPrice.textContent = isEn ? "PRB Price (THB)" : "ราคา พ.ร.บ. (บาท)";
+    const inpCarPrbPrice = document.getElementById("edit-car-prb-price");
+    if (inpCarPrbPrice) inpCarPrbPrice.placeholder = isEn ? "e.g. 645.21" : "เช่น 645.21";
+
+    const lblCarInsPrem = document.getElementById("lbl-modal-car-ins-premium");
+    if (lblCarInsPrem) lblCarInsPrem.textContent = isEn ? "Insurance Premium (THB)" : "เบี้ยประกัน (บาท)";
+    const inpCarInsPrem = document.getElementById("edit-car-ins-premium");
+    if (inpCarInsPrem) inpCarInsPrem.placeholder = isEn ? "e.g. 15000" : "เช่น 15000";
 
     const lblCarLastSrv = document.getElementById("lbl-modal-car-last-srv");
     if (lblCarLastSrv) lblCarLastSrv.textContent = isEn ? "Last Service Date" : "วันที่เช็คระยะล่าสุด";
@@ -2093,6 +2111,20 @@ class App {
     const isAvail = (c.status === "ว่างพร้อมใช้งาน" || c.fleet_status_key === "available");
     const carImg = c.image && c.image !== "-" ? c.image : "";
 
+    const prbVal = (c.prb_price !== undefined && c.prb_price !== null && c.prb_price !== '')
+      ? Number(c.prb_price)
+      : ((c.act_price !== undefined && c.act_price !== null && c.act_price !== '') ? Number(c.act_price) : null);
+    const prbFormatted = (prbVal !== null && !isNaN(prbVal))
+      ? '฿' + prbVal.toLocaleString(undefined, {minimumFractionDigits: (prbVal % 1 === 0 ? 0 : 2), maximumFractionDigits: 2})
+      : '-';
+
+    const insVal = (c.insurance_premium !== undefined && c.insurance_premium !== null && c.insurance_premium !== '')
+      ? Number(c.insurance_premium)
+      : ((c.ins_premium !== undefined && c.ins_premium !== null && c.ins_premium !== '') ? Number(c.ins_premium) : null);
+    const insFormatted = (insVal !== null && !isNaN(insVal))
+      ? '฿' + insVal.toLocaleString(undefined, {minimumFractionDigits: (insVal % 1 === 0 ? 0 : 2), maximumFractionDigits: 2})
+      : '-';
+
     const titleEl = document.getElementById("modal-car-details-title");
     if (titleEl) {
       titleEl.textContent = `${c.brand || ''} ${c.model || ''}`;
@@ -2162,7 +2194,7 @@ class App {
 
           <div style="background:#FFF7ED; border:1px solid #FDBA74; border-radius:8px; padding:10px; display:flex; justify-content:space-between; align-items:center;">
             <div>
-              <div style="font-size:11px; color:#9A3412; font-weight:600;">${isEn ? `Calculated (${dur.days}d ${dur.hours}h)` : `คำนวณตามระยะเวลา (${dur.days} วัน ${dur.hours} ชม.)`}</div>
+              <div style="font-size:11px; color:#9A3412; font-weight:600;">${isEn ? `Calculated (${dur.days || 1}d ${dur.hours || 0}h)` : `คำนวณตามระยะเวลา (${dur.days || 1} วัน ${dur.hours || 0} ชม.)`}</div>
               <div style="font-size:10.5px; color:#64748B;">${isEn ? 'Based on active dates filter' : 'ตามช่วงเวลาเช่าที่เลือกด้านบน'}</div>
             </div>
             <div style="font-size:18px; font-weight:800; color:#EA580C;">
@@ -2199,8 +2231,7 @@ class App {
           <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px; font-size:11.5px;">
             <div><b style="color:#64748B;">${isEn ? 'ACT Expiry:' : 'หมดอายุ พ.ร.บ.:'}</b> <span style="color:#DC2626; font-weight:700;">${c.act_expiry || '-'}</span></div>
             <div><b style="color:#64748B;">${isEn ? 'Tax Expiry:' : 'หมดอายุภาษี:'}</b> <span style="color:#DC2626; font-weight:700;">${c.tax_expiry || '-'}</span></div>
-            <div><b style="color:#64748B;">${isEn ? 'ACT Brand:' : 'ยี่ห้อ พ.ร.บ.:'}</b> ${c.act_brand || '-'}</div>
-            <div><b style="color:#64748B;">${isEn ? 'ACT Price:' : 'ราคา พ.ร.บ.:'}</b> ${c.act_price ? Number(c.act_price).toLocaleString() + ' ฿' : '-'}</div>
+            <div><b style="color:#64748B;">${isEn ? 'PRB Price:' : 'ราคา พ.ร.บ.:'}</b> <span style="font-weight:700; color:#0F172A;">${prbFormatted}</span></div>
           </div>
         </div>
 
@@ -2212,8 +2243,7 @@ class App {
           <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px; font-size:11.5px;">
             <div><b style="color:#64748B;">${isEn ? 'Company:' : 'บริษัทประกัน:'}</b> ${c.ins_company || c.insurance_brand || '-'}</div>
             <div><b style="color:#64748B;">${isEn ? 'Expiry:' : 'วันหมดอายุ:'}</b> <span style="color:#DC2626; font-weight:700;">${c.ins_expiry || '-'}</span></div>
-            <div><b style="color:#64748B;">${isEn ? 'Premium:' : 'เบี้ยประกัน:'}</b> ${c.insurance_premium ? Number(c.insurance_premium).toLocaleString() + ' ฿' : '-'}</div>
-            <div><b style="color:#64748B;">${isEn ? 'Coverage:' : 'ทุนประกัน:'}</b> ${c.insurance_coverage ? Number(c.insurance_coverage).toLocaleString() + ' ฿' : '-'}</div>
+            <div><b style="color:#64748B;">${isEn ? 'Premium:' : 'เบี้ยประกัน:'}</b> <span style="font-weight:700; color:#0F172A;">${insFormatted}</span></div>
           </div>
         </div>
 
@@ -2456,6 +2486,8 @@ class App {
     setVal("edit-car-owner", car.owner || "-");
     setVal("edit-car-beneficiary", car.beneficiary || car.company || "-");
     setVal("edit-car-reg-year", car.reg_year || "-");
+    setVal("edit-car-prb-price", car.prb_price !== undefined && car.prb_price !== null ? car.prb_price : (car.act_price !== undefined && car.act_price !== null ? car.act_price : ""));
+    setVal("edit-car-ins-premium", car.insurance_premium !== undefined && car.insurance_premium !== null ? car.insurance_premium : (car.ins_premium !== undefined && car.ins_premium !== null ? car.ins_premium : ""));
     setVal("edit-car-last-srv", this.dmyToYmd(car.last_service_date));
     const srvDateVal = car.next_service_date || car.next_engine_oil_date || car.next_service || "";
     setVal("edit-car-next-srv-date", this.dmyToYmd(srvDateVal));
@@ -2742,6 +2774,10 @@ class App {
       owner: (document.getElementById("edit-car-owner")?.value || "-").trim(),
       beneficiary: (document.getElementById("edit-car-beneficiary")?.value || "-").trim(),
       reg_year: (document.getElementById("edit-car-reg-year")?.value || "-").trim(),
+      prb_price: (document.getElementById("edit-car-prb-price")?.value || "").trim() !== "" ? parseFloat(document.getElementById("edit-car-prb-price")?.value) : null,
+      act_price: (document.getElementById("edit-car-prb-price")?.value || "").trim() !== "" ? parseFloat(document.getElementById("edit-car-prb-price")?.value) : null,
+      insurance_premium: (document.getElementById("edit-car-ins-premium")?.value || "").trim() !== "" ? parseFloat(document.getElementById("edit-car-ins-premium")?.value) : null,
+      ins_premium: (document.getElementById("edit-car-ins-premium")?.value || "").trim() !== "" ? parseFloat(document.getElementById("edit-car-ins-premium")?.value) : null,
       last_service_date: this.ymdToDmy((document.getElementById("edit-car-last-srv")?.value || "").trim()) || "-",
       next_service_date: this.ymdToDmy((document.getElementById("edit-car-next-srv-date")?.value || "").trim()) || "-",
       next_service_mileage: parseInt(document.getElementById("edit-car-next-srv-mileage")?.value || "0", 10) || 0,

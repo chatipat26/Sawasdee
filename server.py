@@ -610,6 +610,33 @@ async def create_or_update_car(payload: Dict[str, Any], plate_param: Optional[st
         except Exception:
             payload["next_service_mileage"] = 0
 
+    # Sanitize prb_price (float or None) and insurance_premium (float or None)
+    raw_prb_price = payload.get("prb_price") if payload.get("prb_price") is not None else payload.get("act_price")
+    if raw_prb_price is not None and str(raw_prb_price).strip() != "":
+        try:
+            val_p = float(str(raw_prb_price).replace(",", "").strip())
+            payload["prb_price"] = val_p
+            payload["act_price"] = val_p
+        except Exception:
+            payload["prb_price"] = 0.0
+            payload["act_price"] = 0.0
+    else:
+        payload["prb_price"] = None
+        payload["act_price"] = None
+
+    raw_ins_premium = payload.get("insurance_premium") if payload.get("insurance_premium") is not None else payload.get("ins_premium")
+    if raw_ins_premium is not None and str(raw_ins_premium).strip() != "":
+        try:
+            val_i = float(str(raw_ins_premium).replace(",", "").strip())
+            payload["insurance_premium"] = val_i
+            payload["ins_premium"] = val_i
+        except Exception:
+            payload["insurance_premium"] = 0.0
+            payload["ins_premium"] = 0.0
+    else:
+        payload["insurance_premium"] = None
+        payload["ins_premium"] = None
+
     payload["plate"] = plate
     store.async_sync_car(plate, payload)
     return {"success": True, "car": store.cars.get(plate, payload)}

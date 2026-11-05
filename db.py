@@ -684,7 +684,9 @@ class DataStore:
             'total_installments', 'current_installment', 'finance_company',
             'next_engine_oil_date', 'next_engine_oil_mileage',
             'next_tire_change_date', 'next_tire_change_mileage',
-            'next_service_date', 'next_service_mileage'
+            'next_service_date', 'next_service_mileage',
+            'prb_price', 'act_price', 'insurance_premium', 'ins_premium',
+            'prb_brand', 'act_brand', 'insurance_coverage'
         }
         with self.lock:
             existing = dict(self.cars.get(plate, {}))
