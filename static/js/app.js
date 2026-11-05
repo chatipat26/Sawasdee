@@ -43,6 +43,10 @@ class App {
     this.trendMetric = "rev";
     this.selectedTrendCompanies = ["Sawasdee Rent A Car", "P.D.P. Co., Ltd.", "Sawasdee Car Rent"];
 
+    // Modal & Selection State Management
+    this.selectedVehicle = null;
+    this.isModalOpen = false;
+
     this.init();
   }
 
@@ -2021,23 +2025,71 @@ class App {
     }).join("");
   }
 
-  // --- Fleet Car Details Popup Modal (Unslop) ---
-  openCarDetailsModal(plate) {
+  // --- Fleet Car Details Popup Modal State Management & Actions ---
+  setSelectedVehicle(vehicle) {
+    this.selectedVehicle = vehicle || null;
+  }
+
+  setIsModalOpen(isOpen) {
+    this.isModalOpen = Boolean(isOpen);
+    const m = document.getElementById("modal-car-details");
+    if (m) {
+      if (this.isModalOpen) {
+        this.modalZIndex = (this.modalZIndex || 2000) + 10;
+        m.style.zIndex = String(this.modalZIndex);
+        m.classList.add("open");
+      } else {
+        m.classList.remove("open");
+      }
+    }
+  }
+
+  closeCarDetailsModal() {
+    this.setIsModalOpen(false);
+    this.setSelectedVehicle(null);
+  }
+
+  openCarDetailsModal(plateOrEl) {
     const isEn = (this.currentLang === "EN");
-    const car = (this.cars || []).find(c => c.plate === plate);
+    let plate = plateOrEl;
+    if (plateOrEl && typeof plateOrEl === "object" && plateOrEl.getAttribute) {
+      plate = plateOrEl.getAttribute("data-plate") || plateOrEl.dataset?.plate;
+    }
+    const cleanPlate = String(plate || "").trim();
+    const car = (this.cars || []).find(c => c.plate === cleanPlate)
+      || (this.cars || []).find(c => String(c.plate).trim() === cleanPlate)
+      || (this.cars || []).find(c => this.normalizePlate(c.plate) === this.normalizePlate(cleanPlate));
+
     if (!car) {
-      this.showToast(isEn ? "Vehicle not found" : "ไม่พบข้อมูลรถยนต์", "error");
+      this.showToast(isEn ? "Vehicle not found" : "ไม่พบข้อมูลรถยนต์", "danger");
       return;
     }
 
-    const c = car;
+    // 1. Update State (Mission 1)
+    this.setSelectedVehicle(car);
+    this.setIsModalOpen(true);
+
+    const c = this.selectedVehicle;
     const safePlate = String(c.plate || "").replace(/'/g, "\\'");
     const rates = this.getCarRates(c);
     const dur = this.calcDuration ? this.calcDuration() : { days: 1, hours: 0, text: "1 วัน" };
     const priceDay = rates.day || 1000;
     const priceWeek = rates.week || 6000;
     const priceMonth = rates.month || 20000;
-    const totalPrice = this.calculateRentalCost(c, dur.days, dur.hours);
+    const autoType = dur.days >= 30 ? (isEn ? "Monthly" : "รายเดือน") : (dur.days >= 7 ? (isEn ? "Weekly" : "รายสัปดาห์") : (isEn ? "Daily" : "รายวัน"));
+
+    let totalPrice = priceDay * Math.max(1, dur.days || 1);
+    try {
+      if (typeof this.calculateCarRentalPrice === "function") {
+        const calc = this.calculateCarRentalPrice(c, dur.days, autoType);
+        if (calc && typeof calc.basePrice === "number") {
+          totalPrice = calc.basePrice;
+        }
+      }
+    } catch (e) {
+      console.warn("Pricing calculation error in modal:", e);
+    }
+
     const isAvail = (c.status === "ว่างพร้อมใช้งาน" || c.fleet_status_key === "available");
     const carImg = c.image && c.image !== "-" ? c.image : "";
 
@@ -6961,6 +7013,10 @@ class App {
       m.style.zIndex = String(this.modalZIndex);
       m.classList.add("open");
 
+      if (modalId === "modal-car-details") {
+        this.isModalOpen = true;
+      }
+
       if (modalId === "modal-edit-car") {
         setTimeout(() => {
           const plateInp = document.getElementById("edit-car-plate");
@@ -6976,6 +7032,10 @@ class App {
   closeModal(modalId) {
     const m = document.getElementById(modalId);
     if (m) m.classList.remove("open");
+    if (modalId === "modal-car-details") {
+      this.isModalOpen = false;
+      this.selectedVehicle = null;
+    }
   }
 
   showToast(message, type = "info") {
