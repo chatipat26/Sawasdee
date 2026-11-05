@@ -8,8 +8,17 @@ class App {
     try {
       // Clear legacy persistent localStorage user so new visits always require login
       localStorage.removeItem("sawasdee_user");
-      // Use sessionStorage so credentials persist only within active browser session/tab
-      savedUser = JSON.parse(sessionStorage.getItem("sawasdee_user") || "null");
+      // Check 6-hour session timeout (6 * 60 * 60 * 1000 ms)
+      const loginTime = parseInt(sessionStorage.getItem("sawasdee_login_time") || "0", 10);
+      const SESSION_TIMEOUT_MS = 6 * 60 * 60 * 1000;
+      if (loginTime && (Date.now() - loginTime > SESSION_TIMEOUT_MS)) {
+        sessionStorage.removeItem("sawasdee_user");
+        sessionStorage.removeItem("sawasdee_login_time");
+        savedUser = null;
+      } else {
+        // Use sessionStorage so credentials persist only within active browser session/tab
+        savedUser = JSON.parse(sessionStorage.getItem("sawasdee_user") || "null");
+      }
     } catch (e) {
       savedUser = null;
     }
@@ -38,6 +47,14 @@ class App {
   }
 
   async init() {
+    // Safety splash dismiss fallback: never leave splash hanging beyond 2 seconds
+    setTimeout(() => {
+      const splash = document.getElementById("app-splash-screen");
+      if (splash && !splash.classList.contains("fade-out")) {
+        splash.classList.add("fade-out");
+      }
+    }, 2000);
+
     this.initGlobalEnterKeyNavigation();
     this.initLanguage();
     this.setupDatePickers();
@@ -51,14 +68,27 @@ class App {
       await this.fetchInitialData();
       this.startLiveSyncPoller();
       if (splash) {
-        setTimeout(() => splash.classList.add("fade-out"), 300);
+        setTimeout(() => splash.classList.add("fade-out"), 250);
       }
     } else {
       // Always stop at login screen when entering without active session
       if (splash) {
-        setTimeout(() => splash.classList.add("fade-out"), 450);
+        setTimeout(() => splash.classList.add("fade-out"), 300);
       }
     }
+  }
+
+  checkSessionTimeout() {
+    if (!this.user) return false;
+    const loginTime = parseInt(sessionStorage.getItem("sawasdee_login_time") || "0", 10);
+    const SESSION_TIMEOUT_MS = 6 * 60 * 60 * 1000; // 6 hours
+    if (loginTime && (Date.now() - loginTime > SESSION_TIMEOUT_MS)) {
+      this.logout();
+      const isEn = (this.currentLang === "EN");
+      alert(isEn ? "Session expired (6 hours timeout). Please log in again." : "เซสชันการใช้งานหมดอายุ (ครบ 6 ชั่วโมง) กรุณาเข้าสู่ระบบใหม่อีกครั้งเพื่อความปลอดภัย");
+      return true;
+    }
+    return false;
   }
 
   initLanguage() {
@@ -1157,6 +1187,7 @@ class App {
   startLiveSyncPoller() {
     setInterval(async () => {
       try {
+        if (this.checkSessionTimeout()) return;
         const res = await fetch("/api/status");
         if (res.ok) {
           const st = await res.json();
@@ -1962,7 +1993,6 @@ class App {
         </div>
       `;
     }).join("");
-  }
   }
 
   // --- Quick Car Photo Upload & Edit Car Modal ---
@@ -5843,6 +5873,7 @@ class App {
 
       this.user = data.user;
       sessionStorage.setItem("sawasdee_user", JSON.stringify(this.user));
+      sessionStorage.setItem("sawasdee_login_time", Date.now().toString());
       localStorage.removeItem("sawasdee_user");
       this.updateAuthUI();
       this.showToast(`เข้าสู่ระบบสำเร็จในฐานะ: ${this.user.name || this.user.username} ☁️`, "success");
@@ -5953,9 +5984,11 @@ class App {
   logout() {
     this.user = null;
     sessionStorage.removeItem("sawasdee_user");
+    sessionStorage.removeItem("sawasdee_login_time");
     localStorage.removeItem("sawasdee_user");
     this.updateAuthUI();
-    this.showToast("ออกจากระบบเรียบร้อย", "info");
+    const isEn = (this.currentLang === "EN");
+    this.showToast(isEn ? "Signed out successfully" : "ออกจากระบบเรียบร้อย", "info");
   }
 
   // --- Maintenance & Service Module Methods ---

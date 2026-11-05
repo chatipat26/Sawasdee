@@ -1775,7 +1775,8 @@ translations = {
         "mnt_col_staff": "พนักงานผู้รับผิดชอบ",
         "mnt_col_sched": "กำหนดการ",
         "mnt_col_status": "สถานะ",
-        "mnt_col_action": "ออกใบงาน & ปิดงาน"
+        "mnt_col_action": "ออกใบงาน & ปิดงาน",
+        "session_expired": "เซสชันการใช้งานหมดอายุ (ครบ 6 ชั่วโมง) กรุณาเข้าสู่ระบบใหม่อีกครั้งเพื่อความปลอดภัย"
     },
     "EN": {
         # Sidebar & Global Navigation
@@ -1968,7 +1969,8 @@ translations = {
         "mnt_col_staff": "Assigned Staff",
         "mnt_col_sched": "Schedule",
         "mnt_col_status": "Status",
-        "mnt_col_action": "Actions & Work Order"
+        "mnt_col_action": "Actions & Work Order",
+        "session_expired": "Session expired (6 hours timeout). Please log in again."
     }
 }
 
@@ -2009,7 +2011,7 @@ import json as _json
 import secrets as _secrets_mod
 
 _SESSION_COOKIE_NAME = "sr_session"
-_SESSION_MAX_AGE = 60 * 60 * 12  # 12 ชั่วโมง
+_SESSION_MAX_AGE = 6 * 60 * 60  # 6 ชั่วโมง
 
 @st.cache_resource
 def _get_fallback_session_secret():
@@ -2026,14 +2028,16 @@ def _get_session_secret():
     return _get_fallback_session_secret().encode("utf-8")
 
 def _make_session_token(user_dict):
+    now_ts = int(time.time())
     payload = {
         "u": {
             "username": user_dict.get("username"),
             "name": user_dict.get("name"),
             "role": user_dict.get("role"),
             "email": user_dict.get("email"),
+            "login_timestamp": user_dict.get("login_timestamp", now_ts),
         },
-        "exp": int(time.time()) + _SESSION_MAX_AGE,
+        "exp": now_ts + _SESSION_MAX_AGE,
     }
     body = base64.urlsafe_b64encode(_json.dumps(payload, ensure_ascii=False).encode("utf-8")).decode("ascii").rstrip("=")
     sig = _hmac.new(_get_session_secret(), body.encode("ascii"), _hashlib.sha256).hexdigest()
@@ -2102,8 +2106,40 @@ def _restore_user_from_cookie():
 # ล้างค่า user ที่เคยเก็บแบบ global (แชร์ทุกคน) ทิ้ง
 _GLOBAL_STORE.pop("user", None)
 
+if "language" not in st.session_state:
+    st.session_state.language = "TH"
+
 if "user" not in st.session_state or st.session_state.user is None:
     st.session_state.user = _restore_user_from_cookie()
+    if st.session_state.user:
+        st.session_state['logged_in'] = True
+        st.session_state['username'] = st.session_state.user.get("username")
+        st.session_state['login_timestamp'] = st.session_state.user.get("login_timestamp", time.time())
+elif st.session_state.user:
+    st.session_state['logged_in'] = True
+    st.session_state['username'] = st.session_state.user.get("username")
+    if "login_timestamp" not in st.session_state:
+        st.session_state['login_timestamp'] = st.session_state.user.get("login_timestamp", time.time())
+
+# =========================================================================
+# MISSION 1: Session Timeout (Auto Logout ทุก 6 ชม.)
+# =========================================================================
+import time
+SESSION_TIMEOUT_SECONDS = 6 * 60 * 60 # 6 ชั่วโมง
+
+if st.session_state.get('logged_in'):
+    elapsed_time = time.time() - st.session_state.get('login_timestamp', 0)
+    if elapsed_time > SESSION_TIMEOUT_SECONDS:
+        # เคลียร์ข้อมูลการล็อกอิน
+        st.session_state['logged_in'] = False
+        st.session_state['user'] = None
+        if 'username' in st.session_state:
+            del st.session_state['username']
+        st.session_state.pop('login_timestamp', None)
+        st.session_state["_logged_out_this_session"] = True
+        _queue_session_cookie(None)
+        st.warning(translations[st.session_state.language].get("session_expired", "Session expired. Please log in again."))
+        st.rerun()
 
 if "auth_mode" not in st.session_state:
     if st.query_params.get("mode") == "register":
@@ -3282,12 +3318,17 @@ if st.session_state.user is None:
                             st.error(err_msg or "❌ ไม่พบชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง")
                         else:
                             is_pending_login = (user_rec.get("status") == "pending")
+                            now_ts = time.time()
                             st.session_state.user = {
                                 "username": user_rec["username"],
                                 "name": user_rec.get("name", user_rec["username"]),
                                 "role": user_rec.get("role", "Staff"),
-                                "email": user_rec.get("email") or f"{user_rec['username']}@sawasdeecarrental.com"
+                                "email": user_rec.get("email") or f"{user_rec['username']}@sawasdeecarrental.com",
+                                "login_timestamp": now_ts,
                             }
+                            st.session_state['login_timestamp'] = now_ts
+                            st.session_state['logged_in'] = True
+                            st.session_state['username'] = user_rec["username"]
                             st.session_state["_logged_out_this_session"] = False
                             _queue_session_cookie(_make_session_token(st.session_state.user))
                             if is_pending_login:
@@ -3858,6 +3899,10 @@ else:
         if st.button(translations.get(st.session_state.get("language", "TH"), translations["TH"])["btn_logout"], key="btn_logout_sidebar", use_container_width=True):
             sb_auth_logout()
             st.session_state.user = None
+            st.session_state['logged_in'] = False
+            if 'username' in st.session_state:
+                del st.session_state['username']
+            st.session_state.pop('login_timestamp', None)
             st.session_state["_logged_out_this_session"] = True
             _queue_session_cookie(None)
             st.session_state.auth_mode = "login"
