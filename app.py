@@ -78,14 +78,37 @@ def to_date(d):
     if isinstance(d, datetime): return d.date()
     if isinstance(d, date): return d
     if isinstance(d, str):
+        d_str = d.strip()
+        if not d_str or d_str in ("-", "None", "none", "null"):
+            return None
         for fmt in ('%Y-%m-%d', '%d/%m/%Y'):
-            try: return datetime.strptime(d, fmt).date()
+            try:
+                dt = datetime.strptime(d_str, fmt).date()
+                if dt.year > 2400:
+                    dt = dt.replace(year=dt.year - 543)
+                return dt
             except: pass
     return None
 
+def to_date_safe(d):
+    """แปลงค่าวันที่จาก DB (str, date, datetime) เป็น date object อย่างปลอดภัย หรือ None หากไม่มีข้อมูล"""
+    return to_date(d)
+
 def parse_date_dmy(d, default_date=None):
     parsed = to_date(d)
-    return parsed if parsed else (default_date or date.today())
+    return parsed if parsed is not None else default_date
+
+def format_date_for_db(d, fmt="%d/%m/%Y"):
+    """แปลง date object กลับเป็น String รูปแบบเดิมสำหรับบันทึกลง DB ป้องกัน TypeError: Object of type date is not JSON serializable"""
+    if not d or d in ("-", "None", "none", "null", ""):
+        return "-"
+    if isinstance(d, (date, datetime)):
+        return d.strftime(fmt)
+    if isinstance(d, str):
+        cleaned = d.strip()
+        parsed = to_date(cleaned)
+        return parsed.strftime(fmt) if parsed else (cleaned or "-")
+    return str(d)
 
 def is_car_available_on_date(car_plate, car_obj, check_date, bookings):
     if car_obj.get('status') == 'ซ่อมบำรุง':
@@ -1680,6 +1703,14 @@ translations = {
         "fleet_btn_edit": "แก้ไขข้อมูลรถ",
         "fleet_btn_del": "ลบรถยนต์",
 
+        # Date Pickers
+        "date_tax_exp": "วันหมดอายุภาษี",
+        "date_act_exp": "วันหมดอายุ พ.ร.บ.",
+        "date_ins_exp": "วันหมดอายุประกันภัย",
+        "date_last_srv": "วันที่เช็คระยะล่าสุด",
+        "date_dob": "วันเกิด (DOB)",
+        "date_lic_exp": "วันหมดอายุใบขับขี่",
+
         # Tab 2: Deposit & Finance
         "deposit_title": "เงินมัดจำ & การเงิน (Deposit & Payment)",
         "deposit_subtitle": "บันทึกเงินมัดจำประกันสัญญาและชำระค่าเช่า",
@@ -1873,6 +1904,14 @@ translations = {
         "fleet_btn_maint": "Request Maintenance",
         "fleet_btn_edit": "Edit Vehicle",
         "fleet_btn_del": "Delete Vehicle",
+
+        # Date Pickers
+        "date_tax_exp": "Tax Expiry Date",
+        "date_act_exp": "ACT Expiry Date",
+        "date_ins_exp": "Insurance Expiry Date",
+        "date_last_srv": "Last Service Date",
+        "date_dob": "Date of Birth (DOB)",
+        "date_lic_exp": "Driver License Expiry",
 
         # Tab 2: Deposit & Finance
         "deposit_title": "Deposit & Payment",
@@ -2433,7 +2472,7 @@ def _render_add_customer_form_contents():
         with ca1:
             st.markdown("<b style='color:#1E3A8A; font-size:13px;'>1. ข้อมูลส่วนบุคคล</b>", unsafe_allow_html=True)
             new_name = st.text_input("ชื่อ-นามสกุล (ต้องระบุ)*", placeholder="เช่น สมเกียรติ มั่นคง")
-            new_dob = st.date_input("📅 วันเกิด (DOB)", value=date(1990, 1, 1), min_value=date(1920, 1, 1), max_value=date.today(), format="DD/MM/YYYY")
+            new_dob = st.date_input("วันเกิด (DOB)", value=None, min_value=date(1920, 1, 1), max_value=date.today(), format="DD/MM/YYYY")
             new_pass = st.text_input("หมายเลข Passport / บัตร ปชช.*", placeholder="เช่น 1100400123456")
             new_home = st.text_area("ที่อยู่ตามภูมิลำเนา (Home Address)", height=70, placeholder="ที่อยู่ตามบัตร/พาสปอร์ต")
         with ca2:
@@ -2441,7 +2480,7 @@ def _render_add_customer_form_contents():
             new_nat = st.text_input("สัญชาติ (Nationality)", value="THAI")
             new_lic = st.text_input("หมายเลขใบขับขี่ (Licence No.)", placeholder="เช่น 65001234")
             new_issue = st.text_input("สถานที่ออกใบขับขี่ (Place of Issue)", placeholder="เช่น กรมการขนส่งทางบก")
-            new_exp = st.date_input("📅 วันหมดอายุใบขับขี่", value=date.today() + timedelta(days=1825), min_value=date.today() - timedelta(days=3650), format="DD/MM/YYYY")
+            new_exp = st.date_input("วันหมดอายุใบขับขี่", value=None, min_value=date.today() - timedelta(days=3650), format="DD/MM/YYYY")
         with ca3:
             st.markdown("<b style='color:#1E3A8A; font-size:13px;'>3. การติดต่อ & ที่อยู่ในไทย</b>", unsafe_allow_html=True)
             new_phone = st.text_input("เบอร์โทรศัพท์ (Contact No.)*", placeholder="เช่น 081-234-5678")
@@ -2463,11 +2502,11 @@ def _render_add_customer_form_contents():
                 new_cust_obj = {
                     "full_name": new_c_name,
                     "nationality": new_nat.strip() or "THAI",
-                    "dob": new_dob.strftime("%d/%m/%Y"),
+                    "dob": format_date_for_db(new_dob, "%d/%m/%Y"),
                     "passport_id": new_pass.strip() or "-",
                     "licence_no": new_lic.strip() or "-",
                     "issue_place": new_issue.strip() or "-",
-                    "licence_expiry": new_exp.strftime("%d/%m/%Y"),
+                    "licence_expiry": format_date_for_db(new_exp, "%d/%m/%Y"),
                     "home_address": new_home.strip() or "-",
                     "thai_address": new_thai.strip() or "-",
                     "contact_no": new_phone.strip() or "-",
@@ -4084,7 +4123,7 @@ else:
                 d_c1, d_c2, d_c3 = st.columns([1.5, 1.5, 1.0])
                 with d_c1:
                     f_avail_start = st.date_input(
-                        "📅 วันที่ส่งรถ (Pick-up)", 
+                        "วันที่ส่งรถ (Pick-up)", 
                         value=st.session_state.fleet_f_start, 
                         format="DD/MM/YYYY", 
                         key="fleet_f_start",
@@ -4092,7 +4131,7 @@ else:
                     )
                 with d_c2:
                     f_avail_end = st.date_input(
-                        "📅 วันที่คืนรถ (Return)", 
+                        "วันที่คืนรถ (Return)", 
                         value=st.session_state.fleet_f_end, 
                         format="DD/MM/YYYY", 
                         key="fleet_f_end",
@@ -4232,8 +4271,9 @@ else:
                         add_chassis = st.text_input("เลขตัวถัง (VIN / Chassis No)", placeholder="เช่น MRXGWM...", key="add_car_chassis").strip()
                         add_mileage = st.text_input("เลขไมล์ปัจจุบัน (km)", value="10,000", key="add_car_mileage").strip()
                     with doc_c2:
-                        add_act = st.date_input("📅 วันหมดอายุ พ.ร.บ.", value=date.today() + timedelta(days=365), format="DD/MM/YYYY", key="add_car_act")
-                        add_ins = st.date_input("📅 วันหมดอายุประกันภัย", value=date.today() + timedelta(days=365), format="DD/MM/YYYY", key="add_car_ins")
+                        add_tax = st.date_input("วันหมดอายุภาษี", value=None, format="DD/MM/YYYY", key="add_car_tax")
+                        add_act = st.date_input("วันหมดอายุ พ.ร.บ.", value=None, format="DD/MM/YYYY", key="add_car_act")
+                        add_ins = st.date_input("วันหมดอายุประกันภัย", value=None, format="DD/MM/YYYY", key="add_car_ins")
                     with doc_c3:
                         add_img_file = st.file_uploader("รูปถ่ายรถ (JPG, PNG, WEBP):", type=["jpg", "jpeg", "png", "webp"], key="add_car_img_file")
                         if add_img_file is not None:
@@ -4275,8 +4315,9 @@ else:
                                     "price_month": int(add_p_month),
                                     "status": add_status,
                                     "chassis_no": add_chassis or "-",
-                                    "act_expiry": add_act.strftime("%d/%m/%Y") if isinstance(add_act, (date, datetime)) else str(add_act or "-"),
-                                    "ins_expiry": add_ins.strftime("%d/%m/%Y") if isinstance(add_ins, (date, datetime)) else str(add_ins or "-"),
+                                    "tax_expiry": format_date_for_db(add_tax, "%d/%m/%Y"),
+                                    "act_expiry": format_date_for_db(add_act, "%d/%m/%Y"),
+                                    "ins_expiry": format_date_for_db(add_ins, "%d/%m/%Y"),
                                     "mileage": add_mileage or "0",
                                     "image": new_car_img
                                 }
@@ -4655,8 +4696,9 @@ else:
                                             e_pday = st.number_input("รายวัน", min_value=0, value=int(_c.get('price_day', 0)), step=100, key=f"gepd_{_p}")
                                             e_pweek = st.number_input("รายสัปดาห์", min_value=0, value=int(_c.get('price_week', 0)), step=500, key=f"gepw_{_p}")
                                             e_pmonth = st.number_input("รายเดือน", min_value=0, value=int(_c.get('price_month', 0)), step=1000, key=f"gepm_{_p}")
-                                            e_act = st.date_input("📅 วันหมดอายุ พ.ร.บ.", value=parse_date_dmy(_c.get('act_expiry'), date.today()), format="DD/MM/YYYY", key=f"geact_{_p}")
-                                            e_ins = st.date_input("📅 วันหมดอายุ ประกันภัย", value=parse_date_dmy(_c.get('ins_expiry'), date.today()), format="DD/MM/YYYY", key=f"geins_{_p}")
+                                            e_tax = st.date_input("วันหมดอายุภาษี", value=to_date_safe(_c.get('tax_expiry')), format="DD/MM/YYYY", key=f"getax_{_p}")
+                                            e_act = st.date_input("วันหมดอายุ พ.ร.บ.", value=to_date_safe(_c.get('act_expiry')), format="DD/MM/YYYY", key=f"geact_{_p}")
+                                            e_ins = st.date_input("วันหมดอายุประกันภัย", value=to_date_safe(_c.get('ins_expiry')), format="DD/MM/YYYY", key=f"geins_{_p}")
                                             e_status = st.selectbox("สถานะรถยนต์*", st_opts, index=st_opts.index(c_st_val), key=f"gest_{_p}")
                                             save_edit_sub = st.form_submit_button("💾 บันทึกการแก้ไข", type="primary", use_container_width=True)
 
@@ -4677,8 +4719,9 @@ else:
                                                 up_car["price_day"] = int(e_pday)
                                                 up_car["price_week"] = int(e_pweek)
                                                 up_car["price_month"] = int(e_pmonth)
-                                                up_car["act_expiry"] = e_act.strftime("%d/%m/%Y") if isinstance(e_act, (date, datetime)) else str(e_act or "-")
-                                                up_car["ins_expiry"] = e_ins.strftime("%d/%m/%Y") if isinstance(e_ins, (date, datetime)) else str(e_ins or "-")
+                                                up_car["tax_expiry"] = format_date_for_db(e_tax, "%d/%m/%Y")
+                                                up_car["act_expiry"] = format_date_for_db(e_act, "%d/%m/%Y")
+                                                up_car["ins_expiry"] = format_date_for_db(e_ins, "%d/%m/%Y")
                                                 up_car["status"] = e_status
                                                 
                                                 st.session_state.cars_db[_p] = up_car
@@ -5011,8 +5054,8 @@ else:
                                     with ce1:
                                         st.markdown("<b style='color:#92400E; font-size:13px;'>1. ข้อมูลส่วนบุคคล</b>", unsafe_allow_html=True)
                                         ed_name = st.text_input("ชื่อ-นามสกุล*", value=cur_cust_data.get("full_name") or cust)
-                                        init_dob = parse_date_dmy(cur_cust_data.get("dob"), date(1990, 1, 1))
-                                        ed_dob = st.date_input("📅 วันเกิด (DOB)", value=init_dob, min_value=date(1920, 1, 1), max_value=date.today(), format="DD/MM/YYYY")
+                                        init_dob = to_date_safe(cur_cust_data.get("dob"))
+                                        ed_dob = st.date_input("วันเกิด (DOB)", value=init_dob, min_value=date(1920, 1, 1), max_value=date.today(), format="DD/MM/YYYY")
                                         ed_pass = st.text_input("หมายเลข Passport / บัตร ปชช.", value=cur_cust_data.get("passport_id", ""))
                                         ed_home = st.text_area("ที่อยู่ตามภูมิลำเนา (Home Address)", value=cur_cust_data.get("home_address", ""), height=70)
                                     with ce2:
@@ -5020,8 +5063,8 @@ else:
                                         ed_nat = st.text_input("สัญชาติ (Nationality)", value=cur_cust_data.get("nationality", "THAI"))
                                         ed_lic = st.text_input("หมายเลขใบขับขี่ (Licence No.)", value=cur_cust_data.get("licence_no", ""))
                                         ed_issue = st.text_input("สถานที่ออกใบขับขี่ (Place of Issue)", value=cur_cust_data.get("issue_place", ""))
-                                        init_exp = parse_date_dmy(cur_cust_data.get("licence_expiry"), date.today() + timedelta(days=1825))
-                                        ed_exp = st.date_input("📅 วันหมดอายุใบขับขี่", value=init_exp, min_value=date.today() - timedelta(days=3650), format="DD/MM/YYYY")
+                                        init_exp = to_date_safe(cur_cust_data.get("licence_expiry"))
+                                        ed_exp = st.date_input("วันหมดอายุใบขับขี่", value=init_exp, min_value=date.today() - timedelta(days=3650), format="DD/MM/YYYY")
                                     with ce3:
                                         st.markdown("<b style='color:#92400E; font-size:13px;'>3. การติดต่อ & ที่อยู่ในไทย</b>", unsafe_allow_html=True)
                                         ed_phone = st.text_input("เบอร์โทรศัพท์ (Contact No.)", value=cur_cust_data.get("contact_no", ""))
@@ -5043,11 +5086,11 @@ else:
                                             updated_obj = {
                                                 "full_name": new_n,
                                                 "nationality": ed_nat.strip(),
-                                                "dob": ed_dob.strftime("%d/%m/%Y"),
+                                                "dob": format_date_for_db(ed_dob, "%d/%m/%Y"),
                                                 "passport_id": ed_pass.strip(),
                                                 "licence_no": ed_lic.strip(),
                                                 "issue_place": ed_issue.strip(),
-                                                "licence_expiry": ed_exp.strftime("%d/%m/%Y"),
+                                                "licence_expiry": format_date_for_db(ed_exp, "%d/%m/%Y"),
                                                 "home_address": ed_home.strip(),
                                                 "thai_address": ed_thai.strip(),
                                                 "contact_no": ed_phone.strip(),
@@ -5151,17 +5194,17 @@ else:
                                 if "c_start_date_tab3" not in st.session_state or st.session_state.get("_last_synced_draft_start") != st.session_state.get("draft_start_date"):
                                     st.session_state["c_start_date_tab3"] = init_start
                                     st.session_state["_last_synced_draft_start"] = st.session_state.get("draft_start_date")
-                                start_d = st.date_input("📅 วันที่เริ่มเช่า (ส่งรถ)", key="c_start_date_tab3", format="DD/MM/YYYY")
+                                start_d = st.date_input("วันที่เริ่มเช่า (ส่งรถ)", key="c_start_date_tab3", format="DD/MM/YYYY")
                                 st.session_state.draft_start_date = start_d
-                                start_t = st.time_input("⏰ เวลาส่งรถ", d_time(10, 0), key="c_start_time_tab3", help="เวลาส่งมอบรถเริ่มต้นรอบคิดค่าเช่า 24 ชม.")
+                                start_t = st.time_input("เวลาส่งรถ", d_time(10, 0), key="c_start_time_tab3", help="เวลาส่งมอบรถเริ่มต้นรอบคิดค่าเช่า 24 ชม.")
                             with c_dt2:
                                 init_end = st.session_state.get("draft_end_date") or (start_d + timedelta(days=3))
                                 if "c_end_date_tab3" not in st.session_state or st.session_state.get("_last_synced_draft_end") != st.session_state.get("draft_end_date"):
                                     st.session_state["c_end_date_tab3"] = init_end
                                     st.session_state["_last_synced_draft_end"] = st.session_state.get("draft_end_date")
-                                end_d = st.date_input("📅 วันที่คืนรถ (รับรถคืน)", key="c_end_date_tab3", format="DD/MM/YYYY")
+                                end_d = st.date_input("วันที่คืนรถ (รับรถคืน)", key="c_end_date_tab3", format="DD/MM/YYYY")
                                 st.session_state.draft_end_date = end_d
-                                end_t = st.time_input("⏰ เวลารับรถคืน", d_time(10, 0), key="c_end_time_tab3", help="เวลาคืนรถ หากเกินเวลาส่งรถเกิน 4 ชม. จะปรับคิดเพิ่มเป็น 1 วัน")
+                                end_t = st.time_input("เวลารับรถคืน", d_time(10, 0), key="c_end_time_tab3", help="เวลาคืนรถ หากเกินเวลาส่งรถเกิน 4 ชม. จะปรับคิดเพิ่มเป็น 1 วัน")
                             
                             # คำนวณเวลาและวันเช่าตามเงื่อนไขหากล่าช้าเกิน 4 ชม. ปรับเป็น 1 วัน
                             diff_days, extra_hrs, extra_mins, is_late_4hr, duration_desc = calculate_rental_duration_and_days(
@@ -5839,9 +5882,9 @@ else:
                         
                         col_d1, col_d2 = st.columns(2)
                         with col_d1:
-                            st.date_input("📅 วันที่เริ่มเช่า", value=target_bk_d['start_date'], disabled=True, key=f"d_start_{target_bk_d['booking_id']}")
+                            st.date_input("วันที่เริ่มเช่า", value=target_bk_d['start_date'], disabled=True, key=f"d_start_{target_bk_d['booking_id']}")
                         with col_d2:
-                            st.date_input("📅 กำหนดคืนรถ", value=target_bk_d['end_date'], disabled=True, key=f"d_end_{target_bk_d['booking_id']}")
+                            st.date_input("กำหนดคืนรถ", value=target_bk_d['end_date'], disabled=True, key=f"d_end_{target_bk_d['booking_id']}")
                         
                         is_d_dep_paid = bool(target_bk_d.get('deposit_paid', False))
                         d_dep_amt = float(target_bk_d.get('deposit_amount', 5000.0))
@@ -6006,9 +6049,9 @@ else:
                         
                         col_r1, col_r2 = st.columns(2)
                         with col_r1:
-                            st.date_input("📅 วันที่เริ่มเช่า", value=target_r_bk['start_date'], disabled=True, key=f"r_start_{target_r_bk['booking_id']}")
+                            st.date_input("วันที่เริ่มเช่า", value=target_r_bk['start_date'], disabled=True, key=f"r_start_{target_r_bk['booking_id']}")
                         with col_r2:
-                            st.date_input("📅 กำหนดคืนรถ", value=target_r_bk['end_date'], disabled=True, key=f"r_end_{target_r_bk['booking_id']}")
+                            st.date_input("กำหนดคืนรถ", value=target_r_bk['end_date'], disabled=True, key=f"r_end_{target_r_bk['booking_id']}")
                             
                         edit_key_r = f"edit_r_{target_r_bk['booking_id']}"
                         is_r_worker_assigned = bool(target_r_bk.get("worker_return") and str(target_r_bk.get("worker_return")).strip() not in ["Wait", "-", ""])
@@ -6400,11 +6443,11 @@ else:
                 
                 w_c1, w_c2 = st.columns(2)
                 with w_c1:
-                    w_start_d = st.date_input("📅 วันเริ่มเช่า", value=datetime.now().date(), key="w_start_d", format="DD/MM/YYYY")
-                    w_start_t = st.time_input("⏰ เวลาส่งรถ", d_time(10, 0), key="w_start_t")
+                    w_start_d = st.date_input("วันเริ่มเช่า", value=datetime.now().date(), key="w_start_d", format="DD/MM/YYYY")
+                    w_start_t = st.time_input("เวลาส่งรถ", d_time(10, 0), key="w_start_t")
                 with w_c2:
-                    w_end_d = st.date_input("📅 วันคืนรถ", value=datetime.now().date() + timedelta(days=3), key="w_end_d", format="DD/MM/YYYY")
-                    w_end_t = st.time_input("⏰ เวลารับคืน", d_time(10, 0), key="w_end_t")
+                    w_end_d = st.date_input("วันคืนรถ", value=datetime.now().date() + timedelta(days=3), key="w_end_d", format="DD/MM/YYYY")
+                    w_end_t = st.time_input("เวลารับคืน", d_time(10, 0), key="w_end_t")
                     
                 w_diff_days, w_ehr, w_emin, w_is_late, w_desc = calculate_rental_duration_and_days(w_start_d, w_start_t, w_end_d, w_end_t)
                 if w_diff_days >= 30:
@@ -6809,10 +6852,10 @@ else:
                             c_dt_d1, c_dt_d2 = st.columns(2)
                             with c_dt_d1:
                                 init_disp_d = to_date(target_close_bk.get('start_date')) or date.today()
-                                act_disp_d = st.date_input("📅 วันที่ส่งมอบจริง:", value=init_disp_d, key=f"insp_act_disp_d_{target_close_id}", disabled=(not is_worker_authorized))
+                                act_disp_d = st.date_input("วันที่ส่งมอบจริง:", value=init_disp_d, key=f"insp_act_disp_d_{target_close_id}", disabled=(not is_worker_authorized))
                             with c_dt_d2:
                                 init_disp_t = parse_time_val(target_close_bk.get('start_time'), d_time(10, 0))
-                                act_disp_t = st.time_input("⏰ เวลาส่งมอบจริง:", value=init_disp_t, key=f"insp_act_disp_t_{target_close_id}", disabled=(not is_worker_authorized))
+                                act_disp_t = st.time_input("เวลาส่งมอบจริง:", value=init_disp_t, key=f"insp_act_disp_t_{target_close_id}", disabled=(not is_worker_authorized))
                             
                             st.caption(f"📌 นัดหมายตามสัญญา: {format_date_dmy(target_close_bk.get('start_date'))} ({target_close_bk.get('start_time', '10:00')}) | ส่งมอบจริง: {format_date_dmy(act_disp_d)} ({act_disp_t.strftime('%H:%M')})")
                             st.markdown("<hr style='margin:12px 0 16px; border:0.5px solid #F3EDE4;'>", unsafe_allow_html=True)
@@ -6826,10 +6869,10 @@ else:
                             
                             c_dt_r1, c_dt_r2 = st.columns(2)
                             with c_dt_r1:
-                                act_ret_d = st.date_input("📅 วันที่รับรถคืนจริง:", value=date.today(), key=f"insp_act_ret_d_{target_close_id}", disabled=(not is_worker_authorized))
+                                act_ret_d = st.date_input("วันที่รับรถคืนจริง:", value=date.today(), key=f"insp_act_ret_d_{target_close_id}", disabled=(not is_worker_authorized))
                             with c_dt_r2:
                                 now_time_round = datetime.now().time().replace(second=0, microsecond=0)
-                                act_ret_t = st.time_input("⏰ เวลารับรถคืนจริง:", value=now_time_round, key=f"insp_act_ret_t_{target_close_id}", disabled=(not is_worker_authorized))
+                                act_ret_t = st.time_input("เวลารับรถคืนจริง:", value=now_time_round, key=f"insp_act_ret_t_{target_close_id}", disabled=(not is_worker_authorized))
                             
                             act_ret_dt = datetime.combine(act_ret_d, act_ret_t)
                             

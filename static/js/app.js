@@ -2178,14 +2178,14 @@ class App {
     setVal("edit-car-pweek", car.price_week !== undefined ? car.price_week : 6000);
     setVal("edit-car-pmonth", car.price_month !== undefined ? car.price_month : 20000);
     setVal("edit-car-vin", car.chassis_no || "-");
-    setVal("edit-car-tax", car.tax_expiry || "-");
-    setVal("edit-car-act", car.act_expiry || "-");
-    setVal("edit-car-ins", car.ins_expiry || "-");
+    setVal("edit-car-tax", this.dmyToYmd(car.tax_expiry));
+    setVal("edit-car-act", this.dmyToYmd(car.act_expiry));
+    setVal("edit-car-ins", this.dmyToYmd(car.ins_expiry));
     setVal("edit-car-ins-comp", car.ins_company || "-");
     setVal("edit-car-owner", car.owner || "-");
     setVal("edit-car-beneficiary", car.beneficiary || car.company || "-");
     setVal("edit-car-reg-year", car.reg_year || "-");
-    setVal("edit-car-last-srv", car.last_service_date || "-");
+    setVal("edit-car-last-srv", this.dmyToYmd(car.last_service_date));
     setVal("edit-car-next-srv", car.next_service || "-");
     setVal("edit-car-notes", car.notes || "");
     setVal("edit-car-status", car.status || "ว่างพร้อมใช้งาน");
@@ -2294,14 +2294,14 @@ class App {
       price_week: parseInt(document.getElementById("edit-car-pweek")?.value || "6000", 10),
       price_month: parseInt(document.getElementById("edit-car-pmonth")?.value || "20000", 10),
       chassis_no: vinVal,
-      tax_expiry: (document.getElementById("edit-car-tax")?.value || "-").trim(),
-      act_expiry: (document.getElementById("edit-car-act")?.value || "-").trim(),
-      ins_expiry: (document.getElementById("edit-car-ins")?.value || "-").trim(),
+      tax_expiry: this.ymdToDmy((document.getElementById("edit-car-tax")?.value || "").trim()) || "-",
+      act_expiry: this.ymdToDmy((document.getElementById("edit-car-act")?.value || "").trim()) || "-",
+      ins_expiry: this.ymdToDmy((document.getElementById("edit-car-ins")?.value || "").trim()) || "-",
       ins_company: (document.getElementById("edit-car-ins-comp")?.value || "-").trim(),
       owner: (document.getElementById("edit-car-owner")?.value || "-").trim(),
       beneficiary: (document.getElementById("edit-car-beneficiary")?.value || "-").trim(),
       reg_year: (document.getElementById("edit-car-reg-year")?.value || "-").trim(),
-      last_service_date: (document.getElementById("edit-car-last-srv")?.value || "-").trim(),
+      last_service_date: this.ymdToDmy((document.getElementById("edit-car-last-srv")?.value || "").trim()) || "-",
       next_service: (document.getElementById("edit-car-next-srv")?.value || "-").trim(),
       notes: (document.getElementById("edit-car-notes")?.value || "").trim(),
       status: document.getElementById("edit-car-status")?.value || "ว่างพร้อมใช้งาน",
@@ -4307,8 +4307,8 @@ class App {
     document.getElementById("cust-lic-in").value = cust.licence_no !== "-" ? (cust.licence_no || "") : "";
     document.getElementById("cust-nat-in").value = cust.nationality || "THAI";
     document.getElementById("cust-wa-in").value = cust.whatsapp !== "-" ? (cust.whatsapp || "") : "";
-    document.getElementById("cust-dob-in").value = cust.dob || "1990-01-01";
-    document.getElementById("cust-licexp-in").value = cust.licence_expiry || "2030-01-01";
+    document.getElementById("cust-dob-in").value = this.dmyToYmd(cust.dob) || "";
+    document.getElementById("cust-licexp-in").value = this.dmyToYmd(cust.licence_expiry) || "";
     document.getElementById("cust-home-in").value = cust.home_address !== "-" ? (cust.home_address || "") : "";
     document.getElementById("cust-thai-in").value = cust.thai_address !== "-" ? (cust.thai_address || "") : "";
 
@@ -4440,9 +4440,9 @@ class App {
     const natEl = document.getElementById("cust-nat-in");
     if (natEl) natEl.value = "THAI";
     const dobEl = document.getElementById("cust-dob-in");
-    if (dobEl) dobEl.value = "1990-01-01";
+    if (dobEl) dobEl.value = "";
     const licExpEl = document.getElementById("cust-licexp-in");
-    if (licExpEl) licExpEl.value = "2030-01-01";
+    if (licExpEl) licExpEl.value = "";
 
     this.openModal("modal-add-customer");
     setTimeout(() => document.getElementById("cust-name-in")?.focus(), 80);
@@ -4515,8 +4515,8 @@ class App {
       licence_no: document.getElementById("cust-lic-in")?.value.trim() || "-",
       nationality: document.getElementById("cust-nat-in")?.value.trim() || "THAI",
       whatsapp: document.getElementById("cust-wa-in")?.value.trim() || "-",
-      dob: document.getElementById("cust-dob-in")?.value || "1990-01-01",
-      licence_expiry: document.getElementById("cust-licexp-in")?.value || "2030-01-01",
+      dob: this.ymdToDmy((document.getElementById("cust-dob-in")?.value || "").trim()) || "-",
+      licence_expiry: this.ymdToDmy((document.getElementById("cust-licexp-in")?.value || "").trim()) || "-",
       home_address: document.getElementById("cust-home-in")?.value.trim() || "-",
       thai_address: document.getElementById("cust-thai-in")?.value.trim() || "-"
     };
@@ -5067,17 +5067,27 @@ class App {
   }
 
   dmyToYmd(dmyStr) {
-    if (!dmyStr || dmyStr === "-") return "";
+    if (!dmyStr || dmyStr === "-" || String(dmyStr).trim().toLowerCase() === "none") return "";
     const s = String(dmyStr).trim();
     if (s.includes("-")) {
       const parts = s.split("-");
-      if (parts[0].length === 4) return s;
-      if (parts[2].length === 4) return `${parts[2]}-${parts[1].padStart(2, "0")}-${parts[0].padStart(2, "0")}`;
+      if (parts[0].length === 4) {
+        let yr = parseInt(parts[0], 10);
+        if (yr > 2400) yr -= 543;
+        return `${yr}-${parts[1].padStart(2, "0")}-${parts[2].padStart(2, "0")}`;
+      }
+      if (parts[2].length === 4) {
+        let yr = parseInt(parts[2], 10);
+        if (yr > 2400) yr -= 543;
+        return `${yr}-${parts[1].padStart(2, "0")}-${parts[0].padStart(2, "0")}`;
+      }
     }
     if (s.includes("/")) {
       const parts = s.split("/");
       if (parts.length === 3 && parts[2].length === 4) {
-        return `${parts[2]}-${parts[1].padStart(2, "0")}-${parts[0].padStart(2, "0")}`;
+        let yr = parseInt(parts[2], 10);
+        if (yr > 2400) yr -= 543;
+        return `${yr}-${parts[1].padStart(2, "0")}-${parts[0].padStart(2, "0")}`;
       }
     }
     return "";
@@ -6252,9 +6262,9 @@ class App {
     document.getElementById("mnt-service-phone").value = rec.service_center_phone || "";
     document.getElementById("mnt-service-loc").value = rec.service_location || "";
     document.getElementById("mnt-assigned-worker").value = rec.assigned_worker || "admin";
-    document.getElementById("mnt-sched-date").value = rec.schedule_date || "";
+    document.getElementById("mnt-sched-date").value = this.dmyToYmd(rec.schedule_date) || (rec.schedule_date || "");
     document.getElementById("mnt-sched-time").value = rec.schedule_time || "09:00";
-    document.getElementById("mnt-exp-date").value = rec.expected_finish_date || "";
+    document.getElementById("mnt-exp-date").value = this.dmyToYmd(rec.expected_finish_date) || (rec.expected_finish_date || "");
     document.getElementById("mnt-exp-time").value = rec.expected_finish_time || "17:00";
     document.getElementById("mnt-notes").value = rec.notes || "";
     document.getElementById("mnt-update-car-status").checked = Boolean(rec.update_car_status);
