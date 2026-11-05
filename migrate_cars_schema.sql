@@ -1,37 +1,47 @@
 -- =============================================================================
--- SawasdeeRental - Cars Table Schema Migration
--- Run this script in DBeaver on 'sawasdee_db' to ensure all 27 columns exist
+-- SawasdeeRental - Complete Cars Table Schema Migration
+-- Database: PostgreSQL ('sawasdee_db' in DBeaver / Dokploy)
 -- =============================================================================
 
-ALTER TABLE public.cars ADD COLUMN IF NOT EXISTS owner_company VARCHAR(150);
-ALTER TABLE public.cars ADD COLUMN IF NOT EXISTS mileage VARCHAR(50);
-ALTER TABLE public.cars ADD COLUMN IF NOT EXISTS daily_rate NUMERIC DEFAULT 0;
-ALTER TABLE public.cars ADD COLUMN IF NOT EXISTS weekly_rate NUMERIC DEFAULT 0;
-ALTER TABLE public.cars ADD COLUMN IF NOT EXISTS monthly_rate NUMERIC DEFAULT 0;
-ALTER TABLE public.cars ADD COLUMN IF NOT EXISTS vin VARCHAR(100);
-ALTER TABLE public.cars ADD COLUMN IF NOT EXISTS tax_expire_date VARCHAR(50);
-ALTER TABLE public.cars ADD COLUMN IF NOT EXISTS prb_expire_date VARCHAR(50);
-ALTER TABLE public.cars ADD COLUMN IF NOT EXISTS insurance_expire_date VARCHAR(50);
-ALTER TABLE public.cars ADD COLUMN IF NOT EXISTS insurance_company VARCHAR(150);
-ALTER TABLE public.cars ADD COLUMN IF NOT EXISTS car_owner VARCHAR(150);
-ALTER TABLE public.cars ADD COLUMN IF NOT EXISTS beneficiary VARCHAR(150);
-ALTER TABLE public.cars ADD COLUMN IF NOT EXISTS register_year VARCHAR(50);
-ALTER TABLE public.cars ADD COLUMN IF NOT EXISTS prb_price NUMERIC DEFAULT 0;
-ALTER TABLE public.cars ADD COLUMN IF NOT EXISTS insurance_premium NUMERIC DEFAULT 0;
-ALTER TABLE public.cars ADD COLUMN IF NOT EXISTS last_service_date VARCHAR(50);
-ALTER TABLE public.cars ADD COLUMN IF NOT EXISTS next_service_date VARCHAR(50);
-ALTER TABLE public.cars ADD COLUMN IF NOT EXISTS next_service_mileage NUMERIC DEFAULT 0;
-ALTER TABLE public.cars ADD COLUMN IF NOT EXISTS car_status VARCHAR(50) DEFAULT 'ว่างพร้อมใช้งาน';
-ALTER TABLE public.cars ADD COLUMN IF NOT EXISTS is_debt_free BOOLEAN DEFAULT FALSE;
-ALTER TABLE public.cars ADD COLUMN IF NOT EXISTS installment_amount NUMERIC DEFAULT 0;
-ALTER TABLE public.cars ADD COLUMN IF NOT EXISTS total_installments INTEGER DEFAULT 0;
-ALTER TABLE public.cars ADD COLUMN IF NOT EXISTS current_installment INTEGER DEFAULT 0;
-ALTER TABLE public.cars ADD COLUMN IF NOT EXISTS payment_due_date VARCHAR(50);
-ALTER TABLE public.cars ADD COLUMN IF NOT EXISTS finance_company VARCHAR(150);
-ALTER TABLE public.cars ADD COLUMN IF NOT EXISTS notes TEXT;
-ALTER TABLE public.cars ADD COLUMN IF NOT EXISTS image_url TEXT;
+CREATE TABLE IF NOT EXISTS cars (
+    plate VARCHAR(50) PRIMARY KEY
+);
 
--- Verify all columns in public.cars
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS brand VARCHAR(100);
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS model VARCHAR(100);
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS car_group VARCHAR(100);
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS fuel_system VARCHAR(50);
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS cc_ev VARCHAR(50);
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS owner_company VARCHAR(150);
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS color VARCHAR(50);
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS mileage VARCHAR(50);
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS daily_rate NUMERIC DEFAULT 0;
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS weekly_rate NUMERIC DEFAULT 0;
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS monthly_rate NUMERIC DEFAULT 0;
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS vin VARCHAR(100);
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS tax_expire_date VARCHAR(50);
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS prb_expire_date VARCHAR(50);
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS insurance_expire_date VARCHAR(50);
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS insurance_company VARCHAR(150);
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS car_owner VARCHAR(150);
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS beneficiary VARCHAR(150);
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS register_year VARCHAR(50);
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS prb_price NUMERIC DEFAULT 0;
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS insurance_premium NUMERIC DEFAULT 0;
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS last_service_date VARCHAR(50);
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS next_service_date VARCHAR(50);
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS next_service_mileage NUMERIC DEFAULT 0;
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS car_status VARCHAR(50);
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS is_debt_free BOOLEAN DEFAULT FALSE;
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS finance_company VARCHAR(150);
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS installment_amount NUMERIC DEFAULT 0;
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS total_installments INTEGER DEFAULT 0;
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS current_installment INTEGER DEFAULT 0;
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS payment_due_date VARCHAR(50);
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS notes TEXT;
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS image_url TEXT;
+
+-- Verify all columns in cars
 SELECT column_name, data_type 
 FROM information_schema.columns 
 WHERE table_name = 'cars' 

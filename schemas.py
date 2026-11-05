@@ -30,11 +30,11 @@ class VehicleBase(BaseModel):
     next_service_mileage: Optional[float] = 0.0
     car_status: Optional[str] = "ว่างพร้อมใช้งาน"
     is_debt_free: Optional[bool] = False
+    finance_company: Optional[str] = "-"
     installment_amount: Optional[float] = 0.0
     total_installments: Optional[int] = 0
     current_installment: Optional[int] = 0
     payment_due_date: Optional[str] = "-"
-    finance_company: Optional[str] = "-"
     notes: Optional[str] = ""
     image_url: Optional[str] = ""
 
@@ -72,6 +72,13 @@ class VehicleUpdate(VehicleBase):
 
 class VehicleResponse(VehicleBase):
     pass
+
+
+# Strict 1:1 Aliases for Car/Vehicle
+CarBase = VehicleBase
+CarCreate = VehicleCreate
+CarUpdate = VehicleUpdate
+CarResponse = VehicleResponse
 
 
 class CustomerBase(BaseModel):
