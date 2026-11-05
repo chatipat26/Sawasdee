@@ -110,12 +110,433 @@ class App {
     if (t5) t5.innerHTML = isEn ? '<span>5.</span> 📋 Booking Pipeline' : '<span>5.</span> 📋 แผงควบคุมคิวการจอง';
 
     // 4. Hero Section Title
-    const barTitle = document.querySelector(".booking-bar h3");
+    const barTitle = document.querySelector(".booking-bar h3") || document.getElementById("booking-bar-title");
     if (barTitle) {
       barTitle.textContent = isEn 
         ? "✨ 2. INSTANT BOOKING FORM (THE BOOKING BAR) — Fast Fleet Selection for Sales" 
         : "✨ 2. INSTANT BOOKING FORM (THE BOOKING BAR) — ค้นหาและเลือกรถด่วนสำหรับเซล";
     }
+    const bkBarSub = document.getElementById("booking-bar-subtitle");
+    if (bkBarSub) {
+      bkBarSub.textContent = isEn
+        ? "Select dates & times to check vehicle availability and auto-calculate rental duration (over 4 hrs rounded to 1 day)"
+        : "เลือกวัน-เวลา เพื่อเช็คสถานะรถว่างและคำนวณระยะเวลาเช่าตามจริงอัตโนมัติ (เกิน 4 ชม. ปรับเป็น 1 วัน)";
+    }
+    const btnAddCustMain = document.getElementById("btn-add-customer-main");
+    if (btnAddCustMain) {
+      btnAddCustMain.textContent = isEn ? "➕ Add New Customer" : "➕ เพิ่มลูกค้าใหม่";
+    }
+
+    // Tab 1 Filter Bar Labels & Options
+    const lblFiltGrp = document.getElementById("lbl-filter-group");
+    if (lblFiltGrp) lblFiltGrp.textContent = isEn ? "🚘 Car Category" : "🚘 หมวดหมู่รถ (Category)";
+    const optFiltGrpAll = document.getElementById("opt-filter-group-all");
+    if (optFiltGrpAll) optFiltGrpAll.textContent = isEn ? "All" : "ทั้งหมด";
+
+    const lblFiltBrand = document.getElementById("lbl-filter-brand");
+    if (lblFiltBrand) lblFiltBrand.textContent = isEn ? "🏷️ Brand" : "🏷️ ยี่ห้อ (Brand)";
+    const optFiltBrandAll = document.getElementById("opt-filter-brand-all");
+    if (optFiltBrandAll) optFiltBrandAll.textContent = isEn ? "All" : "ทั้งหมด";
+
+    const lblFiltComp = document.getElementById("lbl-filter-company");
+    if (lblFiltComp) lblFiltComp.textContent = isEn ? "🏢 Ownership / Company" : "🏢 กรรมสิทธิ์ / บริษัท";
+    const optFiltCompAll = document.getElementById("opt-filter-company-all");
+    if (optFiltCompAll) optFiltCompAll.textContent = isEn ? "All" : "ทั้งหมด";
+
+    const lblFiltStat = document.getElementById("lbl-filter-status");
+    if (lblFiltStat) lblFiltStat.textContent = isEn ? "🚦 Vehicle Status" : "🚦 สถานะรถ (Status)";
+    const optFStatAll = document.getElementById("opt-filter-status-all");
+    if (optFStatAll) optFStatAll.textContent = isEn ? "All" : "ทั้งหมด";
+    const optFStatAvail = document.getElementById("opt-filter-status-avail");
+    if (optFStatAvail) optFStatAvail.textContent = isEn ? "Vacant without Bookings (🟢)" : "ว่างไม่มีการจอง (🟢)";
+    const optFStatRes = document.getElementById("opt-filter-status-reserved");
+    if (optFStatRes) optFStatRes.textContent = isEn ? "Booked in Advance (🟡)" : "มีการจองล่วงหน้าไว้ (🟡)";
+    const optFStatUnavail = document.getElementById("opt-filter-status-unavail");
+    if (optFStatUnavail) optFStatUnavail.textContent = isEn ? "Unavailable on Dates (🔴)" : "ไม่ว่างในวันที่เลือก (🔴)";
+    const optFStatMaint = document.getElementById("opt-filter-status-maint");
+    if (optFStatMaint) optFStatMaint.textContent = isEn ? "Maintenance Status (🟠)" : "สถานะซ่อมบำรุง (🟠)";
+    const optFStatReady = document.getElementById("opt-filter-status-ready");
+    if (optFStatReady) optFStatReady.textContent = isEn ? "Available for Service (🟢+🟡)" : "ว่างพร้อมใช้งาน (🟢+🟡)";
+    const optFStatRenting = document.getElementById("opt-filter-status-renting");
+    if (optFStatRenting) optFStatRenting.textContent = isEn ? "Currently Renting" : "กำลังเช่า";
+    const optFStatBooked = document.getElementById("opt-filter-status-booked");
+    if (optFStatBooked) optFStatBooked.textContent = isEn ? "Reserved" : "ติดจอง";
+
+    const lblFiltStart = document.getElementById("lbl-filter-start");
+    if (lblFiltStart) lblFiltStart.textContent = isEn ? "📅 Pick-up Date & Time" : "📅 วันที่ส่งรถ (Pick-up)";
+    const lblFiltEnd = document.getElementById("lbl-filter-end");
+    if (lblFiltEnd) lblFiltEnd.textContent = isEn ? "📅 Return Date & Time" : "📅 วันที่คืนรถ (Return)";
+
+    const btnResetFilt = document.getElementById("btn-reset-filters");
+    if (btnResetFilt) btnResetFilt.textContent = isEn ? "🔄 Reset Filters" : "🔄 ล้างตัวกรอง";
+    const lblCalcDur = document.getElementById("lbl-calc-duration");
+    if (lblCalcDur) lblCalcDur.textContent = isEn ? "⏱️ Calculated Rental Duration:" : "⏱️ ระยะเวลาเช่าคำนวณ:";
+    const btnAddCarBB = document.getElementById("btn-add-car-booking-bar");
+    if (btnAddCarBB) btnAddCarBB.textContent = isEn ? "➕ Add New Vehicle" : "➕ เพิ่มรถยนต์ใหม่";
+
+    // --- Front Office Tab 2: Deposit & Finance ---
+    const t2Title = document.getElementById("title-tab2");
+    if (t2Title) t2Title.textContent = isEn ? "💳 Booking Deposit & Rental Payment" : "💳 ชำระเงินมัดจำประกันสัญญา & การเงิน (Booking Deposit & Rental Payment)";
+    const t2Sub = document.getElementById("subtitle-tab2");
+    if (t2Sub) t2Sub.textContent = isEn ? "Record deposit payment (default ฿5,000 to lock vehicle queue and issue contract) and collect remaining rental fee" : "บันทึกการรับชำระเงินมัดจำ (ค่าเริ่มต้น ฿5,000 เพื่อล็อกคิวรถและออกสัญญา) และรับชำระค่าเช่าคงเหลือ";
+    const lblDepSelBk = document.getElementById("lbl-deposit-sel-bk");
+    if (lblDepSelBk) lblDepSelBk.textContent = isEn ? "📌 Select Booking ID / Vehicle Plate:" : "📌 เลือกรหัสการจอง / ทะเบียนรถที่ต้องการทำรายการ:";
+    const optDepSelDef = document.getElementById("opt-dep-sel-default");
+    if (optDepSelDef) optDepSelDef.textContent = isEn ? "-- Please select a booking --" : "-- กรุณาเลือกรายการจอง --";
+
+    const lblDepAmt = document.getElementById("lbl-deposit-amount");
+    if (lblDepAmt) lblDepAmt.textContent = isEn ? "Deposit Amount (THB)" : "จำนวนเงินมัดจำ (บาท)";
+
+    const lblDepMeth = document.getElementById("lbl-deposit-method");
+    if (lblDepMeth) lblDepMeth.textContent = isEn ? "Payment Method" : "ช่องทางการชำระเงิน";
+    const optDepMTransfer = document.getElementById("opt-dep-method-transfer");
+    if (optDepMTransfer) optDepMTransfer.textContent = isEn ? "Bank Transfer" : "โอนเงินเข้าบัญชี (Bank Transfer)";
+    const optDepMCredit = document.getElementById("opt-dep-method-credit");
+    if (optDepMCredit) optDepMCredit.textContent = isEn ? "Credit Card" : "บัตรเครดิต (Credit Card)";
+    const optDepMCash = document.getElementById("opt-dep-method-cash");
+    if (optDepMCash) optDepMCash.textContent = isEn ? "Cash" : "เงินสด (Cash)";
+    const optDepMPaypal = document.getElementById("opt-dep-method-paypal");
+    if (optDepMPaypal) optDepMPaypal.textContent = isEn ? "PayPal / Other" : "PayPal / อื่นๆ";
+
+    const lblDepRef = document.getElementById("lbl-deposit-ref");
+    if (lblDepRef) lblDepRef.textContent = isEn ? "Slip Ref / Transaction Code (Optional)" : "เลขที่อ้างอิงสลิป / รหัสธุรกรรม (ถ้ามี)";
+    const hintDepRef = document.getElementById("hint-deposit-ref");
+    if (hintDepRef) hintDepRef.textContent = isEn ? "Enter slip transaction number or receipt code" : "เช่น เลขที่ทำรายการบนสลิปโอนเงิน หรือหมายเลขอ้างอิง";
+    const lblDepSlip = document.getElementById("lbl-deposit-slip");
+    if (lblDepSlip) lblDepSlip.textContent = isEn ? "📎 Attach Payment Slip (Optional):" : "📎 แนบรูปสลิปหลักฐานการชำระเงิน (ถ้ามี):";
+    const btnChooseSlip = document.getElementById("btn-choose-slip");
+    if (btnChooseSlip) btnChooseSlip.textContent = isEn ? "📁 Choose Slip File..." : "📁 เลือกไฟล์สลิป...";
+    const lblDepAlsoRent = document.getElementById("lbl-deposit-also-rent");
+    if (lblDepAlsoRent) lblDepAlsoRent.textContent = isEn ? "Collect full rental fee at the same time" : "รับชำระค่าเช่าเต็มจำนวนพร้อมกันทันที";
+    const btnSubDep = document.getElementById("btn-submit-deposit");
+    if (btnSubDep) btnSubDep.textContent = isEn ? "💾 Confirm Deposit & Proceed to Dispatch ➔" : "💾 ยืนยันรับเงินมัดจำ & ไปออกใบงาน ➔";
+    const btnSaveSlipOnly = document.getElementById("btn-save-slip-only");
+    if (btnSaveSlipOnly) btnSaveSlipOnly.textContent = isEn ? "📎 Update Slip Ref Only" : "📎 อัปเดตสลิป/Ref อย่างเดียว";
+    const btnSettleRent = document.getElementById("btn-settle-rental");
+    if (btnSettleRent) btnSettleRent.textContent = isEn ? "💵 Settle Remaining Rental Fee" : "💵 บันทึกรับชำระค่าเช่าคงเหลือ";
+    const btnDlDepRec = document.getElementById("btn-dl-dep-receipt");
+    if (btnDlDepRec) btnDlDepRec.textContent = isEn ? "🛡️ Deposit Receipt (PDF)" : "🛡️ ใบเสร็จมัดจำ (PDF)";
+    const btnDlRentRec = document.getElementById("btn-dl-rent-receipt");
+    if (btnDlRentRec) btnDlRentRec.textContent = isEn ? "🧾 Rental Receipt (PDF)" : "🧾 ใบเสร็จค่าเช่า (PDF)";
+    const btnDlContractDep = document.getElementById("btn-dl-contract-from-dep");
+    if (btnDlContractDep) btnDlContractDep.textContent = isEn ? "📝 Rental Contract (PDF)" : "📝 สัญญาเช่า (PDF)";
+    const btnGotoAssignDep = document.getElementById("btn-goto-assign-from-dep");
+    if (btnGotoAssignDep) btnGotoAssignDep.textContent = isEn ? "🚚 Go to Work Orders ➔" : "🚚 ไปหน้าออกใบงาน ➔";
+    const btnGotoContractDep = document.getElementById("btn-goto-contract-from-dep");
+    if (btnGotoContractDep) btnGotoContractDep.textContent = isEn ? "📝 Go to Rental Contract ➔" : "📝 ไปหน้าทำสัญญา ➔";
+
+    // --- Front Office Tab 3: Dispatch/Return Orders ---
+    const t3Disp = document.getElementById("title-tab3-disp");
+    if (t3Disp) t3Disp.textContent = isEn ? "🚚 Dispatch Work Order" : "🚚 ออกใบงานส่งรถ (Dispatch Work Order)";
+    const lblAssignDispBk = document.getElementById("lbl-assign-disp-bk");
+    if (lblAssignDispBk) lblAssignDispBk.textContent = isEn ? "Select Booking ID for Vehicle Dispatch:" : "เลือกรหัสการจองสำหรับส่งมอบรถ:";
+    const optAssignDispDef = document.getElementById("opt-assign-disp-default");
+    if (optAssignDispDef) optAssignDispDef.textContent = isEn ? "-- Select Booking ID --" : "-- เลือกรหัสการจอง --";
+    const lblAssignDispStart = document.getElementById("lbl-assign-disp-start");
+    if (lblAssignDispStart) lblAssignDispStart.textContent = isEn ? "Rental Start Date" : "วันที่เริ่มเช่า";
+    const lblAssignDispEnd = document.getElementById("lbl-assign-disp-end");
+    if (lblAssignDispEnd) lblAssignDispEnd.textContent = isEn ? "Rental Return Date" : "วันที่คืนรถ";
+    const lblAssignDispWorker = document.getElementById("lbl-assign-disp-worker");
+    if (lblAssignDispWorker) lblAssignDispWorker.textContent = isEn ? "Assign Dispatch Staff / Driver" : "มอบหมายพนักงานส่งรถ (คนงาน/คนขับ)";
+    const lblAssignDispLoc = document.getElementById("lbl-assign-disp-loc");
+    if (lblAssignDispLoc) lblAssignDispLoc.textContent = isEn ? "Meeting Location for Dispatch" : "สถานที่นัดหมายส่งรถ";
+    const lblAssignDispDate = document.getElementById("lbl-assign-disp-date");
+    if (lblAssignDispDate) lblAssignDispDate.textContent = isEn ? "Appointment Dispatch Date" : "วันที่นัดหมายส่งมอบ";
+    const lblAssignDispTime = document.getElementById("lbl-assign-disp-time");
+    if (lblAssignDispTime) lblAssignDispTime.textContent = isEn ? "Appointment Time" : "เวลานัดหมาย";
+    const btnAssignDispSched = document.getElementById("btn-assign-disp-sched");
+    if (btnAssignDispSched) btnAssignDispSched.textContent = isEn ? "📋 Schedule (Preparing Dispatch)" : "📋 นัดหมาย (เตรียมส่งมอบ)";
+    const btnAssignDispHandoff = document.getElementById("btn-assign-disp-handover");
+    if (btnAssignDispHandoff) btnAssignDispHandoff.textContent = isEn ? "🚚 Vehicle Handed Over (Renting) ➔" : "🚚 ส่งมอบรถแล้ว (กำลังเช่า) ➔";
+    const btnAssignDispContract = document.getElementById("btn-assign-disp-goto-contract");
+    if (btnAssignDispContract) btnAssignDispContract.textContent = isEn ? "📝 Go to Rental Contract ➔" : "📝 ไปหน้าทำสัญญา ➔";
+
+    const t3Ret = document.getElementById("title-tab3-ret");
+    if (t3Ret) t3Ret.textContent = isEn ? "🔙 Return Work Order" : "🔙 ออกใบงานรับรถคืน (Return Work Order)";
+    const lblAssignRetBk = document.getElementById("lbl-assign-ret-bk");
+    if (lblAssignRetBk) lblAssignRetBk.textContent = isEn ? "Select Booking ID for Vehicle Return:" : "เลือกรหัสการจองสำหรับรับรถคืน:";
+    const optAssignRetDef = document.getElementById("opt-assign-ret-default");
+    if (optAssignRetDef) optAssignRetDef.textContent = isEn ? "-- Select Booking ID --" : "-- เลือกรหัสการจอง --";
+    const lblAssignRetStart = document.getElementById("lbl-assign-ret-start");
+    if (lblAssignRetStart) lblAssignRetStart.textContent = isEn ? "Rental Start Date" : "วันที่เริ่มเช่า";
+    const lblAssignRetEnd = document.getElementById("lbl-assign-ret-end");
+    if (lblAssignRetEnd) lblAssignRetEnd.textContent = isEn ? "Rental Return Date" : "วันที่คืนรถ";
+    const lblAssignRetWorker = document.getElementById("lbl-assign-ret-worker");
+    if (lblAssignRetWorker) lblAssignRetWorker.textContent = isEn ? "Assign Return Staff / Driver" : "มอบหมายพนักงานรับรถคืน";
+    const lblAssignRetLoc = document.getElementById("lbl-assign-ret-loc");
+    if (lblAssignRetLoc) lblAssignRetLoc.textContent = isEn ? "Return Meeting Location" : "สถานที่นัดรับรถคืน";
+    const lblAssignRetDate = document.getElementById("lbl-assign-ret-date");
+    if (lblAssignRetDate) lblAssignRetDate.textContent = isEn ? "Appointment Return Date" : "วันที่นัดหมายรับคืน";
+    const lblAssignRetTime = document.getElementById("lbl-assign-ret-time");
+    if (lblAssignRetTime) lblAssignRetTime.textContent = isEn ? "Appointment Time" : "เวลานัดหมาย";
+    const btnAssignRetSched = document.getElementById("btn-assign-ret-sched");
+    if (btnAssignRetSched) btnAssignRetSched.textContent = isEn ? "📋 Schedule (Preparing Return)" : "📋 นัดรับคืน (เตรียมรับคืน)";
+    const btnAssignRetComplete = document.getElementById("btn-assign-ret-complete");
+    if (btnAssignRetComplete) btnAssignRetComplete.textContent = isEn ? "🏁 Returned (Completed) ➔" : "🏁 รับคืนแล้ว (เสร็จสิ้น) ➔";
+
+    // --- Front Office Tab 4: Rental Agreement ---
+    const t4Title = document.getElementById("title-tab4");
+    if (t4Title) t4Title.textContent = isEn ? "📝 Rental Contract Formulation & Inspection Center" : "📝 ศูนย์จัดทำและตรวจสอบสัญญาเช่า (Rental Contract Formulation & Inspection)";
+    const t4Sub = document.getElementById("subtitle-tab4");
+    if (t4Sub) t4Sub.textContent = isEn ? "Generate and download official vehicle rental contract (Official Rental Agreement PDF) with 100% precision coordinates and receipts" : "สร้างและดาวน์โหลดสัญญาเช่ารถยนต์ทางการ (Official Rental Agreement PDF) พิกัดมาตรฐานเป๊ะ 100% พร้อมใบเสร็จรับเงิน";
+    const lblContractSelBk = document.getElementById("lbl-contract-sel-bk");
+    if (lblContractSelBk) lblContractSelBk.textContent = isEn ? "📌 Select Booking for Contract / PDF Review:" : "📌 เลือกรหัสการจองสำหรับออกสัญญา / ตรวจสอบ PDF:";
+    const optContractSelDef = document.getElementById("opt-contract-sel-default");
+    if (optContractSelDef) optContractSelDef.textContent = isEn ? "-- Please select a booking --" : "-- กรุณาเลือกรายการจอง --";
+    const btnRefreshContracts = document.getElementById("btn-refresh-contracts");
+    if (btnRefreshContracts) btnRefreshContracts.textContent = isEn ? "🔄 Refresh List" : "🔄 รีเฟรชรายการ";
+    const contractEmptyMsg = document.getElementById("contract-empty-msg");
+    if (contractEmptyMsg) contractEmptyMsg.textContent = isEn ? "ℹ️ No active rental agreements currently in the system..." : "ℹ️ ยังไม่มีรายการสัญญาเช่าที่เปิดใช้งานอยู่ในระบบ (คุณสามารถเลือกสร้างสัญญาใหม่ได้จากแบบฟอร์ม Walk-in ด้านล่าง)";
+
+    const hdrContractCust = document.getElementById("hdr-contract-cust-info");
+    if (hdrContractCust) hdrContractCust.textContent = isEn ? "👤 Tenant Information" : "👤 ข้อมูลผู้เช่า";
+    const hdrContractCar = document.getElementById("hdr-contract-car-info");
+    if (hdrContractCar) hdrContractCar.textContent = isEn ? "🚘 Vehicle Information" : "🚘 ข้อมูลรถยนต์";
+    const hdrContractSched = document.getElementById("hdr-contract-sched-info");
+    if (hdrContractSched) hdrContractSched.textContent = isEn ? "📅 Schedule & Contract Details" : "📅 กำหนดการ & ข้อมูลสัญญา";
+
+    const lblContractNetP = document.getElementById("lbl-contract-net-price");
+    if (lblContractNetP) lblContractNetP.textContent = isEn ? "Agreed Rental Price" : "ราคาค่าเช่าที่ตกลง";
+    const lblContractDepStat = document.getElementById("lbl-contract-dep-status");
+    if (lblContractDepStat) lblContractDepStat.textContent = isEn ? "Deposit Status" : "สถานะเงินมัดจำ";
+    const lblContractRemP = document.getElementById("lbl-contract-rem-price");
+    if (lblContractRemP) lblContractRemP.textContent = isEn ? "Remaining Rental Fee" : "ค่าเช่าคงเหลือที่ต้องชำระ";
+
+    const hdrContractDocs = document.getElementById("hdr-contract-doc-center");
+    if (hdrContractDocs) hdrContractDocs.textContent = isEn ? "📑 PDF Document Center (Official Formats)" : "📑 ศูนย์ดาวน์โหลดเอกสาร PDF (แบบมาตรฐานทางการ)";
+    const btnDlContractPdf = document.getElementById("btn-dl-contract-pdf");
+    if (btnDlContractPdf) btnDlContractPdf.textContent = isEn ? "📝 Download Contract PDF" : "📝 ดาวน์โหลดสัญญาเช่า (PDF)";
+    const btnDlContractDepRec = document.getElementById("btn-dl-contract-dep-receipt");
+    if (btnDlContractDepRec) btnDlContractDepRec.textContent = isEn ? "🛡️ Deposit Receipt (PDF)" : "🛡️ ใบเสร็จมัดจำ (PDF)";
+    const btnDlContractRentRec = document.getElementById("btn-dl-contract-rent-receipt");
+    if (btnDlContractRentRec) btnDlContractRentRec.textContent = isEn ? "🧾 Rental Receipt (PDF)" : "🧾 ใบเสร็จรับเงินค่าเช่า (PDF)";
+    const btnDlContractJob = document.getElementById("btn-dl-contract-job");
+    if (btnDlContractJob) btnDlContractJob.textContent = isEn ? "📋 Inspection Checklist (PDF)" : "📋 ใบเช็ครถ/ส่งมอบ (PDF)";
+    const btnMarkIssued = document.getElementById("btn-mark-contract-issued");
+    if (btnMarkIssued) btnMarkIssued.textContent = isEn ? "✅ Confirm Contract Issued" : "✅ ยืนยันออกสัญญาเรียบร้อย";
+    const btnGotoDepContract = document.getElementById("btn-goto-deposit-from-contract");
+    if (btnGotoDepContract) btnGotoDepContract.textContent = isEn ? "💳 Go to Payment / Deposit ➔" : "💳 ไปหน้าการเงิน & รับมัดจำ ➔";
+
+    // Tab 4 Walk-in Direct Formulation
+    const tWalkin = document.getElementById("title-walkin-contract");
+    if (tWalkin) tWalkin.textContent = isEn ? "➕ Direct Contract Formulation (Walk-in Direct Contract Formulation)" : "➕ สร้างสัญญาเช่าใหม่โดยตรง (Walk-in Direct Contract Formulation)";
+    const subWalkin = document.getElementById("subtitle-walkin-contract");
+    if (subWalkin) subWalkin.textContent = isEn ? "In case a walk-in customer signs an on-site contract, fill out details here to issue the contract and schedule dispatch immediately" : "กรณีลูกค้า Walk-in เข้ามาทำสัญญาที่หน้าร้านโดยตรง กรอกข้อมูลที่นี่เพื่อออกสัญญาและนัดหมายส่งรถได้ทันที";
+    const lblWalkinCar = document.getElementById("lbl-walkin-car");
+    if (lblWalkinCar) lblWalkinCar.textContent = isEn ? "🚗 Select Vehicle from Fleet*" : "🚗 เลือกรถยนต์จากฝูงรถ*";
+    const optWalkinCarDef = document.getElementById("opt-walkin-car-default");
+    if (optWalkinCarDef) optWalkinCarDef.textContent = isEn ? "-- Select vehicle from fleet --" : "-- เลือกรถยนต์จากฝูงรถ --";
+    const lblWalkinCust = document.getElementById("lbl-walkin-cust");
+    if (lblWalkinCust) lblWalkinCust.textContent = isEn ? "👤 Select Customer / Tenant*" : "👤 เลือกลูกค้าผู้เช่า*";
+    const btnWalkinCustEdit = document.getElementById("btn-walkin-cust-edit");
+    if (btnWalkinCustEdit) btnWalkinCustEdit.textContent = isEn ? "✏️ Edit" : "✏️ แก้ไข";
+    const btnWalkinCustDel = document.getElementById("btn-walkin-cust-del");
+    if (btnWalkinCustDel) btnWalkinCustDel.textContent = isEn ? "🗑️ Delete" : "🗑️ ลบ";
+    const btnWalkinCustAdd = document.getElementById("btn-walkin-cust-add");
+    if (btnWalkinCustAdd) btnWalkinCustAdd.textContent = isEn ? "➕ Add Customer" : "➕ เพิ่มลูกค้า";
+    const lblWalkinStart = document.getElementById("lbl-walkin-start");
+    if (lblWalkinStart) lblWalkinStart.textContent = isEn ? "📅 Start Date & Time (Thai Time)*" : "📅 วันที่และเวลาเริ่มสัญญา (เวลาไทย)*";
+    const lblWalkinEnd = document.getElementById("lbl-walkin-end");
+    if (lblWalkinEnd) lblWalkinEnd.textContent = isEn ? "📅 End Date & Time (Thai Time)*" : "📅 วันที่และเวลาสิ้นสุดสัญญา (เวลาไทย)*";
+    const lblWalkinType = document.getElementById("lbl-walkin-type");
+    if (lblWalkinType) lblWalkinType.textContent = isEn ? "🏷️ Contract Type / Rate" : "🏷️ ประเภทสัญญา / เรทราคา";
+    const optWalkinDaily = document.getElementById("opt-walkin-type-daily");
+    if (optWalkinDaily) optWalkinDaily.textContent = isEn ? "Daily" : "รายวัน";
+    const optWalkinWeekly = document.getElementById("opt-walkin-type-weekly");
+    if (optWalkinWeekly) optWalkinWeekly.textContent = isEn ? "Weekly" : "รายสัปดาห์";
+    const optWalkinMonthly = document.getElementById("opt-walkin-type-monthly");
+    if (optWalkinMonthly) optWalkinMonthly.textContent = isEn ? "Monthly" : "รายเดือน";
+    const lblWalkinDisc = document.getElementById("lbl-walkin-discount");
+    if (lblWalkinDisc) lblWalkinDisc.textContent = isEn ? "🏷️ Discount (THB)" : "🏷️ ส่วนลด (บาท)";
+    const lblWalkinWorker = document.getElementById("lbl-walkin-worker");
+    if (lblWalkinWorker) lblWalkinWorker.textContent = isEn ? "👷 Assign Delivery Staff" : "👷 พนักงานส่งมอบรถ";
+    const lblWalkinLoc = document.getElementById("lbl-walkin-loc");
+    if (lblWalkinLoc) lblWalkinLoc.textContent = isEn ? "📍 Delivery Location" : "📍 สถานที่ส่งมอบรถ";
+    const btnSubmitWalkin = document.getElementById("btn-submit-walkin");
+    if (btnSubmitWalkin) btnSubmitWalkin.textContent = isEn ? "📝 Formulate Contract & Proceed to Payment" : "📝 ออกสัญญาเช่า & ไปหน้าชำระเงิน";
+
+    // --- Front Office Tab 5: Booking Pipeline ---
+    const t5Title = document.getElementById("title-tab5");
+    if (t5Title) t5Title.textContent = isEn ? "📋 Booking Queue & Master Bookings List" : "📋 แผงควบคุมคิวการจอง & รายการทั้งหมด (Master Bookings List)";
+    const bksSearch = document.getElementById("bks-search-input");
+    if (bksSearch) bksSearch.placeholder = isEn ? "🔍 Search booking ID, customer, plate..." : "🔍 ค้นหารหัส, ลูกค้า, ทะเบียน...";
+    const lblBksStat = document.getElementById("lbl-bks-filter-status");
+    if (lblBksStat) lblBksStat.textContent = isEn ? "Status:" : "สถานะ:";
+    const optBksAll = document.getElementById("opt-bks-status-all");
+    if (optBksAll) optBksAll.textContent = isEn ? "All" : "ทั้งหมด";
+    const optBksDep = document.getElementById("opt-bks-status-dep");
+    if (optBksDep) optBksDep.textContent = isEn ? "Waiting for Deposit" : "รอมัดจำ";
+    const optBksDispWait = document.getElementById("opt-bks-status-disp-wait");
+    if (optBksDispWait) optBksDispWait.textContent = isEn ? "Awaiting Dispatch" : "รอส่งมอบ";
+    const optBksDispPrep = document.getElementById("opt-bks-status-disp-prep");
+    if (optBksDispPrep) optBksDispPrep.textContent = isEn ? "Preparing Dispatch" : "เตรียมส่งมอบ";
+    const optBksRenting = document.getElementById("opt-bks-status-renting");
+    if (optBksRenting) optBksRenting.textContent = isEn ? "Active Rental" : "กำลังเช่า";
+    const optBksRetPrep = document.getElementById("opt-bks-status-ret-prep");
+    if (optBksRetPrep) optBksRetPrep.textContent = isEn ? "Preparing Return" : "เตรียมรับคืน";
+    const optBksDone = document.getElementById("opt-bks-status-done");
+    if (optBksDone) optBksDone.textContent = isEn ? "Completed" : "เสร็จสิ้น";
+    const optBksCancel = document.getElementById("opt-bks-status-cancel");
+    if (optBksCancel) optBksCancel.textContent = isEn ? "Cancelled" : "ยกเลิก";
+
+    const thBksId = document.getElementById("th-bks-id");
+    if (thBksId) thBksId.textContent = isEn ? "Booking ID" : "รหัสการจอง";
+    const thBksCar = document.getElementById("th-bks-car");
+    if (thBksCar) thBksCar.textContent = isEn ? "Vehicle" : "รถยนต์";
+    const thBksCust = document.getElementById("th-bks-cust");
+    if (thBksCust) thBksCust.textContent = isEn ? "Customer" : "ลูกค้า";
+    const thBksDur = document.getElementById("th-bks-dur");
+    if (thBksDur) thBksDur.textContent = isEn ? "Rental Duration" : "ระยะเวลาเช่า";
+    const thBksNet = document.getElementById("th-bks-net");
+    if (thBksNet) thBksNet.textContent = isEn ? "Net Rental Fee" : "ค่าเช่าสุทธิ";
+    const thBksPay = document.getElementById("th-bks-payment");
+    if (thBksPay) thBksPay.textContent = isEn ? "Deposit & Payment Status" : "สถานะมัดจำ & ค่าเช่า";
+    const thBksStat = document.getElementById("th-bks-status");
+    if (thBksStat) thBksStat.textContent = isEn ? "Job Status" : "สถานะงาน";
+    const thBksAct = document.getElementById("th-bks-action");
+    if (thBksAct) thBksAct.textContent = isEn ? "Actions" : "จัดการ";
+
+    // --- Modal: Add / Edit Vehicle Details ---
+    const lblCarPhoto = document.getElementById("lbl-modal-car-photo");
+    if (lblCarPhoto) lblCarPhoto.textContent = isEn ? "📸 Upload Vehicle Photo (JPG, PNG, WEBP):" : "📸 อัปโหลดรูปรถยนต์ (JPG, PNG, WEBP):";
+    const lblCarImgUrl = document.getElementById("lbl-modal-car-imgurl");
+    if (lblCarImgUrl) lblCarImgUrl.textContent = isEn ? "Or enter Image URL:" : "หรือใส่ลิงก์รูปภาพ (Image URL):";
+    const lblCarPlate = document.getElementById("lbl-modal-car-plate");
+    if (lblCarPlate) lblCarPlate.textContent = isEn ? "🚘 License Plate (Plate)*" : "🚘 เลขทะเบียนรถ (Plate)*";
+    const inpCarPlate = document.getElementById("edit-car-plate");
+    if (inpCarPlate) inpCarPlate.placeholder = isEn ? "e.g. 5KOR 5181" : "เช่น 5ขศ 5181";
+    const warnCarPlate = document.getElementById("edit-car-plate-warn");
+    if (warnCarPlate) warnCarPlate.textContent = isEn ? "⚠️ This plate already exists in system" : "⚠️ ทะเบียนนี้มีอยู่ในระบบแล้ว";
+
+    const lblCarBrand = document.getElementById("lbl-modal-car-brand");
+    if (lblCarBrand) lblCarBrand.textContent = isEn ? "🏷️ Brand / Make*" : "🏷️ ยี่ห้อ (Brand)*";
+    const inpCarBrand = document.getElementById("edit-car-brand");
+    if (inpCarBrand) inpCarBrand.placeholder = isEn ? "e.g. Toyota" : "เช่น Toyota";
+
+    const lblCarModel = document.getElementById("lbl-modal-car-model");
+    if (lblCarModel) lblCarModel.textContent = isEn ? "🚗 Vehicle Model*" : "🚗 รุ่นรถยนต์ (Model)*";
+    const inpCarModel = document.getElementById("edit-car-model");
+    if (inpCarModel) inpCarModel.placeholder = isEn ? "e.g. Yaris Ativ" : "เช่น Yaris Ativ";
+
+    const lblCarGroup = document.getElementById("lbl-modal-car-group");
+    if (lblCarGroup) lblCarGroup.textContent = isEn ? "💺 Vehicle Group*" : "💺 กลุ่มรถ (Car Group)*";
+    const optGrpSedan = document.getElementById("opt-modal-group-sedan");
+    if (optGrpSedan) optGrpSedan.textContent = isEn ? "Sedan / Hatchback" : "รถเก๋ง (Sedan/Hatchback)";
+    const optGrpSuv = document.getElementById("opt-modal-group-suv");
+    if (optGrpSuv) optGrpSuv.textContent = isEn ? "SUV" : "SUV";
+    const optGrpVan = document.getElementById("opt-modal-group-van");
+    if (optGrpVan) optGrpVan.textContent = isEn ? "Van" : "รถตู้ (Van)";
+    const optGrpPickup = document.getElementById("opt-modal-group-pickup");
+    if (optGrpPickup) optGrpPickup.textContent = isEn ? "Pickup Truck" : "รถกระบะ";
+    const optGrpSport = document.getElementById("opt-modal-group-sport");
+    if (optGrpSport) optGrpSport.textContent = isEn ? "Sport / Luxury" : "รถสปอร์ต/หรูหรา";
+
+    const lblCarFuel = document.getElementById("lbl-modal-car-fuel");
+    if (lblCarFuel) lblCarFuel.textContent = isEn ? "⛽ Fuel System*" : "⛽ ระบบเชื้อเพลิง*";
+    const optFuelGas = document.getElementById("opt-modal-fuel-gasoline");
+    if (optFuelGas) optFuelGas.textContent = isEn ? "Gasoline" : "เบนซิน";
+    const optFuelGasHyb = document.getElementById("opt-modal-fuel-gas-hybrid");
+    if (optFuelGasHyb) optFuelGasHyb.textContent = isEn ? "Gasoline / Hybrid" : "เบนซิน/Hybrid";
+    const optFuelDie = document.getElementById("opt-modal-fuel-diesel");
+    if (optFuelDie) optFuelDie.textContent = isEn ? "Diesel" : "ดีเซล";
+    const optFuelDieHyb = document.getElementById("opt-modal-fuel-die-hybrid");
+    if (optFuelDieHyb) optFuelDieHyb.textContent = isEn ? "Diesel / Hybrid" : "ดีเซล/Hybrid";
+    const optFuelEv = document.getElementById("opt-modal-fuel-ev");
+    if (optFuelEv) optFuelEv.textContent = isEn ? "Electric (EV)" : "ไฟฟ้า (EV)";
+
+    const lblCarCc = document.getElementById("lbl-modal-car-cc");
+    if (lblCarCc) lblCarCc.textContent = isEn ? "⚙️ Engine Capacity (CC / EV)" : "⚙️ ขนาดเครื่องยนต์ (CC / EV)";
+    const inpCarCc = document.getElementById("edit-car-cc");
+    if (inpCarCc) inpCarCc.placeholder = isEn ? "e.g. 1200 or 1800" : "เช่น 1200 หรือ 1800";
+
+    const lblCarComp = document.getElementById("lbl-modal-car-company");
+    if (lblCarComp) lblCarComp.textContent = isEn ? "🏢 Ownership / Company*" : "🏢 เจ้าของกรรมสิทธิ์ / บริษัท*";
+    const inpCarComp = document.getElementById("edit-car-company");
+    if (inpCarComp) inpCarComp.placeholder = isEn ? "e.g. Sawasdee Rent A Car" : "เช่น Sawasdee Rent A Car";
+
+    const lblCarColor = document.getElementById("lbl-modal-car-color");
+    if (lblCarColor) lblCarColor.textContent = isEn ? "🎨 Body Color" : "🎨 สีตัวถัง (Color)";
+    const inpCarColor = document.getElementById("edit-car-color");
+    if (inpCarColor) inpCarColor.placeholder = isEn ? "e.g. White, Black, Grey" : "เช่น ขาว, ดำ, เทา";
+
+    const lblCarMil = document.getElementById("lbl-modal-car-mileage");
+    if (lblCarMil) lblCarMil.textContent = isEn ? "🔢 Odometer Mileage (km)" : "🔢 เลขไมล์สะสม (km)";
+    const inpCarMil = document.getElementById("edit-car-mileage");
+    if (inpCarMil) inpCarMil.placeholder = isEn ? "e.g. 25,000" : "เช่น 25,000";
+
+    const lblCarPday = document.getElementById("lbl-modal-car-pday");
+    if (lblCarPday) lblCarPday.textContent = isEn ? "💰 Daily Rate (THB)*" : "💰 ค่าเช่ารายวัน (บาท)*";
+    const lblCarPweek = document.getElementById("lbl-modal-car-pweek");
+    if (lblCarPweek) lblCarPweek.textContent = isEn ? "💰 Weekly Rate (THB)" : "💰 ค่าเช่ารายสัปดาห์ (บาท)";
+    const lblCarPmonth = document.getElementById("lbl-modal-car-pmonth");
+    if (lblCarPmonth) lblCarPmonth.textContent = isEn ? "💰 Monthly Rate (THB)" : "💰 ค่าเช่ารายเดือน (บาท)";
+
+    const lblCarVin = document.getElementById("lbl-modal-car-vin");
+    if (lblCarVin) lblCarVin.textContent = isEn ? "🔑 VIN / Chassis Number*" : "🔑 เลขตัวถัง (VIN)*";
+    const warnCarVin = document.getElementById("edit-car-vin-warn");
+    if (warnCarVin) warnCarVin.textContent = isEn ? "⚠️ This VIN already exists in system" : "⚠️ เลขตัวถังนี้ซ้ำกับรถคันอื่นในระบบ";
+
+    const lblCarTax = document.getElementById("lbl-modal-car-tax");
+    if (lblCarTax) lblCarTax.textContent = isEn ? "🏷️ Tax Expiry Date" : "🏷️ วันหมดอายุ ภาษี";
+    const lblCarAct = document.getElementById("lbl-modal-car-act");
+    if (lblCarAct) lblCarAct.textContent = isEn ? "📅 ACT Expiry Date" : "📅 วันหมดอายุ พ.ร.บ.";
+    const lblCarIns = document.getElementById("lbl-modal-car-ins");
+    if (lblCarIns) lblCarIns.textContent = isEn ? "📅 Insurance Expiry Date" : "📅 วันหมดอายุ ประกันภัย";
+
+    const lblCarInsComp = document.getElementById("lbl-modal-car-ins-comp");
+    if (lblCarInsComp) lblCarInsComp.textContent = isEn ? "🛡️ Insurance Company" : "🛡️ บริษัทประกันภัย";
+    const inpCarInsComp = document.getElementById("edit-car-ins-comp");
+    if (inpCarInsComp) inpCarInsComp.placeholder = isEn ? "e.g. Tokio Marine" : "เช่น คุ้มภัยโตเกียวมารีน";
+
+    const lblCarOwner = document.getElementById("lbl-modal-car-owner");
+    if (lblCarOwner) lblCarOwner.textContent = isEn ? "👤 Vehicle Owner" : "👤 เจ้าของรถ (Owner)";
+    const inpCarOwner = document.getElementById("edit-car-owner");
+    if (inpCarOwner) inpCarOwner.placeholder = isEn ? "e.g. SWD, B-Click" : "เช่น SWD, บีคลิ๊ก";
+
+    const lblCarBeneficiary = document.getElementById("lbl-modal-car-beneficiary");
+    if (lblCarBeneficiary) lblCarBeneficiary.textContent = isEn ? "🏛️ Beneficiary" : "🏛️ ผู้รับผลประโยชน์";
+    const inpCarBeneficiary = document.getElementById("edit-car-beneficiary");
+    if (inpCarBeneficiary) inpCarBeneficiary.placeholder = isEn ? "e.g. Sawasdee Rental" : "เช่น สวัสดี เรนทัล";
+
+    const lblCarRegYear = document.getElementById("lbl-modal-car-reg-year");
+    if (lblCarRegYear) lblCarRegYear.textContent = isEn ? "📆 Registration Year (B.E./A.D.)" : "📆 จดทะเบียนปี (พ.ศ.)";
+    const inpCarRegYear = document.getElementById("edit-car-reg-year");
+    if (inpCarRegYear) inpCarRegYear.placeholder = isEn ? "e.g. 2024 or 2567" : "เช่น 2567";
+
+    const lblCarLastSrv = document.getElementById("lbl-modal-car-last-srv");
+    if (lblCarLastSrv) lblCarLastSrv.textContent = isEn ? "🔧 Last Service Date" : "🔧 วันที่เช็คระยะล่าสุด";
+    const inpCarLastSrv = document.getElementById("edit-car-last-srv");
+    if (inpCarLastSrv) inpCarLastSrv.placeholder = isEn ? "DD/MM/YYYY or -" : "DD/MM/YYYY หรือ -";
+
+    const lblCarNextSrv = document.getElementById("lbl-modal-car-next-srv");
+    if (lblCarNextSrv) lblCarNextSrv.textContent = isEn ? "⏭️ Next Scheduled Service" : "⏭️ กำหนดเช็คระยะครั้งต่อไป";
+    const inpCarNextSrv = document.getElementById("edit-car-next-srv");
+    if (inpCarNextSrv) inpCarNextSrv.placeholder = isEn ? "DD/MM/YYYY or Mileage" : "DD/MM/YYYY หรือ เลขไมล์";
+
+    const lblCarStatus = document.getElementById("lbl-modal-car-status");
+    if (lblCarStatus) lblCarStatus.textContent = isEn ? "🚦 Vehicle Status*" : "🚦 สถานะรถยนต์*";
+    const optMStatAvail = document.getElementById("opt-modal-status-available");
+    if (optMStatAvail) optMStatAvail.textContent = isEn ? "Available for Service" : "ว่างพร้อมใช้งาน";
+    const optMStatMaint2 = document.getElementById("opt-modal-status-maint");
+    if (optMStatMaint2) optMStatMaint2.textContent = isEn ? "Maintenance" : "ซ่อมบำรุง";
+    const optMStatPrep = document.getElementById("opt-modal-status-prep-disp");
+    if (optMStatPrep) optMStatPrep.textContent = isEn ? "Preparing Dispatch" : "เตรียมส่งมอบ";
+    const optMStatRent = document.getElementById("opt-modal-status-renting");
+    if (optMStatRent) optMStatRent.textContent = isEn ? "Currently Renting" : "กำลังเช่า";
+    const optMStatBook = document.getElementById("opt-modal-status-booked");
+    if (optMStatBook) optMStatBook.textContent = isEn ? "Reserved" : "ติดจอง";
+
+    const lblCarNotes = document.getElementById("lbl-modal-car-notes");
+    if (lblCarNotes) lblCarNotes.textContent = isEn ? "📝 Additional Notes & Info" : "📝 หมายเหตุ / ข้อมูลเพิ่มเติม (Notes)";
+    const inpCarNotes = document.getElementById("edit-car-notes");
+    if (inpCarNotes) inpCarNotes.placeholder = isEn ? "e.g. Logbook on hand, regular customer, claim history..." : "เช่น มีเล่มทะเบียน, ผู้เช่าประจำ, ประวัติเคลม...";
+
+    const btnCarDelModal = document.getElementById("btn-modal-car-delete");
+    if (btnCarDelModal) btnCarDelModal.textContent = isEn ? "🗑️ Delete This Vehicle" : "🗑️ ลบข้อมูลรถยนต์คันนี้";
+    const btnCarCancelModal = document.getElementById("btn-modal-car-cancel");
+    if (btnCarCancelModal) btnCarCancelModal.textContent = isEn ? "Cancel" : "ยกเลิก";
+    const btnCarSaveModal = document.getElementById("btn-submit-edit-car");
+    if (btnCarSaveModal) btnCarSaveModal.textContent = isEn ? "💾 Save Vehicle Data" : "💾 บันทึกข้อมูลรถยนต์";
 
     // 5. Search box placeholder
     const sbInput = document.getElementById("sb-search-input");
@@ -469,6 +890,30 @@ class App {
     });
 
     // 14. Trigger active module re-rendering with new language
+    if (this.renderFleetCards) {
+      this.renderFleetCards();
+    }
+    if (this.calcDuration) {
+      const dur = this.calcDuration();
+      const durTxt = document.getElementById("calc-duration-text");
+      if (durTxt) durTxt.textContent = dur.text;
+    }
+    if (this.populateBookingDropdowns) {
+      this.populateBookingDropdowns();
+    }
+    if (this.renderBookingsTable) {
+      this.renderBookingsTable();
+    }
+    if (this.activeTab === "contract" && this.onSelectContractBooking) {
+      this.onSelectContractBooking();
+    }
+    if (this.activeTab === "deposit" && this.onSelectDepositBooking) {
+      this.onSelectDepositBooking();
+    }
+    if (this.activeTab === "assign") {
+      if (this.onSelectAssignDispBooking) this.onSelectAssignDispBooking();
+      if (this.onSelectAssignRetBooking) this.onSelectAssignRetBooking();
+    }
     if (this.populateMaintenanceDropdowns) {
       this.populateMaintenanceDropdowns();
     }
@@ -1049,16 +1494,17 @@ class App {
 
   // --- Duration & Filter Engine ---
   calcDuration() {
+    const isEn = (this.currentLang === "EN");
     const sDate = document.getElementById("filter-start-date")?.value;
     const sTime = document.getElementById("filter-start-time")?.value || "10:00";
     const eDate = document.getElementById("filter-end-date")?.value;
     const eTime = document.getElementById("filter-end-time")?.value || "10:00";
 
-    if (!sDate || !eDate) return { days: 1, text: "1 วัน" };
+    if (!sDate || !eDate) return { days: 1, text: isEn ? "1 Day" : "1 วัน" };
 
     const start = new Date(`${sDate}T${sTime}`);
     const end = new Date(`${eDate}T${eTime}`);
-    if (end <= start) return { days: 1, text: "1 วัน (ขั้นต่ำ)" };
+    if (end <= start) return { days: 1, text: isEn ? "1 Day (Minimum)" : "1 วัน (ขั้นต่ำ)" };
 
     const diffMs = end - start;
     const totalHours = Math.floor(diffMs / (1000 * 60 * 60));
@@ -1071,13 +1517,19 @@ class App {
 
     if (extraHours > 4 || (extraHours === 4 && remMins > 0)) {
       billableDays = baseDays + 1;
-      desc = `${baseDays} วัน + เกินเวลา ${extraHours} ชม. ${remMins} น. (เกิน 4 ชม. ปรับเป็น 1 วัน ➔ คิด ${billableDays} วัน)`;
+      desc = isEn
+        ? `${baseDays} Days + Overtime ${extraHours} hrs ${remMins} mins (Over 4 hrs rounded to 1 day ➔ Total ${billableDays} Days)`
+        : `${baseDays} วัน + เกินเวลา ${extraHours} ชม. ${remMins} น. (เกิน 4 ชม. ปรับเป็น 1 วัน ➔ คิด ${billableDays} วัน)`;
     } else {
       billableDays = Math.max(1, baseDays);
       if (extraHours > 0 || remMins > 0) {
-        desc = `${baseDays} วัน + เกินเวลา ${extraHours} ชม. (อนุโลมไม่เกิน 4 ชม. ไม่คิดวันเพิ่ม ➔ คิด ${billableDays} วัน)`;
+        desc = isEn
+          ? `${baseDays} Days + Overtime ${extraHours} hrs (Grace period ≤ 4 hrs ➔ Total ${billableDays} Days)`
+          : `${baseDays} วัน + เกินเวลา ${extraHours} ชม. (อนุโลมไม่เกิน 4 ชม. ไม่คิดวันเพิ่ม ➔ คิด ${billableDays} วัน)`;
       } else {
-        desc = `${billableDays} วันตรง (${billableDays * 24} ชั่วโมง)`;
+        desc = isEn
+          ? `${billableDays} Days exact (${billableDays * 24} Hours)`
+          : `${billableDays} วันตรง (${billableDays * 24} ชั่วโมง)`;
       }
     }
 
@@ -1104,43 +1556,61 @@ class App {
   }
 
   calculateCarRentalPrice(car, days, contractType = "รายวัน") {
+    const isEn = (this.currentLang === "EN");
     const { priceDay, priceWeek, priceMonth } = this.getCarRates(car);
     const billableDays = Math.max(1, parseInt(days, 10) || 1);
     let basePrice = 0;
     let breakdownText = "";
 
-    if (contractType === "รายสัปดาห์") {
+    const isWeekly = contractType === "รายสัปดาห์" || contractType === "Weekly";
+    const isMonthly = contractType === "รายเดือน" || contractType === "Monthly";
+
+    if (isWeekly) {
       if (billableDays <= 7) {
         basePrice = priceWeek;
-        breakdownText = `เรทรายสัปดาห์ (1 สัปดาห์): ฿${priceWeek.toLocaleString()} / สัปดาห์`;
+        breakdownText = isEn
+          ? `Weekly Rate (1 Week): ฿${priceWeek.toLocaleString()} / Week`
+          : `เรทรายสัปดาห์ (1 สัปดาห์): ฿${priceWeek.toLocaleString()} / สัปดาห์`;
       } else {
         const weeks = Math.floor(billableDays / 7);
         const remDays = billableDays % 7;
         basePrice = (weeks * priceWeek) + (remDays * priceDay);
         if (remDays === 0) {
-          breakdownText = `เรทรายสัปดาห์: ${weeks} สัปดาห์ (${billableDays} วัน) × ฿${priceWeek.toLocaleString()}`;
+          breakdownText = isEn
+            ? `Weekly Rate: ${weeks} Weeks (${billableDays} Days) × ฿${priceWeek.toLocaleString()}`
+            : `เรทรายสัปดาห์: ${weeks} สัปดาห์ (${billableDays} วัน) × ฿${priceWeek.toLocaleString()}`;
         } else {
-          breakdownText = `เรทรายสัปดาห์: ${weeks} สัปดาห์ (฿${(weeks * priceWeek).toLocaleString()}) + เศษ ${remDays} วัน (฿${(remDays * priceDay).toLocaleString()})`;
+          breakdownText = isEn
+            ? `Weekly Rate: ${weeks} Weeks (฿${(weeks * priceWeek).toLocaleString()}) + Extra ${remDays} Days (฿${(remDays * priceDay).toLocaleString()})`
+            : `เรทรายสัปดาห์: ${weeks} สัปดาห์ (฿${(weeks * priceWeek).toLocaleString()}) + เศษ ${remDays} วัน (฿${(remDays * priceDay).toLocaleString()})`;
         }
       }
-    } else if (contractType === "รายเดือน") {
+    } else if (isMonthly) {
       if (billableDays <= 30) {
         basePrice = priceMonth;
-        breakdownText = `เรทรายเดือน (1 เดือน): ฿${priceMonth.toLocaleString()} / เดือน`;
+        breakdownText = isEn
+          ? `Monthly Rate (1 Month): ฿${priceMonth.toLocaleString()} / Month`
+          : `เรทรายเดือน (1 เดือน): ฿${priceMonth.toLocaleString()} / เดือน`;
       } else {
         const months = Math.floor(billableDays / 30);
         const remDays = billableDays % 30;
         basePrice = (months * priceMonth) + (remDays * priceDay);
         if (remDays === 0) {
-          breakdownText = `เรทรายเดือน: ${months} เดือน (${billableDays} วัน) × ฿${priceMonth.toLocaleString()}`;
+          breakdownText = isEn
+            ? `Monthly Rate: ${months} Months (${billableDays} Days) × ฿${priceMonth.toLocaleString()}`
+            : `เรทรายเดือน: ${months} เดือน (${billableDays} วัน) × ฿${priceMonth.toLocaleString()}`;
         } else {
-          breakdownText = `เรทรายเดือน: ${months} เดือน (฿${(months * priceMonth).toLocaleString()}) + เศษ ${remDays} วัน (฿${(remDays * priceDay).toLocaleString()})`;
+          breakdownText = isEn
+            ? `Monthly Rate: ${months} Months (฿${(months * priceMonth).toLocaleString()}) + Extra ${remDays} Days (฿${(remDays * priceDay).toLocaleString()})`
+            : `เรทรายเดือน: ${months} เดือน (฿${(months * priceMonth).toLocaleString()}) + เศษ ${remDays} วัน (฿${(remDays * priceDay).toLocaleString()})`;
         }
       }
     } else {
       // รายวัน (Daily)
       basePrice = billableDays * priceDay;
-      breakdownText = `เรทรายวัน: ${billableDays} วัน × ฿${priceDay.toLocaleString()}/วัน = ฿${basePrice.toLocaleString()}`;
+      breakdownText = isEn
+        ? `Daily Rate: ${billableDays} Days × ฿${priceDay.toLocaleString()}/day = ฿${basePrice.toLocaleString()}`
+        : `เรทรายวัน: ${billableDays} วัน × ฿${priceDay.toLocaleString()}/วัน = ฿${basePrice.toLocaleString()}`;
     }
 
     return { basePrice, breakdownText, priceDay, priceWeek, priceMonth };
@@ -1151,6 +1621,7 @@ class App {
     const container = document.getElementById("fleet-cards-container");
     if (!container) return;
 
+    const isEn = (this.currentLang === "EN");
     const groupFilter = document.getElementById("filter-group")?.value || "ทั้งหมด";
     const brandFilter = document.getElementById("filter-brand")?.value || "ทั้งหมด";
     const companyFilter = document.getElementById("filter-company")?.value || "ทั้งหมด";
@@ -1160,35 +1631,35 @@ class App {
 
     const filtered = this.cars.filter(c => {
       // 1. Group filter
-      if (groupFilter !== "ทั้งหมด") {
+      if (groupFilter !== "ทั้งหมด" && groupFilter !== "All") {
         const cg = (c.car_group || "").toLowerCase();
         if (!cg.includes(groupFilter.toLowerCase())) return false;
       }
 
       // 2. Brand filter
-      if (brandFilter !== "ทั้งหมด") {
+      if (brandFilter !== "ทั้งหมด" && brandFilter !== "All") {
         if ((c.brand || "").toLowerCase() !== brandFilter.toLowerCase()) return false;
       }
 
       // 3. Company filter
-      if (companyFilter !== "ทั้งหมด") {
+      if (companyFilter !== "ทั้งหมด" && companyFilter !== "All") {
         if ((c.company || "").trim() !== companyFilter.trim()) return false;
       }
 
       // 4. Status filter (matching app.py exactly)
-      if (statusFilter.startsWith("ว่างไม่มีการจอง")) {
+      if (statusFilter.startsWith("ว่างไม่มีการจอง") || statusFilter.startsWith("Vacant without Bookings")) {
         if (c.fleet_status_key !== "available") return false;
-      } else if (statusFilter.startsWith("มีการจองล่วงหน้าไว้")) {
+      } else if (statusFilter.startsWith("มีการจองล่วงหน้าไว้") || statusFilter.startsWith("Booked in Advance")) {
         if (c.fleet_status_key !== "reserved") return false;
-      } else if (statusFilter.startsWith("ไม่ว่างในวันที่เลือก")) {
+      } else if (statusFilter.startsWith("ไม่ว่างในวันที่เลือก") || statusFilter.startsWith("Unavailable on Dates")) {
         if (c.fleet_status_key !== "unavailable") return false;
-      } else if (statusFilter.startsWith("สถานะซ่อมบำรุง") || statusFilter === "ซ่อมบำรุง") {
+      } else if (statusFilter.startsWith("สถานะซ่อมบำรุง") || statusFilter === "ซ่อมบำรุง" || statusFilter.startsWith("Maintenance")) {
         if (c.fleet_status_key !== "maintenance") return false;
-      } else if (statusFilter.startsWith("ว่างพร้อมใช้งาน")) {
+      } else if (statusFilter.startsWith("ว่างพร้อมใช้งาน") || statusFilter.startsWith("Available for Service")) {
         if (c.fleet_status_key !== "available" && c.fleet_status_key !== "reserved") return false;
-      } else if (statusFilter === "กำลังเช่า") {
+      } else if (statusFilter === "กำลังเช่า" || statusFilter === "Currently Renting") {
         if (c.status !== "กำลังเช่า" && c.fleet_status_key !== "unavailable") return false;
-      } else if (statusFilter === "ติดจอง") {
+      } else if (statusFilter === "ติดจอง" || statusFilter === "Reserved") {
         if (c.status !== "ติดจอง" && c.fleet_status_key !== "reserved") return false;
       }
 
@@ -1206,17 +1677,21 @@ class App {
     const countTxt = document.getElementById("calc-cars-count");
     if (countTxt) {
       const availCount = filtered.filter(c => c.fleet_status_key === "available" || c.fleet_status_key === "reserved").length;
-      countTxt.textContent = `พบรถว่างพร้อมให้บริการ: ${availCount} / ${filtered.length} คัน`;
+      countTxt.textContent = isEn
+        ? `Available vehicles ready for service: ${availCount} / ${filtered.length} cars`
+        : `พบรถว่างพร้อมให้บริการ: ${availCount} / ${filtered.length} คัน`;
     }
 
     if (filtered.length === 0) {
-      container.innerHTML = `<div style="grid-column:1/-1; text-align:center; padding:40px; color:#64748B;">🔍 ไม่พบรถยนต์ตามเงื่อนไขที่เลือก</div>`;
+      container.innerHTML = isEn
+        ? `<div style="grid-column:1/-1; text-align:center; padding:40px; color:#64748B;">🔍 No vehicles found matching the selected criteria</div>`
+        : `<div style="grid-column:1/-1; text-align:center; padding:40px; color:#64748B;">🔍 ไม่พบรถยนต์ตามเงื่อนไขที่เลือก</div>`;
       return;
     }
 
     container.innerHTML = filtered.map(c => {
       const isAvail = c.fleet_status_key === "available" || c.fleet_status_key === "reserved";
-      const autoType = dur.days >= 30 ? "รายเดือน" : (dur.days >= 7 ? "รายสัปดาห์" : "รายวัน");
+      const autoType = dur.days >= 30 ? (isEn ? "Monthly" : "รายเดือน") : (dur.days >= 7 ? (isEn ? "Weekly" : "รายสัปดาห์") : (isEn ? "Daily" : "รายวัน"));
       const { basePrice, priceDay, priceWeek, priceMonth } = this.calculateCarRentalPrice(c, dur.days, autoType);
       const defImg = "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&q=80&w=500";
       const carImg = c.image || defImg;
@@ -1229,8 +1704,8 @@ class App {
             <span class="car-status-pill" style="background:${c.status_bg}; color:${c.status_color}; border:1px solid ${c.status_border};">
               ${c.fleet_status_desc}
             </span>
-            <button type="button" onclick="app.triggerCarPhotoUpload('${safePlate}')" title="อัปโหลดรูปรถคันนี้ใหม่" style="position:absolute; bottom:8px; right:8px; background:rgba(255,255,255,0.92); color:#1F2937; border:1px solid #CBD5E1; border-radius:20px; padding:4px 10px; font-size:11.5px; font-weight:700; cursor:pointer; box-shadow:0 2px 6px rgba(0,0,0,0.18); display:flex; align-items:center; gap:4px;">
-              📸 อัปโหลดรูป
+            <button type="button" onclick="app.triggerCarPhotoUpload('${safePlate}')" title="${isEn ? 'Upload new photo for this vehicle' : 'อัปโหลดรูปรถคันนี้ใหม่'}" style="position:absolute; bottom:8px; right:8px; background:rgba(255,255,255,0.92); color:#1F2937; border:1px solid #CBD5E1; border-radius:20px; padding:4px 10px; font-size:11.5px; font-weight:700; cursor:pointer; box-shadow:0 2px 6px rgba(0,0,0,0.18); display:flex; align-items:center; gap:4px;">
+              📸 ${isEn ? 'Upload Photo' : 'อัปโหลดรูป'}
             </button>
           </div>
           <div class="car-body">
@@ -1240,36 +1715,38 @@ class App {
                 <div class="car-plate">🚘 ${c.plate}</div>
               </div>
               <div style="display:flex; gap:4px; align-items:center;">
-                <button type="button" onclick="app.openNewMaintenanceModal('${safePlate}')" class="btn btn-sm" style="padding:4px 7px; font-size:11px; background:#FFF7ED; border:1px solid #FDBA74; color:#C2410C; white-space:nowrap; border-radius:6px; font-weight:700; cursor:pointer;" title="แจ้งซ่อมบำรุง / ออกใบงานต่อทะเบียน-ประกัน">
-                  🛠️ ซ่อมบำรุง
+                <button type="button" onclick="app.openNewMaintenanceModal('${safePlate}')" class="btn btn-sm" style="padding:4px 7px; font-size:11px; background:#FFF7ED; border:1px solid #FDBA74; color:#C2410C; white-space:nowrap; border-radius:6px; font-weight:700; cursor:pointer;" title="${isEn ? 'Report maintenance / Issue renewal order' : 'แจ้งซ่อมบำรุง / ออกใบงานต่อทะเบียน-ประกัน'}">
+                  🛠️ ${isEn ? 'Maintenance' : 'ซ่อมบำรุง'}
                 </button>
-                <button type="button" onclick="app.openEditCarModal('${safePlate}')" class="btn btn-sm btn-secondary" style="padding:4px 7px; font-size:11px; background:#FAF7F2; border:1px solid #D1D5DB; color:#374151; white-space:nowrap; border-radius:6px;" title="แก้ไขรายละเอียดรถและรูปรถ">
-                  ✏️ แก้ไขรถ
+                <button type="button" onclick="app.openEditCarModal('${safePlate}')" class="btn btn-sm btn-secondary" style="padding:4px 7px; font-size:11px; background:#FAF7F2; border:1px solid #D1D5DB; color:#374151; white-space:nowrap; border-radius:6px;" title="${isEn ? 'Edit car details & photo' : 'แก้ไขรายละเอียดรถและรูปรถ'}">
+                  ✏️ ${isEn ? 'Edit Car' : 'แก้ไขรถ'}
                 </button>
-                <button type="button" onclick="app.deleteCarByPlate('${safePlate}')" class="btn btn-sm btn-danger" style="padding:4px 7px; font-size:11px; background:#FEE2E2; border:1px solid #FCA5A5; color:#DC2626; white-space:nowrap; border-radius:6px; cursor:pointer;" title="ลบข้อมูลรถยนต์คันนี้ออกจากระบบ">
-                  🗑️ ลบ
+                <button type="button" onclick="app.deleteCarByPlate('${safePlate}')" class="btn btn-sm btn-danger" style="padding:4px 7px; font-size:11px; background:#FEE2E2; border:1px solid #FCA5A5; color:#DC2626; white-space:nowrap; border-radius:6px; cursor:pointer;" title="${isEn ? 'Delete this car from system' : 'ลบข้อมูลรถยนต์คันนี้ออกจากระบบ'}">
+                  🗑️ ${isEn ? 'Delete' : 'ลบ'}
                 </button>
               </div>
             </div>
             <div class="car-specs">
-              <span>💺 ${c.car_group || 'รถยนต์'}</span>
-              <span>⛽ ${c.fuel_type || 'เบนซิน'}</span>
+              <span>💺 ${c.car_group || (isEn ? 'Vehicle' : 'รถยนต์')}</span>
+              <span>⛽ ${c.fuel_type || (isEn ? 'Gasoline' : 'เบนซิน')}</span>
               <span>⚙️ ${c.engine_cc || '1500'} cc</span>
               <span>🏢 ${c.company || 'Sawasdee'}</span>
-              ${c.chassis_no && c.chassis_no !== '-' ? `<span title="หมายเลขตัวถัง (VIN)">🔑 ${c.chassis_no}</span>` : ''}
-              ${c.ins_company && c.ins_company !== '-' ? `<span title="บริษัทประกันภัย">🛡️ ${c.ins_company}</span>` : ''}
+              ${c.chassis_no && c.chassis_no !== '-' ? `<span title="${isEn ? 'Chassis No. (VIN)' : 'หมายเลขตัวถัง (VIN)'}">🔑 ${c.chassis_no}</span>` : ''}
+              ${c.ins_company && c.ins_company !== '-' ? `<span title="${isEn ? 'Insurance Company' : 'บริษัทประกันภัย'}">🛡️ ${c.ins_company}</span>` : ''}
             </div>
             <div class="car-pricing">
               <div>
-                <div style="font-size:11px; color:#64748B;">ค่าเช่า (${dur.days} วัน):</div>
+                <div style="font-size:11px; color:#64748B;">${isEn ? `Rental (${dur.days} Days):` : `ค่าเช่า (${dur.days} วัน):`}</div>
                 <div class="price-main">฿${basePrice.toLocaleString()}</div>
-                <div style="font-size:10.5px; color:#64748B; margin-top:2px;" title="อัตราค่าเช่าที่ตั้งค่าไว้">
-                  ฿${priceDay.toLocaleString()}/ว | ฿${priceWeek.toLocaleString()}/ส | ฿${priceMonth.toLocaleString()}/ด
+                <div style="font-size:10.5px; color:#64748B; margin-top:2px;" title="${isEn ? 'Configured rental rates' : 'อัตราค่าเช่าที่ตั้งค่าไว้'}">
+                  ${isEn 
+                    ? `฿${priceDay.toLocaleString()}/d | ฿${priceWeek.toLocaleString()}/w | ฿${priceMonth.toLocaleString()}/m`
+                    : `฿${priceDay.toLocaleString()}/ว | ฿${priceWeek.toLocaleString()}/ส | ฿${priceMonth.toLocaleString()}/ด`}
                 </div>
               </div>
               <div style="display:flex; gap:6px; align-items:center;">
-                <button onclick="app.openBookModal('${safePlate}')" class="btn btn-sm ${isAvail ? 'btn-primary' : 'btn-secondary'}" ${!isAvail ? 'title="รถคันนี้ติดจอง แต่สามารถคลิกดูรายละเอียดหรือจองคิวต่อได้"' : ''}>
-                  ${isAvail ? '⚡ จองทันที' : '📅 จองคิว'}
+                <button onclick="app.openBookModal('${safePlate}')" class="btn btn-sm ${isAvail ? 'btn-primary' : 'btn-secondary'}" ${!isAvail ? `title="${isEn ? 'This vehicle is reserved, but you can inspect details or queue up' : 'รถคันนี้ติดจอง แต่สามารถคลิกดูรายละเอียดหรือจองคิวต่อได้'}"` : ''}>
+                  ${isAvail ? (isEn ? '⚡ Book Now' : '⚡ จองทันที') : (isEn ? '📅 Reserve Queue' : '📅 จองคิว')}
                 </button>
               </div>
             </div>
@@ -1382,15 +1859,22 @@ class App {
   }
 
   openEditCarModal(plate) {
+    const isEn = (this.currentLang === "EN");
     const isNew = !plate;
     const car = (!isNew && this.cars.find(c => c.plate === plate)) || {};
     const defImg = "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&q=80&w=500";
 
     const titleEl = document.getElementById("modal-edit-car-title");
     if (titleEl) {
-      titleEl.textContent = isNew
-        ? "➕ เพิ่มรถยนต์ใหม่เข้าสู่ระบบ (Add New Vehicle)"
-        : `✏️ แก้ไขข้อมูลรถยนต์ & อัปโหลดรูปรถ (${plate})`;
+      if (isEn) {
+        titleEl.textContent = isNew
+          ? "➕ Add New Vehicle to Fleet"
+          : `✏️ Edit Vehicle Details & Photo (${plate})`;
+      } else {
+        titleEl.textContent = isNew
+          ? "➕ เพิ่มรถยนต์ใหม่เข้าสู่ระบบ (Add New Vehicle)"
+          : `✏️ แก้ไขข้อมูลรถยนต์ & อัปโหลดรูปรถ (${plate})`;
+      }
     }
 
     const origPlateEl = document.getElementById("edit-car-original-plate");
@@ -1402,7 +1886,15 @@ class App {
     if (vinWarnEl) vinWarnEl.style.display = "none";
 
     const delBtn = document.getElementById("btn-modal-car-delete");
-    if (delBtn) delBtn.style.display = isNew ? "none" : "inline-flex";
+    if (delBtn) {
+      delBtn.style.display = isNew ? "none" : "inline-flex";
+      delBtn.innerHTML = isEn ? "🗑️ Delete This Vehicle" : "🗑️ ลบข้อมูลรถยนต์คันนี้";
+    }
+
+    const cancelBtn = document.getElementById("btn-modal-car-cancel");
+    if (cancelBtn) cancelBtn.textContent = isEn ? "Cancel" : "ยกเลิก";
+    const saveBtn = document.getElementById("btn-submit-edit-car");
+    if (saveBtn) saveBtn.textContent = isEn ? "💾 Save Vehicle Data" : "💾 บันทึกข้อมูลรถยนต์";
 
     const plateEl = document.getElementById("edit-car-plate");
     if (plateEl) {
@@ -1914,6 +2406,7 @@ class App {
 
   // --- Tab 2: Deposit & Settle Logic ---
   populateBookingDropdowns() {
+    const isEn = (this.currentLang === "EN");
     const depSel = document.getElementById("deposit-sel-booking");
     const assignDispSel = document.getElementById("assign-disp-bk");
     const assignRetSel = document.getElementById("assign-ret-bk");
@@ -1923,11 +2416,11 @@ class App {
     const allValidBks = this.bookings.filter(b => b.status !== "ยกเลิก");
 
     const renderOpts = (bks) => `
-      <option value="">-- กรุณาเลือกรายการจอง --</option>
+      <option value="">-- ${isEn ? 'Please select a booking' : 'กรุณาเลือกรายการจอง'} --</option>
       ${bks.map(b => {
         const sFmt = b.start_date_formatted || b.start_date || "-";
         const eFmt = b.end_date_formatted || b.end_date || "-";
-        return `<option value="${b.booking_id}">${b.booking_id} | ${b.car_id} (${b.customer}) 📅 ${sFmt} - ${eFmt} [สถานะ: ${b.status}]</option>`;
+        return `<option value="${b.booking_id}">${b.booking_id} | ${b.car_id} (${b.customer}) 📅 ${sFmt} - ${eFmt} [${isEn ? 'Status' : 'สถานะ'}: ${b.status}]</option>`;
       }).join("")}
     `;
 
@@ -1954,6 +2447,7 @@ class App {
   }
 
   onSelectDepositBooking() {
+    const isEn = (this.currentLang === "EN");
     const bkId = document.getElementById("deposit-sel-booking")?.value;
     const summary = document.getElementById("deposit-booking-summary");
     const actionSec = document.getElementById("deposit-action-section");
@@ -1998,11 +2492,11 @@ class App {
     if (b.deposit_slip) {
       const urlInput = document.getElementById("deposit-slip-url");
       if (urlInput) urlInput.value = b.deposit_slip;
-      this.showDepositSlipPreview(b.deposit_slip, `สลิปมัดจำ (${b.booking_id})`);
+      this.showDepositSlipPreview(b.deposit_slip, isEn ? `Deposit Slip (${b.booking_id})` : `สลิปมัดจำ (${b.booking_id})`);
     } else if (b.rental_slip) {
       const urlInput = document.getElementById("deposit-slip-url");
       if (urlInput) urlInput.value = b.rental_slip;
-      this.showDepositSlipPreview(b.rental_slip, `สลิปค่าเช่า (${b.booking_id})`);
+      this.showDepositSlipPreview(b.rental_slip, isEn ? `Rental Fee Slip (${b.booking_id})` : `สลิปค่าเช่า (${b.booking_id})`);
     } else {
       this.clearDepositSlip(false);
     }
@@ -2010,32 +2504,32 @@ class App {
     // 4. Render detailed summary with slip badges
     let slipBadges = [];
     if (b.deposit_ref) {
-      slipBadges.push(`<span>🧾 <b>เลขที่ Ref สลิป:</b> <code style="background:#FEF3C7; color:#92400E; padding:2px 7px; border-radius:4px; font-weight:700; font-size:12px;">${b.deposit_ref}</code></span>`);
+      slipBadges.push(`<span>🧾 <b>${isEn ? 'Slip Ref:' : 'เลขที่ Ref สลิป:'}</b> <code style="background:#FEF3C7; color:#92400E; padding:2px 7px; border-radius:4px; font-weight:700; font-size:12px;">${b.deposit_ref}</code></span>`);
     }
     if (b.deposit_slip) {
-      slipBadges.push(`<span>📎 <b>สลิปมัดจำ:</b> <a href="${b.deposit_slip}" target="_blank" style="color:#0284C7; font-weight:700; text-decoration:underline;">🖼️ คลิกเปิดดูรูปสลิป</a></span>`);
+      slipBadges.push(`<span>📎 <b>${isEn ? 'Deposit Slip:' : 'สลิปมัดจำ:'}</b> <a href="${b.deposit_slip}" target="_blank" style="color:#0284C7; font-weight:700; text-decoration:underline;">🖼️ ${isEn ? 'Click to view slip' : 'คลิกเปิดดูรูปสลิป'}</a></span>`);
     }
     if (b.rental_ref && b.rental_ref !== b.deposit_ref) {
-      slipBadges.push(`<span>🧾 <b>Ref ค่าเช่า:</b> <code style="background:#E0F2FE; color:#0369A1; padding:2px 7px; border-radius:4px; font-weight:700; font-size:12px;">${b.rental_ref}</code></span>`);
+      slipBadges.push(`<span>🧾 <b>${isEn ? 'Rental Ref:' : 'Ref ค่าเช่า:'}</b> <code style="background:#E0F2FE; color:#0369A1; padding:2px 7px; border-radius:4px; font-weight:700; font-size:12px;">${b.rental_ref}</code></span>`);
     }
     if (b.rental_slip && b.rental_slip !== b.deposit_slip) {
-      slipBadges.push(`<span>📎 <b>สลิปค่าเช่า:</b> <a href="${b.rental_slip}" target="_blank" style="color:#0284C7; font-weight:700; text-decoration:underline;">🖼️ คลิกเปิดดูรูปสลิป</a></span>`);
+      slipBadges.push(`<span>📎 <b>${isEn ? 'Rental Slip:' : 'สลิปค่าเช่า:'}</b> <a href="${b.rental_slip}" target="_blank" style="color:#0284C7; font-weight:700; text-decoration:underline;">🖼️ ${isEn ? 'Click to view slip' : 'คลิกเปิดดูรูปสลิป'}</a></span>`);
     }
 
     summary.innerHTML = `
       <div style="font-size:13px; line-height:1.6;">
         <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:8px;">
           <div>
-            <b style="color:#92400E; font-size:14px;">รหัส: ${b.booking_id}</b> | ทะเบียน: <b>${b.car_id}</b><br/>
-            👤 ลูกค้า: <b>${b.customer}</b> (📞 ${b.customer_phone || '-'})<br/>
-            📅 ระยะเวลา: ${b.start_date_formatted || b.start_date} ถึง ${b.end_date_formatted || b.end_date}<br/>
-            💰 ค่าเช่าสุทธิ: <b style="color:#D97706; font-size:15px;">฿${netP.toLocaleString()}</b> |
-            🛡️ มัดจำ: <b style="color:${isDep ? '#059669' : '#DC2626'};">${isDep ? 'ชำระแล้ว' : 'รอมัดจำ'}</b>
+            <b style="color:#92400E; font-size:14px;">${isEn ? 'ID' : 'รหัส'}: ${b.booking_id}</b> | ${isEn ? 'Plate' : 'ทะเบียน'}: <b>${b.car_id}</b><br/>
+            👤 ${isEn ? 'Customer' : 'ลูกค้า'}: <b>${b.customer}</b> (📞 ${b.customer_phone || '-'})<br/>
+            📅 ${isEn ? 'Duration' : 'ระยะเวลา'}: ${b.start_date_formatted || b.start_date} ${isEn ? 'to' : 'ถึง'} ${b.end_date_formatted || b.end_date}<br/>
+            💰 ${isEn ? 'Net Rental' : 'ค่าเช่าสุทธิ'}: <b style="color:#D97706; font-size:15px;">฿${netP.toLocaleString()}</b> |
+            🛡️ ${isEn ? 'Deposit' : 'มัดจำ'}: <b style="color:${isDep ? '#059669' : '#DC2626'};">${isDep ? (isEn ? 'Paid' : 'ชำระแล้ว') : (isEn ? 'Pending Deposit' : 'รอมัดจำ')}</b>
           </div>
           ${b.deposit_slip ? `
             <div>
-              <a href="${b.deposit_slip}" target="_blank" title="คลิกดูสลิปขนาดเต็ม">
-                <img src="${b.deposit_slip}" alt="สลิป" style="width:58px; height:58px; object-fit:cover; border-radius:6px; border:2px solid #CBD5E1; box-shadow:0 1px 3px rgba(0,0,0,0.1); cursor:pointer;">
+              <a href="${b.deposit_slip}" target="_blank" title="${isEn ? 'Click to view full slip' : 'คลิกดูสลิปขนาดเต็ม'}">
+                <img src="${b.deposit_slip}" alt="Slip" style="width:58px; height:58px; object-fit:cover; border-radius:6px; border:2px solid #CBD5E1; box-shadow:0 1px 3px rgba(0,0,0,0.1); cursor:pointer;">
               </a>
             </div>
           ` : ''}
@@ -2274,6 +2768,7 @@ class App {
   }
 
   onSelectAssignDispBooking() {
+    const isEn = (this.currentLang === "EN");
     const bkId = document.getElementById("assign-disp-bk")?.value;
     const form = document.getElementById("assign-disp-form");
     if (!bkId) {
@@ -2328,35 +2823,35 @@ class App {
 
         let html = `
           <div style="background:#FAF7F2; border:1px solid #E5E7EB; border-radius:8px; padding:8px 12px; margin-bottom:8px; font-size:12.5px; color:#1F2937;">
-            📅 <b>กำหนดส่งมอบรถ:</b> <span style="color:#EA580C; font-weight:700;">${sFmt} (${b.start_time || '10:00'} น.)</span> &nbsp;|&nbsp; <b>กำหนดคืนรถ:</b> <span style="font-weight:700;">${eFmt} (${b.end_time || '10:00'} น.)</span>
+            📅 <b>${isEn ? 'Pick-up Schedule:' : 'กำหนดส่งมอบรถ:'}</b> <span style="color:#EA580C; font-weight:700;">${sFmt} (${b.start_time || '10:00'}${isEn ? '' : ' น.'})</span> &nbsp;|&nbsp; <b>${isEn ? 'Return Schedule:' : 'กำหนดคืนรถ:'}</b> <span style="font-weight:700;">${eFmt} (${b.end_time || '10:00'}${isEn ? '' : ' น.'})</span>
           </div>
         `;
         if (!isDep) {
           html += `
             <div style="background:#FFFBEB; border:1px solid #F59E0B; border-radius:8px; padding:10px 12px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
-              <div style="font-size:12.5px; color:#92400E;"><b>🟡 สถานะการจอง: รอชำระเงินมัดจำ</b> (สามารถมอบหมายคนขับล่วงหน้าได้)</div>
-              <button type="button" onclick="app.goToTabWithBooking('deposit', '${b.booking_id}')" class="btn btn-secondary" style="padding:4px 10px; font-size:12px; font-weight:700;">💳 ไปรับมัดจำ</button>
+              <div style="font-size:12.5px; color:#92400E;"><b>🟡 ${isEn ? 'Booking Status: Awaiting Deposit' : 'สถานะการจอง: รอชำระเงินมัดจำ'}</b> (${isEn ? 'Driver can be assigned in advance' : 'สามารถมอบหมายคนขับล่วงหน้าได้'})</div>
+              <button type="button" onclick="app.goToTabWithBooking('deposit', '${b.booking_id}')" class="btn btn-secondary" style="padding:4px 10px; font-size:12px; font-weight:700;">💳 ${isEn ? 'Collect Deposit' : 'ไปรับมัดจำ'}</button>
             </div>
           `;
         }
         if (isRent) {
           html += `
             <div style="background:#ECFDF5; border:1px solid #10B981; border-radius:8px; padding:8px 12px; margin-bottom:8px; font-size:12.5px; color:#065F46; font-weight:700;">
-              ✅ ชำระค่าเช่ารถครบถ้วนแล้ว (฿${netP.toLocaleString('th-TH', {minimumFractionDigits: 2})})
+              ✅ ${isEn ? 'Rental fee fully paid' : 'ชำระค่าเช่ารถครบถ้วนแล้ว'} (฿${netP.toLocaleString('th-TH', {minimumFractionDigits: 2})})
             </div>
           `;
         } else {
           html += `
             <div style="background:#EFF6FF; border:1px solid #93C5FD; border-radius:8px; padding:8px 12px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
-              <div style="font-size:12.5px; color:#1E40AF;">⏳ <b>รอชำระค่าเช่าวันรับรถ:</b> ฿${netP.toLocaleString('th-TH', {minimumFractionDigits: 2})}</div>
-              <button type="button" onclick="app.goToTabWithBooking('deposit', '${b.booking_id}')" class="btn btn-secondary" style="padding:4px 10px; font-size:12px; font-weight:700;">💳 กดจ่ายเงินค่าเช่า</button>
+              <div style="font-size:12.5px; color:#1E40AF;">⏳ <b>${isEn ? 'Pending Rental Fee on Pick-up:' : 'รอชำระค่าเช่าวันรับรถ:'}</b> ฿${netP.toLocaleString('th-TH', {minimumFractionDigits: 2})}</div>
+              <button type="button" onclick="app.goToTabWithBooking('deposit', '${b.booking_id}')" class="btn btn-secondary" style="padding:4px 10px; font-size:12px; font-weight:700;">💳 ${isEn ? 'Pay Rental Fee' : 'กดจ่ายเงินค่าเช่า'}</button>
             </div>
           `;
         }
         if (hasDriver) {
           html += `
             <div style="background:#F0FDF4; border:1px solid #86EFAC; border-radius:8px; padding:8px 12px; font-size:12.5px; color:#166534;">
-              🚚 <b>มอบหมายพนักงานจัดส่งแล้ว:</b> ${wDel} (วันที่ ${sFmt} เวลา ${b.start_time || '10:00'} น.)
+              🚚 <b>${isEn ? 'Dispatch Staff Assigned:' : 'มอบหมายพนักงานจัดส่งแล้ว:'}</b> ${wDel} (${isEn ? 'Date' : 'วันที่'} ${sFmt} ${isEn ? 'Time' : 'เวลา'} ${b.start_time || '10:00'}${isEn ? '' : ' น.'})
             </div>
           `;
         }
@@ -2366,6 +2861,7 @@ class App {
   }
 
   onSelectAssignRetBooking() {
+    const isEn = (this.currentLang === "EN");
     const bkId = document.getElementById("assign-ret-bk")?.value;
     const form = document.getElementById("assign-ret-form");
     if (!bkId) {
@@ -2408,13 +2904,13 @@ class App {
         const eFmt = b.end_date_formatted || eVal;
         let html = `
           <div style="background:#FAF7F2; border:1px solid #E5E7EB; border-radius:8px; padding:8px 12px; margin-bottom:8px; font-size:12.5px; color:#1F2937;">
-            📅 <b>กำหนดรับรถคืน:</b> <span style="color:#EA580C; font-weight:700;">${eFmt} (${b.end_time || '10:00'} น.)</span> &nbsp;|&nbsp; <b>วันเริ่มเช่า:</b> <span>${sFmt}</span>
+            📅 <b>${isEn ? 'Return Schedule:' : 'กำหนดรับรถคืน:'}</b> <span style="color:#EA580C; font-weight:700;">${eFmt} (${b.end_time || '10:00'}${isEn ? '' : ' น.'})</span> &nbsp;|&nbsp; <b>${isEn ? 'Rental Start:' : 'วันเริ่มเช่า:'}</b> <span>${sFmt}</span>
           </div>
         `;
         if (hasDriver) {
           html += `
             <div style="background:#F0FDF4; border:1px solid #86EFAC; border-radius:8px; padding:8px 12px; font-size:12.5px; color:#166534;">
-              🔙 <b>มอบหมายพนักงานรับรถคืนแล้ว:</b> ${wRet} (วันที่ ${eFmt} เวลา ${b.end_time || '10:00'} น.)
+              🔙 <b>${isEn ? 'Return Staff Assigned:' : 'มอบหมายพนักงานรับรถคืนแล้ว:'}</b> ${wRet} (${isEn ? 'Date' : 'วันที่'} ${eFmt} ${isEn ? 'Time' : 'เวลา'} ${b.end_time || '10:00'}${isEn ? '' : ' น.'})
             </div>
           `;
         }
@@ -2483,6 +2979,7 @@ class App {
 
   // --- Tab 4: Contract Formulation & Document Center ---
   onSelectContractBooking() {
+    const isEn = (this.currentLang === "EN");
     const bkId = document.getElementById("contract-sel-bk")?.value;
     const card = document.getElementById("contract-details-card");
     const emptyMsg = document.getElementById("contract-empty-msg");
@@ -2513,14 +3010,14 @@ class App {
       const isIssued = !!b.contract_issued;
       header.innerHTML = `
         <div>
-          <span style="font-size:18px; font-weight:800; color:#1E3A8A; letter-spacing:0.5px;">📄 สัญญาเช่ารหัส: ${b.booking_id}</span>
+          <span style="font-size:18px; font-weight:800; color:#1E3A8A; letter-spacing:0.5px;">📄 ${isEn ? 'Rental Contract ID:' : 'สัญญาเช่ารหัส:'} ${b.booking_id}</span>
           <span style="margin-left:8px;" class="badge ${isIssued ? 'badge-success' : 'badge-warning'}">
-            ${isIssued ? '✅ ออกสัญญาเรียบร้อยแล้ว' : '⏳ รอยืนยันออกสัญญา'}
+            ${isIssued ? (isEn ? '✅ Contract Issued' : '✅ ออกสัญญาเรียบร้อยแล้ว') : (isEn ? '⏳ Awaiting Issuance' : '⏳ รอยืนยันออกสัญญา')}
           </span>
           <span style="margin-left:4px;" class="badge badge-info">${b.status}</span>
         </div>
         <div style="font-size:12px; color:#64748B;">
-          📅 จัดทำ: ${b.start_date_formatted || b.start_date} | ผู้บันทึก: ${b.created_by || 'Admin'}
+          📅 ${isEn ? 'Created:' : 'จัดทำ:'} ${b.start_date_formatted || b.start_date} | ${isEn ? 'Recorded by:' : 'ผู้บันทึก:'} ${b.created_by || 'Admin'}
         </div>
       `;
     }
@@ -2529,11 +3026,11 @@ class App {
     const custEl = document.getElementById("contract-cust-info");
     if (custEl) {
       custEl.innerHTML = `
-        • <b>ชื่อผู้เช่า:</b> ${b.customer}<br/>
-        • <b>Passport / เลขบัตร:</b> ${cust.passport_id || b.customer_id_card || '-'}<br/>
-        • <b>เบอร์ติดต่อ:</b> ${b.customer_phone || cust.contact_no || '-'}<br/>
-        • <b>ใบขับขี่:</b> ${cust.licence_no || '-'}<br/>
-        • <b>สัญชาติ:</b> ${cust.nationality || 'THAI'}
+        • <b>${isEn ? 'Tenant Name:' : 'ชื่อผู้เช่า:'}</b> ${b.customer}<br/>
+        • <b>${isEn ? 'Passport / ID Card:' : 'Passport / เลขบัตร:'}</b> ${cust.passport_id || b.customer_id_card || '-'}<br/>
+        • <b>${isEn ? 'Phone / Contact:' : 'เบอร์ติดต่อ:'}</b> ${b.customer_phone || cust.contact_no || '-'}<br/>
+        • <b>${isEn ? 'Driving License:' : 'ใบขับขี่:'}</b> ${cust.licence_no || '-'}<br/>
+        • <b>${isEn ? 'Nationality:' : 'สัญชาติ:'}</b> ${cust.nationality || 'THAI'}
       `;
     }
 
@@ -2541,11 +3038,11 @@ class App {
     const carEl = document.getElementById("contract-car-info");
     if (carEl) {
       carEl.innerHTML = `
-        • <b>หมายเลขทะเบียน:</b> <b style="color:#D97706;">${b.car_id}</b><br/>
-        • <b>ยี่ห้อ/รุ่น:</b> ${car.brand || b.car_brand || ''} ${car.model || b.car_model || ''}<br/>
-        • <b>กลุ่มรถ/สี:</b> ${car.car_group || '-'} / ${car.color || '-'}<br/>
-        • <b>บริษัทสังกัด:</b> ${car.company || '-'}<br/>
-        • <b>สถานะรถ:</b> ${car.fleet_status_desc || car.status || 'พร้อมใช้งาน'}
+        • <b>${isEn ? 'License Plate:' : 'หมายเลขทะเบียน:'}</b> <b style="color:#D97706;">${b.car_id}</b><br/>
+        • <b>${isEn ? 'Brand / Model:' : 'ยี่ห้อ/รุ่น:'}</b> ${car.brand || b.car_brand || ''} ${car.model || b.car_model || ''}<br/>
+        • <b>${isEn ? 'Group / Color:' : 'กลุ่มรถ/สี:'}</b> ${car.car_group || '-'} / ${car.color || '-'}<br/>
+        • <b>${isEn ? 'Company / Fleet:' : 'บริษัทสังกัด:'}</b> ${car.company || '-'}<br/>
+        • <b>${isEn ? 'Vehicle Status:' : 'สถานะรถ:'}</b> ${car.fleet_status_desc || car.status || (isEn ? 'Ready for Service' : 'พร้อมใช้งาน')}
       `;
     }
 
@@ -2557,48 +3054,50 @@ class App {
       const curSTime = b.start_time || thNow.timeStr;
       const curEDate = b.end_date || this.getThaiDateTime(3).dateStr;
       const curETime = b.end_time || thNow.timeStr;
-      const curLoc = b.loc_delivery || 'หน้าร้าน / สาขา';
+      const curLoc = b.loc_delivery || (isEn ? 'Front Office / Branch' : 'หน้าร้าน / สาขา');
       const isBackdated = curSDate < thNow.dateStr;
 
       schedEl.innerHTML = `
         <div style="display:flex; flex-direction:column; gap:6px;">
           <div>
-            • <b>เริ่มสัญญา (Pick-up เวลาไทย):</b>
+            • <b>${isEn ? 'Contract Start (Pick-up Thai Time):' : 'เริ่มสัญญา (Pick-up เวลาไทย):'}</b>
             <div style="display:flex; gap:6px; margin-top:3px;">
               <input type="date" id="contract-edit-start-date" class="form-control" style="padding:4px 8px; font-size:12.5px; border-color:${isBackdated ? '#EF4444' : '#CBD5E1'};" value="${curSDate}" min="${thNow.dateStr}" onchange="app.onContractStartDateChange(this.value)">
               <input type="time" id="contract-edit-start-time" class="form-control" style="padding:4px 8px; font-size:12.5px; max-width:115px;" value="${curSTime}">
             </div>
             <div id="contract-start-date-warn" style="display:${isBackdated ? 'block' : 'none'}; color:#DC2626; font-size:11.5px; font-weight:600; margin-top:4px; background:#FEF2F2; padding:6px 10px; border-radius:6px; border:1px solid #FCA5A5;">
-              ⚠️ ป้องกันการลงสัญญาย้อนหลัง: วันที่เริ่มสัญญา (${curSDate}) เป็นวันที่ในอดีต (วันนี้คือ ${thNow.dateStr}) ไม่อนุญาตให้บันทึกสัญญาย้อนหลัง กรุณาแก้ไขวันเริ่มสัญญาเป็นวันนี้หรือวันในอนาคต
+              ${isEn
+                ? `⚠️ Backdating protection: Start date (${curSDate}) is in the past (Today is ${thNow.dateStr}). Backdated contracts are not allowed. Please select today or future date.`
+                : `⚠️ ป้องกันการลงสัญญาย้อนหลัง: วันที่เริ่มสัญญา (${curSDate}) เป็นวันที่ในอดีต (วันนี้คือ ${thNow.dateStr}) ไม่อนุญาตให้บันทึกสัญญาย้อนหลัง กรุณาแก้ไขวันเริ่มสัญญาเป็นวันนี้หรือวันในอนาคต`}
             </div>
           </div>
           <div>
-            • <b>สิ้นสุดสัญญา (Return เวลาไทย):</b>
+            • <b>${isEn ? 'Contract End (Return Thai Time):' : 'สิ้นสุดสัญญา (Return เวลาไทย):'}</b>
             <div style="display:flex; gap:6px; margin-top:3px;">
               <input type="date" id="contract-edit-end-date" class="form-control" style="padding:4px 8px; font-size:12.5px;" value="${curEDate}" min="${curSDate > thNow.dateStr ? curSDate : thNow.dateStr}">
               <input type="time" id="contract-edit-end-time" class="form-control" style="padding:4px 8px; font-size:12.5px; max-width:115px;" value="${curETime}">
             </div>
           </div>
           <div>
-            • <b>สถานที่ส่งมอบ:</b>
+            • <b>${isEn ? 'Delivery Location:' : 'สถานที่ส่งมอบ:'}</b>
             <input type="text" id="contract-edit-loc" class="form-control" style="padding:4px 8px; font-size:12.5px; margin-top:3px;" value="${curLoc}">
           </div>
-          <div>• <b>พนักงานส่งมอบ:</b> ${b.worker_delivery || 'ยังไม่ได้มอบหมาย'}</div>
-          <div>• <b>สถานะการจองปัจจุบัน:</b> <span class="badge ${b.status === 'กำลังเช่า' ? 'badge-primary' : (b.status === 'เสร็จสิ้น' ? 'badge-success' : 'badge-info')}">${b.status}</span></div>
+          <div>• <b>${isEn ? 'Assigned Staff:' : 'พนักงานส่งมอบ:'}</b> ${b.worker_delivery || (isEn ? 'Unassigned' : 'ยังไม่ได้มอบหมาย')}</div>
+          <div>• <b>${isEn ? 'Current Booking Status:' : 'สถานะการจองปัจจุบัน:'}</b> <span class="badge ${b.status === 'กำลังเช่า' ? 'badge-primary' : (b.status === 'เสร็จสิ้น' ? 'badge-success' : 'badge-info')}">${b.status}</span></div>
           <div style="display:flex; gap:6px; margin-top:6px; flex-wrap:wrap;">
-            <button type="button" onclick="app.setContractToCurrentThaiTime()" class="btn btn-outline btn-sm" style="font-size:11.5px; padding:4px 10px;" title="ปรับวันและเวลาให้ตรงกับปัจจุบัน">
-              🕒 ใช้วัน-เวลาปัจจุบัน
+            <button type="button" onclick="app.setContractToCurrentThaiTime()" class="btn btn-outline btn-sm" style="font-size:11.5px; padding:4px 10px;" title="${isEn ? 'Set dates to current Thai time' : 'ปรับวันและเวลาให้ตรงกับปัจจุบัน'}">
+              🕒 ${isEn ? 'Use Current Time' : 'ใช้วัน-เวลาปัจจุบัน'}
             </button>
             <button type="button" onclick="app.saveContractSchedule()" class="btn btn-primary btn-sm" style="font-size:11.5px; padding:4px 10px;">
-              💾 บันทึกวัน-เวลาสัญญา
+              💾 ${isEn ? 'Save Schedule' : 'บันทึกวัน-เวลาสัญญา'}
             </button>
             ${['รอส่งมอบ', 'เตรียมส่งมอบ'].includes(b.status) ? `
-            <button type="button" onclick="app.quickConfirmHandover('${b.booking_id}')" class="btn btn-success btn-sm" style="font-size:11.5px; padding:4px 10px; font-weight:600;" title="ส่งมอบรถให้ลูกค้าแล้ว ➔ ปรับสถานะเป็น กำลังเช่า">
-              🚚 ส่งมอบรถแล้ว (กำลังเช่า) ➔
+            <button type="button" onclick="app.quickConfirmHandover('${b.booking_id}')" class="btn btn-success btn-sm" style="font-size:11.5px; padding:4px 10px; font-weight:600;" title="${isEn ? 'Handed vehicle over to customer ➔ Update status to Renting' : 'ส่งมอบรถให้ลูกค้าแล้ว ➔ ปรับสถานะเป็น กำลังเช่า'}">
+              🚚 ${isEn ? 'Handed Over (Renting) ➔' : 'ส่งมอบรถแล้ว (กำลังเช่า) ➔'}
             </button>` : ''}
             ${['กำลังเช่า', 'เตรียมรับคืน'].includes(b.status) ? `
-            <button type="button" onclick="app.quickConfirmReturn('${b.booking_id}')" class="btn btn-warning btn-sm" style="font-size:11.5px; padding:4px 10px; font-weight:600; color:#1E293B;" title="ลูกค้านำรถมาคืนแล้ว ➔ ปรับสถานะเป็น เสร็จสิ้น">
-              🏁 รับคืนแล้ว (เสร็จสิ้น) ➔
+            <button type="button" onclick="app.quickConfirmReturn('${b.booking_id}')" class="btn btn-warning btn-sm" style="font-size:11.5px; padding:4px 10px; font-weight:600; color:#1E293B;" title="${isEn ? 'Customer returned vehicle ➔ Update status to Completed' : 'ลูกค้านำรถมาคืนแล้ว ➔ ปรับสถานะเป็น เสร็จสิ้น'}">
+              🏁 ${isEn ? 'Returned (Completed) ➔' : 'รับคืนแล้ว (เสร็จสิ้น) ➔'}
             </button>` : ''}
           </div>
         </div>
@@ -2618,16 +3117,16 @@ class App {
     const depEl = document.getElementById("contract-dep-status");
     if (depEl) {
       let refText = b.deposit_ref ? ` (Ref: ${b.deposit_ref})` : '';
-      let slipLink = b.deposit_slip ? ` <a href="${b.deposit_slip}" target="_blank" style="color:#0284C7; font-size:12px; text-decoration:underline; font-weight:700;">[📎 ดูสลิป]</a>` : '';
+      let slipLink = b.deposit_slip ? ` <a href="${b.deposit_slip}" target="_blank" style="color:#0284C7; font-size:12px; text-decoration:underline; font-weight:700;">[📎 ${isEn ? 'View Slip' : 'ดูสลิป'}]</a>` : '';
       depEl.innerHTML = isDep 
-        ? `<span style="color:#059669;">ชำระแล้ว (฿${depAmt.toLocaleString()})${refText}${slipLink}</span>`
-        : `<span style="color:#DC2626;">รอมัดจำ (฿${depAmt.toLocaleString()})</span>`;
+        ? `<span style="color:#059669;">${isEn ? 'Paid' : 'ชำระแล้ว'} (฿${depAmt.toLocaleString()})${refText}${slipLink}</span>`
+        : `<span style="color:#DC2626;">${isEn ? 'Pending Deposit' : 'รอมัดจำ'} (฿${depAmt.toLocaleString()})</span>`;
     }
 
     const remEl = document.getElementById("contract-rem-price");
     if (remEl) {
       remEl.innerHTML = isRent 
-        ? `<span style="color:#059669;">฿0.00 (ชำระครบแล้ว)</span>`
+        ? `<span style="color:#059669;">฿0.00 (${isEn ? 'Fully Paid' : 'ชำระครบแล้ว'})</span>`
         : `<span style="color:#E85826;">฿${remP.toLocaleString('th-TH', {minimumFractionDigits: 2})}</span>`;
     }
 
@@ -2637,13 +3136,13 @@ class App {
       if (b.contract_issued) {
         pill.innerHTML = `
           <span class="badge badge-success" style="font-size:13px; padding:6px 14px;">
-            ✅ ออกสัญญาเรียบร้อยแล้ว
+            ✅ ${isEn ? 'Contract Issued' : 'ออกสัญญาเรียบร้อยแล้ว'}
           </span>
         `;
       } else {
         pill.innerHTML = `
           <button onclick="app.markContractIssued()" class="btn btn-success">
-            ✅ ยืนยันออกสัญญาเรียบร้อย
+            ✅ ${isEn ? 'Confirm Contract Issued' : 'ยืนยันออกสัญญาเรียบร้อย'}
           </button>
         `;
       }
@@ -2949,17 +3448,18 @@ class App {
   }
 
   calcWalkinDuration() {
+    const isEn = (this.currentLang === "EN");
     const thNow = this.getThaiDateTime(0);
     const sDate = document.getElementById("walkin-start-date")?.value;
     const sTime = document.getElementById("walkin-start-time")?.value || thNow.timeStr;
     const eDate = document.getElementById("walkin-end-date")?.value;
     const eTime = document.getElementById("walkin-end-time")?.value || thNow.timeStr;
 
-    if (!sDate || !eDate) return { days: 1, text: "1 วัน" };
+    if (!sDate || !eDate) return { days: 1, text: isEn ? "1 Day" : "1 วัน" };
 
     const start = new Date(`${sDate}T${sTime}`);
     const end = new Date(`${eDate}T${eTime}`);
-    if (end <= start) return { days: 1, text: "1 วัน (ขั้นต่ำ)" };
+    if (end <= start) return { days: 1, text: isEn ? "1 Day (Minimum)" : "1 วัน (ขั้นต่ำ)" };
 
     const diffMs = end - start;
     const totalHours = Math.floor(diffMs / (1000 * 60 * 60));
@@ -2972,11 +3472,15 @@ class App {
 
     if (extraHours > 4 || (extraHours === 4 && remMins > 0)) {
       billableDays = baseDays + 1;
-      desc = `${baseDays} วัน + เกินเวลา ${extraHours} ชม. ${remMins} น. (เกิน 4 ชม. ปรับเป็น 1 วัน ➔ คิด ${billableDays} วัน)`;
+      desc = isEn
+        ? `${baseDays} Days + Overtime ${extraHours} hrs ${remMins} mins (Over 4 hrs counted as 1 day ➔ Total ${billableDays} Days)`
+        : `${baseDays} วัน + เกินเวลา ${extraHours} ชม. ${remMins} น. (เกิน 4 ชม. ปรับเป็น 1 วัน ➔ คิด ${billableDays} วัน)`;
     } else if (extraHours > 0 || remMins > 0) {
-      desc = `${baseDays} วัน + เศษ ${extraHours} ชม. ${remMins} น. (ไม่เกิน 4 ชม. ➔ คิด ${billableDays} วัน)`;
+      desc = isEn
+        ? `${baseDays} Days + Extra ${extraHours} hrs ${remMins} mins (≤ 4 hrs ➔ Total ${billableDays} Days)`
+        : `${baseDays} วัน + เศษ ${extraHours} ชม. ${remMins} น. (ไม่เกิน 4 ชม. ➔ คิด ${billableDays} วัน)`;
     } else {
-      desc = `${baseDays} วัน (พอดี)`;
+      desc = isEn ? `${baseDays} Days (Exact)` : `${baseDays} วัน (พอดี)`;
     }
     if (billableDays < 1) billableDays = 1;
 
@@ -2984,6 +3488,7 @@ class App {
   }
 
   recalcWalkinPrice(fromDateChange = false) {
+    const isEn = (this.currentLang === "EN");
     const thNow = this.getThaiDateTime(0);
     const sDateInput = document.getElementById("walkin-start-date");
     const eDateInput = document.getElementById("walkin-end-date");
@@ -3011,24 +3516,24 @@ class App {
     const cTypeEl = document.getElementById("walkin-contract-type");
 
     if (fromDateChange && cTypeEl) {
-      if (dur.days >= 30) cTypeEl.value = "รายเดือน";
-      else if (dur.days >= 7) cTypeEl.value = "รายสัปดาห์";
-      else cTypeEl.value = "รายวัน";
+      if (dur.days >= 30) cTypeEl.value = isEn ? "Monthly" : "รายเดือน";
+      else if (dur.days >= 7) cTypeEl.value = isEn ? "Weekly" : "รายสัปดาห์";
+      else cTypeEl.value = isEn ? "Daily" : "รายวัน";
     }
 
-    const cType = cTypeEl?.value || "รายวัน";
+    const cType = cTypeEl?.value || (isEn ? "Daily" : "รายวัน");
     const { basePrice, breakdownText } = this.calculateCarRentalPrice(car, dur.days, cType);
     const netPrice = Math.max(0, basePrice - discount);
 
     if (summaryBox) {
       summaryBox.innerHTML = `
         <div style="line-height:1.7;">
-          ⏱️ <b>ระยะเวลาคำนวณ:</b> <span style="color:#D97706; font-weight:700;">${dur.text}</span> (${dur.days} วัน)<br/>
-          💡 <b>เรทราคา (${cType}):</b> <span style="color:#2563EB;">${breakdownText}</span><br/>
-          💰 <b>ค่าเช่าก่อนลด:</b> ฿${basePrice.toLocaleString('th-TH', {minimumFractionDigits: 2})} 
-          | 🏷️ <b>ส่วนลด:</b> ฿${discount.toLocaleString('th-TH', {minimumFractionDigits: 2})}<br/>
-          💵 <b>ยอดค่าเช่าสุทธิ:</b> <b style="color:#B45309; font-size:16px;">฿${netPrice.toLocaleString('th-TH', {minimumFractionDigits: 2})}</b> 
-          | 🛡️ <b>มัดจำประกันสัญญา:</b> <b style="color:#059669;">฿5,000.00</b>
+          ⏱️ <b>${isEn ? 'Calculated Duration:' : 'ระยะเวลาคำนวณ:'}</b> <span style="color:#D97706; font-weight:700;">${dur.text}</span> (${dur.days} ${isEn ? 'Days' : 'วัน'})<br/>
+          💡 <b>${isEn ? 'Price Rate' : 'เรทราคา'} (${cType}):</b> <span style="color:#2563EB;">${breakdownText}</span><br/>
+          💰 <b>${isEn ? 'Gross Rental:' : 'ค่าเช่าก่อนลด:'}</b> ฿${basePrice.toLocaleString('th-TH', {minimumFractionDigits: 2})} 
+          | 🏷️ <b>${isEn ? 'Discount:' : 'ส่วนลด:'}</b> ฿${discount.toLocaleString('th-TH', {minimumFractionDigits: 2})}<br/>
+          💵 <b>${isEn ? 'Net Rental Fee:' : 'ยอดค่าเช่าสุทธิ:'}</b> <b style="color:#B45309; font-size:16px;">฿${netPrice.toLocaleString('th-TH', {minimumFractionDigits: 2})}</b> 
+          | 🛡️ <b>${isEn ? 'Security Deposit:' : 'มัดจำประกันสัญญา:'}</b> <b style="color:#059669;">฿5,000.00</b>
         </div>
       `;
     }
@@ -3132,10 +3637,11 @@ class App {
     if (!tbody) return;
 
     const kw = (document.getElementById("bks-search-input")?.value || "").toLowerCase().trim();
+    const isEn = (this.currentLang === "EN");
     const stFilter = document.getElementById("bks-status-filter")?.value || "ทั้งหมด";
 
     const filtered = this.bookings.filter(b => {
-      if (stFilter !== "ทั้งหมด" && b.status !== stFilter) return false;
+      if (stFilter !== "ทั้งหมด" && stFilter !== "All" && b.status !== stFilter) return false;
       if (kw) {
         const s = `${b.booking_id} ${b.car_id} ${b.customer} ${b.status}`.toLowerCase();
         if (!s.includes(kw)) return false;
@@ -3144,7 +3650,7 @@ class App {
     });
 
     if (filtered.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:30px; color:#64748B;">ไม่พบรายการจอง</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:30px; color:#64748B;">${isEn ? 'No bookings found' : 'ไม่พบรายการจอง'}</td></tr>`;
       return;
     }
 
@@ -3153,8 +3659,12 @@ class App {
       const isRent = b.rental_paid;
       const netP = parseFloat(b.net_price || 0);
 
-      let depBadge = isDep ? '<span class="badge badge-success">มัดจำแล้ว</span>' : '<span class="badge badge-warning">รอมัดจำ</span>';
-      let rentBadge = isRent ? '<span class="badge badge-success">จ่ายครบ</span>' : '<span class="badge badge-danger">ค้างชำระ</span>';
+      let depBadge = isDep 
+        ? `<span class="badge badge-success">${isEn ? 'Deposit Paid' : 'มัดจำแล้ว'}</span>` 
+        : `<span class="badge badge-warning">${isEn ? 'Pending Deposit' : 'รอมัดจำ'}</span>`;
+      let rentBadge = isRent 
+        ? `<span class="badge badge-success">${isEn ? 'Fully Paid' : 'จ่ายครบ'}</span>` 
+        : `<span class="badge badge-danger">${isEn ? 'Unpaid' : 'ค้างชำระ'}</span>`;
 
       return `
         <tr>
@@ -3171,7 +3681,7 @@ class App {
           </td>
           <td style="font-size:12px;">
             ${b.start_date_formatted} (${b.start_time || '10:00'})<br/>
-            ถึง ${b.end_date_formatted} (${b.end_time || '10:00'})
+            ${isEn ? 'to' : 'ถึง'} ${b.end_date_formatted} (${b.end_time || '10:00'})
           </td>
           <td style="font-weight:700; color:#1E293B;">
             ฿${netP.toLocaleString()}
@@ -3189,26 +3699,26 @@ class App {
                 (b.status === 'เตรียมส่งมอบ' ? 'badge-warning' : 'badge-info')))
               }">${b.status}</span>
               ${['รอส่งมอบ', 'เตรียมส่งมอบ'].includes(b.status) ? `
-                <button type="button" onclick="app.quickConfirmHandover('${b.booking_id}')" class="btn btn-sm btn-success" style="font-size:11px; padding:2px 8px; white-space:nowrap; border-radius:4px; font-weight:600;" title="ส่งมอบรถแล้ว ➔ ปรับสถานะเป็น กำลังเช่า">
-                  🚚 ส่งมอบรถแล้ว
+                <button type="button" onclick="app.quickConfirmHandover('${b.booking_id}')" class="btn btn-sm btn-success" style="font-size:11px; padding:2px 8px; white-space:nowrap; border-radius:4px; font-weight:600;" title="${isEn ? 'Handed vehicle over ➔ Update status to Renting' : 'ส่งมอบรถแล้ว ➔ ปรับสถานะเป็น กำลังเช่า'}">
+                  🚚 ${isEn ? 'Handed Over' : 'ส่งมอบรถแล้ว'}
                 </button>
               ` : ''}
               ${['กำลังเช่า', 'เตรียมรับคืน'].includes(b.status) ? `
-                <button type="button" onclick="app.quickConfirmReturn('${b.booking_id}')" class="btn btn-sm btn-warning" style="font-size:11px; padding:2px 8px; white-space:nowrap; color:#1E293B; border-radius:4px; font-weight:600;" title="ลูกค้านำรถมาคืนแล้ว ➔ ปรับสถานะเป็น เสร็จสิ้น">
-                  🏁 รับคืนแล้ว
+                <button type="button" onclick="app.quickConfirmReturn('${b.booking_id}')" class="btn btn-sm btn-warning" style="font-size:11px; padding:2px 8px; white-space:nowrap; color:#1E293B; border-radius:4px; font-weight:600;" title="${isEn ? 'Customer returned vehicle ➔ Update status to Completed' : 'ลูกค้านำรถมาคืนแล้ว ➔ ปรับสถานะเป็น เสร็จสิ้น'}">
+                  🏁 ${isEn ? 'Returned' : 'รับคืนแล้ว'}
                 </button>
               ` : ''}
             </div>
           </td>
           <td style="text-align:center; white-space:nowrap;">
             ${(b.deposit_slip || b.rental_slip) ? `
-              <a href="${b.deposit_slip || b.rental_slip}" target="_blank" class="btn btn-sm btn-secondary" style="background:#EFF6FF; border-color:#93C5FD; color:#1D4ED8; font-weight:700;" title="ดูสลิปหลักฐานการชำระเงิน (Ref: ${b.deposit_ref || b.rental_ref || '-'})">📎 สลิป</a>
+              <a href="${b.deposit_slip || b.rental_slip}" target="_blank" class="btn btn-sm btn-secondary" style="background:#EFF6FF; border-color:#93C5FD; color:#1D4ED8; font-weight:700;" title="${isEn ? 'View Payment Slip' : 'ดูสลิปหลักฐานการชำระเงิน'} (Ref: ${b.deposit_ref || b.rental_ref || '-'})">📎 ${isEn ? 'Slip' : 'สลิป'}</a>
             ` : ''}
-            <a href="/api/pdf/contract/${b.booking_id}" target="_blank" class="btn btn-sm btn-secondary" title="สัญญาเช่า (Rental Agreement PDF)">📝</a>
-            <a href="/api/pdf/deposit-receipt/${b.booking_id}" target="_blank" class="btn btn-sm btn-secondary" title="ใบเสร็จมัดจำ (Deposit Receipt PDF)">🛡️</a>
-            <a href="/api/pdf/receipt/${b.booking_id}" target="_blank" class="btn btn-sm btn-secondary" title="ใบเสร็จค่าเช่า (Rental Receipt PDF)">🧾</a>
-            <a href="/api/pdf/job/${b.booking_id}" target="_blank" class="btn btn-sm btn-secondary" title="ใบตรวจสภาพรถ (Checklist PDF)">📋</a>
-            <button onclick="app.deleteBooking('${b.booking_id}')" class="btn btn-sm btn-danger" title="ลบรายการจอง">🗑️</button>
+            <a href="/api/pdf/contract/${b.booking_id}" target="_blank" class="btn btn-sm btn-secondary" title="${isEn ? 'Rental Agreement PDF' : 'สัญญาเช่า (Rental Agreement PDF)'}">📝</a>
+            <a href="/api/pdf/deposit-receipt/${b.booking_id}" target="_blank" class="btn btn-sm btn-secondary" title="${isEn ? 'Deposit Receipt PDF' : 'ใบเสร็จมัดจำ (Deposit Receipt PDF)'}">🛡️</a>
+            <a href="/api/pdf/receipt/${b.booking_id}" target="_blank" class="btn btn-sm btn-secondary" title="${isEn ? 'Rental Receipt PDF' : 'ใบเสร็จค่าเช่า (Rental Receipt PDF)'}">🧾</a>
+            <a href="/api/pdf/job/${b.booking_id}" target="_blank" class="btn btn-sm btn-secondary" title="${isEn ? 'Vehicle Checklist PDF' : 'ใบตรวจสภาพรถ (Checklist PDF)'}">📋</a>
+            <button onclick="app.deleteBooking('${b.booking_id}')" class="btn btn-sm btn-danger" title="${isEn ? 'Delete Booking' : 'ลบรายการจอง'}">🗑️</button>
           </td>
         </tr>
       `;

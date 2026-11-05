@@ -275,14 +275,14 @@
           <div class="booking-bar">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
               <div>
-                <h3 style="font-size:17px; font-weight:800; color:#92400E; margin:0;">
+                <h3 id="booking-bar-title" style="font-size:17px; font-weight:800; color:#92400E; margin:0;">
                   ✨ 2. INSTANT BOOKING FORM (THE BOOKING BAR) — ค้นหาและเลือกรถด่วนสำหรับเซล
                 </h3>
-                <div style="font-size:12px; color:#B45309;">
+                <div id="booking-bar-subtitle" style="font-size:12px; color:#B45309;">
                   เลือกวัน-เวลา เพื่อเช็คสถานะรถว่างและคำนวณระยะเวลาเช่าตามจริงอัตโนมัติ (เกิน 4 ชม. ปรับเป็น 1 วัน)
                 </div>
               </div>
-              <button onclick="app.openAddCustomerModal()" class="btn btn-sm btn-primary">
+              <button id="btn-add-customer-main" onclick="app.openAddCustomerModal()" class="btn btn-sm btn-primary">
                 ➕ เพิ่มลูกค้าใหม่
               </button>
             </div>
@@ -290,34 +290,34 @@
             <!-- แถวที่ 1: ดรอปดาวน์ตัวกรอง 4 ตัว (หมวดหมู่รถ, ยี่ห้อ, กรรมสิทธิ์/บริษัท, สถานะรถ) -->
             <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:12px; margin-bottom:12px;">
               <div class="form-group">
-                <label>🚘 หมวดหมู่รถ (Category)</label>
+                <label id="lbl-filter-group">🚘 หมวดหมู่รถ (Category)</label>
                 <select id="filter-group" class="form-control" onchange="app.onFilterChange()">
-                  <option value="ทั้งหมด">ทั้งหมด</option>
+                  <option id="opt-filter-group-all" value="ทั้งหมด">ทั้งหมด</option>
                 </select>
               </div>
               <div class="form-group">
-                <label>🏷️ ยี่ห้อ (Brand)</label>
+                <label id="lbl-filter-brand">🏷️ ยี่ห้อ (Brand)</label>
                 <select id="filter-brand" class="form-control" onchange="app.onFilterChange()">
-                  <option value="ทั้งหมด">ทั้งหมด</option>
+                  <option id="opt-filter-brand-all" value="ทั้งหมด">ทั้งหมด</option>
                 </select>
               </div>
               <div class="form-group">
-                <label>🏢 กรรมสิทธิ์/บริษัท</label>
+                <label id="lbl-filter-company">🏢 กรรมสิทธิ์/บริษัท</label>
                 <select id="filter-company" class="form-control" onchange="app.onFilterChange()">
-                  <option value="ทั้งหมด">ทั้งหมด</option>
+                  <option id="opt-filter-company-all" value="ทั้งหมด">ทั้งหมด</option>
                 </select>
               </div>
               <div class="form-group">
-                <label>🚦 สถานะรถ (Status)</label>
+                <label id="lbl-filter-status">🚦 สถานะรถ (Status)</label>
                 <select id="filter-status" class="form-control" onchange="app.onFilterChange()">
-                  <option value="ทั้งหมด">ทั้งหมด</option>
-                  <option value="ว่างไม่มีการจอง (🟢)">ว่างไม่มีการจอง (🟢)</option>
-                  <option value="มีการจองล่วงหน้าไว้ (🟡)">มีการจองล่วงหน้าไว้ (🟡)</option>
-                  <option value="ไม่ว่างในวันที่เลือก (🔴)">ไม่ว่างในวันที่เลือก (🔴)</option>
-                  <option value="สถานะซ่อมบำรุง (🟠)">สถานะซ่อมบำรุง (🟠)</option>
-                  <option value="ว่างพร้อมใช้งาน (🟢+🟡)">ว่างพร้อมใช้งาน (🟢+🟡)</option>
-                  <option value="กำลังเช่า">กำลังเช่า</option>
-                  <option value="ติดจอง">ติดจอง</option>
+                  <option id="opt-filter-status-all" value="ทั้งหมด">ทั้งหมด</option>
+                  <option id="opt-filter-status-avail" value="ว่างไม่มีการจอง (🟢)">ว่างไม่มีการจอง (🟢)</option>
+                  <option id="opt-filter-status-res" value="มีการจองล่วงหน้าไว้ (🟡)">มีการจองล่วงหน้าไว้ (🟡)</option>
+                  <option id="opt-filter-status-unavail" value="ไม่ว่างในวันที่เลือก (🔴)">ไม่ว่างในวันที่เลือก (🔴)</option>
+                  <option id="opt-filter-status-maint" value="สถานะซ่อมบำรุง (🟠)">สถานะซ่อมบำรุง (🟠)</option>
+                  <option id="opt-filter-status-ready" value="ว่างพร้อมใช้งาน (🟢+🟡)">ว่างพร้อมใช้งาน (🟢+🟡)</option>
+                  <option id="opt-filter-status-renting" value="กำลังเช่า">กำลังเช่า</option>
+                  <option id="opt-filter-status-booked" value="ติดจอง">ติดจอง</option>
                 </select>
               </div>
             </div>
@@ -325,21 +325,21 @@
             <!-- แถวที่ 2: ระบุวันที่ (วันที่ส่งรถ, วันที่คืนรถ) และปุ่มล้างตัวกรอง -->
             <div style="display:grid; grid-template-columns: 1.5fr 1.5fr 1fr; gap:12px; align-items:flex-end;">
               <div class="form-group">
-                <label>📅 วันที่ส่งรถ (Pick-up)</label>
+                <label id="lbl-filter-start">📅 วันที่ส่งรถ (Pick-up)</label>
                 <div style="display:flex; gap:6px;">
                   <input type="date" id="filter-start-date" class="form-control" onchange="app.onDateFilterChange()">
                   <input type="time" id="filter-start-time" class="form-control" style="width:115px;" onchange="app.onFilterChange()">
                 </div>
               </div>
               <div class="form-group">
-                <label>📅 วันที่คืนรถ (Return)</label>
+                <label id="lbl-filter-end">📅 วันที่คืนรถ (Return)</label>
                 <div style="display:flex; gap:6px;">
                   <input type="date" id="filter-end-date" class="form-control" onchange="app.onDateFilterChange()">
                   <input type="time" id="filter-end-time" class="form-control" style="width:115px;" onchange="app.onFilterChange()">
                 </div>
               </div>
               <div class="form-group">
-                <button type="button" onclick="app.resetFleetFilters()" class="btn btn-secondary" style="width:100%; height:40px; font-weight:700; background:#FAF7F2; border:1.5px solid #D1D5DB; color:#374151;">
+                <button type="button" id="btn-reset-filters" onclick="app.resetFleetFilters()" class="btn btn-secondary" style="width:100%; height:40px; font-weight:700; background:#FAF7F2; border:1.5px solid #D1D5DB; color:#374151;">
                   🔄 ล้างตัวกรอง
                 </button>
               </div>
@@ -348,13 +348,13 @@
             <!-- แถบสรุปคำนวณระยะเวลาและจำนวนรถว่าง -->
             <div id="booking-bar-calc-banner" style="margin-top:14px; padding:10px 16px; background:#FFFFFF; border-radius:8px; border:1px solid #FDE68A; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
               <div style="font-size:12.5px; color:#475569;">
-                ⏱️ ระยะเวลาเช่าคำนวณ: <b id="calc-duration-text" style="color:#D97706;">1 วันตรง (24 ชั่วโมง)</b>
+                <span id="lbl-calc-duration">⏱️ ระยะเวลาเช่าคำนวณ:</span> <b id="calc-duration-text" style="color:#D97706;">1 วันตรง (24 ชั่วโมง)</b>
               </div>
               <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
                 <div style="font-size:12.5px; color:#059669; font-weight:700;" id="calc-cars-count">
                   พบรถว่างพร้อมให้บริการ: 0 คัน
                 </div>
-                <button type="button" onclick="app.openEditCarModal('')" class="btn btn-sm btn-primary" style="font-size:12px; padding:5px 12px;">
+                <button type="button" id="btn-add-car-booking-bar" onclick="app.openEditCarModal('')" class="btn btn-sm btn-primary" style="font-size:12px; padding:5px 12px;">
                   ➕ เพิ่มรถยนต์ใหม่
                 </button>
               </div>
@@ -371,18 +371,18 @@
         <!-- TAB 2: DEPOSIT & PAYMENT -->
         <div id="subtab-deposit" class="tab-pane" style="display:none;">
           <div class="card">
-            <div class="card-title">
+            <div class="card-title" id="title-tab2">
               <span>💳</span> ชำระเงินมัดจำประกันสัญญา & การเงิน (Booking Deposit & Rental Payment)
             </div>
-            <div style="font-size:12.5px; color:var(--text-muted); margin-bottom:16px;">
+            <div id="subtitle-tab2" style="font-size:12.5px; color:var(--text-muted); margin-bottom:16px;">
               บันทึกการรับชำระเงินมัดจำ (ค่าเริ่มต้น ฿5,000 เพื่อล็อกคิวรถและออกสัญญา) และรับชำระค่าเช่าคงเหลือ
             </div>
 
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px; margin-bottom:20px;">
               <div class="form-group">
-                <label>📌 เลือกรหัสการจอง / ทะเบียนรถที่ต้องการทำรายการ:</label>
+                <label id="lbl-deposit-sel-bk">📌 เลือกรหัสการจอง / ทะเบียนรถที่ต้องการทำรายการ:</label>
                 <select id="deposit-sel-booking" class="form-control" onchange="app.onSelectDepositBooking()">
-                  <option value="">-- กรุณาเลือกรายการจอง --</option>
+                  <option id="opt-dep-sel-default" value="">-- กรุณาเลือกรายการจอง --</option>
                 </select>
               </div>
               <div id="deposit-booking-summary" style="display:none; background:#FFFBEB; border:1px solid #FDE68A; border-radius:8px; padding:12px 16px;">
@@ -394,28 +394,28 @@
             <div id="deposit-action-section" style="display:none; border-top:1px solid var(--border); padding-top:16px;">
               <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:16px; margin-bottom:14px;">
                 <div class="form-group">
-                  <label>💵 ยอดเงินมัดจำประกันสัญญา (บาท):</label>
+                  <label id="lbl-deposit-amount">💵 ยอดเงินมัดจำประกันสัญญา (บาท):</label>
                   <input type="number" id="deposit-amount-input" class="form-control" value="5000" min="0" step="500">
                 </div>
                 <div class="form-group">
-                  <label>💳 ช่องทางการชำระเงิน:</label>
+                  <label id="lbl-deposit-method">💳 ช่องทางการชำระเงิน:</label>
                   <select id="deposit-method-input" class="form-control">
-                    <option value="โอนเงิน / สแกน QR">โอนเงิน / สแกน QR</option>
-                    <option value="บัตรเครดิต">บัตรเครดิต</option>
-                    <option value="เงินสด">เงินสด</option>
-                    <option value="PayPal">PayPal</option>
+                    <option id="opt-dep-method-transfer" value="โอนเงิน / สแกน QR">โอนเงิน / สแกน QR</option>
+                    <option id="opt-dep-method-card" value="บัตรเครดิต">บัตรเครดิต</option>
+                    <option id="opt-dep-method-cash" value="เงินสด">เงินสด</option>
+                    <option id="opt-dep-method-paypal" value="PayPal">PayPal</option>
                   </select>
                 </div>
                 <div class="form-group">
-                  <label>🧾 เลข Ref สลิปโอนเงิน / รายการสลิปบัตร:</label>
+                  <label id="lbl-deposit-ref">🧾 เลข Ref สลิปโอนเงิน / รายการสลิปบัตร:</label>
                   <input type="text" id="deposit-ref-input" class="form-control" placeholder="เช่น 2026101912345678 / App Ref / EDC Trace No.">
-                  <small style="font-size:11px; color:#64748B;">ระบุเลขอ้างอิงจากสลิปธนาคาร หรือสลิปรูดบัตรเพื่อใช้เป็นหลักฐาน</small>
+                  <small id="hint-deposit-ref" style="font-size:11px; color:#64748B;">ระบุเลขอ้างอิงจากสลิปธนาคาร หรือสลิปรูดบัตรเพื่อใช้เป็นหลักฐาน</small>
                 </div>
                 <div class="form-group">
-                  <label>📎 แนบรูปสลิปหลักฐานการชำระเงิน:</label>
+                  <label id="lbl-deposit-slip">📎 แนบรูปสลิปหลักฐานการชำระเงิน:</label>
                   <div style="display:flex; align-items:center; gap:8px;">
                     <input type="file" id="deposit-slip-file" accept="image/*,application/pdf" style="display:none;" onchange="app.onDepositSlipSelected(this)">
-                    <button type="button" onclick="document.getElementById('deposit-slip-file').click()" class="btn btn-secondary" style="font-size:12.5px; padding:6px 12px; display:inline-flex; align-items:center; gap:6px; background:#F8FAFC; border:1px solid #CBD5E1; color:#334155; white-space:nowrap;">
+                    <button type="button" id="btn-choose-slip" onclick="document.getElementById('deposit-slip-file').click()" class="btn btn-secondary" style="font-size:12.5px; padding:6px 12px; display:inline-flex; align-items:center; gap:6px; background:#F8FAFC; border:1px solid #CBD5E1; color:#334155; white-space:nowrap;">
                       📁 เลือกไฟล์สลิป...
                     </button>
                     <span id="deposit-slip-status" style="font-size:12px; color:#64748B;">ยังไม่ได้แนบสลิป</span>
@@ -442,12 +442,12 @@
               <div class="form-group" style="margin-bottom:16px;">
                 <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
                   <input type="checkbox" id="deposit-also-rent" style="width:16px; height:16px;">
-                  <b style="font-size:12.5px; color:#1E3A8A;">รับชำระค่าเช่าเต็มจำนวนพร้อมกันทันที</b>
+                  <b id="lbl-deposit-also-rent" style="font-size:12.5px; color:#1E3A8A;">รับชำระค่าเช่าเต็มจำนวนพร้อมกันทันที</b>
                 </label>
               </div>
 
               <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
-                <button onclick="app.submitDeposit()" class="btn btn-primary">
+                <button id="btn-submit-deposit" onclick="app.submitDeposit()" class="btn btn-primary">
                   💳 ยืนยันบันทึกรับเงินมัดจำ & ล็อกคิวรถ
                 </button>
                 <button id="btn-save-slip-only" onclick="app.submitUpdateSlipOnly()" class="btn btn-secondary" style="display:none; background:#EFF6FF; border:1px solid #93C5FD; color:#1D4ED8; font-weight:700;" title="อัปเดตสลิปและเลข Ref เพิ่มเติม">
@@ -465,10 +465,10 @@
                 <button id="btn-dl-contract-from-dep" onclick="app.downloadContractPdf()" class="btn btn-secondary" style="display:none;">
                   📝 โหลดสัญญาเช่า (Rental Agreement PDF)
                 </button>
-                <button onclick="app.goToTabWithBooking('assign', document.getElementById('deposit-sel-booking').value)" class="btn btn-secondary" style="background:#FFF7ED; border:1px solid #FDBA74; color:#C2410C; font-weight:700;">
+                <button id="btn-goto-assign-from-dep" onclick="app.goToTabWithBooking('assign', document.getElementById('deposit-sel-booking').value)" class="btn btn-secondary" style="background:#FFF7ED; border:1px solid #FDBA74; color:#C2410C; font-weight:700;">
                   🚚 ไปหน้าออกใบงานส่ง/รับรถ (แท็บ 3) ➔
                 </button>
-                <button onclick="app.goToTabWithBooking('contract', document.getElementById('deposit-sel-booking').value)" class="btn btn-secondary" style="background:#FAF7F2; border:1px solid #CBD5E1; color:#374151;">
+                <button id="btn-goto-contract-from-dep" onclick="app.goToTabWithBooking('contract', document.getElementById('deposit-sel-booking').value)" class="btn btn-secondary" style="background:#FAF7F2; border:1px solid #CBD5E1; color:#374151;">
                   📝 ไปหน้าจัดทำสัญญา (แท็บ 4) ➔
                 </button>
               </div>
@@ -481,29 +481,29 @@
           <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
             <!-- Column 1: Dispatch Assignment -->
             <div class="card">
-              <div class="card-title">
+              <div class="card-title" id="title-tab3-disp">
                 <span>🚚</span> ออกใบงานส่งรถ (Dispatch Work Order)
               </div>
               <div class="form-group" style="margin-bottom:14px;">
-                <label>เลือกรหัสการจองสำหรับส่งมอบรถ:</label>
+                <label id="lbl-assign-disp-bk">เลือกรหัสการจองสำหรับส่งมอบรถ:</label>
                 <select id="assign-disp-bk" class="form-control" onchange="app.onSelectAssignDispBooking()">
-                  <option value="">-- เลือกรหัสการจอง --</option>
+                  <option id="opt-assign-disp-default" value="">-- เลือกรหัสการจอง --</option>
                 </select>
               </div>
               <div id="assign-disp-form" style="display:none;">
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:12px;">
                   <div class="form-group">
-                    <label>📅 วันที่เริ่มเช่า (วันส่งมอบ):</label>
+                    <label id="lbl-assign-disp-start">📅 วันที่เริ่มเช่า (วันส่งมอบ):</label>
                     <input type="date" id="assign-disp-start-date" class="form-control" onchange="document.getElementById('assign-disp-date').value = this.value">
                   </div>
                   <div class="form-group">
-                    <label>📅 กำหนดคืนรถ:</label>
+                    <label id="lbl-assign-disp-end">📅 กำหนดคืนรถ:</label>
                     <input type="date" id="assign-disp-end-date" class="form-control">
                   </div>
                 </div>
                 <div id="assign-disp-status-banner" style="margin-bottom:12px;"></div>
                 <div class="form-group" style="margin-bottom:12px;">
-                  <label>👤 เลือกพนักงานจัดส่ง / คนขับรถ:</label>
+                  <label id="lbl-assign-disp-worker">👤 เลือกพนักงานจัดส่ง / คนขับรถ:</label>
                   <select id="assign-disp-worker" class="form-control">
                     <option value="admin">admin (ผู้ดูแลระบบ (Admin)) [Admin]</option>
                     <option value="chaiwat.u">chaiwat.u [Staff]</option>
@@ -513,29 +513,29 @@
                   </select>
                 </div>
                 <div class="form-group" style="margin-bottom:12px;">
-                  <label>📍 สถานที่นัดหมายส่งมอบรถ:</label>
+                  <label id="lbl-assign-disp-loc">📍 สถานที่นัดหมายส่งมอบรถ:</label>
                   <textarea id="assign-disp-loc" class="form-control" rows="2" placeholder="เช่น สนามบินสุวรรณภูมิ หรือใส่ Google Maps link"></textarea>
                 </div>
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:16px;">
                   <div class="form-group">
-                    <label>📅 วันที่นัดส่งมอบรถ:</label>
+                    <label id="lbl-assign-disp-date">📅 วันที่นัดส่งมอบรถ:</label>
                     <input type="date" id="assign-disp-date" class="form-control" onchange="document.getElementById('assign-disp-start-date').value = this.value">
                   </div>
                   <div class="form-group">
-                    <label>⏰ เวลานัดส่งมอบรถ:</label>
+                    <label id="lbl-assign-disp-time">⏰ เวลานัดส่งมอบรถ:</label>
                     <input type="time" id="assign-disp-time" class="form-control">
                   </div>
                 </div>
                 <div style="display:flex; flex-direction:column; gap:8px;">
                   <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-                    <button type="button" onclick="app.submitAssign('Dispatch', 'prepare')" class="btn btn-secondary" style="width:100%; font-weight:700;" title="บันทึกข้อมูลเตรียมนัดหมาย (สถานะ: เตรียมส่งมอบ)">
+                    <button type="button" id="btn-assign-disp-sched" onclick="app.submitAssign('Dispatch', 'prepare')" class="btn btn-secondary" style="width:100%; font-weight:700;" title="บันทึกข้อมูลเตรียมนัดหมาย (สถานะ: เตรียมส่งมอบ)">
                       📋 นัดหมาย (เตรียมส่งมอบ)
                     </button>
-                    <button type="button" onclick="app.submitAssign('Dispatch', 'handover')" class="btn btn-primary" style="width:100%; background:#16a34a; border-color:#16a34a; font-weight:700;" title="ส่งมอบรถให้ลูกค้าจริงแล้ว (สถานะ: กำลังเช่า)">
+                    <button type="button" id="btn-assign-disp-handover" onclick="app.submitAssign('Dispatch', 'handover')" class="btn btn-primary" style="width:100%; background:#16a34a; border-color:#16a34a; font-weight:700;" title="ส่งมอบรถให้ลูกค้าจริงแล้ว (สถานะ: กำลังเช่า)">
                       🚚 ส่งมอบรถแล้ว (กำลังเช่า) ➔
                     </button>
                   </div>
-                  <button type="button" onclick="app.goToTabWithBooking('contract', document.getElementById('assign-disp-bk').value)" class="btn btn-secondary" style="width:100%; background:#FAF7F2; border:1px solid #CBD5E1; color:#374151; font-weight:700;">
+                  <button type="button" id="btn-assign-disp-goto-contract" onclick="app.goToTabWithBooking('contract', document.getElementById('assign-disp-bk').value)" class="btn btn-secondary" style="width:100%; background:#FAF7F2; border:1px solid #CBD5E1; color:#374151; font-weight:700;">
                     📝 ไปหน้าทำสัญญา ➔
                   </button>
                 </div>
@@ -544,29 +544,29 @@
 
             <!-- Column 2: Return Assignment -->
             <div class="card">
-              <div class="card-title">
+              <div class="card-title" id="title-tab3-ret">
                 <span>🔙</span> ออกใบงานรับรถคืน (Return Work Order)
               </div>
               <div class="form-group" style="margin-bottom:14px;">
-                <label>เลือกรหัสการจองสำหรับรับรถคืน:</label>
+                <label id="lbl-assign-ret-bk">เลือกรหัสการจองสำหรับรับรถคืน:</label>
                 <select id="assign-ret-bk" class="form-control" onchange="app.onSelectAssignRetBooking()">
-                  <option value="">-- เลือกรหัสการจอง --</option>
+                  <option id="opt-assign-ret-default" value="">-- เลือกรหัสการจอง --</option>
                 </select>
               </div>
               <div id="assign-ret-form" style="display:none;">
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:12px;">
                   <div class="form-group">
-                    <label>📅 วันที่เริ่มเช่า:</label>
+                    <label id="lbl-assign-ret-start">📅 วันที่เริ่มเช่า:</label>
                     <input type="date" id="assign-ret-start-date" class="form-control">
                   </div>
                   <div class="form-group">
-                    <label>📅 กำหนดคืนรถ (วันรับคืน):</label>
+                    <label id="lbl-assign-ret-end">📅 กำหนดคืนรถ (วันรับคืน):</label>
                     <input type="date" id="assign-ret-end-date" class="form-control" onchange="document.getElementById('assign-ret-date').value = this.value">
                   </div>
                 </div>
                 <div id="assign-ret-status-banner" style="margin-bottom:12px;"></div>
                 <div class="form-group" style="margin-bottom:12px;">
-                  <label>👤 เลือกพนักงานรับรถคืน / คนขับรถ:</label>
+                  <label id="lbl-assign-ret-worker">👤 เลือกพนักงานรับรถคืน / คนขับรถ:</label>
                   <select id="assign-ret-worker" class="form-control">
                     <option value="admin">admin (ผู้ดูแลระบบ (Admin)) [Admin]</option>
                     <option value="chaiwat.u">chaiwat.u [Staff]</option>
@@ -576,24 +576,24 @@
                   </select>
                 </div>
                 <div class="form-group" style="margin-bottom:12px;">
-                  <label>📍 สถานที่นัดหมายรับรถคืน:</label>
+                  <label id="lbl-assign-ret-loc">📍 สถานที่นัดหมายรับรถคืน:</label>
                   <textarea id="assign-ret-loc" class="form-control" rows="2" placeholder="เช่น สถานที่เดิม หรือ โรงแรม..."></textarea>
                 </div>
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:16px;">
                   <div class="form-group">
-                    <label>📅 วันที่นัดรับรถคืน:</label>
+                    <label id="lbl-assign-ret-date">📅 วันที่นัดรับรถคืน:</label>
                     <input type="date" id="assign-ret-date" class="form-control" onchange="document.getElementById('assign-ret-end-date').value = this.value">
                   </div>
                   <div class="form-group">
-                    <label>⏰ เวลานัดรับรถคืน:</label>
+                    <label id="lbl-assign-ret-time">⏰ เวลานัดรับรถคืน:</label>
                     <input type="time" id="assign-ret-time" class="form-control">
                   </div>
                 </div>
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-                  <button type="button" onclick="app.submitAssign('Return', 'prepare')" class="btn btn-secondary" style="width:100%; font-weight:700;" title="บันทึกเตรียมนัดหมายรับรถคืน (สถานะ: เตรียมรับคืน)">
+                  <button type="button" id="btn-assign-ret-sched" onclick="app.submitAssign('Return', 'prepare')" class="btn btn-secondary" style="width:100%; font-weight:700;" title="บันทึกเตรียมนัดหมายรับรถคืน (สถานะ: เตรียมรับคืน)">
                     📋 นัดรับคืน (เตรียมรับคืน)
                   </button>
-                  <button type="button" onclick="app.submitAssign('Return', 'complete')" class="btn btn-warning" style="width:100%; background:#f59e0b; border-color:#d97706; font-weight:700; color:#1F2937;" title="ลูกค้านำรถกลับมาคืนและปิดงาน (สถานะ: เสร็จสิ้น)">
+                  <button type="button" id="btn-assign-ret-complete" onclick="app.submitAssign('Return', 'complete')" class="btn btn-warning" style="width:100%; background:#f59e0b; border-color:#d97706; font-weight:700; color:#1F2937;" title="ลูกค้านำรถกลับมาคืนและปิดงาน (สถานะ: เสร็จสิ้น)">
                     🏁 รับคืนแล้ว (เสร็จสิ้น) ➔
                   </button>
                 </div>
@@ -606,21 +606,21 @@
         <div id="subtab-contract" class="tab-pane" style="display:none;">
           <!-- 1. Document Center & Contract Review Card -->
           <div class="card" style="margin-bottom:20px;">
-            <div class="card-title">
+            <div class="card-title" id="title-tab4">
               <span>📝</span> ศูนย์จัดทำและตรวจสอบสัญญาเช่า (Rental Contract Formulation & Inspection)
             </div>
-            <div style="font-size:12.5px; color:var(--text-muted); margin-bottom:16px;">
+            <div id="subtitle-tab4" style="font-size:12.5px; color:var(--text-muted); margin-bottom:16px;">
               สร้างและดาวน์โหลดสัญญาเช่ารถยนต์ทางการ (Official Rental Agreement PDF) พิกัดมาตรฐานเป๊ะ 100% พร้อมใบเสร็จรับเงิน
             </div>
 
             <div style="display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap; margin-bottom:20px; max-width:680px;">
               <div class="form-group" style="flex:1; min-width:280px;">
-                <label>📋 เลือกสัญญาเช่าเพื่อตรวจสอบและดาวน์โหลดเอกสาร PDF:</label>
+                <label id="lbl-contract-sel-bk">📋 เลือกสัญญาเช่าเพื่อตรวจสอบและดาวน์โหลดเอกสาร PDF:</label>
                 <select id="contract-sel-bk" class="form-control" onchange="app.onSelectContractBooking()">
-                  <option value="">-- กรุณาเลือกรายการจอง --</option>
+                  <option id="opt-contract-sel-default" value="">-- กรุณาเลือกรายการจอง --</option>
                 </select>
               </div>
-              <button onclick="app.populateBookingDropdowns(); app.onSelectContractBooking();" class="btn btn-secondary btn-sm" style="height:38px; padding:0 14px;">
+              <button id="btn-refresh-contracts" onclick="app.populateBookingDropdowns(); app.onSelectContractBooking();" class="btn btn-secondary btn-sm" style="height:38px; padding:0 14px;">
                 🔄 รีเฟรชรายการ
               </button>
             </div>
@@ -640,29 +640,29 @@
               <!-- 3 Info Columns -->
               <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:16px; margin-bottom:16px;">
                 <div style="background:white; border:1px solid #E2E8F0; border-radius:8px; padding:14px;">
-                  <b style="color:#1E3A8A; font-size:13px;">👤 ข้อมูลผู้เช่า (Customer)</b>
+                  <b id="hdr-contract-cust-info" style="color:#1E3A8A; font-size:13px;">👤 ข้อมูลผู้เช่า (Customer)</b>
                   <div id="contract-cust-info" style="font-size:12px; margin-top:8px; line-height:1.7;">-</div>
                 </div>
                 <div style="background:white; border:1px solid #E2E8F0; border-radius:8px; padding:14px;">
-                  <b style="color:#1E3A8A; font-size:13px;">🚘 ข้อมูลรถยนต์ (Vehicle)</b>
+                  <b id="hdr-contract-car-info" style="color:#1E3A8A; font-size:13px;">🚘 ข้อมูลรถยนต์ (Vehicle)</b>
                   <div id="contract-car-info" style="font-size:12px; margin-top:8px; line-height:1.7;">-</div>
                 </div>
                 <div style="background:white; border:1px solid #E2E8F0; border-radius:8px; padding:14px;">
-                  <b style="color:#1E3A8A; font-size:13px;">📅 ระยะเวลา & กำหนดการ (Schedule)</b>
+                  <b id="hdr-contract-sched-info" style="color:#1E3A8A; font-size:13px;">📅 ระยะเวลา & กำหนดการ (Schedule)</b>
                   <div id="contract-sched-info" style="font-size:12px; margin-top:8px; line-height:1.7;">-</div>
                 </div>
               </div>
 
               <!-- Price Box -->
               <div style="background:#FFF7ED; border:1px solid #FED7AA; border-radius:8px; padding:12px 18px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:18px;">
-                <span>💰 <b>ยอดค่าเช่าตามสัญญา:</b> <b id="contract-net-price" style="color:#92400E; font-size:14px;">฿0.00</b></span>
-                <span>🛡️ <b>มัดจำประกันสัญญา:</b> <b id="contract-dep-status" style="color:#15803D; font-size:14px;">฿5,000.00</b></span>
-                <span>🧾 <b>ยอดค่าเช่าคงเหลือ:</b> <b id="contract-rem-price" style="color:#E85826; font-size:16px;">฿0.00</b></span>
+                <span>💰 <b id="lbl-contract-net-price">ยอดค่าเช่าตามสัญญา:</b> <b id="contract-net-price" style="color:#92400E; font-size:14px;">฿0.00</b></span>
+                <span>🛡️ <b id="lbl-contract-dep-status">มัดจำประกันสัญญา:</b> <b id="contract-dep-status" style="color:#15803D; font-size:14px;">฿5,000.00</b></span>
+                <span>🧾 <b id="lbl-contract-rem-price">ยอดค่าเช่าคงเหลือ:</b> <b id="contract-rem-price" style="color:#E85826; font-size:16px;">฿0.00</b></span>
               </div>
 
               <!-- Actions & Document Center -->
               <div style="border-top:1px solid #E2E8F0; padding-top:16px;">
-                <div style="font-size:13px; font-weight:700; color:#1F2937; margin-bottom:10px;">
+                <div id="hdr-contract-doc-center" style="font-size:13px; font-weight:700; color:#1F2937; margin-bottom:10px;">
                   📥 พิมพ์และดาวน์โหลดเอกสารทางการ (Document Center):
                 </div>
                 <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
@@ -682,11 +682,11 @@
 
                 <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin-top:14px; border-top:1px dashed #CBD5E1; padding-top:12px;">
                   <span id="contract-issued-status-pill">
-                    <button onclick="app.markContractIssued()" class="btn btn-success">
+                    <button id="btn-mark-contract-issued" onclick="app.markContractIssued()" class="btn btn-success">
                       ✅ ยืนยันออกสัญญาเรียบร้อย
                     </button>
                   </span>
-                  <button onclick="app.goToDepositFromContract()" class="btn btn-primary" style="background:#0284C7; border-color:#0284C7;">
+                  <button id="btn-goto-deposit-from-contract" onclick="app.goToDepositFromContract()" class="btn btn-primary" style="background:#0284C7; border-color:#0284C7;">
                     💳 ไปหน้าชำระเงิน / ปิดยอดคงเหลือ ➔
                   </button>
                 </div>
@@ -697,7 +697,7 @@
           <!-- 2. Walk-in Direct Contract Formulation Form -->
           <div class="expander-card" id="expander-walkin-contract">
             <div class="expander-header open" onclick="app.toggleExpander('expander-walkin-contract')">
-              <div class="expander-title">
+              <div class="expander-title" id="title-walkin-contract">
                 <span>➕</span> สร้างสัญญาเช่าใหม่โดยตรง (Walk-in Direct Contract Formulation)
               </div>
               <div class="expander-indicator">
@@ -705,25 +705,25 @@
               </div>
             </div>
             <div class="expander-body" id="body-expander-walkin-contract" style="display:block;">
-              <div style="font-size:12.5px; color:var(--text-muted); margin-bottom:16px;">
+              <div id="subtitle-walkin-contract" style="font-size:12.5px; color:var(--text-muted); margin-bottom:16px;">
                 สำหรับกรณีลูกค้า Walk-in เข้ามาที่หน้าร้านโดยตรง สามารถกรอกรายละเอียด ออกสัญญาเช่า และดาวน์โหลด PDF ได้ทันที
               </div>
 
               <!-- Form Fields -->
               <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:14px; margin-bottom:14px;">
                 <div class="form-group">
-                  <label>🚘 เลือกรถยนต์:</label>
+                  <label id="lbl-walkin-car">🚘 เลือกรถยนต์:</label>
                   <select id="walkin-car-select" class="form-control" onchange="app.recalcWalkinPrice()">
-                    <option value="">-- เลือกรถยนต์จากฝูงรถ --</option>
+                    <option id="opt-walkin-car-default" value="">-- เลือกรถยนต์จากฝูงรถ --</option>
                   </select>
                 </div>
                 <div class="form-group">
                   <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-                    <label style="margin:0;">👤 เลือกลูกค้าผู้เช่า:</label>
+                    <label id="lbl-walkin-cust" style="margin:0;">👤 เลือกลูกค้าผู้เช่า:</label>
                     <div style="display:flex; gap:6px;">
-                      <button type="button" onclick="app.openEditSelectedCustomerModal('walkin')" class="btn btn-sm btn-secondary" style="padding:2px 8px; font-size:11.5px; background:#FAF7F2; border:1px solid #CBD5E1; color:#374151;" title="ดูและแก้ไขข้อมูลลูกค้าที่เลือก">✏️ ดู/แก้ไข</button>
-                      <button type="button" onclick="app.deleteSelectedCustomer('walkin')" class="btn btn-sm btn-danger" style="padding:2px 8px; font-size:11.5px;" title="ลบข้อมูลลูกค้านี้ (กรณีบันทึกผิด)">🗑️ ลบ</button>
-                      <button type="button" onclick="app.openAddCustomerModal()" class="btn btn-sm btn-primary" style="padding:2px 8px; font-size:11.5px;">➕ เพิ่มใหม่</button>
+                      <button type="button" id="btn-walkin-cust-edit" onclick="app.openEditSelectedCustomerModal('walkin')" class="btn btn-sm btn-secondary" style="padding:2px 8px; font-size:11.5px; background:#FAF7F2; border:1px solid #CBD5E1; color:#374151;" title="ดูและแก้ไขข้อมูลลูกค้าที่เลือก">✏️ ดู/แก้ไข</button>
+                      <button type="button" id="btn-walkin-cust-del" onclick="app.deleteSelectedCustomer('walkin')" class="btn btn-sm btn-danger" style="padding:2px 8px; font-size:11.5px;" title="ลบข้อมูลลูกค้านี้ (กรณีบันทึกผิด)">🗑️ ลบ</button>
+                      <button type="button" id="btn-walkin-cust-add" onclick="app.openAddCustomerModal()" class="btn btn-sm btn-primary" style="padding:2px 8px; font-size:11.5px;">➕ เพิ่มใหม่</button>
                     </div>
                   </div>
                   <select id="walkin-cust-select" class="form-control" onchange="app.onSelectWalkinCustomer()"></select>
@@ -733,14 +733,14 @@
 
               <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:14px; margin-bottom:14px;">
                 <div class="form-group">
-                  <label>📅 วันที่ส่งมอบรถ (Pick-up เวลาไทย):</label>
+                  <label id="lbl-walkin-start">📅 วันที่ส่งมอบรถ (Pick-up เวลาไทย):</label>
                   <div style="display:flex; gap:6px;">
                     <input type="date" id="walkin-start-date" class="form-control" onchange="app.recalcWalkinPrice()">
                     <input type="time" id="walkin-start-time" class="form-control" style="width:110px;" onchange="app.recalcWalkinPrice()">
                   </div>
                 </div>
                 <div class="form-group">
-                  <label>📅 วันที่คืนรถ (Return เวลาไทย):</label>
+                  <label id="lbl-walkin-end">📅 วันที่คืนรถ (Return เวลาไทย):</label>
                   <div style="display:flex; gap:6px;">
                     <input type="date" id="walkin-end-date" class="form-control" onchange="app.recalcWalkinPrice()">
                     <input type="time" id="walkin-end-time" class="form-control" style="width:110px;" onchange="app.recalcWalkinPrice()">
@@ -750,23 +750,23 @@
 
               <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:14px; margin-bottom:14px;">
                 <div class="form-group">
-                  <label>📋 ประเภทสัญญา:</label>
+                  <label id="lbl-walkin-type">📋 ประเภทสัญญา:</label>
                   <select id="walkin-contract-type" class="form-control" onchange="app.recalcWalkinPrice()">
-                    <option value="รายวัน">รายวัน (Daily)</option>
-                    <option value="รายสัปดาห์">รายสัปดาห์ (Weekly)</option>
-                    <option value="รายเดือน">รายเดือน (Monthly)</option>
+                    <option id="opt-walkin-type-daily" value="รายวัน">รายวัน (Daily)</option>
+                    <option id="opt-walkin-type-weekly" value="รายสัปดาห์">รายสัปดาห์ (Weekly)</option>
+                    <option id="opt-walkin-type-monthly" value="รายเดือน">รายเดือน (Monthly)</option>
                   </select>
                 </div>
                 <div class="form-group">
-                  <label>🏷️ ส่วนลดพิเศษ (บาท):</label>
+                  <label id="lbl-walkin-discount">🏷️ ส่วนลดพิเศษ (บาท):</label>
                   <input type="number" id="walkin-discount" class="form-control" value="0" min="0" step="100" oninput="app.recalcWalkinPrice()">
                 </div>
                 <div class="form-group">
-                  <label>👤 พนักงานจัดส่งมอบรถ:</label>
+                  <label id="lbl-walkin-worker">👤 พนักงานจัดส่งมอบรถ:</label>
                   <select id="walkin-worker-select" class="form-control"></select>
                 </div>
                 <div class="form-group">
-                  <label>📍 สถานที่ส่งมอบรถ:</label>
+                  <label id="lbl-walkin-loc">📍 สถานที่ส่งมอบรถ:</label>
                   <input type="text" id="walkin-loc" class="form-control" placeholder="เช่น หน้าร้านสาขา หรือ โรงแรม...">
                 </div>
               </div>
@@ -776,7 +776,7 @@
                 ⏱️ คำนวณระยะเวลาเช่า: <b style="color:#D97706;">1 วัน</b>
               </div>
 
-              <button type="button" onclick="app.submitWalkinContract()" class="btn btn-primary" style="width:100%; height:44px; font-weight:700; font-size:14px;">
+              <button type="button" id="btn-submit-walkin" onclick="app.submitWalkinContract()" class="btn btn-primary" style="width:100%; height:44px; font-weight:700; font-size:14px;">
                 💾 บันทึกสร้างสัญญาเช่า Walk-in & เปิดเอกสาร PDF ทันที ➔
               </button>
             </div>
@@ -787,20 +787,20 @@
         <div id="subtab-dashboard_bks" class="tab-pane" style="display:none;">
           <div class="card">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
-              <div class="card-title" style="margin:0;">
+              <div class="card-title" id="title-tab5" style="margin:0;">
                 <span>📋</span> แผงควบคุมคิวการจอง & รายการทั้งหมด (Master Bookings List)
               </div>
               <div style="display:flex; gap:10px;">
                 <input type="text" id="bks-search-input" class="form-control" placeholder="🔍 ค้นหารหัส, ลูกค้า, ทะเบียน..." style="width:220px;" oninput="app.renderBookingsTable()">
                 <select id="bks-status-filter" class="form-control" style="width:160px;" onchange="app.renderBookingsTable()">
-                  <option value="ทั้งหมด">สถานะ: ทั้งหมด</option>
-                  <option value="รอชำระมัดจำ">รอชำระมัดจำ</option>
-                  <option value="รอส่งมอบ">รอส่งมอบ</option>
-                  <option value="เตรียมส่งมอบ">เตรียมส่งมอบ</option>
-                  <option value="กำลังเช่า">กำลังเช่า</option>
-                  <option value="เตรียมรับคืน">เตรียมรับคืน</option>
-                  <option value="เสร็จสิ้น">เสร็จสิ้น</option>
-                  <option value="ยกเลิก">ยกเลิก</option>
+                  <option id="opt-bks-status-all" value="ทั้งหมด">สถานะ: ทั้งหมด</option>
+                  <option id="opt-bks-status-dep" value="รอชำระมัดจำ">รอชำระมัดจำ</option>
+                  <option id="opt-bks-status-disp-wait" value="รอส่งมอบ">รอส่งมอบ</option>
+                  <option id="opt-bks-status-disp-prep" value="เตรียมส่งมอบ">เตรียมส่งมอบ</option>
+                  <option id="opt-bks-status-renting" value="กำลังเช่า">กำลังเช่า</option>
+                  <option id="opt-bks-status-ret-prep" value="เตรียมรับคืน">เตรียมรับคืน</option>
+                  <option id="opt-bks-status-done" value="เสร็จสิ้น">เสร็จสิ้น</option>
+                  <option id="opt-bks-status-cancel" value="ยกเลิก">ยกเลิก</option>
                 </select>
               </div>
             </div>
@@ -809,14 +809,14 @@
               <table class="custom-table" id="bookings-master-table">
                 <thead>
                   <tr>
-                    <th>รหัสการจอง</th>
-                    <th>รถยนต์</th>
-                    <th>ลูกค้า</th>
-                    <th>ระยะเวลาเช่า</th>
-                    <th>ค่าเช่าสุทธิ</th>
-                    <th>สถานะมัดจำ / ค่าเช่า</th>
-                    <th>สถานะงาน</th>
-                    <th style="text-align:center;">จัดการ</th>
+                    <th id="th-bks-id">รหัสการจอง</th>
+                    <th id="th-bks-car">รถยนต์</th>
+                    <th id="th-bks-cust">ลูกค้า</th>
+                    <th id="th-bks-dur">ระยะเวลาเช่า</th>
+                    <th id="th-bks-net">ค่าเช่าสุทธิ</th>
+                    <th id="th-bks-payment">สถานะมัดจำ / ค่าเช่า</th>
+                    <th id="th-bks-status">สถานะงาน</th>
+                    <th id="th-bks-action" style="text-align:center;">จัดการ</th>
                   </tr>
                 </thead>
                 <tbody id="bookings-table-body">
@@ -1644,9 +1644,9 @@
           <img id="edit-car-img-preview" src="https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&q=80&w=500" alt="Car Preview" style="width:100%; height:115px; object-fit:cover; border-radius:8px; border:1px solid #CBD5E1;">
         </div>
         <div>
-          <label style="font-size:12.5px; font-weight:700; color:#1E293B; display:block; margin-bottom:6px;">📸 อัปโหลดรูปรถยนต์ (JPG, PNG, WEBP):</label>
+          <label id="lbl-modal-car-photo" style="font-size:12.5px; font-weight:700; color:#1E293B; display:block; margin-bottom:6px;">📸 อัปโหลดรูปรถยนต์ (JPG, PNG, WEBP):</label>
           <input type="file" id="edit-car-photo-file" class="form-control" accept="image/*" style="margin-bottom:8px;" onchange="app.onEditCarModalPhotoSelected(this)">
-          <label style="font-size:11.5px; color:#64748B; display:block; margin-bottom:3px;">หรือใส่ลิงก์รูปภาพ (Image URL):</label>
+          <label id="lbl-modal-car-imgurl" style="font-size:11.5px; color:#64748B; display:block; margin-bottom:3px;">หรือใส่ลิงก์รูปภาพ (Image URL):</label>
           <input type="text" id="edit-car-image-url" class="form-control" placeholder="https://..." oninput="if(this.value) document.getElementById('edit-car-img-preview').src = this.value">
         </div>
       </div>
@@ -1654,14 +1654,14 @@
       <input type="hidden" id="edit-car-original-plate" value="">
       <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; margin-bottom:12px;">
         <div class="form-group">
-          <label>🚘 เลขทะเบียนรถ (Plate)*</label>
+          <label id="lbl-modal-car-plate">🚘 เลขทะเบียนรถ (Plate)*</label>
           <input type="text" id="edit-car-plate" class="form-control" placeholder="เช่น 5ขศ 5181" oninput="app.checkDuplicatePlate(this.value)">
           <div id="edit-car-plate-warn" style="display:none; font-size:11.5px; color:#DC2626; font-weight:600; margin-top:4px;">
             ⚠️ ทะเบียนนี้มีอยู่ในระบบแล้ว
           </div>
         </div>
         <div class="form-group">
-          <label>🏷️ ยี่ห้อ (Brand)*</label>
+          <label id="lbl-modal-car-brand">🏷️ ยี่ห้อ (Brand)*</label>
           <input type="text" id="edit-car-brand" class="form-control" list="car-brands-list" placeholder="เช่น Toyota">
           <datalist id="car-brands-list">
             <option value="Toyota"></option>
@@ -1680,41 +1680,41 @@
           </datalist>
         </div>
         <div class="form-group">
-          <label>🚗 รุ่นรถยนต์ (Model)*</label>
+          <label id="lbl-modal-car-model">🚗 รุ่นรถยนต์ (Model)*</label>
           <input type="text" id="edit-car-model" class="form-control" placeholder="เช่น Yaris Ativ">
         </div>
       </div>
 
       <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; margin-bottom:12px;">
         <div class="form-group">
-          <label>💺 กลุ่มรถ (Car Group)*</label>
+          <label id="lbl-modal-car-group">💺 กลุ่มรถ (Car Group)*</label>
           <select id="edit-car-group" class="form-control">
-            <option value="รถเก๋ง (Sedan/Hatchback)">รถเก๋ง (Sedan/Hatchback)</option>
-            <option value="SUV">SUV</option>
-            <option value="รถตู้ (Van)">รถตู้ (Van)</option>
-            <option value="รถกระบะ">รถกระบะ</option>
-            <option value="รถสปอร์ต/หรูหรา">รถสปอร์ต/หรูหรา</option>
+            <option id="opt-modal-group-sedan" value="รถเก๋ง (Sedan/Hatchback)">รถเก๋ง (Sedan/Hatchback)</option>
+            <option id="opt-modal-group-suv" value="SUV">SUV</option>
+            <option id="opt-modal-group-van" value="รถตู้ (Van)">รถตู้ (Van)</option>
+            <option id="opt-modal-group-pickup" value="รถกระบะ">รถกระบะ</option>
+            <option id="opt-modal-group-sport" value="รถสปอร์ต/หรูหรา">รถสปอร์ต/หรูหรา</option>
           </select>
         </div>
         <div class="form-group">
-          <label>⛽ ระบบเชื้อเพลิง*</label>
+          <label id="lbl-modal-car-fuel">⛽ ระบบเชื้อเพลิง*</label>
           <select id="edit-car-fuel" class="form-control">
-            <option value="เบนซิน">เบนซิน</option>
-            <option value="เบนซิน/Hybrid">เบนซิน/Hybrid</option>
-            <option value="ดีเซล">ดีเซล</option>
-            <option value="ดีเซล/Hybrid">ดีเซล/Hybrid</option>
-            <option value="ไฟฟ้า (EV)">ไฟฟ้า (EV)</option>
+            <option id="opt-modal-fuel-gasoline" value="เบนซิน">เบนซิน</option>
+            <option id="opt-modal-fuel-gas-hybrid" value="เบนซิน/Hybrid">เบนซิน/Hybrid</option>
+            <option id="opt-modal-fuel-diesel" value="ดีเซล">ดีเซล</option>
+            <option id="opt-modal-fuel-die-hybrid" value="ดีเซล/Hybrid">ดีเซล/Hybrid</option>
+            <option id="opt-modal-fuel-ev" value="ไฟฟ้า (EV)">ไฟฟ้า (EV)</option>
           </select>
         </div>
         <div class="form-group">
-          <label>⚙️ ขนาดเครื่องยนต์ (CC / EV)</label>
+          <label id="lbl-modal-car-cc">⚙️ ขนาดเครื่องยนต์ (CC / EV)</label>
           <input type="text" id="edit-car-cc" class="form-control" placeholder="เช่น 1200 หรือ 1800">
         </div>
       </div>
 
       <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; margin-bottom:12px;">
         <div class="form-group">
-          <label>🏢 เจ้าของกรรมสิทธิ์ / บริษัท*</label>
+          <label id="lbl-modal-car-company">🏢 เจ้าของกรรมสิทธิ์ / บริษัท*</label>
           <input type="text" id="edit-car-company" class="form-control" list="car-companies-list" placeholder="เช่น Sawasdee Rent A Car">
           <datalist id="car-companies-list">
             <option value="Sawasdee Rent A Car"></option>
@@ -1725,94 +1725,94 @@
           </datalist>
         </div>
         <div class="form-group">
-          <label>🎨 สีตัวถัง (Color)</label>
+          <label id="lbl-modal-car-color">🎨 สีตัวถัง (Color)</label>
           <input type="text" id="edit-car-color" class="form-control" placeholder="เช่น ขาว, ดำ, เทา">
         </div>
         <div class="form-group">
-          <label>🔢 เลขไมล์สะสม (km)</label>
+          <label id="lbl-modal-car-mileage">🔢 เลขไมล์สะสม (km)</label>
           <input type="text" id="edit-car-mileage" class="form-control" placeholder="เช่น 25,000">
         </div>
       </div>
 
       <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; margin-bottom:12px;">
         <div class="form-group">
-          <label>💰 ค่าเช่ารายวัน (บาท)*</label>
+          <label id="lbl-modal-car-pday">💰 ค่าเช่ารายวัน (บาท)*</label>
           <input type="number" id="edit-car-pday" class="form-control" value="1000" min="0" step="100">
         </div>
         <div class="form-group">
-          <label>💰 ค่าเช่ารายสัปดาห์ (บาท)</label>
+          <label id="lbl-modal-car-pweek">💰 ค่าเช่ารายสัปดาห์ (บาท)</label>
           <input type="number" id="edit-car-pweek" class="form-control" value="6000" min="0" step="500">
         </div>
         <div class="form-group">
-          <label>💰 ค่าเช่ารายเดือน (บาท)</label>
+          <label id="lbl-modal-car-pmonth">💰 ค่าเช่ารายเดือน (บาท)</label>
           <input type="number" id="edit-car-pmonth" class="form-control" value="20000" min="0" step="1000">
         </div>
       </div>
 
       <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:12px; margin-bottom:12px;">
         <div class="form-group">
-          <label>🔑 เลขตัวถัง (VIN)*</label>
+          <label id="lbl-modal-car-vin">🔑 เลขตัวถัง (VIN)*</label>
           <input type="text" id="edit-car-vin" class="form-control" placeholder="-" oninput="app.checkDuplicateChassis(this.value)">
           <div id="edit-car-vin-warn" style="display:none; font-size:11px; color:#DC2626; font-weight:600; margin-top:4px;">
             ⚠️ เลขตัวถังนี้ซ้ำกับรถคันอื่นในระบบ
           </div>
         </div>
         <div class="form-group">
-          <label>🏷️ วันหมดอายุ ภาษี</label>
+          <label id="lbl-modal-car-tax">🏷️ วันหมดอายุ ภาษี</label>
           <input type="text" id="edit-car-tax" class="form-control" placeholder="DD/MM/YYYY">
         </div>
         <div class="form-group">
-          <label>📅 วันหมดอายุ พ.ร.บ.</label>
+          <label id="lbl-modal-car-act">📅 วันหมดอายุ พ.ร.บ.</label>
           <input type="text" id="edit-car-act" class="form-control" placeholder="DD/MM/YYYY">
         </div>
         <div class="form-group">
-          <label>📅 วันหมดอายุ ประกันภัย</label>
+          <label id="lbl-modal-car-ins">📅 วันหมดอายุ ประกันภัย</label>
           <input type="text" id="edit-car-ins" class="form-control" placeholder="DD/MM/YYYY">
         </div>
       </div>
 
       <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:12px; margin-bottom:12px;">
         <div class="form-group">
-          <label>🛡️ บริษัทประกันภัย</label>
+          <label id="lbl-modal-car-ins-comp">🛡️ บริษัทประกันภัย</label>
           <input type="text" id="edit-car-ins-comp" class="form-control" placeholder="เช่น คุ้มภัยโตเกียวมารีน">
         </div>
         <div class="form-group">
-          <label>👤 เจ้าของรถ (Owner)</label>
+          <label id="lbl-modal-car-owner">👤 เจ้าของรถ (Owner)</label>
           <input type="text" id="edit-car-owner" class="form-control" placeholder="เช่น SWD, บีคลิ๊ก">
         </div>
         <div class="form-group">
-          <label>🏛️ ผู้รับผลประโยชน์</label>
+          <label id="lbl-modal-car-beneficiary">🏛️ ผู้รับผลประโยชน์</label>
           <input type="text" id="edit-car-beneficiary" class="form-control" placeholder="เช่น สวัสดี เรนทัล">
         </div>
         <div class="form-group">
-          <label>📆 จดทะเบียนปี (พ.ศ.)</label>
+          <label id="lbl-modal-car-reg-year">📆 จดทะเบียนปี (พ.ศ.)</label>
           <input type="text" id="edit-car-reg-year" class="form-control" placeholder="เช่น 2567">
         </div>
       </div>
 
       <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; margin-bottom:12px;">
         <div class="form-group">
-          <label>🔧 วันที่เช็คระยะล่าสุด</label>
+          <label id="lbl-modal-car-last-srv">🔧 วันที่เช็คระยะล่าสุด</label>
           <input type="text" id="edit-car-last-srv" class="form-control" placeholder="DD/MM/YYYY หรือ -">
         </div>
         <div class="form-group">
-          <label>⏭️ กำหนดเช็คระยะครั้งต่อไป</label>
+          <label id="lbl-modal-car-next-srv">⏭️ กำหนดเช็คระยะครั้งต่อไป</label>
           <input type="text" id="edit-car-next-srv" class="form-control" placeholder="DD/MM/YYYY หรือ เลขไมล์">
         </div>
         <div class="form-group">
-          <label>🚦 สถานะรถยนต์*</label>
+          <label id="lbl-modal-car-status">🚦 สถานะรถยนต์*</label>
           <select id="edit-car-status" class="form-control">
-            <option value="ว่างพร้อมใช้งาน">ว่างพร้อมใช้งาน</option>
-            <option value="ซ่อมบำรุง">ซ่อมบำรุง</option>
-            <option value="เตรียมส่งมอบ">เตรียมส่งมอบ</option>
-            <option value="กำลังเช่า">กำลังเช่า</option>
-            <option value="ติดจอง">ติดจอง</option>
+            <option id="opt-modal-status-available" value="ว่างพร้อมใช้งาน">ว่างพร้อมใช้งาน</option>
+            <option id="opt-modal-status-maint" value="ซ่อมบำรุง">ซ่อมบำรุง</option>
+            <option id="opt-modal-status-prep-disp" value="เตรียมส่งมอบ">เตรียมส่งมอบ</option>
+            <option id="opt-modal-status-renting" value="กำลังเช่า">กำลังเช่า</option>
+            <option id="opt-modal-status-booked" value="ติดจอง">ติดจอง</option>
           </select>
         </div>
       </div>
 
       <div class="form-group" style="margin-bottom:16px;">
-        <label>📝 หมายเหตุ / ข้อมูลเพิ่มเติม (Notes)</label>
+        <label id="lbl-modal-car-notes">📝 หมายเหตุ / ข้อมูลเพิ่มเติม (Notes)</label>
         <input type="text" id="edit-car-notes" class="form-control" placeholder="เช่น มีเล่มทะเบียน, ผู้เช่าประจำ, ประวัติเคลม...">
       </div>
 
@@ -1823,7 +1823,7 @@
           </button>
         </div>
         <div style="display:flex; gap:10px;">
-          <button type="button" onclick="app.closeModal('modal-edit-car')" class="btn btn-secondary">ยกเลิก</button>
+          <button type="button" onclick="app.closeModal('modal-edit-car')" class="btn btn-secondary" id="btn-modal-car-cancel">ยกเลิก</button>
           <button type="button" onclick="app.submitEditCar()" class="btn btn-primary" id="btn-submit-edit-car">
             💾 บันทึกข้อมูลรถยนต์
           </button>
