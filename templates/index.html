@@ -287,83 +287,91 @@
 
         <!-- TAB 1: FLEET & INSTANT BOOKING -->
         <div id="subtab-fleet" class="tab-pane">
-          <!-- The Booking Bar (Hero Section) -->
-          <div class="booking-bar">
-            <div style="margin-bottom:14px;">
-              <h3 id="booking-bar-title" style="font-size:16px; font-weight:800; color:#92400E; margin:0;">
-                Instant Fleet Booking
-              </h3>
-              <div id="booking-bar-subtitle" style="font-size:12px; color:#B45309; margin-top:2px;">
-                Select Pick-up / Return dates (Auto-calculates daily rate)
-              </div>
-            </div>
-
-            <!-- แถวที่ 1: ดรอปดาวน์ตัวกรอง 4 ตัว (หมวดหมู่รถ, ยี่ห้อ, กรรมสิทธิ์/บริษัท, สถานะรถ) -->
-            <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:12px; margin-bottom:12px;">
-              <div class="form-group">
-                <label id="lbl-filter-group">Category</label>
-                <select id="filter-group" class="form-control" onchange="app.onFilterChange()">
-                  <option id="opt-filter-group-all" value="ทั้งหมด">All</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label id="lbl-filter-brand">Brand</label>
-                <select id="filter-brand" class="form-control" onchange="app.onFilterChange()">
-                  <option id="opt-filter-brand-all" value="ทั้งหมด">All</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label id="lbl-filter-company">Company</label>
-                <select id="filter-company" class="form-control" onchange="app.onFilterChange()">
-                  <option id="opt-filter-company-all" value="ทั้งหมด">All</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label id="lbl-filter-status">Status</label>
-                <select id="filter-status" class="form-control" onchange="app.onFilterChange()">
-                  <option id="opt-filter-status-all" value="ทั้งหมด">All</option>
-                  <option id="opt-filter-status-avail" value="ว่างไม่มีการจอง (🟢)">Available (🟢)</option>
-                  <option id="opt-filter-status-res" value="มีการจองล่วงหน้าไว้ (🟡)">Reserved (🟡)</option>
-                  <option id="opt-filter-status-unavail" value="ไม่ว่างในวันที่เลือก (🔴)">Unavailable (🔴)</option>
-                  <option id="opt-filter-status-maint" value="สถานะซ่อมบำรุง (🟠)">Workshop (🟠)</option>
-                  <option id="opt-filter-status-ready" value="ว่างพร้อมใช้งาน (🟢+🟡)">Ready for Service</option>
-                  <option id="opt-filter-status-renting" value="กำลังเช่า">On rent</option>
-                  <option id="opt-filter-status-booked" value="ติดจอง">Reserved</option>
-                </select>
-              </div>
-            </div>
-
-            <!-- แถวที่ 2: ระบุวันที่ (วันที่ส่งรถ, วันที่คืนรถ) และปุ่มล้างตัวกรอง -->
-            <div style="display:grid; grid-template-columns: 1.5fr 1.5fr 1fr; gap:12px; align-items:flex-end;">
-              <div class="form-group">
-                <label id="lbl-filter-start">Pick-up Date</label>
-                <div style="display:flex; gap:6px;">
-                  <input type="date" id="filter-start-date" class="form-control" onchange="app.onDateFilterChange()">
-                  <input type="time" id="filter-start-time" class="form-control" style="width:115px;" onchange="app.onFilterChange()">
+          <!-- The Booking Bar (Hero Section - Sticky & Collapsible) -->
+          <div class="booking-bar" id="booking-bar-wrapper">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
+              <div>
+                <h3 id="booking-bar-title" style="font-size:16px; font-weight:800; color:#92400E; margin:0;">
+                  เลือกรถยนต์ & จองด่วน (Instant Booking Bar)
+                </h3>
+                <div id="booking-bar-subtitle" style="font-size:12px; color:#B45309; margin-top:2px;">
+                  เลือกวันรับ - คืนรถ (คำนวณระยะเวลาเช่าอัตโนมัติ)
                 </div>
               </div>
-              <div class="form-group">
-                <label id="lbl-filter-end">Return Date</label>
-                <div style="display:flex; gap:6px;">
-                  <input type="date" id="filter-end-date" class="form-control" onchange="app.onDateFilterChange()">
-                  <input type="time" id="filter-end-time" class="form-control" style="width:115px;" onchange="app.onFilterChange()">
+              <button type="button" id="btn-toggle-filter-collapse" onclick="app.toggleBookingFilterCollapse()" class="btn btn-sm" style="font-size:12px; padding:4px 12px; font-weight:700; background:#FFFFFF; border:1px solid #FDBA74; color:#C2410C; border-radius:6px; cursor:pointer; display:inline-flex; align-items:center; gap:5px; box-shadow:0 1px 2px rgba(0,0,0,0.04);">
+                <span id="btn-toggle-filter-text">ซ่อนตัวกรอง ▴</span>
+              </button>
+            </div>
+
+            <!-- ส่วนที่ยุบ/ขยายได้ (Collapsible Content) -->
+            <div id="booking-bar-collapsible-content">
+              <!-- แถวที่ 1: ดรอปดาวน์ตัวกรอง 4 ตัว (หมวดหมู่รถ, ยี่ห้อ, กรรมสิทธิ์/บริษัท, สถานะรถ) -->
+              <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:12px; margin-bottom:12px;">
+                <div class="form-group">
+                  <label id="lbl-filter-group">หมวดหมู่รถ</label>
+                  <select id="filter-group" class="form-control" onchange="app.onFilterChange()">
+                    <option id="opt-filter-group-all" value="ทั้งหมด">ทั้งหมด</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label id="lbl-filter-brand">ยี่ห้อ</label>
+                  <select id="filter-brand" class="form-control" onchange="app.onFilterChange()">
+                    <option id="opt-filter-brand-all" value="ทั้งหมด">ทั้งหมด</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label id="lbl-filter-company">บริษัท / สังกัด</label>
+                  <select id="filter-company" class="form-control" onchange="app.onFilterChange()">
+                    <option id="opt-filter-company-all" value="ทั้งหมด">ทั้งหมด</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label id="lbl-filter-status">สถานะรถ</label>
+                  <select id="filter-status" class="form-control" onchange="app.onFilterChange()">
+                    <option id="opt-filter-status-all" value="ทั้งหมด">ทั้งหมด</option>
+                    <option id="opt-filter-status-avail" value="ว่างไม่มีการจอง (🟢)">ว่างไม่มีการจอง (🟢)</option>
+                    <option id="opt-filter-status-res" value="มีการจองล่วงหน้าไว้ (🟡)">มีการจองล่วงหน้าไว้ (🟡)</option>
+                    <option id="opt-filter-status-unavail" value="ไม่ว่างในวันที่เลือก (🔴)">ไม่ว่างในวันที่เลือก (🔴)</option>
+                    <option id="opt-filter-status-maint" value="สถานะซ่อมบำรุง (🟠)">สถานะซ่อมบำรุง (🟠)</option>
+                    <option id="opt-filter-status-ready" value="ว่างพร้อมใช้งาน (🟢+🟡)">ว่างพร้อมใช้งาน (🟢+🟡)</option>
+                    <option id="opt-filter-status-renting" value="กำลังเช่า">กำลังเช่า</option>
+                    <option id="opt-filter-status-booked" value="ติดจอง">ติดจอง</option>
+                  </select>
                 </div>
               </div>
-              <div class="form-group">
-                <button type="button" id="btn-reset-filters" onclick="app.resetFleetFilters()" class="btn btn-secondary" style="width:100%; height:40px; font-weight:700; background:#FAF7F2; border:1.5px solid #D1D5DB; color:#374151;">
-                  Reset Filters
-                </button>
+
+              <!-- แถวที่ 2: ระบุวันที่ (วันที่ส่งรถ, วันที่คืนรถ) และปุ่มล้างตัวกรอง -->
+              <div style="display:grid; grid-template-columns: 1.5fr 1.5fr 1fr; gap:12px; align-items:flex-end;">
+                <div class="form-group">
+                  <label id="lbl-filter-start">วันรับรถ (Pick-up)</label>
+                  <div style="display:flex; gap:6px;">
+                    <input type="date" id="filter-start-date" class="form-control" onchange="app.onDateFilterChange()">
+                    <input type="time" id="filter-start-time" class="form-control" style="width:115px;" onchange="app.onFilterChange()">
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label id="lbl-filter-end">วันคืนรถ (Return)</label>
+                  <div style="display:flex; gap:6px;">
+                    <input type="date" id="filter-end-date" class="form-control" onchange="app.onDateFilterChange()">
+                    <input type="time" id="filter-end-time" class="form-control" style="width:115px;" onchange="app.onFilterChange()">
+                  </div>
+                </div>
+                <div class="form-group">
+                  <button type="button" id="btn-reset-filters" onclick="app.resetFleetFilters()" class="btn btn-secondary" style="width:100%; height:40px; font-weight:700; background:#FAF7F2; border:1.5px solid #D1D5DB; color:#374151;">
+                    ล้างตัวกรอง
+                  </button>
+                </div>
               </div>
             </div>
 
             <!-- แถบสรุปคำนวณระยะเวลาและจำนวนรถว่าง -->
             <div id="booking-bar-calc-banner" style="margin-top:14px; padding:10px 16px; background:#FFFFFF; border-radius:8px; border:1px solid #FDE68A; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
               <div style="font-size:12.5px; color:#475569;">
-                <span id="lbl-calc-duration">Rental Duration:</span> <b id="calc-duration-text" style="color:#D97706;">1 Day (24 Hrs)</b>
+                <span id="lbl-calc-duration">ระยะเวลาเช่า:</span> <b id="calc-duration-text" style="color:#D97706;">1 วัน (24 ชม.)</b>
               </div>
               <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
                 <div style="font-size:12.5px; color:#059669; font-weight:700;" id="calc-cars-count">
-                  Available Fleet: 0
+                  ว่างพร้อมใช้งาน: 0 คัน
                 </div>
               </div>
               <input type="file" id="quick-car-photo-input" accept="image/*" style="display:none;" onchange="app.onQuickCarPhotoSelected(this)">
@@ -2309,7 +2317,7 @@
   <div class="toast-container" id="toast-container"></div>
 
   <!-- Scripts with cache busting -->
-  <script src="/static/js/app.js?v=8.0"></script>
+  <script src="/static/js/app.js?v=8.1"></script>
 
   <!-- ===================================================================== -->
   <!-- MODAL: ACTIVE RENTALS / CARS WITH CUSTOMERS (POPUP FOR CARD 1) -->

@@ -539,7 +539,11 @@ class DataStore:
                                 except Exception:
                                     pass
                             merged_c = dict(self.cars.get(pl, {}))
-                            merged_c.update(c)
+                            for k, v in c.items():
+                                if v is not None and v != "":
+                                    merged_c[k] = v
+                                elif k not in merged_c:
+                                    merged_c[k] = v
                             fresh_cars[pl] = merged_c
                     if fresh_cars is not None:
                         with self.lock:
@@ -727,10 +731,35 @@ class DataStore:
             if 'status' in existing and 'car_status' not in existing: existing['car_status'] = existing['status']
             if 'image_url' in existing and 'image' not in existing: existing['image'] = existing['image_url']
             if 'image' in existing and 'image_url' not in existing: existing['image_url'] = existing['image']
-            if 'prb_price' in existing and 'act_price' not in existing: existing['act_price'] = existing['prb_price']
-            if 'act_price' in existing and 'prb_price' not in existing: existing['prb_price'] = existing['act_price']
-            if 'insurance_premium' in existing and 'ins_premium' not in existing: existing['ins_premium'] = existing['insurance_premium']
-            if 'ins_premium' in existing and 'insurance_premium' not in existing: existing['insurance_premium'] = existing['ins_premium']
+            if 'prb_price' in car_dict and car_dict['prb_price'] is not None:
+                existing['prb_price'] = car_dict['prb_price']
+                existing['act_price'] = car_dict['prb_price']
+            elif 'act_price' in car_dict and car_dict['act_price'] is not None:
+                existing['prb_price'] = car_dict['act_price']
+                existing['act_price'] = car_dict['act_price']
+            elif 'prb_price' in existing and 'act_price' not in existing:
+                existing['act_price'] = existing['prb_price']
+            elif 'act_price' in existing and 'prb_price' not in existing:
+                existing['prb_price'] = existing['act_price']
+
+            if 'insurance_premium' in car_dict and car_dict['insurance_premium'] is not None:
+                existing['insurance_premium'] = car_dict['insurance_premium']
+                existing['ins_premium'] = car_dict['insurance_premium']
+            elif 'ins_premium' in car_dict and car_dict['ins_premium'] is not None:
+                existing['insurance_premium'] = car_dict['ins_premium']
+                existing['ins_premium'] = car_dict['ins_premium']
+            elif 'insurance_premium' in existing and 'ins_premium' not in existing:
+                existing['ins_premium'] = existing['insurance_premium']
+            elif 'ins_premium' in existing and 'insurance_premium' not in existing:
+                existing['insurance_premium'] = existing['ins_premium']
+
+            if 'next_service_mileage' in car_dict and car_dict['next_service_mileage'] is not None:
+                existing['next_service_mileage'] = car_dict['next_service_mileage']
+                existing['next_engine_oil_mileage'] = car_dict['next_service_mileage']
+            if 'next_service_date' in car_dict and car_dict['next_service_date'] is not None:
+                existing['next_service_date'] = car_dict['next_service_date']
+                existing['next_engine_oil_date'] = car_dict['next_service_date']
+                existing['next_service'] = car_dict['next_service_date']
 
             clean_mem = {k: v for k, v in existing.items() if k in ALL_CAR_COLS}
             self.cars[plate] = clean_mem
@@ -743,6 +772,11 @@ class DataStore:
                 sb.table("cars").upsert(sb_payload).execute()
             except Exception as e:
                 print(f"sb_sync_car error: {e}")
+                try:
+                    fallback_payload = {k: v for k, v in sb_payload.items() if k in STANDARD_34_COLS}
+                    sb.table("cars").upsert(fallback_payload).execute()
+                except Exception as e2:
+                    print(f"sb_sync_car fallback error: {e2}")
         threading.Thread(target=_task, daemon=True).start()
 
     def async_delete_car(self, plate):

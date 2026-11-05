@@ -388,14 +388,20 @@ body::before {
   gap: 8px;
 }
 
-/* The Booking Bar Hero */
+/* The Booking Bar Hero - Sticky Header */
 .booking-bar {
-  background: linear-gradient(135deg, #FFF7ED 0%, #FFFBEB 100%);
+  position: sticky;
+  top: 10px;
+  z-index: 90;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  background: rgba(255, 247, 237, 0.98);
   border: 1.5px solid #FDBA74;
   border-radius: var(--radius-lg);
-  padding: 22px 26px;
-  margin-bottom: 26px;
-  box-shadow: 0 4px 16px rgba(234, 88, 12, 0.08);
+  padding: 16px 22px;
+  margin-bottom: 22px;
+  box-shadow: 0 4px 16px rgba(234, 88, 12, 0.10);
+  transition: all 0.2s ease-in-out;
 }
 
 .booking-bar-grid {

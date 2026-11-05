@@ -137,7 +137,24 @@ class App {
           next_service_date: "กำหนดเช็คระยะครั้งต่อไป (วันที่)",
           next_service_mileage: "กำหนดเช็คระยะครั้งต่อไป (เลขไมล์)",
           service_interval_header: "กำหนดการเช็คระยะ (น้ำมันเครื่อง & ยาง)",
-          view_details_or_book: "ดูรายละเอียด / จองรถ"
+          view_details_or_book: "ดูรายละเอียด / จองรถ",
+          booking_bar_title: "เลือกรถยนต์ & จองด่วน (Instant Booking Bar)",
+          booking_bar_subtitle: "เลือกวันรับ - คืนรถ (คำนวณระยะเวลาเช่าอัตโนมัติ)",
+          category: "หมวดหมู่รถ",
+          brand: "ยี่ห้อ",
+          company: "บริษัท / สังกัด",
+          status: "สถานะรถ",
+          all: "ทั้งหมด",
+          pickup_date: "วันรับรถ (Pick-up)",
+          return_date: "วันคืนรถ (Return)",
+          reset_filters: "ล้างตัวกรอง",
+          rental_duration: "ระยะเวลาเช่า:",
+          available_fleet: "ว่างพร้อมใช้งาน:",
+          hide_filters: "ซ่อนตัวกรอง ▴",
+          show_filters: "แสดงตัวกรอง ▾",
+          prb_alert_in_days: "พ.ร.บ. ใน {days} วัน",
+          prb_alert_expired: "พ.ร.บ. หมดอายุ",
+          prb_alert_due_today: "พ.ร.บ. หมดอายุวันนี้"
         },
         EN: {
           available: "Available",
@@ -163,7 +180,7 @@ class App {
           dispatch: "Dispatch",
           return_job: "Return",
           insurance: "Insurance",
-          act: "ACT",
+          act: "PRB",
           tax: "Tax",
           in_days: "in {days} days",
           overdue_days: "{days} days overdue",
@@ -178,7 +195,24 @@ class App {
           next_service_date: "Next Service Due (Date)",
           next_service_mileage: "Next Service Due (Mileage)",
           service_interval_header: "Service Intervals (Engine Oil & Tires)",
-          view_details_or_book: "View Details / Book"
+          view_details_or_book: "View Details / Book",
+          booking_bar_title: "Instant Fleet Booking",
+          booking_bar_subtitle: "Select Pick-up / Return dates (Auto-calculates daily rate)",
+          category: "Category",
+          brand: "Brand",
+          company: "Company",
+          status: "Status",
+          all: "All",
+          pickup_date: "Pick-up Date",
+          return_date: "Return Date",
+          reset_filters: "Reset Filters",
+          rental_duration: "Rental Duration:",
+          available_fleet: "Available:",
+          hide_filters: "Hide Filters ▴",
+          show_filters: "Show Filters ▾",
+          prb_alert_in_days: "PRB in {days} days",
+          prb_alert_expired: "PRB Expired",
+          prb_alert_due_today: "PRB Expired Today"
         }
       };
       window.translations_dict = window.translations;
@@ -281,17 +315,17 @@ class App {
     const optFStatAll = document.getElementById("opt-filter-status-all");
     if (optFStatAll) optFStatAll.textContent = isEn ? "All" : "ทั้งหมด";
     const optFStatAvail = document.getElementById("opt-filter-status-avail");
-    if (optFStatAvail) optFStatAvail.textContent = isEn ? "Available (🟢)" : "ว่างพร้อมเช่า (🟢)";
-    const optFStatRes = document.getElementById("opt-filter-status-reserved");
-    if (optFStatRes) optFStatRes.textContent = isEn ? "Reserved (🟡)" : "ติดจอง (🟡)";
+    if (optFStatAvail) optFStatAvail.textContent = isEn ? "Available (🟢)" : "ว่างไม่มีการจอง (🟢)";
+    const optFStatRes = document.getElementById("opt-filter-status-res") || document.getElementById("opt-filter-status-reserved");
+    if (optFStatRes) optFStatRes.textContent = isEn ? "Reserved ahead (🟡)" : "มีการจองล่วงหน้าไว้ (🟡)";
     const optFStatUnavail = document.getElementById("opt-filter-status-unavail");
-    if (optFStatUnavail) optFStatUnavail.textContent = isEn ? "Unavailable (🔴)" : "ไม่ว่าง (🔴)";
+    if (optFStatUnavail) optFStatUnavail.textContent = isEn ? "Unavailable for selected dates (🔴)" : "ไม่ว่างในวันที่เลือก (🔴)";
     const optFStatMaint = document.getElementById("opt-filter-status-maint");
-    if (optFStatMaint) optFStatMaint.textContent = isEn ? "Workshop (🟠)" : "ซ่อมบำรุง (🟠)";
+    if (optFStatMaint) optFStatMaint.textContent = isEn ? "Maintenance (🟠)" : "สถานะซ่อมบำรุง (🟠)";
     const optFStatReady = document.getElementById("opt-filter-status-ready");
-    if (optFStatReady) optFStatReady.textContent = isEn ? "Ready for Service" : "พร้อมใช้งาน (🟢+🟡)";
+    if (optFStatReady) optFStatReady.textContent = isEn ? "Ready for Service (🟢+🟡)" : "ว่างพร้อมใช้งาน (🟢+🟡)";
     const optFStatRenting = document.getElementById("opt-filter-status-renting");
-    if (optFStatRenting) optFStatRenting.textContent = isEn ? "On rent" : "กำลังเช่า";
+    if (optFStatRenting) optFStatRenting.textContent = isEn ? "Currently Renting" : "กำลังเช่า";
     const optFStatBooked = document.getElementById("opt-filter-status-booked");
     if (optFStatBooked) optFStatBooked.textContent = isEn ? "Reserved" : "ติดจอง";
 
@@ -304,6 +338,12 @@ class App {
     if (btnResetFilt) btnResetFilt.textContent = isEn ? "Reset Filters" : "ล้างตัวกรอง";
     const lblCalcDur = document.getElementById("lbl-calc-duration");
     if (lblCalcDur) lblCalcDur.textContent = isEn ? "Rental Duration:" : "ระยะเวลาเช่า:";
+    const btnToggleFilt = document.getElementById("btn-toggle-filter-text");
+    if (btnToggleFilt) {
+      btnToggleFilt.textContent = this.bookingFilterCollapsed 
+        ? (isEn ? "Show Filters ▾" : "แสดงตัวกรอง ▾")
+        : (isEn ? "Hide Filters ▴" : "ซ่อนตัวกรอง ▴");
+    }
     const btnAddCarBB = document.getElementById("btn-add-car-booking-bar");
     if (btnAddCarBB) btnAddCarBB.textContent = isEn ? "Add Vehicle" : "เพิ่มรถยนต์";
 
@@ -1070,6 +1110,9 @@ class App {
     });
 
     // 14. Trigger active module re-rendering with new language
+    if (this.populateFleetDropdowns) {
+      this.populateFleetDropdowns();
+    }
     if (this.renderFleetCards) {
       this.renderFleetCards();
     }
@@ -1390,12 +1433,15 @@ class App {
   }
 
   populateFleetDropdowns() {
+    const isEn = (this.currentLang === "EN");
+    const allText = isEn ? "All" : "ทั้งหมด";
+
     // 1. Group Dropdown
     const selGroup = document.getElementById("filter-group");
     if (selGroup) {
       const curVal = selGroup.value;
       const groups = Array.from(new Set(this.cars.map(c => (c.car_group || "").trim()).filter(Boolean))).sort();
-      selGroup.innerHTML = '<option value="ทั้งหมด">ทั้งหมด</option>' + 
+      selGroup.innerHTML = `<option value="ทั้งหมด">${allText}</option>` + 
         groups.map(g => `<option value="${g}">${g}</option>`).join("");
       if (curVal && (curVal === "ทั้งหมด" || groups.includes(curVal))) {
         selGroup.value = curVal;
@@ -1407,7 +1453,7 @@ class App {
     if (selBrand) {
       const curVal = selBrand.value;
       const brands = Array.from(new Set(this.cars.map(c => (c.brand || "").trim()).filter(Boolean))).sort();
-      selBrand.innerHTML = '<option value="ทั้งหมด">ทั้งหมด</option>' + 
+      selBrand.innerHTML = `<option value="ทั้งหมด">${allText}</option>` + 
         brands.map(b => `<option value="${b}">${b}</option>`).join("");
       if (curVal && (curVal === "ทั้งหมด" || brands.includes(curVal))) {
         selBrand.value = curVal;
@@ -1418,12 +1464,27 @@ class App {
     const selComp = document.getElementById("filter-company");
     if (selComp) {
       const curVal = selComp.value;
-      const companies = Array.from(new Set(this.cars.map(c => (c.company || "").trim()).filter(Boolean))).sort();
-      selComp.innerHTML = '<option value="ทั้งหมด">ทั้งหมด</option>' + 
+      const companies = Array.from(new Set(this.cars.map(c => (c.company || c.owner_company || "").trim()).filter(Boolean))).sort();
+      selComp.innerHTML = `<option value="ทั้งหมด">${allText}</option>` + 
         companies.map(co => `<option value="${co}">${co}</option>`).join("");
       if (curVal && (curVal === "ทั้งหมด" || companies.includes(curVal))) {
         selComp.value = curVal;
       }
+    }
+  }
+
+  toggleBookingFilterCollapse() {
+    this.bookingFilterCollapsed = !this.bookingFilterCollapsed;
+    const content = document.getElementById("booking-bar-collapsible-content");
+    const txt = document.getElementById("btn-toggle-filter-text");
+    const isEn = (this.currentLang === "EN");
+    if (content) {
+      content.style.display = this.bookingFilterCollapsed ? "none" : "block";
+    }
+    if (txt) {
+      txt.textContent = this.bookingFilterCollapsed
+        ? (isEn ? "Show Filters ▾" : "แสดงตัวกรอง ▾")
+        : (isEn ? "Hide Filters ▴" : "ซ่อนตัวกรอง ▴");
     }
   }
 
@@ -1454,7 +1515,7 @@ class App {
 
     this.loadCars();
     this.onFilterChange();
-    this.showToast("🔄 คืนค่าตัวกรองทั้งหมดเรียบร้อย (เวลาไทย)", "info");
+    this.showToast(this.currentLang === "EN" ? "🔄 All filters have been reset" : "🔄 คืนค่าตัวกรองทั้งหมดเรียบร้อย (เวลาไทย)", "info");
   }
 
   onDateFilterChange() {
@@ -1833,7 +1894,7 @@ class App {
     return { plateNo, province, isRed };
   }
 
-  getCarExpiryAlert(c, lang = null) {
+  getCarExpiryAlerts(c, lang = null) {
     const isEn = (lang === "EN" || (!lang && this.currentLang === "EN"));
     const l = isEn ? "EN" : "TH";
     const dict = (window.translations && window.translations[l]) ? window.translations[l] : null;
@@ -1842,13 +1903,12 @@ class App {
     today.setHours(0, 0, 0, 0);
 
     const checks = [
-      { name: dict ? dict.insurance : (isEn ? "Insurance" : "ประกันภัย"), dateStr: c.ins_expiry },
-      { name: dict ? dict.act : (isEn ? "ACT" : "พ.ร.บ."), dateStr: c.act_expiry },
-      { name: dict ? dict.tax : (isEn ? "Tax" : "ภาษี"), dateStr: c.tax_expiry }
+      { key: "insurance", name: dict ? dict.insurance : (isEn ? "Insurance" : "ประกันภัย"), dateStr: c.insurance_expire_date || c.ins_expiry },
+      { key: "prb", name: dict ? dict.act : (isEn ? "PRB" : "พ.ร.บ."), dateStr: c.prb_expire_date || c.act_expiry },
+      { key: "tax", name: dict ? dict.tax : (isEn ? "Tax" : "ภาษี"), dateStr: c.tax_expire_date || c.tax_expiry }
     ];
 
-    let minDiff = null;
-    let urgentItem = null;
+    const alerts = [];
 
     for (const item of checks) {
       if (!item.dateStr || String(item.dateStr).trim() === "-" || String(item.dateStr).trim() === "") continue;
@@ -1865,50 +1925,60 @@ class App {
       expD.setHours(0, 0, 0, 0);
       const diffDays = Math.round((expD.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
       if (diffDays <= 30) {
-        if (minDiff === null || diffDays < minDiff) {
-          minDiff = diffDays;
-          urgentItem = { name: item.name, diff: diffDays };
+        let badge = null;
+        if (diffDays < 0) {
+          const daysAgo = Math.abs(diffDays);
+          const txt = (item.key === "prb" && dict?.prb_alert_expired)
+            ? dict.prb_alert_expired
+            : (dict ? `${item.name} ${dict.overdue_days.replace('{days}', daysAgo)}` : (isEn ? `${item.name} ${daysAgo}d overdue` : `${item.name} เกินกำหนด ${daysAgo} วัน`));
+          badge = {
+            key: item.key,
+            text: txt,
+            bg: "#FEE2E2",
+            border: "#FECACA",
+            color: "#991B1B",
+            dot: "#EF4444",
+            diff: diffDays
+          };
+        } else if (diffDays === 0) {
+          const txt = (item.key === "prb" && dict?.prb_alert_due_today)
+            ? dict.prb_alert_due_today
+            : (dict ? `${item.name} ${dict.due_today}` : (isEn ? `${item.name} today` : `${item.name} หมดอายุวันนี้`));
+          badge = {
+            key: item.key,
+            text: txt,
+            bg: "#FEF3C7",
+            border: "#FDE68A",
+            color: "#92400E",
+            dot: "#F59E0B",
+            diff: diffDays
+          };
+        } else {
+          const txt = (item.key === "prb" && dict?.prb_alert_in_days)
+            ? dict.prb_alert_in_days.replace('{days}', diffDays)
+            : (dict ? `${item.name} ${dict.in_days.replace('{days}', diffDays)}` : (isEn ? `${item.name} in ${diffDays}d` : `${item.name} เหลือ ${diffDays} วัน`));
+          badge = {
+            key: item.key,
+            text: txt,
+            bg: "#FEF3C7",
+            border: "#FDE68A",
+            color: "#92400E",
+            dot: "#F59E0B",
+            diff: diffDays
+          };
         }
+        if (badge) alerts.push(badge);
       }
     }
 
-    if (!urgentItem) return null;
+    // Sort by diff ascending (expired / most urgent first)
+    alerts.sort((a, b) => a.diff - b.diff);
+    return alerts;
+  }
 
-    if (urgentItem.diff < 0) {
-      const daysAgo = Math.abs(urgentItem.diff);
-      const txt = dict
-        ? `${urgentItem.name} ${dict.overdue_days.replace('{days}', daysAgo)}`
-        : (isEn ? `${urgentItem.name} ${daysAgo} days overdue` : `${urgentItem.name} เกินกำหนด ${daysAgo} วัน`);
-      return {
-        text: txt,
-        bg: "#FEE2E2",
-        border: "#FECACA",
-        color: "#991B1B",
-        dot: "#EF4444"
-      };
-    } else if (urgentItem.diff === 0) {
-      const txt = dict
-        ? `${urgentItem.name} ${dict.due_today}`
-        : (isEn ? `${urgentItem.name} today` : `${urgentItem.name} หมดอายุวันนี้`);
-      return {
-        text: txt,
-        bg: "#FEF3C7",
-        border: "#FDE68A",
-        color: "#92400E",
-        dot: "#F59E0B"
-      };
-    } else {
-      const txt = dict
-        ? `${urgentItem.name} ${dict.in_days.replace('{days}', urgentItem.diff)}`
-        : (isEn ? `${urgentItem.name} in ${urgentItem.diff} days` : `${urgentItem.name} เหลือ ${urgentItem.diff} วัน`);
-      return {
-        text: txt,
-        bg: "#FEF3C7",
-        border: "#FDE68A",
-        color: "#92400E",
-        dot: "#F59E0B"
-      };
-    }
+  getCarExpiryAlert(c, lang = null) {
+    const list = this.getCarExpiryAlerts(c, lang);
+    return list.length > 0 ? list[0] : null;
   }
 
   toggleCarExpander(plate) {
@@ -2049,12 +2119,14 @@ class App {
         statusBg = "#EFF6FF"; statusBorder = "#BFDBFE"; statusColor = "#1E40AF"; statusDot = "#3B82F6";
       }
 
-      // 4. Expiry Alert Pill (Insurance, ACT, Tax)
-      const alertInfo = this.getCarExpiryAlert(c, l);
-      const alertPillHtml = alertInfo
-        ? `<span class="car-pill" style="background:${alertInfo.bg}; border:1px solid ${alertInfo.border}; color:${alertInfo.color};">
-             <span class="car-pill-dot" style="background:${alertInfo.dot};"></span> ${alertInfo.text}
-           </span>`
+      // 4. Expiry Alert Pills (Insurance, PRB, Tax)
+      const alerts = this.getCarExpiryAlerts(c, l);
+      const alertPillHtml = (alerts && alerts.length > 0)
+        ? alerts.map(a => `
+            <span class="car-pill" style="background:${a.bg}; border:1px solid ${a.border}; color:${a.color};">
+              <span class="car-pill-dot" style="background:${a.dot};"></span> ${a.text}
+            </span>
+          `).join("")
         : "";
 
       const carSpecsSub = `${c.reg_year || c.year || '2024'} · ${String(c.color || 'WHITE').toUpperCase()} · ${c.fuel_type || 'Petrol'}`;
@@ -2839,8 +2911,13 @@ class App {
     const origPlate = (document.getElementById("edit-car-original-plate")?.value || "").trim();
     const fd = this.carFormData || {};
     const getVal = (id, fdKey, def = "") => {
-      if (fd && fd[fdKey] !== undefined && fd[fdKey] !== null) return fd[fdKey];
       const el = document.getElementById(id);
+      if (el && el.value !== undefined && el.value !== null && String(el.value).trim() !== "") {
+        return el.value;
+      }
+      if (fd && fd[fdKey] !== undefined && fd[fdKey] !== null && String(fd[fdKey]).trim() !== "") {
+        return fd[fdKey];
+      }
       return el ? el.value : def;
     };
 
@@ -2907,21 +2984,34 @@ class App {
       brand: brand,
       model: model,
       car_group: getVal("edit-car-group", "car_group", "รถเก๋ง (Sedan/Hatchback)"),
+      fuel_system: getVal("edit-car-fuel", "fuel_type", "เบนซิน"),
       fuel_type: getVal("edit-car-fuel", "fuel_type", "เบนซิน"),
+      cc_ev: String(getVal("edit-car-cc", "engine_cc", "1200")).trim(),
       engine_cc: String(getVal("edit-car-cc", "engine_cc", "1200")).trim(),
+      owner_company: String(getVal("edit-car-company", "company", "Sawasdee Rent A Car")).trim(),
       company: String(getVal("edit-car-company", "company", "Sawasdee Rent A Car")).trim(),
       color: String(getVal("edit-car-color", "color", "-")).trim(),
       mileage: String(getVal("edit-car-mileage", "mileage", "0")).trim(),
+      daily_rate: parseInt(getVal("edit-car-pday", "price_day", 1000) || "1000", 10),
       price_day: parseInt(getVal("edit-car-pday", "price_day", 1000) || "1000", 10),
+      weekly_rate: parseInt(getVal("edit-car-pweek", "price_week", 6000) || "6000", 10),
       price_week: parseInt(getVal("edit-car-pweek", "price_week", 6000) || "6000", 10),
+      monthly_rate: parseInt(getVal("edit-car-pmonth", "price_month", 20000) || "20000", 10),
       price_month: parseInt(getVal("edit-car-pmonth", "price_month", 20000) || "20000", 10),
+      vin: vinVal,
       chassis_no: vinVal,
+      tax_expire_date: this.ymdToDmy(getVal("edit-car-tax", "tax_expiry", "")) || "-",
       tax_expiry: this.ymdToDmy(getVal("edit-car-tax", "tax_expiry", "")) || "-",
+      prb_expire_date: this.ymdToDmy(getVal("edit-car-act", "act_expiry", "")) || "-",
       act_expiry: this.ymdToDmy(getVal("edit-car-act", "act_expiry", "")) || "-",
+      insurance_expire_date: this.ymdToDmy(getVal("edit-car-ins", "ins_expiry", "")) || "-",
       ins_expiry: this.ymdToDmy(getVal("edit-car-ins", "ins_expiry", "")) || "-",
+      insurance_company: String(getVal("edit-car-ins-comp", "ins_company", "-")).trim(),
       ins_company: String(getVal("edit-car-ins-comp", "ins_company", "-")).trim(),
+      car_owner: String(getVal("edit-car-owner", "owner", "-")).trim(),
       owner: String(getVal("edit-car-owner", "owner", "-")).trim(),
       beneficiary: String(getVal("edit-car-beneficiary", "beneficiary", "-")).trim(),
+      register_year: String(getVal("edit-car-reg-year", "reg_year", "-")).trim(),
       reg_year: String(getVal("edit-car-reg-year", "reg_year", "-")).trim(),
       prb_price: prbPrice,
       act_price: prbPrice,
@@ -2929,10 +3019,14 @@ class App {
       ins_premium: insPremium,
       last_service_date: this.ymdToDmy(getVal("edit-car-last-srv", "last_service_date", "")) || "-",
       next_service_date: dmyNextSrvDate,
+      next_engine_oil_date: dmyNextSrvDate,
       next_service_mileage: nextSrvMileage,
+      next_engine_oil_mileage: nextSrvMileage,
       next_service: dmyNextSrvDate !== "-" ? dmyNextSrvDate : (nextSrvMileage > 0 ? String(nextSrvMileage) : "-"),
       notes: String(getVal("edit-car-notes", "notes", "")).trim(),
+      car_status: getVal("edit-car-status", "status", "ว่างพร้อมใช้งาน"),
       status: getVal("edit-car-status", "status", "ว่างพร้อมใช้งาน"),
+      image_url: imgUrl,
       image: imgUrl,
       is_debt_free: isDebtFree,
       finance_company: isDebtFree ? "-" : (String(getVal("edit-car-finance-company", "finance_company", "-")).trim() || "-"),
