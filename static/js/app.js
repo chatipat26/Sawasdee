@@ -571,7 +571,7 @@ class App {
     // 5. Search box placeholder
     const sbInput = document.getElementById("sb-search-input");
     if (sbInput) {
-      sbInput.placeholder = isEn ? "🔍 Search (Booking / Plate / Customer)" : "🔍 ค้นหา (เลขที่จอง / ทะเบียน / ลูกค้า)";
+      sbInput.placeholder = isEn ? "Search (Booking / Plate / Customer)..." : "ค้นหา (เลขที่จอง / ทะเบียน / ลูกค้า)...";
     }
 
     // 6. Topbar & Sidebar Labels
@@ -580,29 +580,29 @@ class App {
     const sbCardLbl = document.getElementById("sb-user-card-label");
     if (sbCardLbl) sbCardLbl.textContent = isEn ? "Logged in as:" : "เข้าสู่ระบบโดย:";
     const sbAdminStaff = document.getElementById("sb-admin-staff-text");
-    if (sbAdminStaff) sbAdminStaff.textContent = isEn ? "👥 Manage & Approve Staff" : "👥 จัดการ & อนุมัติพนักงาน";
+    if (sbAdminStaff) sbAdminStaff.textContent = isEn ? "Manage & Approve Staff" : "จัดการ & อนุมัติพนักงาน";
 
     // 7. Back Office Module Content
     const boTitle = document.getElementById("bo-title-text");
-    if (boTitle) boTitle.textContent = isEn ? "Back Office (Vehicle Dispatch & Return Work Orders)" : "Back Office (ตารางใบงานสำหรับคนงาน / พนักงานขับรถ)";
+    if (boTitle) boTitle.textContent = isEn ? "Dispatch & Return Work Orders" : "ศูนย์จัดการใบส่งมอบและรับคืนรถยนต์";
     const boSubtitle = document.getElementById("bo-subtitle-text");
-    if (boSubtitle) boSubtitle.textContent = isEn ? "Vehicle Dispatch & Return Work Orders Table & PDF Document Center" : "Vehicle Dispatch & Return Work Orders Table & PDF Document Center";
+    if (boSubtitle) boSubtitle.textContent = isEn ? "Dispatch & Return Work Orders" : "ตารางใบงานและเอกสารส่งมอบ-รับคืนรถยนต์";
     const boAdminBadge = document.getElementById("bo-admin-badge");
     if (boAdminBadge) {
       const isUserAdmin = (this.user && (this.user.role === "Admin" || (this.user.username || "").toLowerCase() === "admin"));
       if (isUserAdmin) {
-        boAdminBadge.textContent = isEn ? "👑 Admin Privilege: Can manage all work orders" : "👑 สิทธิ์ผู้ดูแลระบบ (Admin): สั่งงานได้ทุกใบงาน";
+        boAdminBadge.textContent = isEn ? "Admin: Full Access" : "ผู้ดูแลระบบ (Admin): สิทธิ์เต็ม";
       } else {
         const uName = this.user ? this.user.username : "";
-        boAdminBadge.textContent = isEn ? `👷 Staff Privilege: ${uName} (Assigned jobs only)` : `👷 สิทธิ์พนักงาน: ${uName} (ส่งงานได้เฉพาะงานที่ได้รับมอบหมาย)`;
+        boAdminBadge.textContent = isEn ? `Staff: ${uName}` : `พนักงาน: ${uName}`;
       }
     }
     const boSearch = document.getElementById("bo-search-input");
-    if (boSearch) boSearch.placeholder = isEn ? "🔍 Search work orders..." : "🔍 ค้นหาใบงาน...";
+    if (boSearch) boSearch.placeholder = isEn ? "Search work orders..." : "ค้นหาใบงาน...";
     const boRefresh = document.getElementById("bo-refresh-btn");
-    if (boRefresh) boRefresh.textContent = isEn ? "🔄 Refresh" : "🔄 รีเฟรช";
+    if (boRefresh) boRefresh.textContent = isEn ? "Refresh" : "รีเฟรช";
     const boTblHdr = document.getElementById("bo-table-header-text");
-    if (boTblHdr) boTblHdr.textContent = isEn ? "All Vehicle Dispatch & Return Work Orders" : "รายการใบงานรับ-ส่งรถทั้งหมดในระบบ";
+    if (boTblHdr) boTblHdr.textContent = isEn ? "Vehicle Dispatch & Return Work Orders" : "รายการใบงานรับ-ส่งรถยนต์";
 
     // 8. Back Office Table Column Headers
     const thType = document.getElementById("bo-th-type");
@@ -631,34 +631,34 @@ class App {
 
     // 10. Maintenance & Services Module Localization
     const mTitle = document.getElementById("mnt-title-text") || document.getElementById("maint-title-text");
-    if (mTitle) mTitle.textContent = isEn ? "Fleet Maintenance & Service Center" : "โมดูลซ่อมบำรุง & บริการ (Fleet Maintenance & Service Center)";
+    if (mTitle) mTitle.textContent = isEn ? "Fleet Maintenance & Renewal Management" : "ศูนย์จัดการงานซ่อมบำรุงและต่ออายุเอกสาร";
     const mSubtitle = document.getElementById("mnt-subtitle-text") || document.getElementById("maint-subtitle-text");
-    if (mSubtitle) mSubtitle.textContent = isEn ? "Maintenance management center for fleet inspection, work orders, and vehicle tax/ACT/insurance renewals" : "ศูนย์จัดการงานซ่อมบำรุง ตรวจเช็คสภาพ ออกใบงานให้พนักงาน และต่อทะเบียนภาษี-พรบ.-ประกันภัยรถยนต์";
+    if (mSubtitle) mSubtitle.textContent = isEn ? "Fleet Maintenance & Renewal Management" : "จัดการงานซ่อมบำรุง ตรวจเช็คสภาพ ออกใบงาน และต่ออายุภาษี-พ.ร.บ.-ประกันภัย";
     const btnMntNew = document.getElementById("btn-mnt-new") || document.getElementById("btn-maint-open-modal");
-    if (btnMntNew) btnMntNew.textContent = isEn ? "➕ New Service / Work Order" : "➕ ออกใบงานซ่อมบำรุงใหม่";
+    if (btnMntNew) btnMntNew.textContent = isEn ? "New Work Order" : "ออกใบงานใหม่";
     const btnMntRenew = document.getElementById("btn-mnt-renewal");
-    if (btnMntRenew) btnMntRenew.textContent = isEn ? "📄 Tax/ACT/Ins Renewal Order" : "📄 ออกใบงานต่อทะเบียน-พรบ.-ประกัน";
+    if (btnMntRenew) btnMntRenew.textContent = isEn ? "Renewal Order" : "ออกใบงานต่ออายุเอกสาร";
     const btnMntRef = document.getElementById("btn-mnt-refresh") || document.getElementById("btn-maint-refresh");
-    if (btnMntRef) btnMntRef.textContent = isEn ? "🔄 Refresh" : "🔄 รีเฟรช";
+    if (btnMntRef) btnMntRef.textContent = isEn ? "Refresh" : "รีเฟรช";
 
     // Maintenance KPI labels
     const mKpi1 = document.getElementById("mnt-kpi-inprog-lbl") || document.getElementById("maint-kpi-in-garage-lbl");
-    if (mKpi1) mKpi1.textContent = isEn ? "🚗 In Garage / Service Center" : "🚗 กำลังซ่อมบำรุงในอู่/ศูนย์";
+    if (mKpi1) mKpi1.textContent = isEn ? "In Garage / Service Center" : "กำลังซ่อมบำรุง";
     const mKpi2 = document.getElementById("mnt-kpi-pending-lbl") || document.getElementById("maint-kpi-pending-lbl");
-    if (mKpi2) mKpi2.textContent = isEn ? "⏳ Pending Work Orders" : "⏳ ใบงานรอดำเนินการ";
+    if (mKpi2) mKpi2.textContent = isEn ? "Pending Work Orders" : "ใบงานรอดำเนินการ";
     const mKpi3 = document.getElementById("mnt-kpi-total-lbl") || document.getElementById("maint-kpi-total-cost-lbl");
-    if (mKpi3) mKpi3.textContent = isEn ? "💰 Total Maintenance & Services Cost" : "💰 รวมค่าซ่อมบำรุงและบริการ";
+    if (mKpi3) mKpi3.textContent = isEn ? "Total Maintenance Cost" : "รวมค่าซ่อมบำรุงและบริการ";
     const mKpi4 = document.getElementById("mnt-kpi-renewal-lbl") || document.getElementById("maint-kpi-renewal-lbl");
-    if (mKpi4) mKpi4.textContent = isEn ? "🛡️ Tax / ACT / Insurance Renewals" : "🛡️ งานต่อทะเบียน / พรบ. / ประกัน";
+    if (mKpi4) mKpi4.textContent = isEn ? "Tax / ACT / Insurance Renewals" : "งานต่อภาษี / พรบ. / ประกัน";
 
     // Maintenance filter bar
     const mLblSearch = document.getElementById("mnt-lbl-search");
-    if (mLblSearch) mLblSearch.textContent = isEn ? "🔍 Search (Plate / Work Order / Garage / Issue):" : "🔍 ค้นหา (ทะเบียน / เลขใบงาน / อู่ / รายการซ่อม):";
+    if (mLblSearch) mLblSearch.textContent = isEn ? "Search (Plate / Work Order / Garage / Issue):" : "ค้นหา (ทะเบียน / เลขใบงาน / อู่ / รายการซ่อม):";
     const mSearch = document.getElementById("mnt-search-input");
     if (mSearch) mSearch.placeholder = isEn ? "Search plate, garage, work order, details..." : "พิมพ์ค้นหา...";
 
     const mLblType = document.getElementById("mnt-lbl-type") || document.getElementById("maint-filter-type-lbl");
-    if (mLblType) mLblType.textContent = isEn ? "📋 Filter Job Category:" : "📋 กรองประเภทงาน:";
+    if (mLblType) mLblType.textContent = isEn ? "Filter Job Category:" : "ประเภทงาน:";
     const optMTypeAll = document.getElementById("opt-mnt-type-all");
     if (optMTypeAll) optMTypeAll.textContent = isEn ? "All" : "ทั้งหมด";
     const optMTypeRout = document.getElementById("opt-mnt-type-routine");
@@ -675,7 +675,7 @@ class App {
     if (optMTypeInsp) optMTypeInsp.textContent = isEn ? "Vehicle Inspection (Tor Ror Or)" : "ตรวจสภาพรถ ตรอ.";
 
     const mLblStat = document.getElementById("mnt-lbl-status") || document.getElementById("maint-filter-status-lbl");
-    if (mLblStat) mLblStat.textContent = isEn ? "🚦 Filter Status:" : "🚦 กรองสถานะ:";
+    if (mLblStat) mLblStat.textContent = isEn ? "Filter Status:" : "สถานะ:";
     const optMStatAll = document.getElementById("opt-mnt-status-all");
     if (optMStatAll) optMStatAll.textContent = isEn ? "All" : "ทั้งหมด";
     const optMStatRep = document.getElementById("opt-mnt-status-repairing");
@@ -686,13 +686,13 @@ class App {
     if (optMStatDone) optMStatDone.textContent = isEn ? "Completed" : "เสร็จสิ้น";
 
     const mLblCar = document.getElementById("mnt-lbl-car");
-    if (mLblCar) mLblCar.textContent = isEn ? "🚘 Select Vehicle:" : "🚘 เลือกรถ:";
+    if (mLblCar) mLblCar.textContent = isEn ? "Select Vehicle:" : "เลือกรถ:";
     const optMCarAll = document.getElementById("opt-mnt-car-all");
     if (optMCarAll) optMCarAll.textContent = isEn ? "All Vehicles" : "ทุกคัน";
 
     // Maintenance Table Title & Headers
     const mTblTitlePfx = document.getElementById("mnt-table-title-prefix");
-    if (mTblTitlePfx) mTblTitlePfx.textContent = isEn ? "📋 All Maintenance & Service History Records (" : "📋 รายการประวัติการซ่อมบำรุงและบริการทั้งหมด (";
+    if (mTblTitlePfx) mTblTitlePfx.textContent = isEn ? "All Maintenance & Service History Records (" : "ประวัติการซ่อมบำรุงและบริการทั้งหมด (";
     const mTblTitleSfx = document.getElementById("mnt-table-title-suffix");
     if (mTblTitleSfx) mTblTitleSfx.textContent = isEn ? " Records)" : " รายการ)";
 
@@ -720,74 +720,74 @@ class App {
     // 11. Dashboard Module Localization
     const dTitle = document.getElementById("dash-main-title");
     if (dTitle) dTitle.innerHTML = isEn 
-      ? '<span>📊</span> Executive Dashboard & Total Fleet' 
-      : '<span>📊</span> ภาพรวมและแดชบอร์ดผู้บริหาร (Executive Dashboard & Total Fleet)';
+      ? 'Executive Dashboard & Total Fleet' 
+      : 'ภาพรวมและแดชบอร์ดผู้บริหาร (Executive Dashboard & Total Fleet)';
     const dSubtitle = document.getElementById("dash-main-subtitle");
     if (dSubtitle) dSubtitle.textContent = isEn 
-      ? "Real-time summary of fleet metrics, revenues, and operational performance across all companies" 
-      : "สรุปภาพรวมยานพาหนะ รายรับ และประสิทธิภาพการดำเนินงานรวมทุกสาขาและบริษัทในเครือ (Unified Real-Time Fleet)";
+      ? "Fleet Overview & Real-time Metrics" 
+      : "ภาพรวมสถานะฟลีทรถ รายได้ และสถิติการดำเนินงานแบบเรียลไทม์";
 
     const dKpiFleet = document.getElementById("dash-kpi-fleet-lbl");
     if (dKpiFleet) dKpiFleet.textContent = isEn ? "Total Fleet" : "กองยานพาหนะ (Fleet)";
     const dKpiFleetBdg = document.getElementById("dash-kpi-fleet-badge");
-    if (dKpiFleetBdg) dKpiFleetBdg.textContent = isEn ? "➔ Fleet Showcase" : "➔ ไปหน้าเลือกรถ";
+    if (dKpiFleetBdg) dKpiFleetBdg.textContent = isEn ? "Fleet Showcase" : "ไปหน้าเลือกรถ";
 
     const dKpiActive = document.getElementById("dash-kpi-active-lbl");
-    if (dKpiActive) dKpiActive.textContent = isEn ? "Active / Booked Rentals" : "รถกำลังเช่า/ติดจอง (Active)";
+    if (dKpiActive) dKpiActive.textContent = isEn ? "Active Rentals" : "รถกำลังเช่า/ติดจอง (Active)";
     const dKpiActiveBdg = document.getElementById("dash-kpi-active-badge");
-    if (dKpiActiveBdg) dKpiActiveBdg.textContent = isEn ? "🔍 View Active Rentals" : "🔍 ดูรถที่อยู่กับลูกค้า";
+    if (dKpiActiveBdg) dKpiActiveBdg.textContent = isEn ? "View Active" : "ดูรถที่อยู่กับลูกค้า";
 
     const dKpiUtil = document.getElementById("dash-kpi-util-lbl");
     if (dKpiUtil) dKpiUtil.textContent = isEn ? "Fleet Utilization" : "อัตราการใช้รถ (Utilization)";
     const dKpiUtilBdg = document.getElementById("dash-kpi-util-badge");
-    if (dKpiUtilBdg) dKpiUtilBdg.textContent = isEn ? "🏆 Net Profit Rank" : "🏆 อันดับกำไรสุทธิ";
+    if (dKpiUtilBdg) dKpiUtilBdg.textContent = isEn ? "Profit Ranking" : "อันดับกำไรสุทธิ";
 
     const dKpiRev = document.getElementById("dash-kpi-rev-lbl");
-    if (dKpiRev) dKpiRev.textContent = isEn ? "Total Revenue (Revenue)" : "รายรับสะสมรวม (Revenue)";
+    if (dKpiRev) dKpiRev.textContent = isEn ? "Total Revenue" : "รายรับสะสมรวม (Revenue)";
 
     const dAlertTitle = document.getElementById("dash-alert-title");
     if (dAlertTitle) dAlertTitle.textContent = isEn 
-      ? "🚨 Automated Tax / ACT / Insurance LINE Notification (Broadcast 20:00)" 
-      : "🚨 ระบบตรวจสอบ พ.ร.บ. / ประกันภัย ผ่าน LINE อัตโนมัติ (Broadcast 20:00 น.)";
+      ? "Automated Renewal Alerts (LINE Broadcast 20:00)" 
+      : "ระบบแจ้งเตือนต่ออายุเอกสารอัตโนมัติ (LINE 20:00 น.)";
     const dAlertDesc = document.getElementById("dash-alert-desc");
     if (dAlertDesc) dAlertDesc.textContent = isEn 
-      ? "Automated broadcast daily at 20:00 (30 days, 7 days prior, and expiration date) • Once renewed in the table below, alerts for that vehicle stop immediately." 
-      : "ส่งแจ้งเตือนอัตโนมัติทุกวันเวลา 20:00 น. (ล่วงหน้า 30 วัน, 7 วัน และวันหมดอายุ) • เมื่อกด 🔄 อัปเดตต่ออายุในตารางด้านล่างแล้ว ระบบจะหยุดส่งแจ้งเตือนรายการนั้นทันที";
+      ? "Daily broadcast at 20:00 (30 days, 7 days prior, and expiry date). Alerts stop immediately upon renewal." 
+      : "ส่งแจ้งเตือนอัตโนมัติทุกวันเวลา 20:00 น. (ล่วงหน้า 30 วัน, 7 วัน และวันหมดอายุ) • เมื่อบันทึกต่ออายุเรียบร้อย ระบบจะหยุดแจ้งเตือนทันที";
     const btnLineCheck = document.getElementById("btn-dash-line-check");
-    if (btnLineCheck) btnLineCheck.textContent = isEn ? "📲 Check & Send LINE Now" : "📲 ตรวจสอบ & ส่ง LINE ทันที";
+    if (btnLineCheck) btnLineCheck.textContent = isEn ? "Send LINE Alert Now" : "ส่งการแจ้งเตือน LINE ทันที";
 
     const dDonutTitle = document.getElementById("dash-donut-title");
-    if (dDonutTitle) dDonutTitle.textContent = isEn ? "Current Fleet Status" : "สถานะกองยานพาหนะปัจจุบัน (Total Fleet Status)";
+    if (dDonutTitle) dDonutTitle.textContent = isEn ? "Current Fleet Status" : "สถานะรถปัจจุบัน (Current Fleet Status)";
     const dDonutSubtitle = document.getElementById("dash-donut-subtitle");
-    if (dDonutSubtitle) dDonutSubtitle.textContent = isEn ? "Fleet status breakdown (Interactive Donut Chart)" : "สัดส่วนสถานะรถทั้งหมดในระบบ (Interactive Donut Chart)";
+    if (dDonutSubtitle) dDonutSubtitle.textContent = isEn ? "Real-time fleet breakdown" : "สัดส่วนสถานะรถทั้งหมดในระบบ";
 
     const dTrendTitle = document.getElementById("dash-trend-title");
-    if (dTrendTitle) dTrendTitle.textContent = isEn ? "Total Revenue Trend" : "แนวโน้มรายรับสะสมรวม (Total Revenue Trend)";
+    if (dTrendTitle) dTrendTitle.textContent = isEn ? "Total Revenue Trend" : "แนวโน้มรายรับรวม (Total Revenue Trend)";
     const dTrendSubtitle = document.getElementById("dash-trend-subtitle");
-    if (dTrendSubtitle) dTrendSubtitle.textContent = isEn ? "Monthly revenue trend (Interactive Total Revenue Chart)" : "ยอดรายรับรวมย้อนหลังรายเดือน (Interactive Total Revenue Chart)";
+    if (dTrendSubtitle) dTrendSubtitle.textContent = isEn ? "Monthly revenue trend" : "ยอดรายรับรวมย้อนหลังรายเดือน";
 
     const btnTrendBar = document.getElementById("btn-trend-bar");
-    if (btnTrendBar) btnTrendBar.textContent = isEn ? "📊 Bar Chart" : "📊 กราฟแท่ง (Bar)";
+    if (btnTrendBar) btnTrendBar.textContent = isEn ? "Bar Chart" : "กราฟแท่ง";
     const btnTrendArea = document.getElementById("btn-trend-area");
-    if (btnTrendArea) btnTrendArea.textContent = isEn ? "📈 Area Chart" : "📈 กราฟพื้นที่ (Area)";
+    if (btnTrendArea) btnTrendArea.textContent = isEn ? "Area Chart" : "กราฟพื้นที่";
 
     const dFleetSortLbl = document.getElementById("dash-fleet-sort-lbl");
-    if (dFleetSortLbl) dFleetSortLbl.textContent = isEn ? "🔽 Sort By:" : "🔽 เรียงลำดับตาราง:";
+    if (dFleetSortLbl) dFleetSortLbl.textContent = isEn ? "Sort By:" : "เรียงลำดับ:";
     const optSortExp = document.getElementById("opt-dash-sort-exp");
-    if (optSortExp) optSortExp.textContent = isEn ? "⏳ Expiry Date (Tax / ACT / Ins nearest first)" : "⏳ วันหมดอายุ ภาษี / พ.ร.บ. / ประกัน ใกล้หมดก่อน (ค่าเริ่มต้น)";
+    if (optSortExp) optSortExp.textContent = isEn ? "Nearest Expiry (Tax / ACT / Ins)" : "วันหมดอายุ ภาษี / พ.ร.บ. / ประกัน ใกล้หมดก่อน";
     const optSortTax = document.getElementById("opt-dash-sort-tax");
-    if (optSortTax) optSortTax.textContent = isEn ? "🏷️ Tax Expiry Date nearest first" : "🏷️ วันหมดอายุ ภาษีรถยนต์ ใกล้หมดก่อน";
+    if (optSortTax) optSortTax.textContent = isEn ? "Nearest Tax Expiry" : "วันหมดอายุ ภาษีรถยนต์ ใกล้หมดก่อน";
     const optSortAct = document.getElementById("opt-dash-sort-act");
-    if (optSortAct) optSortAct.textContent = isEn ? "🛡️ ACT Expiry Date nearest first" : "🛡️ วันหมดอายุ พ.ร.บ. ใกล้หมดก่อน";
+    if (optSortAct) optSortAct.textContent = isEn ? "Nearest ACT Expiry" : "วันหมดอายุ พ.ร.บ. ใกล้หมดก่อน";
     const optSortIns = document.getElementById("opt-dash-sort-ins");
-    if (optSortIns) optSortIns.textContent = isEn ? "📑 Insurance Expiry Date nearest first" : "📑 วันหมดอายุ ประกันภัย ใกล้หมดก่อน";
+    if (optSortIns) optSortIns.textContent = isEn ? "Nearest Insurance Expiry" : "วันหมดอายุ ประกันภัย ใกล้หมดก่อน";
     const optSortPlate = document.getElementById("opt-dash-sort-plate");
-    if (optSortPlate) optSortPlate.textContent = isEn ? "🚘 Plate No. (A-Z / 0-9)" : "🚘 เลขทะเบียนรถ (ก-ฮ / 0-9)";
+    if (optSortPlate) optSortPlate.textContent = isEn ? "Plate No. (A-Z / 0-9)" : "เลขทะเบียนรถ (ก-ฮ / 0-9)";
 
     const dFleetSearch = document.getElementById("dash-fleet-search-input");
-    if (dFleetSearch) dFleetSearch.placeholder = isEn ? "🔍 Search plate / VIN / model / insurance / notes..." : "🔍 ค้นหาทะเบียน / เลขถัง / รุ่น / ประกัน / หมายเหตุ...";
+    if (dFleetSearch) dFleetSearch.placeholder = isEn ? "Search plate / VIN / model / insurance / notes..." : "ค้นหาทะเบียน / เลขถัง / รุ่น / ประกัน / หมายเหตุ...";
     const btnAddCar = document.getElementById("btn-dash-add-car");
-    if (btnAddCar) btnAddCar.textContent = isEn ? "➕ Add New Vehicle" : "➕ เพิ่มรถใหม่";
+    if (btnAddCar) btnAddCar.textContent = isEn ? "Add New Vehicle" : "เพิ่มรถใหม่";
 
     const thFPlate = document.getElementById("th-fleet-plate");
     if (thFPlate) thFPlate.textContent = isEn ? "Plate / Year" : "ทะเบียน / ปีจด";
@@ -814,8 +814,8 @@ class App {
 
     const dFleetTip = document.getElementById("dash-fleet-footer-tip");
     if (dFleetTip) dFleetTip.innerHTML = isEn 
-      ? 'Automatic duplicate prevention (Plate and VIN). Click <b>✏️</b> to edit expiry dates or click <b>📋 Work Order</b> to assign staff immediately.' 
-      : 'ระบบตรวจสอบและป้องกันรถซ้ำอัตโนมัติ (ทั้งเลขทะเบียนและเลขตัวถัง VIN) สามารถคลิก <b>✏️</b> เพื่อแก้ไขวันหมดอายุภาษี/พ.ร.บ./ประกันภัย หรือกด <b>📋 ออกใบงาน</b> เพื่อมอบหมายพนักงานได้ทันที';
+      ? 'Automatic duplicate prevention (Plate and VIN). Click <b>Edit</b> to edit expiry dates or <b>Work Order</b> to assign staff immediately.' 
+      : 'ระบบตรวจสอบและป้องกันรถซ้ำอัตโนมัติ (ทั้งเลขทะเบียนและเลขตัวถัง VIN) สามารถคลิก <b>แก้ไข</b> เพื่อแก้ไขวันหมดอายุภาษี/พ.ร.บ./ประกันภัย หรือกด <b>ออกใบงาน</b> เพื่อมอบหมายพนักงานได้ทันที';
 
     // 12. Dashboard Sub-tables (HP / Leasing & Completed Jobs)
     const thHpNo = document.getElementById("th-hp-no");
@@ -859,24 +859,24 @@ class App {
 
     // Completed Jobs Filters & Monthly KPI Labels
     const lblRptMonth = document.getElementById("lbl-report-month");
-    if (lblRptMonth) lblRptMonth.textContent = isEn ? "📅 Select Month for Report:" : "📅 เลือกเดือนที่ต้องการดูรายงาน:";
+    if (lblRptMonth) lblRptMonth.textContent = isEn ? "Select Month for Report:" : "เลือกเดือนที่ต้องการดูรายงาน:";
     const lblRptComp = document.getElementById("lbl-report-company");
-    if (lblRptComp) lblRptComp.textContent = isEn ? "🏢 Filter Report by Company:" : "🏢 เลือกรีพอร์ตตามบริษัท:";
+    if (lblRptComp) lblRptComp.textContent = isEn ? "Filter Report by Company:" : "เลือกรีพอร์ตตามบริษัท:";
     const optRptAllComp = document.getElementById("opt-report-all-comp");
     if (optRptAllComp) optRptAllComp.textContent = isEn ? "All (All Companies)" : "ทั้งหมด (ทุกบริษัท)";
     const btnRptAllM = document.getElementById("btn-report-all-months");
-    if (btnRptAllM) btnRptAllM.textContent = isEn ? "🔄 View All Months" : "🔄 ดูทุกเดือนทั้งหมด";
+    if (btnRptAllM) btnRptAllM.textContent = isEn ? "View All Months" : "ดูทุกเดือนทั้งหมด";
     const btnExpCsv = document.getElementById("btn-export-csv");
-    if (btnExpCsv) btnExpCsv.textContent = isEn ? "📥 Download Completed Jobs Summary (CSV for Excel)" : "📥 ดาวน์โหลดรายงานสรุปงานเสร็จสิ้น (CSV สำหรับ Excel)";
+    if (btnExpCsv) btnExpCsv.textContent = isEn ? "Download Completed Jobs Summary (CSV for Excel)" : "ดาวน์โหลดรายงานสรุปงานเสร็จสิ้น (CSV สำหรับ Excel)";
 
     const lblKpiJobs = document.getElementById("lbl-rpt-kpi-jobs");
-    if (lblKpiJobs) lblKpiJobs.textContent = isEn ? "🏁 Total Completed Jobs" : "🏁 งานเสร็จสิ้นทั้งหมด";
+    if (lblKpiJobs) lblKpiJobs.textContent = isEn ? "Total Completed Jobs" : "งานเสร็จสิ้นทั้งหมด";
     const lblKpiRev = document.getElementById("lbl-rpt-kpi-rev");
-    if (lblKpiRev) lblKpiRev.textContent = isEn ? "💰 Total Rental Revenue" : "💰 รายรับรวมจากงานเช่า";
+    if (lblKpiRev) lblKpiRev.textContent = isEn ? "Total Rental Revenue" : "รายรับรวมจากงานเช่า";
     const lblKpiCars = document.getElementById("lbl-rpt-kpi-cars");
-    if (lblKpiCars) lblKpiCars.textContent = isEn ? "🚘 Active Vehicles" : "🚘 รถที่ให้บริการ";
+    if (lblKpiCars) lblKpiCars.textContent = isEn ? "Active Vehicles" : "รถที่ให้บริการ";
     const lblKpiCusts = document.getElementById("lbl-rpt-kpi-custs");
-    if (lblKpiCusts) lblKpiCusts.textContent = isEn ? "👥 Total Customers" : "👥 ลูกค้าที่ใช้บริการ";
+    if (lblKpiCusts) lblKpiCusts.textContent = isEn ? "Total Customers" : "ลูกค้าที่ใช้บริการ";
 
     // Completed Jobs Table Headers
     const thRptBkid = document.getElementById("th-rpt-bkid");
@@ -4030,7 +4030,7 @@ class App {
 
     const isEn = (this.currentLang === "EN");
     if (filtered.length === 0) {
-      const emptyMsg = isEn ? "📋 No work orders in the system currently" : "📋 ไม่มีใบงานในระบบขณะนี้";
+      const emptyMsg = isEn ? "No work orders in the system currently" : "ไม่มีใบงานในระบบขณะนี้";
       tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:30px; color:#64748B;">${emptyMsg}</td></tr>`;
       return;
     }
@@ -4040,30 +4040,30 @@ class App {
       const isMnt = j.is_maintenance || j.job_type === "Maintenance" || j.job_type === "Renewal";
       let typeBadge = '';
       if (j.job_type === "Maintenance") {
-        typeBadge = `<span class="badge" style="background:#FFF7ED; color:#C2410C; border:1px solid #FDBA74; font-weight:700;">${isEn ? '🛠️ Maintenance' : '🛠️ ซ่อมบำรุง'}</span>`;
+        typeBadge = `<span class="badge" style="background:#FFF7ED; color:#C2410C; border:1px solid #FDBA74; font-weight:700;">${isEn ? 'Maintenance' : 'ซ่อมบำรุง'}</span>`;
       } else if (j.job_type === "Renewal") {
-        typeBadge = `<span class="badge" style="background:#F0FDF4; color:#15803D; border:1px solid #BBF7D0; font-weight:700;">${isEn ? '📄 Renewal' : '📄 ต่อทะเบียน/พรบ./ประกัน'}</span>`;
+        typeBadge = `<span class="badge" style="background:#F0FDF4; color:#15803D; border:1px solid #BBF7D0; font-weight:700;">${isEn ? 'Renewal' : 'ต่อทะเบียน/พรบ./ประกัน'}</span>`;
       } else if (isDisp) {
-        typeBadge = `<span class="badge badge-info">${isEn ? '🚚 Dispatch' : '🚚 ส่งมอบรถ (Dispatch)'}</span>`;
+        typeBadge = `<span class="badge badge-info">${isEn ? 'Dispatch' : 'ส่งมอบรถ (Dispatch)'}</span>`;
       } else {
-        typeBadge = `<span class="badge badge-warning">${isEn ? '🔙 Return' : '🔙 รับรถคืน (Return)'}</span>`;
+        typeBadge = `<span class="badge badge-warning">${isEn ? 'Return' : 'รับรถคืน (Return)'}</span>`;
       }
 
       let actionButtons = '';
       if (isMnt) {
         const isRenewalJob = j.job_type === "Renewal" || (j.order_type && (String(j.order_type).includes("ต่อทะเบียน") || String(j.order_type).includes("ประกัน") || String(j.order_type).includes("พ.ร.บ.") || String(j.order_type).includes("ภาษี") || String(j.order_type).includes("แพ็กคู่")));
-        const btnLabel = isRenewalJob ? (isEn ? "🏁 Submit / Update" : "🏁 ส่งงาน / อัปเดตวัน") : (isEn ? "🏁 Inspect & Close" : "🏁 ตรวจรับ & ปิดงาน");
+        const btnLabel = isRenewalJob ? (isEn ? "Submit / Update" : "ส่งงาน / อัปเดตวัน") : (isEn ? "Inspect & Close" : "ตรวจรับ & ปิดงาน");
         actionButtons = `
-          <a href="/api/pdf/maintenance/${j.booking_id}" target="_blank" class="btn btn-sm btn-secondary" title="${isEn ? 'Print Job PDF' : 'พิมพ์ใบงาน PDF'}">${isEn ? '📄 Job PDF' : '📄 ใบงาน PDF'}</a>
+          <a href="/api/pdf/maintenance/${j.booking_id}" target="_blank" class="btn btn-sm btn-secondary" title="${isEn ? 'Print Job PDF' : 'พิมพ์ใบงาน PDF'}">${isEn ? 'Job PDF' : 'ใบงาน PDF'}</a>
           <button onclick="app.openCloseMaintenanceModal('${j.booking_id}')" class="btn btn-sm btn-success" style="font-weight:700;" title="${btnLabel}">
             ${btnLabel}
           </button>
         `;
       } else {
         const lockTitle = isEn ? 'Wait for Dispatch completion' : 'ต้องปิดงานส่งมอบก่อน';
-        const inspectBtnLabel = isEn ? '🔍 Inspect & Complete' : '🔍 ตรวจรับส่ง & ปิดงาน';
+        const inspectBtnLabel = isEn ? 'Inspect & Complete' : 'ตรวจรับส่ง & ปิดงาน';
         actionButtons = `
-          <a href="/api/pdf/job/${j.booking_id}" target="_blank" class="btn btn-sm btn-secondary" title="${isEn ? 'Inspection PDF' : 'ใบตรวจสภาพ PDF'}">📋</a>
+          <a href="/api/pdf/job/${j.booking_id}" target="_blank" class="btn btn-sm btn-secondary" title="${isEn ? 'Inspection PDF' : 'ใบตรวจสภาพ PDF'}">PDF</a>
           <button onclick="app.openHandoverModal('${j.booking_id}', '${j.job_type}')" class="btn btn-sm btn-primary" ${j.is_locked ? `disabled title="${lockTitle}"` : ''}>
             ${inspectBtnLabel}
           </button>
@@ -4790,7 +4790,7 @@ class App {
           🟢 ${isEn ? `Normal: ${normalCount} cars` : `ปกติ: ${normalCount} คัน`}
         </span>
         <span style="background:#EFF6FF; color:#1E40AF; border:1px solid #BFDBFE; padding:3px 9px; border-radius:12px; font-size:11.5px; font-weight:700;" title="ตรวจสอบทะเบียนซ้ำและเลขตัวถังซ้ำอัตโนมัติ">
-          ${dupCount === 0 ? (isEn ? '🛡️ No Duplicates (0 cars)' : '🛡️ ไม่พบรถซ้ำ (0 คัน)') : (isEn ? `⚠️ Duplicates (${dupCount} cars)` : `⚠️ พบรถซ้ำ (${dupCount} คัน)`)}
+          ${dupCount === 0 ? (isEn ? 'No Duplicates' : 'ไม่พบรถซ้ำ') : (isEn ? `Duplicates (${dupCount})` : `พบรถซ้ำ (${dupCount})`)}
         </span>
       `;
     }
@@ -4827,7 +4827,7 @@ class App {
     });
 
     if (filtered.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="11" style="text-align:center; padding:28px; color:#64748B;">${isEn ? '🔍 No vehicles found matching the search criteria' : 'ไม่พบข้อมูลรถยนต์ที่ค้นหา'}</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="11" style="text-align:center; padding:28px; color:#64748B;">${isEn ? 'No vehicles found matching the search criteria' : 'ไม่พบข้อมูลรถยนต์ที่ค้นหา'}</td></tr>`;
       return;
     }
 
@@ -4847,13 +4847,13 @@ class App {
       if (activePairMnt) {
         renewBtnHtml = `
           <button type="button" onclick="app.openCloseMaintenanceModal('${activePairMnt.id}')" class="btn btn-sm" style="padding:3px 7px; font-size:11px; font-weight:800; background:#ECFDF5; color:#047857; border:1px solid #10B981;" title="${isEn ? 'Renewal completed: Submit & update dates' : 'พนักงานต่อเสร็จแล้ว: ส่งงาน & อัปเดตวันหมดอายุ'}">
-            ${isEn ? '🏁 Submit Renewal' : '🏁 ส่งงานต่ออายุ'}
+            ${isEn ? 'Submit Renewal' : 'ส่งงานต่ออายุ'}
           </button>
         `;
       } else {
         renewBtnHtml = `
           <button type="button" onclick="app.openRenewalOrderModal('${safePlate}', 'both')" class="btn btn-sm" style="padding:3px 7px; font-size:11px; font-weight:700; background:#FFF7ED; color:#EA580C; border:1px solid #FDBA74;" title="${isEn ? 'Create dual work order for ACT & Insurance' : 'ออกใบงานต่ออายุทั้ง พ.ร.บ. และ ประกันภัย มอบหมายพนักงาน (ขึ้นหน้าตารางงาน)'}">
-            ${isEn ? '📋 Dual Order' : '📋 ต่อคู่'}
+            ${isEn ? 'Dual Order' : 'ต่อคู่'}
           </button>
         `;
       }
@@ -4868,18 +4868,18 @@ class App {
         : "";
 
       const insCompBadge = c.ins_company && c.ins_company !== "-"
-        ? `<div style="font-size:10.5px; color:#0369A1; font-weight:700; margin-top:2px;">🛡️ ${c.ins_company}</div>`
+        ? `<div style="font-size:10.5px; color:#0369A1; font-weight:700; margin-top:2px;">${c.ins_company}</div>`
         : "";
 
       const srvInfo = [];
       if (c.last_service_date && c.last_service_date !== "-") srvInfo.push(`ล่าสุด: ${c.last_service_date}`);
       if (c.next_service && c.next_service !== "-") srvInfo.push(`ถัดไป: ${c.next_service}`);
       const srvHtml = srvInfo.length > 0
-        ? `<div style="font-size:10.5px; color:#475569;">🔧 ${srvInfo.join(" | ")}</div>`
+        ? `<div style="font-size:10.5px; color:#475569;">${srvInfo.join(" | ")}</div>`
         : "";
 
       const hpBadge = c.hp_contract_no
-        ? `<div style="font-size:10.5px; color:#7C3AED; font-weight:700;">🏦 สัญญา: ${c.hp_contract_no}${c.hp_installment ? ` (฿${Number(c.hp_installment).toLocaleString()}/ด.)` : ''}</div>`
+        ? `<div style="font-size:10.5px; color:#7C3AED; font-weight:700;">สัญญา: ${c.hp_contract_no}${c.hp_installment ? ` (฿${Number(c.hp_installment).toLocaleString()}/ด.)` : ''}</div>`
         : "";
 
       const notesShort = c.notes
@@ -4889,12 +4889,12 @@ class App {
       return `
         <tr style="${rowBg} transition: background 0.25s ease;">
           <td style="white-space:nowrap;">
-            <b>🚘 ${c.plate}</b>
+            <b>${c.plate}</b>
             ${regYearBadge}
           </td>
           <td>
             <b>${c.brand || ''}</b> ${c.model || ''}
-            <div style="font-size:11px; color:#64748B;">🎨 ${c.color || '-'}</div>
+            <div style="font-size:11px; color:#64748B;">${c.color || '-'}</div>
           </td>
           <td style="font-family:monospace; font-size:11.5px; color:#1E293B; white-space:nowrap;">${c.chassis_no || '-'}</td>
           <td>
@@ -6118,7 +6118,7 @@ class App {
     if (countTxt) countTxt.textContent = filtered.length;
 
     if (filtered.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding:32px; color:#64748B;">${isEn ? '🔍 No maintenance work orders match the selected filters' : '🔍 ไม่พบรายการใบงานซ่อมบำรุงตามเงื่อนไขที่เลือก'}</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding:32px; color:#64748B;">${isEn ? 'No maintenance work orders match the selected filters' : 'ไม่พบรายการใบงานซ่อมบำรุงตามเงื่อนไขที่เลือก'}</td></tr>`;
       return;
     }
 
@@ -6126,9 +6126,9 @@ class App {
       const isRenewal = String(m.order_type || "").includes("ต่อทะเบียน") || String(m.order_type || "").includes("พ.ร.บ.") || String(m.order_type || "").includes("ประกัน");
       let typeBadge = '';
       if (isRenewal) {
-        typeBadge = '<span class="badge" style="background:#F0FDF4; color:#15803D; border:1px solid #BBF7D0; font-weight:700;">📄 ' + m.order_type + '</span>';
+        typeBadge = '<span class="badge" style="background:#F0FDF4; color:#15803D; border:1px solid #BBF7D0; font-weight:700;">' + m.order_type + '</span>';
       } else {
-        typeBadge = '<span class="badge" style="background:#FFF7ED; color:#C2410C; border:1px solid #FDBA74; font-weight:700;">🛠️ ' + m.order_type + '</span>';
+        typeBadge = '<span class="badge" style="background:#FFF7ED; color:#C2410C; border:1px solid #FDBA74; font-weight:700;">' + m.order_type + '</span>';
       }
 
       let statusBadge = '';
@@ -6145,25 +6145,25 @@ class App {
       const costDisp = Number(m.actual_cost || m.cost || 0);
       const schedStr = `${this.formatDateDmy(m.schedule_date)} ➔ ${this.formatDateDmy(m.expected_finish_date)}`;
 
-      const pdfBtnText = isEn ? "📄 Work Order PDF" : "📄 ใบงาน PDF";
-      const finishBtnText = isRenewal ? (isEn ? '🏁 Submit & Renew' : '🏁 ส่งงาน/อัปเดตวัน') : (isEn ? '🏁 Close Job' : '🏁 ปิดงาน');
+      const pdfBtnText = isEn ? "Work Order PDF" : "ใบงาน PDF";
+      const finishBtnText = isRenewal ? (isEn ? 'Submit & Renew' : 'ส่งงาน/อัปเดตวัน') : (isEn ? 'Close Job' : 'ปิดงาน');
       const finishBtnTitle = isRenewal ? (isEn ? 'Submit job & specify new expiry date' : 'ส่งงาน & ระบุวันหมดอายุใหม่') : (isEn ? 'Inspect car & close work order' : 'ตรวจรับรถ & ปิดงาน');
 
       return `
         <tr>
           <td><b style="color:#C2410C;">${m.id}</b></td>
           <td>
-            <b style="font-size:13px; color:#1F2937;">🚘 ${m.car_id}</b><br/>
+            <b style="font-size:13px; color:#1F2937;">${m.car_id}</b><br/>
             <span style="font-size:11.5px; color:#64748B;">${m.car_brand || ''} ${m.car_model || ''} (${m.car_color || '-'})</span>
           </td>
           <td>${typeBadge}</td>
           <td style="max-width:200px; white-space:pre-wrap; font-size:12px; line-height:1.4;">${m.service_items || '-'}</td>
           <td><b style="color:#047857; font-size:13px;">฿${costDisp.toLocaleString()}</b></td>
           <td>
-            <b style="color:#1F2937; font-size:12.5px;">🏢 ${m.service_center || '-'}</b><br/>
-            ${m.service_center_phone && m.service_center_phone !== '-' ? `<a href="tel:${m.service_center_phone}" style="color:#2563EB; font-size:11.5px; text-decoration:none;">📞 ${m.service_center_phone}</a>` : ''}
+            <b style="color:#1F2937; font-size:12.5px;">${m.service_center || '-'}</b><br/>
+            ${m.service_center_phone && m.service_center_phone !== '-' ? `<a href="tel:${m.service_center_phone}" style="color:#2563EB; font-size:11.5px; text-decoration:none;">${m.service_center_phone}</a>` : ''}
           </td>
-          <td><span style="font-weight:600; color:#334155; font-size:12px;">👤 ${m.assigned_worker || '-'}</span></td>
+          <td><span style="font-weight:600; color:#334155; font-size:12px;">${m.assigned_worker || '-'}</span></td>
           <td style="font-size:11.5px; color:#475569;">${schedStr}</td>
           <td>${statusBadge}</td>
           <td style="text-align:center; white-space:nowrap;">
