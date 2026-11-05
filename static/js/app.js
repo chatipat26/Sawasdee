@@ -35,8 +35,6 @@ class App {
     this.activeTab = "fleet";
     this.uploadedPhotos = [];
     this.currentSelectedBooking = null;
-    this.expandedFleetCardFooters = new Set();
-
     // Search and Dashboard Charts State
     this.sidebarSearchKw = "";
     this.donutCharts = {};
@@ -352,18 +350,6 @@ class App {
     const btnAddCarBB = document.getElementById("btn-add-car-booking-bar");
     if (btnAddCarBB) btnAddCarBB.textContent = isEn ? "Add Vehicle" : "เพิ่มรถยนต์";
 
-    // Update all collapsible card footer toggle buttons (Mission 3)
-    const cardToggleBtns = document.querySelectorAll(".car-footer-toggle-btn");
-    cardToggleBtns.forEach(btn => {
-      const plate = btn.getAttribute("data-plate");
-      if (plate) {
-        const isExp = this.expandedFleetCardFooters && this.expandedFleetCardFooters.has(plate);
-        const txt = isExp
-          ? (isEn ? "▲ Hide" : "▲ ซ่อน")
-          : (isEn ? "▼ Show Price & Actions" : "▼ แสดงราคาและทำรายการ");
-        btn.innerHTML = `<span>${txt}</span>`;
-      }
-    });
 
     // --- Front Office Tab 2: Deposit & Finance ---
     const t2Title = document.getElementById("title-tab2");
@@ -2081,42 +2067,17 @@ class App {
     }
   }
 
-  toggleCardFooter(plate) {
-    if (!this.expandedFleetCardFooters) {
-      this.expandedFleetCardFooters = new Set();
-    }
-    const cleanPlate = String(plate || "").trim();
-    const safeId = cleanPlate.replace(/[^a-zA-Z0-9]/g, "_");
-    const isCurrentlyExpanded = this.expandedFleetCardFooters.has(cleanPlate);
+  // Expanded state is local to each card element (data-expanded), scoped via closest().
+  toggleCardFooter(badgeEl) {
+    const card = badgeEl && badgeEl.closest ? badgeEl.closest(".car-card-modern") : null;
+    if (!card) return;
+    const nowExpanded = card.dataset.expanded !== "true";
+    card.dataset.expanded = nowExpanded ? "true" : "false";
 
-    if (isCurrentlyExpanded) {
-      this.expandedFleetCardFooters.delete(cleanPlate);
-    } else {
-      this.expandedFleetCardFooters.add(cleanPlate);
-    }
-
-    const nowExpanded = this.expandedFleetCardFooters.has(cleanPlate);
-    const panel = document.getElementById(`card-footer-${safeId}`);
-    const badge = document.getElementById(`plate-badge-${safeId}`);
-    const btn = document.getElementById(`btn-toggle-footer-${safeId}`);
-
-    if (panel) {
-      panel.style.display = nowExpanded ? "block" : "none";
-    }
-
-    if (badge) {
-      badge.classList.toggle("active", nowExpanded);
-    }
-
-    if (btn) {
-      const isEn = (this.currentLang === "EN");
-      const l = isEn ? "EN" : "TH";
-      const dict = (window.translations && window.translations[l]) ? window.translations[l] : null;
-      const txt = nowExpanded
-        ? (dict ? dict.hide_price_actions : (isEn ? "▲ Hide" : "▲ ซ่อน"))
-        : (dict ? dict.show_price_actions : (isEn ? "▼ Show Price & Actions" : "▼ แสดงราคาและทำรายการ"));
-      btn.innerHTML = `<span>${txt}</span>`;
-    }
+    const panel = card.querySelector(".car-card-collapsible-footer");
+    if (panel) panel.style.display = nowExpanded ? "block" : "none";
+    const badge = card.querySelector(".thai-plate-badge");
+    if (badge) badge.classList.toggle("active", nowExpanded);
   }
 
   // --- Rendering: Fleet Cards ---
@@ -2200,7 +2161,7 @@ class App {
       const { basePrice, priceDay, priceWeek, priceMonth } = this.calculateCarRentalPrice(c, dur.days, autoType);
       const carImg = (c.image || "").trim();
       const safePlate = String(c.plate || "").replace(/'/g, "\\'");
-      const safeId = String(c.plate || "").replace(/[^a-zA-Z0-9]/g, "_");
+      const safeId = `${idx}_${String(c.plate || "").replace(/[^a-zA-Z0-9]/g, "_")}`;
 
       // 1. Car Code & Category Tag (SW001 & NIMBLE)
       const carCode = c.car_code || c.code || `SW${String(idx + 1).padStart(3, '0')}`;
@@ -2217,15 +2178,15 @@ class App {
       }
 
       // 2. Thai License Plate Badge (Clickable Toggle Trigger)
-      const isExpanded = this.expandedFleetCardFooters ? this.expandedFleetCardFooters.has(c.plate) : false;
+      const isExpanded = false;
       const { plateNo, province, isRed } = this.formatPlateDisplay(c.plate);
       const plateTooltip = isEn ? "Click to toggle price & actions" : "คลิกป้ายทะเบียนเพื่อเปิด/ปิดราคาและปุ่มทำรายการ";
       const plateHtml = isRed
-        ? `<div class="thai-plate-badge red-plate ${isExpanded ? 'active' : ''}" id="plate-badge-${safeId}" onclick="app.toggleCardFooter('${safePlate}')" role="button" tabindex="0" title="${plateTooltip}">
+        ? `<div class="thai-plate-badge red-plate ${isExpanded ? 'active' : ''}"         id="plate-badge-${safeId}" onclick="app.toggleCardFooter(this)" role="button" tabindex="0" title="${plateTooltip}">
              <div class="thai-plate-num">${isEn ? "Red Plate" : "ป้ายแดง"}</div>
              <div class="thai-plate-prov">${isEn ? "Red plate" : "Red plate"}</div>
            </div>`
-        : `<div class="thai-plate-badge ${isExpanded ? 'active' : ''}" id="plate-badge-${safeId}" onclick="app.toggleCardFooter('${safePlate}')" role="button" tabindex="0" title="${plateTooltip}">
+        : `<div class="thai-plate-badge ${isExpanded ? 'active' : ''}"         id="plate-badge-${safeId}" onclick="app.toggleCardFooter(this)" role="button" tabindex="0" title="${plateTooltip}">
              <div class="thai-plate-num">${plateNo}</div>
              <div class="thai-plate-prov">${province}</div>
            </div>`;
@@ -3135,7 +3096,7 @@ class App {
       return;
     }
 
-    const vinVal = String(getVal("edit-car-vin", "chassis_no", "-")).trim();
+    const vinVal = String(getVal("edit-car-vin", "vin", getVal("edit-car-vin", "chassis_no", "-"))).trim();
     if (this.checkDuplicateChassis(vinVal)) {
       const msg = (this.currentLang === "EN")
         ? "Duplicate Data: Vehicle plate or VIN (Chassis No) already exists in system"
