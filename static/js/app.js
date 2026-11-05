@@ -556,6 +556,17 @@ class App {
     const optMStatBook = document.getElementById("opt-modal-status-booked");
     if (optMStatBook) optMStatBook.textContent = isEn ? "Reserved" : "ติดจอง";
 
+    const lblCarDebtFree = document.getElementById("lbl-modal-car-debt-free");
+    if (lblCarDebtFree) lblCarDebtFree.textContent = isEn ? "Debt-Free / Fully Paid" : "รถปลอดภาระ / ซื้อเงินสด";
+    const lblCarInstAmt = document.getElementById("lbl-modal-car-installment-amt");
+    if (lblCarInstAmt) lblCarInstAmt.textContent = isEn ? "Monthly Installment (THB)" : "ค่างวดต่อเดือน (THB)";
+    const lblCarTotInst = document.getElementById("lbl-modal-car-total-inst");
+    if (lblCarTotInst) lblCarTotInst.textContent = isEn ? "Total Installments" : "จำนวนงวดทั้งหมด";
+    const lblCarCurrInst = document.getElementById("lbl-modal-car-curr-inst");
+    if (lblCarCurrInst) lblCarCurrInst.textContent = isEn ? "Current Paid Installment" : "งวดปัจจุบัน (ชำระแล้ว)";
+    const lblCarDueDate = document.getElementById("lbl-modal-car-due-date");
+    if (lblCarDueDate) lblCarDueDate.textContent = isEn ? "Due Date" : "วันกำหนดชำระ (ทุกวันที่)";
+
     const lblCarNotes = document.getElementById("lbl-modal-car-notes");
     if (lblCarNotes) lblCarNotes.textContent = isEn ? "Additional Notes & Info" : "หมายเหตุ / ข้อมูลเพิ่มเติม (Notes)";
     const inpCarNotes = document.getElementById("edit-car-notes");
@@ -744,6 +755,9 @@ class App {
 
     const dKpiRev = document.getElementById("dash-kpi-rev-lbl");
     if (dKpiRev) dKpiRev.textContent = isEn ? "Total Revenue" : "รายรับสะสมรวม (Revenue)";
+
+    const dKpiInst = document.getElementById("dash-kpi-inst-lbl");
+    if (dKpiInst) dKpiInst.textContent = isEn ? "Total Monthly Fleet Installments" : "รายจ่ายค่างวดรถรวมต่อเดือน";
 
     const dAlertTitle = document.getElementById("dash-alert-title");
     if (dAlertTitle) dAlertTitle.textContent = isEn 
@@ -1394,7 +1408,17 @@ class App {
     const elMaint = document.getElementById("kpi-maint-pill");
     const elUtil = document.getElementById("kpi-utilization");
     const elRev = document.getElementById("kpi-total-revenue");
+    const elInst = document.getElementById("kpi-monthly-installments");
     const elUpd = document.getElementById("dash-last-updated-txt");
+
+    const totalFleetInstallments = scopedCars.reduce((sum, c) => {
+      const isDebtFree = Boolean(c.is_debt_free);
+      const instAmt = parseFloat(c.installment_amount || 0);
+      if (!isDebtFree && instAmt > 0) {
+        return sum + instAmt;
+      }
+      return sum;
+    }, 0);
 
     if (elTotal) elTotal.textContent = totalCars;
     if (elAvail) elAvail.textContent = isEn ? `Available ${availCars} cars` : `พร้อมให้บริการ ${availCars} คัน`;
@@ -1402,6 +1426,7 @@ class App {
     if (elMaint) elMaint.textContent = isEn ? `Maintenance ${maintCars} cars` : `ซ่อมบำรุง ${maintCars} คัน`;
     if (elUtil) elUtil.textContent = `${utilRate}%`;
     if (elRev) elRev.textContent = `฿${totalRev.toLocaleString('th-TH', { minimumFractionDigits: 2 })}`;
+    if (elInst) elInst.textContent = `฿${totalFleetInstallments.toLocaleString('th-TH', { minimumFractionDigits: 2 })}`;
     if (elUpd) {
       const now = new Date();
       const dd = String(now.getDate()).padStart(2, "0");
@@ -2190,7 +2215,25 @@ class App {
     setVal("edit-car-notes", car.notes || "");
     setVal("edit-car-status", car.status || "ว่างพร้อมใช้งาน");
 
+    const isDebtFree = car.is_debt_free !== undefined ? Boolean(car.is_debt_free) : (!car.installment_amount);
+    const debtFreeEl = document.getElementById("edit-car-debt-free");
+    if (debtFreeEl) {
+      debtFreeEl.checked = isDebtFree;
+      this.onDebtFreeToggle(isDebtFree);
+    }
+    setVal("edit-car-installment-amount", car.installment_amount !== undefined ? car.installment_amount : 0);
+    setVal("edit-car-total-installments", car.total_installments !== undefined ? car.total_installments : 48);
+    setVal("edit-car-current-installment", car.current_installment !== undefined ? car.current_installment : 0);
+    setVal("edit-car-payment-due-date", this.dmyToYmd(car.payment_due_date));
+
     this.openModal("modal-edit-car");
+  }
+
+  onDebtFreeToggle(isDebtFree) {
+    const fieldsContainer = document.getElementById("edit-car-installment-fields");
+    if (fieldsContainer) {
+      fieldsContainer.style.display = isDebtFree ? "none" : "grid";
+    }
   }
 
   onCarImageUrlInput(val) {
@@ -2305,7 +2348,12 @@ class App {
       next_service: (document.getElementById("edit-car-next-srv")?.value || "-").trim(),
       notes: (document.getElementById("edit-car-notes")?.value || "").trim(),
       status: document.getElementById("edit-car-status")?.value || "ว่างพร้อมใช้งาน",
-      image: imgUrl
+      image: imgUrl,
+      is_debt_free: Boolean(document.getElementById("edit-car-debt-free")?.checked),
+      installment_amount: Boolean(document.getElementById("edit-car-debt-free")?.checked) ? 0 : (parseFloat(document.getElementById("edit-car-installment-amount")?.value || 0) || 0),
+      total_installments: Boolean(document.getElementById("edit-car-debt-free")?.checked) ? 0 : (parseInt(document.getElementById("edit-car-total-installments")?.value || 0, 10) || 0),
+      current_installment: Boolean(document.getElementById("edit-car-debt-free")?.checked) ? 0 : (parseInt(document.getElementById("edit-car-current-installment")?.value || 0, 10) || 0),
+      payment_due_date: Boolean(document.getElementById("edit-car-debt-free")?.checked) || !(document.getElementById("edit-car-payment-due-date")?.value || "").trim() ? "-" : (document.getElementById("edit-car-payment-due-date")?.value || "").trim()
     };
 
     try {

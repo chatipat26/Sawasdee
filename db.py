@@ -538,7 +538,9 @@ class DataStore:
                                     sb.table("cars").update({"status": "ว่างพร้อมใช้งาน"}).eq("plate", pl).execute()
                                 except Exception:
                                     pass
-                            fresh_cars[pl] = c
+                            merged_c = dict(self.cars.get(pl, {}))
+                            merged_c.update(c)
+                            fresh_cars[pl] = merged_c
                     if fresh_cars is not None:
                         with self.lock:
                             self.cars = fresh_cars
@@ -677,7 +679,9 @@ class DataStore:
         ALL_CAR_COLS = SUPABASE_CAR_COLS | {
             'owner', 'beneficiary', 'reg_year', 'tax_expiry', 'ins_company',
             'last_service_date', 'next_service', 'tire_change', 'notes',
-            'hp_contract_no', 'hp_installment'
+            'hp_contract_no', 'hp_installment',
+            'is_debt_free', 'installment_amount', 'payment_due_date',
+            'total_installments', 'current_installment'
         }
         with self.lock:
             existing = dict(self.cars.get(plate, {}))

@@ -1092,6 +1092,15 @@
               <div class="kpi-label" id="dash-kpi-rev-lbl">Total Revenue</div>
             </div>
           </div>
+
+          <!-- Card 5: Fleet Monthly Installments -->
+          <div class="kpi-card" style="border: 1px solid #fee2e2;">
+            <div class="kpi-icon" style="background:#FFF1F2; color:#E11D48;">💸</div>
+            <div>
+              <div class="kpi-value" id="kpi-monthly-installments">฿0.00</div>
+              <div class="kpi-label" id="dash-kpi-inst-lbl">Total Monthly Fleet Installments</div>
+            </div>
+          </div>
         </div>
 
         <!-- Expiry Alert Warning Box -->
@@ -1811,6 +1820,32 @@
         </div>
       </div>
 
+      <!-- Installment & Financial Tracking -->
+      <div style="border:1px solid #E2E8F0; border-radius:8px; padding:12px; margin-bottom:12px; background:#F8FAFC;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+          <input type="checkbox" id="edit-car-debt-free" onchange="app.onDebtFreeToggle(this.checked)" style="width:16px; height:16px; cursor:pointer;">
+          <label for="edit-car-debt-free" id="lbl-modal-car-debt-free" style="margin:0; font-weight:600; cursor:pointer; color:#1E293B;">รถปลอดภาระ / ซื้อเงินสด</label>
+        </div>
+        <div id="edit-car-installment-fields" style="display:grid; grid-template-columns: repeat(4, 1fr); gap:12px;">
+          <div class="form-group">
+            <label id="lbl-modal-car-installment-amt">ค่างวดต่อเดือน (THB)</label>
+            <input type="number" id="edit-car-installment-amount" class="form-control" min="0" step="100" placeholder="0">
+          </div>
+          <div class="form-group">
+            <label id="lbl-modal-car-total-inst">จำนวนงวดทั้งหมด</label>
+            <input type="number" id="edit-car-total-installments" class="form-control" min="0" step="1" placeholder="48">
+          </div>
+          <div class="form-group">
+            <label id="lbl-modal-car-curr-inst">งวดปัจจุบัน (ชำระแล้ว)</label>
+            <input type="number" id="edit-car-current-installment" class="form-control" min="0" step="1" placeholder="0">
+          </div>
+          <div class="form-group">
+            <label id="lbl-modal-car-due-date">วันกำหนดชำระ (ทุกวันที่)</label>
+            <input type="date" id="edit-car-payment-due-date" class="form-control">
+          </div>
+        </div>
+      </div>
+
       <div class="form-group" style="margin-bottom:16px;">
         <label id="lbl-modal-car-notes">Additional Notes & Info</label>
         <input type="text" id="edit-car-notes" class="form-control" placeholder="เช่น มีเล่มทะเบียน, ผู้เช่าประจำ, ประวัติเคลม...">
@@ -2119,7 +2154,7 @@
   <div class="toast-container" id="toast-container"></div>
 
   <!-- Scripts with cache busting -->
-  <script src="/static/js/app.js?v=6.5"></script>
+  <script src="/static/js/app.js?v=6.6"></script>
 
   <!-- ===================================================================== -->
   <!-- MODAL: ACTIVE RENTALS / CARS WITH CUSTOMERS (POPUP FOR CARD 1) -->

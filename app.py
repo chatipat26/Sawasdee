@@ -1711,6 +1711,14 @@ translations = {
         "date_dob": "วันเกิด (DOB)",
         "date_lic_exp": "วันหมดอายุใบขับขี่",
 
+        # Installment & Financial
+        "is_debt_free": "รถปลอดภาระ / ซื้อเงินสด",
+        "installment_amount": "ค่างวดต่อเดือน (THB)",
+        "payment_due_date": "วันกำหนดชำระ (ทุกวันที่)",
+        "total_installments": "จำนวนงวดทั้งหมด",
+        "current_installment": "งวดปัจจุบัน (ชำระแล้ว)",
+        "dashboard_monthly_expense": "รายจ่ายค่างวดรถรวมต่อเดือน",
+
         # Tab 2: Deposit & Finance
         "deposit_title": "เงินมัดจำ & การเงิน (Deposit & Payment)",
         "deposit_subtitle": "บันทึกเงินมัดจำประกันสัญญาและชำระค่าเช่า",
@@ -1912,6 +1920,14 @@ translations = {
         "date_last_srv": "Last Service Date",
         "date_dob": "Date of Birth (DOB)",
         "date_lic_exp": "Driver License Expiry",
+
+        # Installment & Financial
+        "is_debt_free": "Debt-Free / Fully Paid",
+        "installment_amount": "Monthly Installment (THB)",
+        "payment_due_date": "Due Date",
+        "total_installments": "Total Installments",
+        "current_installment": "Current Paid Installment",
+        "dashboard_monthly_expense": "Total Monthly Fleet Installments",
 
         # Tab 2: Deposit & Finance
         "deposit_title": "Deposit & Payment",
@@ -4279,6 +4295,24 @@ else:
                         if add_img_file is not None:
                             st.image(add_img_file, caption="ตัวอย่างรูปรถใหม่", use_container_width=True)
                     
+                    st.markdown("<hr style='margin:12px 0; border:0.5px solid #EFEAE3;'>", unsafe_allow_html=True)
+                    add_debt_free = st.checkbox(translations[st.session_state.language].get("is_debt_free", "รถปลอดภาระ / ซื้อเงินสด"), value=True, key="add_car_debt_free")
+                    if not add_debt_free:
+                        inst_c1, inst_c2, inst_c3, inst_c4 = st.columns(4)
+                        with inst_c1:
+                            add_inst_amt = st.number_input(translations[st.session_state.language].get("installment_amount", "ค่างวดต่อเดือน (THB)"), min_value=0.0, value=0.0, step=500.0, key="add_car_inst_amt")
+                        with inst_c2:
+                            add_total_inst = st.number_input(translations[st.session_state.language].get("total_installments", "จำนวนงวดทั้งหมด"), min_value=0, value=48, step=1, key="add_car_total_inst")
+                        with inst_c3:
+                            add_curr_inst = st.number_input(translations[st.session_state.language].get("current_installment", "งวดปัจจุบัน (ชำระแล้ว)"), min_value=0, value=0, step=1, key="add_car_curr_inst")
+                        with inst_c4:
+                            add_due_date = st.date_input(translations[st.session_state.language].get("payment_due_date", "วันกำหนดชำระ (ทุกวันที่)"), value=None, format="DD/MM/YYYY", key="add_car_due_date")
+                    else:
+                        add_inst_amt = 0.0
+                        add_total_inst = 0
+                        add_curr_inst = 0
+                        add_due_date = None
+
                     btn_c_save, btn_c_tip = st.columns([1.5, 2])
                     with btn_c_save:
                         if st.button("💾 บันทึกรถยนต์ใหม่เข้าสู่ฐานข้อมูล", type="primary", key="btn_save_new_vehicle", use_container_width=True):
@@ -4319,7 +4353,12 @@ else:
                                     "act_expiry": format_date_for_db(add_act, "%d/%m/%Y"),
                                     "ins_expiry": format_date_for_db(add_ins, "%d/%m/%Y"),
                                     "mileage": add_mileage or "0",
-                                    "image": new_car_img
+                                    "image": new_car_img,
+                                    "is_debt_free": bool(add_debt_free),
+                                    "installment_amount": float(add_inst_amt) if not add_debt_free else 0.0,
+                                    "total_installments": int(add_total_inst) if not add_debt_free else 0,
+                                    "current_installment": int(add_curr_inst) if not add_debt_free else 0,
+                                    "payment_due_date": format_date_for_db(add_due_date, "%Y-%m-%d") if not add_debt_free and add_due_date else "-"
                                 }
                                 st.session_state.cars_db[add_plate] = new_car_data
                                 cars_db[add_plate] = new_car_data
@@ -4700,6 +4739,23 @@ else:
                                             e_act = st.date_input("วันหมดอายุ พ.ร.บ.", value=to_date_safe(_c.get('act_expiry')), format="DD/MM/YYYY", key=f"geact_{_p}")
                                             e_ins = st.date_input("วันหมดอายุประกันภัย", value=to_date_safe(_c.get('ins_expiry')), format="DD/MM/YYYY", key=f"geins_{_p}")
                                             e_status = st.selectbox("สถานะรถยนต์*", st_opts, index=st_opts.index(c_st_val), key=f"gest_{_p}")
+                                            
+                                            _is_df = bool(_c.get('is_debt_free', True if not _c.get('installment_amount') else False))
+                                            e_debt_free = st.checkbox(translations[st.session_state.language].get("is_debt_free", "รถปลอดภาระ / ซื้อเงินสด"), value=_is_df, key=f"gedf_{_p}")
+                                            if not e_debt_free:
+                                                e_ia1, e_ia2 = st.columns(2)
+                                                with e_ia1:
+                                                    e_inst_amt = st.number_input(translations[st.session_state.language].get("installment_amount", "ค่างวดต่อเดือน (THB)"), min_value=0.0, value=float(_c.get('installment_amount', 0.0) or 0.0), step=500.0, key=f"geia_{_p}")
+                                                    e_tot_inst = st.number_input(translations[st.session_state.language].get("total_installments", "จำนวนงวดทั้งหมด"), min_value=0, value=int(_c.get('total_installments', 48) or 0), step=1, key=f"geti_{_p}")
+                                                with e_ia2:
+                                                    e_curr_inst = st.number_input(translations[st.session_state.language].get("current_installment", "งวดปัจจุบัน (ชำระแล้ว)"), min_value=0, value=int(_c.get('current_installment', 0) or 0), step=1, key=f"geci_{_p}")
+                                                    e_due_date = st.date_input(translations[st.session_state.language].get("payment_due_date", "วันกำหนดชำระ (ทุกวันที่)"), value=to_date_safe(_c.get('payment_due_date')), format="DD/MM/YYYY", key=f"gedd_{_p}")
+                                            else:
+                                                e_inst_amt = 0.0
+                                                e_tot_inst = 0
+                                                e_curr_inst = 0
+                                                e_due_date = None
+
                                             save_edit_sub = st.form_submit_button("💾 บันทึกการแก้ไข", type="primary", use_container_width=True)
 
                                         if save_edit_sub:
@@ -4723,6 +4779,11 @@ else:
                                                 up_car["act_expiry"] = format_date_for_db(e_act, "%d/%m/%Y")
                                                 up_car["ins_expiry"] = format_date_for_db(e_ins, "%d/%m/%Y")
                                                 up_car["status"] = e_status
+                                                up_car["is_debt_free"] = bool(e_debt_free)
+                                                up_car["installment_amount"] = float(e_inst_amt) if not e_debt_free else 0.0
+                                                up_car["total_installments"] = int(e_tot_inst) if not e_debt_free else 0
+                                                up_car["current_installment"] = int(e_curr_inst) if not e_debt_free else 0
+                                                up_car["payment_due_date"] = format_date_for_db(e_due_date, "%Y-%m-%d") if not e_debt_free and e_due_date else "-"
                                                 
                                                 st.session_state.cars_db[_p] = up_car
                                                 cars_db[_p] = up_car
@@ -7378,8 +7439,14 @@ else:
             maintenance_cars = sum(1 for c in filtered_cars.values() if c.get("status") in ["ซ่อมบำรุง", "ส่งซ่อม", "ไม่พร้อมใช้งาน"])
             
             total_rev = sum(float(item.get("amount", 0)) for item in financial_db if item.get("type") == "รายรับ")
+            total_monthly_installment_expense = sum(
+                float(c.get("installment_amount", 0) or 0)
+                for c in filtered_cars.values()
+                if not c.get("is_debt_free", False) and float(c.get("installment_amount", 0) or 0) > 0
+            )
+            lbl_inst_exp = translations[st.session_state.language].get("dashboard_monthly_expense", "รายจ่ายค่างวดรถรวมต่อเดือน")
 
-            kpi1, kpi2, kpi3, kpi4 = st.columns(4)
+            kpi1, kpi2, kpi3, kpi4, kpi5 = st.columns(5)
             with kpi1:
                 st.markdown(f"""
                     <div class="kpi-card">
@@ -7404,6 +7471,13 @@ else:
                     </div>
                 """, unsafe_allow_html=True)
             with kpi4:
+                st.markdown(f"""
+                    <div class="kpi-card" style="border-color:#F87171; box-shadow: 0 0 0 1px rgba(239,68,68,0.2);">
+                        <div class="kpi-card-header"><span style="color:#DC2626;">{lbl_inst_exp}</span><div class="kpi-icon-pill" style="background:#FEE2E2; color:#DC2626;">💸</div></div>
+                        <div class="kpi-card-value">฿{total_monthly_installment_expense:,.2f}</div>
+                    </div>
+                """, unsafe_allow_html=True)
+            with kpi5:
                 st.markdown(f"""
                     <div class="kpi-card">
                         <div class="kpi-card-header"><span>ซ่อมบำรุง & ตรวจเช็ค</span><div class="kpi-icon-pill" style="background:#FEE2E2; color:#991B1B;">🛠️</div></div>
