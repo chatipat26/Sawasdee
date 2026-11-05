@@ -137,9 +137,21 @@ class App {
         TH: "ดูรายละเอียด / จองรถ",
         EN: "View Details / Book"
       },
+      details: {
+        TH: "ดูรายละเอียด",
+        EN: "Details"
+      },
+      book_now: {
+        TH: "จองรถ",
+        EN: "Book Now"
+      },
+      queue: {
+        TH: "จองคิว",
+        EN: "Queue"
+      },
       car_details_modal_title: {
-        TH: "รายละเอียดรถยนต์ & จองรถ",
-        EN: "Vehicle Details & Booking"
+        TH: "รายละเอียดรถยนต์",
+        EN: "Vehicle Details"
       }
     };
     const lang = this.currentLang === "EN" ? "EN" : "TH";
@@ -1996,9 +2008,14 @@ class App {
             </div>
           </div>
 
-          <button type="button" class="btn btn-primary" onclick="app.openCarDetailsModal('${safePlate}')" style="width:100%; margin-top:10px; font-weight:700; font-size:12.5px; padding:9px 12px; border-radius:8px; display:flex; align-items:center; justify-content:center; gap:6px; cursor:pointer; box-shadow:0 1px 3px rgba(232,88,38,0.2);">
-            <span>🔍</span> <span>${isEn ? 'View Details / Book' : 'ดูรายละเอียด / จองรถ'}</span>
-          </button>
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-top:10px;">
+            <button type="button" class="btn btn-secondary" onclick="app.openCarDetailsModal('${safePlate}')" style="width:100%; font-weight:700; font-size:12px; padding:8px 6px; border-radius:8px; display:flex; align-items:center; justify-content:center; gap:5px; cursor:pointer; background:#FAF7F2; border:1px solid #CBD5E1; color:#334155;">
+              <span>🔍</span> <span>${this.t('details', isEn ? 'Details' : 'ดูรายละเอียด')}</span>
+            </button>
+            <button type="button" class="btn btn-primary" onclick="app.openBookModal('${safePlate}')" style="width:100%; font-weight:700; font-size:12px; padding:8px 6px; border-radius:8px; display:flex; align-items:center; justify-content:center; gap:5px; cursor:pointer; box-shadow:0 1px 3px rgba(232,88,38,0.25);" ${!isAvail ? `title="${isEn ? 'Reserved - click to reserve queue' : 'ติดจอง - คลิกเพื่อจองคิวต่อ'}"` : ''}>
+              <span>🚗</span> <span>${isAvail ? this.t('book_now', isEn ? 'Book Now' : 'จองรถ') : this.t('queue', isEn ? 'Queue' : 'จองคิว')}</span>
+            </button>
+          </div>
         </div>
       `;
     }).join("");
@@ -2188,9 +2205,6 @@ class App {
         <div style="display:flex; gap:8px;">
           <button type="button" onclick="app.closeModal('modal-car-details')" class="btn btn-secondary" style="font-size:12px; padding:7px 14px; border-radius:6px; cursor:pointer;">
             ${isEn ? 'Close' : 'ปิด'}
-          </button>
-          <button type="button" onclick="app.closeModal('modal-car-details'); app.openBookModal('${safePlate}')" class="btn btn-primary" style="font-size:12.5px; font-weight:700; padding:7px 18px; border-radius:6px; cursor:pointer;">
-            🚗 ${isEn ? 'Create Contract / Book' : 'สร้างสัญญาเช่า / จองรถ'}
           </button>
         </div>
       </div>
@@ -2515,7 +2529,7 @@ class App {
     }
 
     if (!opts) {
-      const bSet = new Set(), mSet = new Set(), coSet = new Set(), clSet = new Set(), icSet = new Set(), owSet = new Set();
+      const bSet = new Set(), mSet = new Set(), coSet = new Set(), clSet = new Set(), icSet = new Set(), owSet = new Set(), bfSet = new Set(), yrSet = new Set();
       (this.cars || []).forEach(c => {
         if (c.brand) bSet.add(c.brand);
         if (c.model) mSet.add(c.model);
@@ -2523,6 +2537,8 @@ class App {
         if (c.color) clSet.add(c.color);
         if (c.ins_company) icSet.add(c.ins_company);
         if (c.owner) owSet.add(c.owner);
+        if (c.beneficiary) bfSet.add(c.beneficiary);
+        if (c.reg_year) yrSet.add(String(c.reg_year));
       });
       opts = {
         brands: Array.from(bSet),
@@ -2530,7 +2546,9 @@ class App {
         companies: Array.from(coSet),
         colors: Array.from(clSet),
         ins_companies: Array.from(icSet),
-        owners: Array.from(owSet)
+        owners: Array.from(owSet),
+        beneficiaries: Array.from(bfSet),
+        reg_years: Array.from(yrSet)
       };
     }
 
@@ -2554,6 +2572,8 @@ class App {
     fillDatalist("car-colors-list", opts.colors);
     fillDatalist("car-ins-comps-list", opts.ins_companies);
     fillDatalist("car-owners-list", opts.owners);
+    fillDatalist("car-beneficiaries-list", opts.beneficiaries);
+    fillDatalist("car-reg-years-list", opts.reg_years);
   }
 
   onCarImageUrlInput(val) {

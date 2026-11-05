@@ -429,13 +429,15 @@ async def get_finance_companies():
 @app.get("/api/cars/options")
 @app.get("/api/vehicles/options")
 async def get_vehicle_form_options():
-    """Fetch unique values for Brand, Model, Company, Color, Insurance Co, Owner for Creatable Comboboxes."""
+    """Fetch unique values for Brand, Model, Company, Color, Insurance Co, Owner, Beneficiary, Year for Creatable Comboboxes."""
     brands = set()
     models = set()
     companies = set()
     colors = set()
     ins_companies = set()
     owners = set()
+    beneficiaries = set()
+    reg_years = set()
 
     for c in store.cars.values():
         for field, s in [
@@ -445,20 +447,29 @@ async def get_vehicle_form_options():
             ("color", colors),
             ("ins_company", ins_companies),
             ("owner", owners),
+            ("beneficiary", beneficiaries),
+            ("reg_year", reg_years),
         ]:
             val = str(c.get(field, "") or "").strip()
             if val and val not in ("-", "None", "none", "null", ""):
                 s.add(val)
 
+    # Defaults to ensure initial clean suggestions
     default_brands = ["Toyota", "Honda", "Isuzu", "Mitsubishi", "Nissan", "Mazda", "Ford", "BYD", "GWM", "MG", "Mercedes-Benz", "BMW", "Hyundai"]
     default_companies = ["บจก.สวัสดี เรนทัล (Sawasdee Rental)", "Sawasdee Rent A Car", "P.D.P. Co., Ltd.", "Sawasdee Car Rent"]
     default_colors = ["ขาว", "ดำ", "เทา", "บรอนซ์เงิน", "แดง", "น้ำเงิน", "WHITE", "BLACK", "GREY", "SILVER"]
     default_ins = ["คุ้มภัยโตเกียวมารีน", "วิริยะประกันภัย", "ทิพยประกันภัย", "กรุงเทพประกันภัย", "ธนชาตประกันภัย", "เมืองไทยประกันภัย"]
+    default_owners = ["SWD", "บีคลิ๊ก", "บจก.สวัสดี เรนทัล (Sawasdee Rental)", "Sawasdee Rent A Car"]
+    default_beneficiaries = ["บจก.สวัสดี เรนทัล (Sawasdee Rental)", "Sawasdee Rent A Car", "P.D.P. Co., Ltd.", "โตโยต้า ลีสซิ่ง"]
+    default_years = ["2568", "2567", "2566", "2565", "2564", "2563", "2025", "2024", "2023", "2022"]
 
     brands.update(default_brands)
     companies.update(default_companies)
     colors.update(default_colors)
     ins_companies.update(default_ins)
+    owners.update(default_owners)
+    beneficiaries.update(default_beneficiaries)
+    reg_years.update(default_years)
 
     return {
         "success": True,
@@ -467,7 +478,9 @@ async def get_vehicle_form_options():
         "companies": sorted(list(companies)),
         "colors": sorted(list(colors)),
         "ins_companies": sorted(list(ins_companies)),
-        "owners": sorted(list(owners))
+        "owners": sorted(list(owners)),
+        "beneficiaries": sorted(list(beneficiaries)),
+        "reg_years": sorted(list(reg_years))
     }
 
 def normalize_plate(plate: str) -> str:

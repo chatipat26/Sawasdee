@@ -1781,11 +1781,13 @@
         </div>
         <div class="form-group">
           <label id="lbl-modal-car-beneficiary">Beneficiary</label>
-          <input type="text" id="edit-car-beneficiary" class="form-control" placeholder="เช่น สวัสดี เรนทัล">
+          <input type="text" id="edit-car-beneficiary" class="form-control" list="car-beneficiaries-list" placeholder="เช่น สวัสดี เรนทัล">
+          <datalist id="car-beneficiaries-list"></datalist>
         </div>
         <div class="form-group">
           <label id="lbl-modal-car-reg-year">Registration Year (B.E./A.D.)</label>
-          <input type="text" id="edit-car-reg-year" class="form-control" placeholder="เช่น 2567">
+          <input type="text" id="edit-car-reg-year" class="form-control" list="car-reg-years-list" placeholder="เช่น 2567">
+          <datalist id="car-reg-years-list"></datalist>
         </div>
       </div>
 
@@ -1898,7 +1900,7 @@
       <div class="modal-header" style="border-bottom:1px solid #E2E8F0; padding:14px 20px; display:flex; justify-content:space-between; align-items:center;">
         <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
           <div class="modal-title" id="modal-car-details-title" style="font-size:16px; font-weight:800; color:#1E293B; margin:0;">
-            ดูรายละเอียด / จองรถ
+            รายละเอียดรถยนต์
           </div>
           <div id="car-details-plate-badge"></div>
           <div id="car-details-status-badge"></div>
@@ -2199,7 +2201,7 @@
   <div class="toast-container" id="toast-container"></div>
 
   <!-- Scripts with cache busting -->
-  <script src="/static/js/app.js?v=7.3"></script>
+  <script src="/static/js/app.js?v=7.4"></script>
 
   <!-- ===================================================================== -->
   <!-- MODAL: ACTIVE RENTALS / CARS WITH CUSTOMERS (POPUP FOR CARD 1) -->
