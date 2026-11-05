@@ -5449,6 +5449,12 @@ class App {
     document.getElementById("cust-home-in").value = (cust.home_address && cust.home_address !== "-") ? cust.home_address : "";
     const currVal = cust.current_address || cust.thai_address || cust.address;
     document.getElementById("cust-thai-in").value = (currVal && currVal !== "-") ? currVal : "";
+    const emailVal = cust.email;
+    const emailEl = document.getElementById("cust-email-in");
+    if (emailEl) emailEl.value = (emailVal && emailVal !== "-") ? emailVal : "";
+    const lineVal = cust.line_user_id || cust.line_id;
+    const lineEl = document.getElementById("cust-line-in");
+    if (lineEl) lineEl.value = (lineVal && lineVal !== "-") ? lineVal : "";
 
     document.getElementById("modal-cust-title").textContent = `✏️ ดูและแก้ไขข้อมูลลูกค้า (${cust.full_name})`;
     const btnSave = document.getElementById("btn-modal-cust-save");
@@ -5559,7 +5565,7 @@ class App {
   openAddCustomerModal() {
     const origEl = document.getElementById("cust-original-name");
     if (origEl) origEl.value = "";
-    ["cust-name-in", "cust-phone-in", "cust-pass-in", "cust-lic-in", "cust-wa-in", "cust-home-in", "cust-thai-in"].forEach(id => {
+    ["cust-name-in", "cust-phone-in", "cust-pass-in", "cust-lic-in", "cust-wa-in", "cust-home-in", "cust-thai-in", "cust-email-in", "cust-line-in"].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.value = "";
     });
@@ -5654,6 +5660,8 @@ class App {
     const licExpFormatted = licExpVal ? (this.ymdToDmy(licExpVal) || licExpVal) : "-";
     const homeAddr = document.getElementById("cust-home-in")?.value.trim() || "-";
     const currAddr = document.getElementById("cust-thai-in")?.value.trim() || "-";
+    const email = document.getElementById("cust-email-in")?.value.trim() || "-";
+    const lineId = document.getElementById("cust-line-in")?.value.trim() || "-";
 
     const payload = {
       // 10 Standard Customer Fields
@@ -5667,6 +5675,9 @@ class App {
       license_expire_date: licExpFormatted,
       home_address: homeAddr,
       current_address: currAddr,
+      email: email,
+      line_user_id: lineId,
+      line_id: lineId,
 
       // Compatibility Aliases
       original_name: origName || name,

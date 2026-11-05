@@ -48,6 +48,9 @@ body {
   display: flex;
   flex-direction: column;
   position: relative;
+  line-height: 1.55;
+  font-weight: 400;
+  letter-spacing: 0.01em;
 }
 
 /* Subtle Watermark Background Logo */
@@ -385,11 +388,11 @@ section,
 /* Cards & Containers */
 .card {
   background: var(--card-bg);
-  border: 1px solid var(--border-card);
-  border-radius: var(--radius-lg);
-  padding: 24px;
+  border: 1px solid rgba(239, 234, 227, 0.9);
+  border-radius: 18px;
+  padding: 26px 28px;
   margin-bottom: 24px;
-  box-shadow: var(--shadow-soft);
+  box-shadow: 0 10px 28px rgba(120, 53, 15, 0.05);
 }
 
 .card-title {
@@ -434,26 +437,30 @@ section,
 }
 
 .form-group label {
-  font-size: 12px;
-  font-weight: 700;
-  color: #78350F;
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: #92400E;
 }
 
 .form-control {
   background: #FFFFFF;
-  border: 1px solid var(--field-border);
-  border-radius: var(--radius-sm);
-  padding: 9px 12px;
-  font-size: 13.5px;
+  border: 1px solid #EDE6DC;
+  border-radius: 12px;
+  padding: 11px 14px;
+  font-size: 14px;
+  font-weight: 500;
   color: var(--text-dark);
   outline: none;
-  transition: all 0.18s ease;
+  box-shadow: 0 1px 2px rgba(120, 53, 15, 0.04);
+  transition: border-color 0.3s ease, box-shadow 0.3s ease, background-color 0.3s ease;
   width: 100%;
 }
 
 .form-control:focus {
-  border-color: var(--brand-primary);
-  box-shadow: 0 0 0 3px rgba(232, 88, 38, 0.15);
+  border-color: #E8A07A;
+  box-shadow: 0 0 0 4px rgba(232, 88, 38, 0.12);
+  background: #FFFFFF;
 }
 
 /* Buttons */
@@ -462,25 +469,26 @@ section,
   align-items: center;
   justify-content: center;
   gap: 6px;
-  padding: 9px 18px;
+  padding: 10px 18px;
   font-size: 13.5px;
-  font-weight: 700;
-  border-radius: var(--radius-sm);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  border-radius: 12px;
   border: 1px solid transparent;
   cursor: pointer;
-  transition: all 0.18s ease;
+  transition: all 0.3s ease;
   text-decoration: none;
   white-space: nowrap;
 }
 
 .btn-primary {
-  background: var(--brand-gradient);
+  background: linear-gradient(135deg, #F07A4A 0%, #C2410C 100%);
   color: white;
-  box-shadow: 0 2px 8px var(--brand-glow);
+  box-shadow: 0 6px 16px rgba(194, 65, 12, 0.22);
 }
 .btn-primary:hover {
-  background: linear-gradient(135deg, #FF8A54 0%, #DC4C1C 100%);
-  box-shadow: 0 4px 14px rgba(232, 88, 38, 0.35);
+  background: linear-gradient(135deg, #E85826 0%, #9A3412 100%);
+  box-shadow: 0 10px 22px rgba(154, 52, 18, 0.28);
   transform: translateY(-1px);
 }
 
@@ -522,17 +530,18 @@ section,
 
 .car-card-modern {
   background: #FFFFFF;
-  border: 1px solid #E5E7EB;
-  border-radius: 12px;
-  padding: 16px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  border: 1px solid #F3EDE6;
+  border-radius: 16px;
+  padding: 18px;
+  box-shadow: 0 8px 24px rgba(120, 53, 15, 0.06);
   display: flex;
   flex-direction: column;
-  transition: all 0.2s ease;
+  transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
 }
 .car-card-modern:hover {
-  border-color: #CBD5E1;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.07);
+  border-color: #F0D9C8;
+  box-shadow: 0 14px 32px rgba(120, 53, 15, 0.1);
+  transform: translateY(-2px);
 }
 
 .car-top-row {
@@ -981,15 +990,16 @@ section,
   background: #ffffff !important;
   background-color: #ffffff !important;
   color: #1E293B;
-  border-radius: var(--radius-lg);
+  border: none;
+  border-radius: 20px;
   width: 92%;
   max-width: 680px;
   max-height: 88vh;
   overflow-y: auto;
-  box-shadow: 0 16px 40px rgba(0,0,0,0.18);
-  padding: 26px;
-  transform: translateY(20px);
-  transition: transform 0.2s ease;
+  box-shadow: 0 24px 60px rgba(31, 41, 55, 0.16);
+  padding: 28px 30px;
+  transform: translateY(16px);
+  transition: transform 0.3s ease;
 }
 
 .modal-backdrop.open .modal-dialog,
@@ -1001,15 +1011,16 @@ section,
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
-  border-bottom: 1px solid #E2E8F0;
-  padding-bottom: 14px;
+  margin-bottom: 22px;
+  border-bottom: 1px solid #F3EDE6;
+  padding-bottom: 16px;
 }
 
 .modal-title {
   font-size: 18px;
-  font-weight: 800;
-  color: #0F172A;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: #1C1917;
 }
 
 .modal-close {

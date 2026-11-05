@@ -72,6 +72,7 @@ class Customer(Base):
     thai_address = Column(Text, default="-")
     address = Column(Text, default="-")
     nickname = Column(String(100), nullable=True)
+    email = Column(String(150), nullable=True)
     line_id = Column(String(100), nullable=True)
     line_user_id = Column(Text, nullable=True)
     notes = Column(Text, default="")

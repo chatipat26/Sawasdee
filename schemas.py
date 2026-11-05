@@ -123,6 +123,7 @@ class CustomerBase(BaseModel):
     thai_address: Optional[str] = "-"
     address: Optional[str] = "-"
     nickname: Optional[str] = None
+    email: Optional[str] = "-"
     line_id: Optional[str] = "-"
     line_user_id: Optional[str] = None
     notes: Optional[str] = ""

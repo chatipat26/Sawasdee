@@ -836,7 +836,7 @@ class DataStore:
             ALL_CUSTOMER_COLS = CUSTOMER_10_COLS | {
                 'contact_no', 'phone', 'passport_id', 'id_card', 'licence_no',
                 'driver_license', 'licence_expiry', 'thai_address', 'address',
-                'nickname', 'line_id', 'line_user_id', 'notes', 'id_card_photo',
+                'nickname', 'email', 'line_id', 'line_user_id', 'notes', 'id_card_photo',
                 'driver_license_photo'
             }
             try:

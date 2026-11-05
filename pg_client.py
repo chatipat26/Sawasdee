@@ -286,7 +286,7 @@ class PgClient:
             ("full_name", "VARCHAR(150)"), ("phone_number", "VARCHAR(50)"), ("id_card_no", "VARCHAR(50)"),
             ("driver_license_no", "VARCHAR(50)"), ("nationality", "VARCHAR(50)"), ("whatsapp", "VARCHAR(50)"),
             ("dob", "VARCHAR(50)"), ("license_expire_date", "VARCHAR(50)"), ("home_address", "TEXT"),
-            ("current_address", "TEXT"),
+            ("current_address", "TEXT"), ("email", "VARCHAR(150)"), ("line_user_id", "TEXT"),
         ]
         stmts = ["CREATE TABLE IF NOT EXISTS public.customers (full_name VARCHAR(150) PRIMARY KEY);"]
         stmts += [f"ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS {n} {t};" for n, t in cols]

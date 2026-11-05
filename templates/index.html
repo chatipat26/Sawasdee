@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sawasdee Rental - ระบบบริหารจัดการรถเช่าระดับพรีเมียม</title>
-  <link rel="stylesheet" href="/static/css/app.css?v=3.8">
+  <link rel="stylesheet" href="/static/css/app.css?v=3.9">
   <link rel="icon" type="image/png" href="/static/sawasdee-logo.png">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
@@ -1724,9 +1724,19 @@
         <label>ที่อยู่ตามภูมิลำเนา (Home Address)</label>
         <textarea id="cust-home-in" class="form-control" rows="2" placeholder="ที่อยู่ตามบัตรประชาชน / ทะเบียนบ้าน..."></textarea>
       </div>
-      <div class="form-group" style="margin-bottom:20px;">
+      <div class="form-group" style="margin-bottom:14px;">
         <label>ที่อยู่ในไทยระหว่างเช่า (Address in Thailand)</label>
         <textarea id="cust-thai-in" class="form-control" rows="2" placeholder="โรงแรม / คอนโด / ที่พักอาศัย..."></textarea>
+      </div>
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:14px; margin-bottom:20px;">
+        <div class="form-group">
+          <label>อีเมล (Email)</label>
+          <input type="email" id="cust-email-in" class="form-control" placeholder="name@email.com" autocomplete="email">
+        </div>
+        <div class="form-group">
+          <label>Line ID</label>
+          <input type="text" id="cust-line-in" class="form-control" placeholder="Line ID" autocomplete="off">
+        </div>
       </div>
 
       <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
@@ -2317,7 +2327,7 @@
   <div class="toast-container" id="toast-container"></div>
 
   <!-- Scripts with cache busting -->
-  <script src="/static/js/app.js?v=8.9"></script>
+  <script src="/static/js/app.js?v=9.0"></script>
 
   <!-- ===================================================================== -->
   <!-- MODAL: ACTIVE RENTALS / CARS WITH CUSTOMERS (POPUP FOR CARD 1) -->

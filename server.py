@@ -889,7 +889,8 @@ async def create_or_update_customer(payload: Union[CustomerCreate, Dict[str, Any
     clean_payload["full_name"] = name
     for _k, _default in (("phone_number", "-"), ("id_card_no", "-"), ("driver_license_no", "-"),
                          ("nationality", "THAI"), ("whatsapp", "-"), ("dob", "-"),
-                         ("license_expire_date", "-"), ("home_address", "-"), ("current_address", "-")):
+                         ("license_expire_date", "-"), ("home_address", "-"), ("current_address", "-"),
+                         ("email", "-"), ("line_user_id", "-"), ("line_id", "-")):
         if clean_payload.get(_k) is None or str(clean_payload.get(_k)).strip() == "":
             clean_payload[_k] = _default
     store.async_sync_customer(name, clean_payload)
