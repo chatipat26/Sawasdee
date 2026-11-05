@@ -17,10 +17,18 @@ import uuid
 from datetime import date, datetime, time as d_time
 from decimal import Decimal
 
-import psycopg
-from psycopg import sql
-from psycopg.rows import dict_row
-from psycopg.types.json import Jsonb
+try:
+    import psycopg
+    from psycopg import sql
+    from psycopg.rows import dict_row
+    from psycopg.types.json import Jsonb
+except ImportError:
+    try:
+        import psycopg2 as psycopg
+        from psycopg2 import sql
+        from psycopg2.extras import RealDictCursor as dict_row, Json as Jsonb
+    except ImportError:
+        psycopg = None
 
 
 class PgUnsupportedFeature(Exception):
@@ -296,3 +304,133 @@ class PgClient:
     # supabase-py alias
     def from_(self, name):
         return self.table(name)
+
+
+class RestQuery:
+    """PostgREST query builder using requests (no supabase library needed)."""
+    def __init__(self, url, key, table):
+        self._url = url.rstrip('/')
+        self._key = key
+        self._table = table
+        self._op = "select"
+        self._columns = "*"
+        self._filters = []
+        self._order = []
+        self._limit = None
+        self._payload = None
+
+    def select(self, columns="*", **_kwargs):
+        self._op = "select"
+        self._columns = columns or "*"
+        return self
+
+    def insert(self, rows, **_kwargs):
+        self._op = "insert"
+        self._payload = rows
+        return self
+
+    def upsert(self, rows, on_conflict=None, **_kwargs):
+        self._op = "upsert"
+        self._payload = rows
+        return self
+
+    def update(self, values, **_kwargs):
+        self._op = "update"
+        self._payload = values
+        return self
+
+    def delete(self, **_kwargs):
+        self._op = "delete"
+        return self
+
+    def eq(self, column, value):
+        self._filters.append((column, f"eq.{value}"))
+        return self
+
+    def ilike(self, column, pattern):
+        self._filters.append((column, f"ilike.{pattern}"))
+        return self
+
+    def order(self, column, desc=False, **_kwargs):
+        direction = "desc" if desc else "asc"
+        self._order.append(f"{column}.{direction}")
+        return self
+
+    def limit(self, n, **_kwargs):
+        self._limit = int(n)
+        return self
+
+    def execute(self):
+        import requests
+        headers = {
+            "apikey": self._key,
+            "Authorization": f"Bearer {self._key}",
+            "Content-Type": "application/json"
+        }
+        endpoint = f"{self._url}/rest/v1/{self._table}"
+        params = {}
+        for col, flt in self._filters:
+            params[col] = flt
+
+        if self._op == "select":
+            params["select"] = self._columns
+            if self._order:
+                params["order"] = ",".join(self._order)
+            if self._limit:
+                params["limit"] = str(self._limit)
+            try:
+                res = requests.get(endpoint, headers=headers, params=params, timeout=12)
+                data = res.json() if res.ok else []
+                if not isinstance(data, list):
+                    data = []
+                return PgResult(data)
+            except Exception as e:
+                print(f"RestQuery select error: {e}")
+                return PgResult([])
+
+        elif self._op in ("insert", "upsert"):
+            if self._op == "upsert":
+                headers["Prefer"] = "resolution=merge-duplicates,return=representation"
+            else:
+                headers["Prefer"] = "return=representation"
+            try:
+                res = requests.post(endpoint, headers=headers, json=self._payload, timeout=12)
+                data = res.json() if res.ok else []
+                return PgResult(data if isinstance(data, list) else [data])
+            except Exception as e:
+                print(f"RestQuery insert/upsert error: {e}")
+                return PgResult([])
+
+        elif self._op == "update":
+            headers["Prefer"] = "return=representation"
+            try:
+                res = requests.patch(endpoint, headers=headers, params=params, json=self._payload, timeout=12)
+                data = res.json() if res.ok else []
+                return PgResult(data if isinstance(data, list) else [data])
+            except Exception as e:
+                print(f"RestQuery update error: {e}")
+                return PgResult([])
+
+        elif self._op == "delete":
+            try:
+                requests.delete(endpoint, headers=headers, params=params, timeout=12)
+                return PgResult([])
+            except Exception as e:
+                print(f"RestQuery delete error: {e}")
+                return PgResult([])
+
+        return PgResult([])
+
+
+class RestClient:
+    """REST PostgREST client that mimics PgClient interface using standard requests."""
+    def __init__(self, url, key):
+        self._url = url
+        self._key = key
+        self.auth = _Unsupported("auth")
+        self.storage = _Unsupported("storage")
+
+    def table(self, table_name):
+        return RestQuery(self._url, self._key, table_name)
+
+    from_ = table

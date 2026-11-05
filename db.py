@@ -43,12 +43,12 @@ def get_supabase_client():
             print(f"PostgreSQL client init error: {e}")
             return None
     try:
-        from supabase import create_client
+        from pg_client import RestClient
         url, key = get_supabase_credentials()
-        _sb_client = create_client(url, key)
+        _sb_client = RestClient(url, key)
         return _sb_client
     except Exception as e:
-        print(f"Supabase client init note: {e}")
+        print(f"Database client init note: {e}")
         return None
 
 # -------------------------------------------------------------------------

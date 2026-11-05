@@ -1,11 +1,9 @@
-streamlit
-pandas
-altair
-pypdf
-reportlab
-supabase
 fastapi
-uvicorn
+uvicorn[standard]
 requests
 python-multipart
+psycopg2-binary
 psycopg[binary]
+pandas
+pypdf
+reportlab

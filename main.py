@@ -13,9 +13,13 @@ import server
 # Decoupled FastAPI app instance
 app = server.app
 
-# Decoupled REST Endpoints (/cars, /bookings, /customers)
+# Decoupled REST Endpoints (/cars, /vehicles, /bookings, /customers)
 app.add_api_route("/cars", server.list_cars, methods=["GET"])
 app.add_api_route("/cars", server.create_or_update_car, methods=["POST"])
+app.add_api_route("/vehicles", server.list_cars, methods=["GET"])
+app.add_api_route("/vehicles", server.create_or_update_car, methods=["POST"])
+app.add_api_route("/api/vehicles", server.list_cars, methods=["GET"])
+app.add_api_route("/api/vehicles", server.create_or_update_car, methods=["POST"])
 app.add_api_route("/customers", server.list_customers, methods=["GET"])
 app.add_api_route("/customers", server.create_or_update_customer, methods=["POST"])
 app.add_api_route("/bookings", server.list_bookings, methods=["GET"])

@@ -58,14 +58,14 @@ def parse_date(d_str):
 
 
 def fetch_cars_from_supabase(sb_url, sb_key):
-    """ดึงข้อมูลรถยนต์ทั้งหมดจาก Supabase"""
+    """ดึงข้อมูลรถยนต์ทั้งหมดจากฐานข้อมูล"""
     try:
-        from supabase import create_client
-        sb = create_client(sb_url, sb_key)
+        from pg_client import RestClient
+        sb = RestClient(sb_url, sb_key)
         res = sb.table("cars").select("plate, brand, model, company, act_expiry, ins_expiry, status").execute()
         return res.data or []
     except Exception as e:
-        print(f"❌ เกิดข้อผิดพลาดในการดึงข้อมูลจาก Supabase: {e}")
+        print(f"❌ เกิดข้อผิดพลาดในการดึงข้อมูล: {e}")
         return []
 
 
@@ -194,8 +194,8 @@ def send_line_broadcast(message, channel_access_token, to_user_id=None):
 
 def has_already_sent_today(sb_url, sb_key, today_tag):
     try:
-        from supabase import create_client
-        sb = create_client(sb_url, sb_key)
+        from pg_client import RestClient
+        sb = RestClient(sb_url, sb_key)
         res = sb.table("financial_records").select("id").eq("type", "SYSTEM_LOCK").eq("category", "LINE_EXPIRY_ALERT").eq("date", today_tag).limit(1).execute()
         return bool(res.data and len(res.data) > 0)
     except Exception as e:
@@ -205,8 +205,8 @@ def has_already_sent_today(sb_url, sb_key, today_tag):
 
 def mark_sent_today(sb_url, sb_key, today_tag):
     try:
-        from supabase import create_client
-        sb = create_client(sb_url, sb_key)
+        from pg_client import RestClient
+        sb = RestClient(sb_url, sb_key)
         sb.table("financial_records").insert({
             "company": "SYSTEM",
             "type": "SYSTEM_LOCK",

@@ -6716,6 +6716,16 @@ class App {
       this.modalZIndex = (this.modalZIndex || 2000) + 10;
       m.style.zIndex = String(this.modalZIndex);
       m.classList.add("open");
+
+      if (modalId === "modal-edit-car") {
+        setTimeout(() => {
+          const plateInp = document.getElementById("edit-car-plate");
+          if (plateInp) {
+            plateInp.focus();
+            plateInp.select();
+          }
+        }, 60);
+      }
     }
   }
 

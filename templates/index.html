@@ -1650,7 +1650,7 @@
       <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; margin-bottom:12px;">
         <div class="form-group">
           <label id="lbl-modal-car-plate">License Plate (Plate)*</label>
-          <input type="text" id="edit-car-plate" class="form-control" placeholder="เช่น 5ขศ 5181" oninput="app.checkDuplicatePlate(this.value)">
+          <input type="text" id="edit-car-plate" class="form-control" placeholder="เช่น 5ขศ 5181" oninput="app.checkDuplicatePlate(this.value)" autofocus>
           <div id="edit-car-plate-warn" style="display:none; font-size:11.5px; color:#DC2626; font-weight:600; margin-top:4px;">
             ⚠️ ทะเบียนนี้มีอยู่ในระบบแล้ว
           </div>
@@ -2165,7 +2165,7 @@
   <div class="toast-container" id="toast-container"></div>
 
   <!-- Scripts with cache busting -->
-  <script src="/static/js/app.js?v=6.9"></script>
+  <script src="/static/js/app.js?v=7.0"></script>
 
   <!-- ===================================================================== -->
   <!-- MODAL: ACTIVE RENTALS / CARS WITH CUSTOMERS (POPUP FOR CARD 1) -->
