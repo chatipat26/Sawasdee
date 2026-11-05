@@ -1851,22 +1851,22 @@
         <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:12px; margin-bottom:12px;">
           <div class="form-group">
             <label id="lbl-modal-car-vin">VIN / Chassis Number*</label>
-            <input type="text" id="edit-car-vin" class="form-control" placeholder="-" oninput="app.updateCarFormField('chassis_no', this.value); app.checkDuplicateChassis(this.value);">
+            <input type="text" id="edit-car-vin" class="form-control" placeholder="-" oninput="app.updateCarFormField('vin', this.value); app.checkDuplicateChassis(this.value);">
             <div id="edit-car-vin-warn" style="display:none; font-size:11px; color:#DC2626; font-weight:600; margin-top:4px;">
               ⚠️ เลขตัวถังนี้ซ้ำกับรถคันอื่นในระบบ
             </div>
           </div>
           <div class="form-group">
             <label id="lbl-modal-car-tax">Tax Expiry Date</label>
-            <input type="date" id="edit-car-tax" class="form-control" onchange="app.updateCarFormField('tax_expiry', this.value)">
+            <input type="date" id="edit-car-tax" class="form-control" onchange="app.updateCarFormField('tax_expire_date', this.value)">
           </div>
           <div class="form-group">
             <label id="lbl-modal-car-act">ACT Expiry Date</label>
-            <input type="date" id="edit-car-act" class="form-control" onchange="app.updateCarFormField('act_expiry', this.value)">
+            <input type="date" id="edit-car-act" class="form-control" onchange="app.updateCarFormField('prb_expire_date', this.value)">
           </div>
           <div class="form-group">
             <label id="lbl-modal-car-ins">Insurance Expiry Date</label>
-            <input type="date" id="edit-car-ins" class="form-control" onchange="app.updateCarFormField('ins_expiry', this.value)">
+            <input type="date" id="edit-car-ins" class="form-control" onchange="app.updateCarFormField('insurance_expire_date', this.value)">
           </div>
         </div>
 

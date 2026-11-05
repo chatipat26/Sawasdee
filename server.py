@@ -553,6 +553,22 @@ async def create_or_update_car(payload: Union[VehicleCreate, Dict[str, Any]], pl
     else:
         payload = dict(payload)
 
+    def _has(v):
+        return v is not None and str(v).strip() not in ("", "-")
+
+    # Remap legacy keys onto canonical keys so new columns are never stored as NULL
+    for new_key, legacy_key in (
+        ("vin", "chassis_no"),
+        ("tax_expire_date", "tax_expiry"),
+        ("prb_expire_date", "act_expiry"),
+        ("insurance_expire_date", "ins_expiry"),
+    ):
+        if not _has(payload.get(new_key)) and _has(payload.get(legacy_key)):
+            payload[new_key] = payload[legacy_key]
+        payload[new_key] = payload.get(new_key) if payload.get(new_key) is not None else "-"
+    if payload.get("payment_due_date") is None:
+        payload["payment_due_date"] = "-"
+
     plate = str(payload.get("plate", "") or plate_param or "").strip()
     if not plate:
         return JSONResponse(
