@@ -96,90 +96,95 @@ class App {
   }
 
   t(key, fallback = "") {
-    const dict = {
-      duplicate_vehicle_error: {
-        TH: "ข้อมูลซ้ำ: พบเลขทะเบียนหรือเลขตัวถังนี้ในระบบแล้ว",
-        EN: "Duplicate Data: Vehicle plate or VIN (Chassis No) already exists in system"
-      },
-      finance_company: {
-        TH: "บริษัทไฟแนนซ์",
-        EN: "Finance Company"
-      },
-      select_or_enter_finance: {
-        TH: "เลือกจากรายการ หรือพิมพ์ชื่อบริษัทไฟแนนซ์ใหม่...",
-        EN: "Select or type new finance company..."
-      },
-      next_engine_oil_date: {
-        TH: "กำหนดถ่ายน้ำมันเครื่องครั้งต่อไป (วันที่)",
-        EN: "Next Engine Oil Change (Date)"
-      },
-      next_engine_oil_mileage: {
-        TH: "กำหนดถ่ายน้ำมันเครื่องครั้งต่อไป (เลขไมล์)",
-        EN: "Next Engine Oil Change (Mileage)"
-      },
-      next_tire_change_date: {
-        TH: "กำหนดเปลี่ยนยางครั้งต่อไป (วันที่)",
-        EN: "Next Tire Change (Date)"
-      },
-      next_tire_change_mileage: {
-        TH: "กำหนดเปลี่ยนยางครั้งต่อไป (เลขไมล์)",
-        EN: "Next Tire Change (Mileage)"
-      },
-      next_service_date: {
-        TH: "กำหนดเช็คระยะครั้งต่อไป (วันที่)",
-        EN: "Next Service Due (Date)"
-      },
-      next_service_mileage: {
-        TH: "กำหนดเช็คระยะครั้งต่อไป (เลขไมล์)",
-        EN: "Next Service Due (Mileage)"
-      },
-      service_interval_header: {
-        TH: "กำหนดการเช็คระยะ (น้ำมันเครื่อง & ยาง)",
-        EN: "Service Intervals (Engine Oil & Tires)"
-      },
-      view_details_or_book: {
-        TH: "ดูรายละเอียด / จองรถ",
-        EN: "View Details / Book"
-      },
-      details: {
-        TH: "ดูรายละเอียด",
-        EN: "Details"
-      },
-      book_now: {
-        TH: "จองรถ",
-        EN: "Book Now"
-      },
-      queue: {
-        TH: "จองคิว",
-        EN: "Queue"
-      },
-      add_customer: {
-        TH: "เพิ่มลูกค้า",
-        EN: "Add Customer"
-      },
-      add_vehicle: {
-        TH: "เพิ่มรถยนต์",
-        EN: "Add Vehicle"
-      },
-      quick_actions: {
-        TH: "ปุ่มดำเนินการด่วน:",
-        EN: "Quick Actions:"
-      },
-      car_details_modal_title: {
-        TH: "รายละเอียดรถยนต์",
-        EN: "Vehicle Details"
-      },
-      prb_price: {
-        TH: "ราคา พ.ร.บ. (บาท)",
-        EN: "PRB Price (THB)"
-      },
-      insurance_premium: {
-        TH: "เบี้ยประกัน (บาท)",
-        EN: "Insurance Premium (THB)"
-      }
-    };
-    const lang = this.currentLang === "EN" ? "EN" : "TH";
-    return dict[key]?.[lang] || fallback || key;
+    if (!window.translations) {
+      window.translations = {
+        TH: {
+          available: "ว่างพร้อมใช้งาน",
+          reserved: "ติดจอง",
+          workshop: "ซ่อมบำรุง",
+          on_rent: "กำลังเช่า",
+          daily_rate: "ค่าเช่ารายวัน",
+          days: "วัน",
+          details: "ดูรายละเอียด",
+          book_now: "จองรถ",
+          queue: "จองคิว",
+          add_customer: "เพิ่มลูกค้า",
+          add_vehicle: "เพิ่มรถยนต์",
+          quick_actions: "ปุ่มดำเนินการด่วน:",
+          car_details_modal_title: "รายละเอียดรถยนต์",
+          prb_price: "ราคา พ.ร.บ. (บาท)",
+          insurance_premium: "เบี้ยประกัน (บาท)",
+          duplicate_vehicle_error: "ข้อมูลซ้ำ: พบเลขทะเบียนหรือเลขตัวถังนี้ในระบบแล้ว",
+          filter_by_staff: "กรองพนักงาน:",
+          all_staff: "พนักงานทั้งหมด (All Staff)",
+          calendar_view: "ปฏิทิน",
+          table_view: "ตาราง",
+          dispatch: "ส่งมอบรถ (Dispatch)",
+          return_job: "รับรถคืน (Return)",
+          insurance: "ประกันภัย",
+          act: "พ.ร.บ.",
+          tax: "ภาษี",
+          in_days: "เหลือ {days} วัน",
+          overdue_days: "เกินกำหนด {days} วัน",
+          due_today: "หมดอายุวันนี้",
+          red_plate: "ป้ายแดง",
+          finance_company: "บริษัทไฟแนนซ์",
+          select_or_enter_finance: "เลือกจากรายการ หรือพิมพ์ชื่อบริษัทไฟแนนซ์ใหม่...",
+          next_engine_oil_date: "กำหนดถ่ายน้ำมันเครื่องครั้งต่อไป (วันที่)",
+          next_engine_oil_mileage: "กำหนดถ่ายน้ำมันเครื่องครั้งต่อไป (เลขไมล์)",
+          next_tire_change_date: "กำหนดเปลี่ยนยางครั้งต่อไป (วันที่)",
+          next_tire_change_mileage: "กำหนดเปลี่ยนยางครั้งต่อไป (เลขไมล์)",
+          next_service_date: "กำหนดเช็คระยะครั้งต่อไป (วันที่)",
+          next_service_mileage: "กำหนดเช็คระยะครั้งต่อไป (เลขไมล์)",
+          service_interval_header: "กำหนดการเช็คระยะ (น้ำมันเครื่อง & ยาง)",
+          view_details_or_book: "ดูรายละเอียด / จองรถ"
+        },
+        EN: {
+          available: "Available",
+          reserved: "Reserved",
+          workshop: "Workshop",
+          on_rent: "On rent",
+          daily_rate: "Daily Rate",
+          days: "days",
+          details: "Details",
+          book_now: "Book Now",
+          queue: "Queue",
+          add_customer: "Add Customer",
+          add_vehicle: "Add Vehicle",
+          quick_actions: "Quick Actions:",
+          car_details_modal_title: "Vehicle Details",
+          prb_price: "PRB Price (THB)",
+          insurance_premium: "Insurance Premium (THB)",
+          duplicate_vehicle_error: "Duplicate Data: Vehicle plate or VIN (Chassis No) already exists in system",
+          filter_by_staff: "Filter by Staff:",
+          all_staff: "All Staff",
+          calendar_view: "Calendar",
+          table_view: "Table",
+          dispatch: "Dispatch",
+          return_job: "Return",
+          insurance: "Insurance",
+          act: "ACT",
+          tax: "Tax",
+          in_days: "in {days} days",
+          overdue_days: "{days} days overdue",
+          due_today: "today",
+          red_plate: "Red Plate",
+          finance_company: "Finance Company",
+          select_or_enter_finance: "Select or type new finance company...",
+          next_engine_oil_date: "Next Engine Oil Change (Date)",
+          next_engine_oil_mileage: "Next Engine Oil Change (Mileage)",
+          next_tire_change_date: "Next Tire Change (Date)",
+          next_tire_change_mileage: "Next Tire Change (Mileage)",
+          next_service_date: "Next Service Due (Date)",
+          next_service_mileage: "Next Service Due (Mileage)",
+          service_interval_header: "Service Intervals (Engine Oil & Tires)",
+          view_details_or_book: "View Details / Book"
+        }
+      };
+      window.translations_dict = window.translations;
+    }
+    const lang = (this.currentLang === "EN") ? "EN" : "TH";
+    return window.translations[lang]?.[key] || fallback || key;
   }
 
   initLanguage() {
@@ -750,9 +755,23 @@ class App {
     const thStatus = document.getElementById("bo-th-status");
     if (thStatus) thStatus.textContent = isEn ? "Status" : "สถานะ";
     const thActs = document.getElementById("bo-th-acts");
-    if (thActs) thActs.textContent = isEn ? "Documents & Actions" : "เอกสาร & ส่งงาน";
+    const boCalHead = document.getElementById("bo-calendar-heading");
+    if (boCalHead) boCalHead.textContent = isEn ? "📅 Vehicle Dispatch & Return Work Orders (Calendar)" : "📅 ปฏิทินตารางงานส่งมอบ - รับคืนรถยนต์ (Schedule Calendar)";
+    const legDisp = document.getElementById("legend-dispatch-lbl");
+    if (legDisp) legDisp.textContent = isEn ? "Dispatch" : "ส่งมอบ (Dispatch)";
+    const legRet = document.getElementById("legend-return-lbl");
+    if (legRet) legRet.textContent = isEn ? "Return" : "รับคืน (Return)";
+    const legMnt = document.getElementById("legend-maint-lbl");
+    if (legMnt) legMnt.textContent = isEn ? "Maintenance/Renewal" : "ซ่อมบำรุง/ต่อภาษี";
+    const btnBoCal = document.getElementById("btn-bo-view-calendar");
+    if (btnBoCal) btnBoCal.textContent = isEn ? "📅 Calendar" : "📅 ปฏิทิน";
+    const btnBoTbl = document.getElementById("btn-bo-view-table");
+    if (btnBoTbl) btnBoTbl.textContent = isEn ? "📋 Table" : "📋 ตาราง";
 
     // 9. Re-render jobs in Back Office if table exists
+    if (this.renderBackofficeCalendar) {
+      this.renderBackofficeCalendar();
+    }
     if (this.renderBackOfficeJobs) {
       this.renderBackOfficeJobs();
     }
@@ -1471,6 +1490,8 @@ class App {
       this.backofficeJobs = await res.json();
       const badge = document.getElementById("badge-backoffice-jobs");
       if (badge) badge.textContent = this.backofficeJobs.length;
+      this.populateBackofficeStaffFilter();
+      this.renderBackofficeCalendar();
       this.renderBackOfficeJobs();
     }
   }
@@ -1598,7 +1619,12 @@ class App {
       if (sec) sec.style.display = (m === modName) ? "block" : "none";
     });
 
-    if (modName === "backoffice") this.loadBackOfficeJobs();
+    if (modName === "backoffice") {
+      this.loadBackOfficeJobs();
+      setTimeout(() => {
+        if (this.boCalendar) this.boCalendar.updateSize();
+      }, 120);
+    }
     if (modName === "maintenance") this.loadMaintenanceRecords();
     if (modName === "customers") this.renderCustomersTable();
     if (modName === "dashboard") {
@@ -1807,14 +1833,18 @@ class App {
     return { plateNo, province, isRed };
   }
 
-  getCarExpiryAlert(c, isEn) {
+  getCarExpiryAlert(c, lang = null) {
+    const isEn = (lang === "EN" || (!lang && this.currentLang === "EN"));
+    const l = isEn ? "EN" : "TH";
+    const dict = (window.translations && window.translations[l]) ? window.translations[l] : null;
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
     const checks = [
-      { name: isEn ? "Insurance" : "ประกันภัย", dateStr: c.ins_expiry },
-      { name: isEn ? "ACT" : "พ.ร.บ.", dateStr: c.act_expiry },
-      { name: isEn ? "Tax" : "ภาษี", dateStr: c.tax_expiry }
+      { name: dict ? dict.insurance : (isEn ? "Insurance" : "ประกันภัย"), dateStr: c.ins_expiry },
+      { name: dict ? dict.act : (isEn ? "ACT" : "พ.ร.บ."), dateStr: c.act_expiry },
+      { name: dict ? dict.tax : (isEn ? "Tax" : "ภาษี"), dateStr: c.tax_expiry }
     ];
 
     let minDiff = null;
@@ -1846,24 +1876,33 @@ class App {
 
     if (urgentItem.diff < 0) {
       const daysAgo = Math.abs(urgentItem.diff);
+      const txt = dict
+        ? `${urgentItem.name} ${dict.overdue_days.replace('{days}', daysAgo)}`
+        : (isEn ? `${urgentItem.name} ${daysAgo} days overdue` : `${urgentItem.name} เกินกำหนด ${daysAgo} วัน`);
       return {
-        text: isEn ? `${urgentItem.name} ${daysAgo} days overdue` : `${urgentItem.name} เกินกำหนด ${daysAgo} วัน`,
+        text: txt,
         bg: "#FEE2E2",
         border: "#FECACA",
         color: "#991B1B",
         dot: "#EF4444"
       };
     } else if (urgentItem.diff === 0) {
+      const txt = dict
+        ? `${urgentItem.name} ${dict.due_today}`
+        : (isEn ? `${urgentItem.name} today` : `${urgentItem.name} หมดอายุวันนี้`);
       return {
-        text: isEn ? `${urgentItem.name} today` : `${urgentItem.name} หมดอายุวันนี้`,
+        text: txt,
         bg: "#FEF3C7",
         border: "#FDE68A",
         color: "#92400E",
         dot: "#F59E0B"
       };
     } else {
+      const txt = dict
+        ? `${urgentItem.name} ${dict.in_days.replace('{days}', urgentItem.diff)}`
+        : (isEn ? `${urgentItem.name} in ${urgentItem.diff} days` : `${urgentItem.name} เหลือ ${urgentItem.diff} วัน`);
       return {
-        text: isEn ? `${urgentItem.name} in ${urgentItem.diff} days` : `${urgentItem.name} ใน ${urgentItem.diff} วัน`,
+        text: txt,
         bg: "#FEF3C7",
         border: "#FDE68A",
         color: "#92400E",
@@ -1995,21 +2034,23 @@ class App {
            </div>`;
 
       // 3. Status Pill
-      let statusText = isEn ? "Available" : "ว่างไม่มีการจอง";
+      const l = isEn ? "EN" : "TH";
+      const dict = (window.translations && window.translations[l]) ? window.translations[l] : null;
+      let statusText = dict ? dict.available : (isEn ? "Available" : "ว่างพร้อมใช้งาน");
       let statusBg = "#ECFDF5", statusBorder = "#A7F3D0", statusColor = "#065F46", statusDot = "#10B981";
       if (c.fleet_status_key === "reserved") {
-        statusText = isEn ? "Reserved" : "ติดจอง";
+        statusText = dict ? dict.reserved : (isEn ? "Reserved" : "ติดจอง");
         statusBg = "#FEFCE8"; statusBorder = "#FEF08A"; statusColor = "#A16207"; statusDot = "#F59E0B";
       } else if (c.fleet_status_key === "maintenance") {
-        statusText = isEn ? "Workshop" : "ซ่อมบำรุง";
+        statusText = dict ? dict.workshop : (isEn ? "Workshop" : "ซ่อมบำรุง");
         statusBg = "#FFF7ED"; statusBorder = "#FED7AA"; statusColor = "#9A3412"; statusDot = "#F97316";
       } else if (c.fleet_status_key === "unavailable" || c.status === "กำลังเช่า") {
-        statusText = isEn ? "On rent" : "กำลังเช่า";
+        statusText = dict ? dict.on_rent : (isEn ? "On rent" : "กำลังเช่า");
         statusBg = "#EFF6FF"; statusBorder = "#BFDBFE"; statusColor = "#1E40AF"; statusDot = "#3B82F6";
       }
 
       // 4. Expiry Alert Pill (Insurance, ACT, Tax)
-      const alertInfo = this.getCarExpiryAlert(c, isEn);
+      const alertInfo = this.getCarExpiryAlert(c, l);
       const alertPillHtml = alertInfo
         ? `<span class="car-pill" style="background:${alertInfo.bg}; border:1px solid ${alertInfo.border}; color:${alertInfo.color};">
              <span class="car-pill-dot" style="background:${alertInfo.dot};"></span> ${alertInfo.text}
@@ -2017,6 +2058,9 @@ class App {
         : "";
 
       const carSpecsSub = `${c.reg_year || c.year || '2024'} · ${String(c.color || 'WHITE').toUpperCase()} · ${c.fuel_type || 'Petrol'}`;
+      const dailyRateLabel = dict ? dict.daily_rate : (isEn ? 'Daily Rate' : 'ค่าเช่ารายวัน');
+      const detailsLabel = dict ? dict.details : (isEn ? 'Details' : 'ดูรายละเอียด');
+      const bookNowLabel = isAvail ? (dict ? dict.book_now : (isEn ? 'Book Now' : 'จองรถ')) : (dict ? dict.queue : (isEn ? 'Queue' : 'จองคิว'));
 
       return `
         <div class="car-card-modern">
@@ -2042,7 +2086,7 @@ class App {
           <!-- Rate summary & View Details / Book Modal Button (Unslop) -->
           <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px; padding-top:10px; border-top:1px dashed #E2E8F0;">
             <div style="font-size:11.5px; color:#64748B;">
-              ${isEn ? 'Daily Rate' : 'ค่าเช่ารายวัน'}: <b style="color:#0F172A; font-size:13.5px;">฿${priceDay.toLocaleString()}</b>
+              ${dailyRateLabel}: <b style="color:#0F172A; font-size:13.5px;">฿${priceDay.toLocaleString()}</b>
             </div>
             <div style="font-size:11.5px; color:#E85826; font-weight:700;">
               ${dur.days > 0 ? (isEn ? `${dur.days}d: ฿${basePrice.toLocaleString()}` : `${dur.days} วัน: ฿${basePrice.toLocaleString()}`) : ''}
@@ -2051,10 +2095,10 @@ class App {
 
           <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-top:10px;">
             <button type="button" class="btn btn-secondary" onclick="app.openCarDetailsModal('${safePlate}')" style="width:100%; font-weight:700; font-size:12px; padding:8px 6px; border-radius:8px; display:flex; align-items:center; justify-content:center; gap:5px; cursor:pointer; background:#FAF7F2; border:1px solid #CBD5E1; color:#334155;">
-              <span>${this.t('details', isEn ? 'Details' : 'ดูรายละเอียด')}</span>
+              <span>${detailsLabel}</span>
             </button>
             <button type="button" class="btn btn-primary" onclick="app.openBookModal('${safePlate}')" style="width:100%; font-weight:700; font-size:12px; padding:8px 6px; border-radius:8px; display:flex; align-items:center; justify-content:center; gap:5px; cursor:pointer; box-shadow:0 1px 3px rgba(232,88,38,0.25);" ${!isAvail ? `title="${isEn ? 'Reserved - click to reserve queue' : 'ติดจอง - คลิกเพื่อจองคิวต่อ'}"` : ''}>
-              <span>${isAvail ? this.t('book_now', isEn ? 'Book Now' : 'จองรถ') : this.t('queue', isEn ? 'Queue' : 'จองคิว')}</span>
+              <span>${bookNowLabel}</span>
             </button>
           </div>
         </div>
@@ -2416,10 +2460,70 @@ class App {
     }
   }
 
+  updateCarFormField(field, val) {
+    if (!this.carFormData) this.carFormData = {};
+    this.carFormData[field] = val;
+  }
+
+  clearCarPhoto() {
+    const previewEl = document.getElementById("edit-car-img-preview");
+    const noImgEl = document.getElementById("edit-car-no-img-text");
+    const urlEl = document.getElementById("edit-car-image-url");
+    const fileEl = document.getElementById("edit-car-photo-file");
+    if (previewEl) {
+      previewEl.src = "";
+      previewEl.style.display = "none";
+    }
+    if (noImgEl) noImgEl.style.display = "block";
+    if (urlEl) urlEl.value = "";
+    if (fileEl) fileEl.value = "";
+    if (this.carFormData) this.carFormData.image = "";
+  }
+
   openEditCarModal(plate) {
     const isEn = (this.currentLang === "EN");
     const isNew = !plate;
     const car = (!isNew && this.cars.find(c => c.plate === plate)) || {};
+
+    // Initialize carFormData state to prevent data loss on editing/typing
+    this.carFormData = {
+      plate: car.plate || "",
+      brand: car.brand || "Toyota",
+      model: car.model || "",
+      car_group: car.car_group || "รถเก๋ง (Sedan/Hatchback)",
+      fuel_type: car.fuel_type || "เบนซิน",
+      engine_cc: car.engine_cc || "1200",
+      company: car.company || "บจก.สวัสดี เรนทัล (Sawasdee Rental)",
+      color: car.color || "",
+      mileage: car.mileage || "15,000",
+      price_day: car.price_day !== undefined ? car.price_day : 1000,
+      price_week: car.price_week !== undefined ? car.price_week : 6000,
+      price_month: car.price_month !== undefined ? car.price_month : 20000,
+      chassis_no: car.chassis_no || "-",
+      tax_expiry: this.dmyToYmd(car.tax_expiry),
+      act_expiry: this.dmyToYmd(car.act_expiry),
+      ins_expiry: this.dmyToYmd(car.ins_expiry),
+      ins_company: car.ins_company || "-",
+      owner: car.owner || "-",
+      beneficiary: car.beneficiary || car.company || "-",
+      reg_year: car.reg_year || "-",
+      prb_price: car.prb_price !== undefined && car.prb_price !== null ? car.prb_price : (car.act_price !== undefined && car.act_price !== null ? car.act_price : ""),
+      insurance_premium: car.insurance_premium !== undefined && car.insurance_premium !== null ? car.insurance_premium : (car.ins_premium !== undefined && car.ins_premium !== null ? car.ins_premium : ""),
+      last_service_date: this.dmyToYmd(car.last_service_date),
+      next_service_date: this.dmyToYmd(car.next_service_date || car.next_engine_oil_date || car.next_service || ""),
+      next_service_mileage: car.next_service_mileage !== undefined && car.next_service_mileage !== null && Number(car.next_service_mileage) > 0
+        ? car.next_service_mileage
+        : (car.next_engine_oil_mileage && Number(car.next_engine_oil_mileage) > 0 ? car.next_engine_oil_mileage : ""),
+      notes: car.notes || "",
+      status: car.status || "ว่างพร้อมใช้งาน",
+      is_debt_free: car.is_debt_free !== undefined ? Boolean(car.is_debt_free) : (!car.installment_amount),
+      finance_company: car.finance_company || "-",
+      installment_amount: car.installment_amount !== undefined ? car.installment_amount : 0,
+      total_installments: car.total_installments !== undefined ? car.total_installments : 48,
+      current_installment: car.current_installment !== undefined ? car.current_installment : 0,
+      payment_due_date: this.dmyToYmd(car.payment_due_date),
+      image: car.image || ""
+    };
 
     const titleEl = document.getElementById("modal-edit-car-title");
     if (titleEl) {
@@ -2725,11 +2829,25 @@ class App {
     }
   }
 
-  async submitEditCar() {
+  async submitEditCar(e) {
+    if (e && e.preventDefault) {
+      e.preventDefault();
+    } else if (window.event && window.event.preventDefault) {
+      window.event.preventDefault();
+    }
+
     const origPlate = (document.getElementById("edit-car-original-plate")?.value || "").trim();
-    const plate = (document.getElementById("edit-car-plate")?.value || "").trim();
-    const brand = (document.getElementById("edit-car-brand")?.value || "").trim();
-    const model = (document.getElementById("edit-car-model")?.value || "").trim();
+    const fd = this.carFormData || {};
+    const getVal = (id, fdKey, def = "") => {
+      if (fd && fd[fdKey] !== undefined && fd[fdKey] !== null) return fd[fdKey];
+      const el = document.getElementById(id);
+      return el ? el.value : def;
+    };
+
+    const plate = String(getVal("edit-car-plate", "plate", "")).trim();
+    const brand = String(getVal("edit-car-brand", "brand", "")).trim();
+    const model = String(getVal("edit-car-model", "model", "")).trim();
+
     if (!plate) {
       this.showToast("⚠️ กรุณาระบุเลขทะเบียนรถ", "warning");
       return;
@@ -2753,7 +2871,7 @@ class App {
       return;
     }
 
-    const vinVal = (document.getElementById("edit-car-vin")?.value || "-").trim();
+    const vinVal = String(getVal("edit-car-vin", "chassis_no", "-")).trim();
     if (this.checkDuplicateChassis(vinVal)) {
       const msg = (this.currentLang === "EN")
         ? "Duplicate Data: Vehicle plate or VIN (Chassis No) already exists in system"
@@ -2769,57 +2887,74 @@ class App {
     }
 
     const existing = this.cars.find(c => c.plate === (origPlate || plate)) || {};
-    const imgUrl = (document.getElementById("edit-car-image-url")?.value || "").trim() || existing.image || "";
+    const imgUrl = (document.getElementById("edit-car-image-url")?.value || "").trim() || fd.image || existing.image || "";
+
+    const rawPrb = getVal("edit-car-prb-price", "prb_price", "");
+    const prbPrice = (rawPrb !== "" && rawPrb !== null && !isNaN(rawPrb)) ? parseFloat(rawPrb) : null;
+    const rawInsPrem = getVal("edit-car-ins-premium", "insurance_premium", "");
+    const insPremium = (rawInsPrem !== "" && rawInsPrem !== null && !isNaN(rawInsPrem)) ? parseFloat(rawInsPrem) : null;
+
+    const rawNextSrvDate = getVal("edit-car-next-srv-date", "next_service_date", "");
+    const dmyNextSrvDate = rawNextSrvDate ? (rawNextSrvDate.includes("-") ? this.ymdToDmy(rawNextSrvDate) : rawNextSrvDate) : "-";
+    const rawNextSrvMileage = getVal("edit-car-next-srv-mileage", "next_service_mileage", "0");
+    const nextSrvMileage = parseInt(rawNextSrvMileage || "0", 10) || 0;
+
+    const isDebtFree = document.getElementById("edit-car-debt-free") ? Boolean(document.getElementById("edit-car-debt-free").checked) : Boolean(fd.is_debt_free);
 
     const payload = {
       original_plate: origPlate,
       plate: plate,
       brand: brand,
       model: model,
-      car_group: document.getElementById("edit-car-group")?.value || "รถเก๋ง (Sedan/Hatchback)",
-      fuel_type: document.getElementById("edit-car-fuel")?.value || "เบนซิน",
-      engine_cc: (document.getElementById("edit-car-cc")?.value || "1200").trim(),
-      company: (document.getElementById("edit-car-company")?.value || "Sawasdee Rent A Car").trim(),
-      color: (document.getElementById("edit-car-color")?.value || "-").trim(),
-      mileage: (document.getElementById("edit-car-mileage")?.value || "0").trim(),
-      price_day: parseInt(document.getElementById("edit-car-pday")?.value || "1000", 10),
-      price_week: parseInt(document.getElementById("edit-car-pweek")?.value || "6000", 10),
-      price_month: parseInt(document.getElementById("edit-car-pmonth")?.value || "20000", 10),
+      car_group: getVal("edit-car-group", "car_group", "รถเก๋ง (Sedan/Hatchback)"),
+      fuel_type: getVal("edit-car-fuel", "fuel_type", "เบนซิน"),
+      engine_cc: String(getVal("edit-car-cc", "engine_cc", "1200")).trim(),
+      company: String(getVal("edit-car-company", "company", "Sawasdee Rent A Car")).trim(),
+      color: String(getVal("edit-car-color", "color", "-")).trim(),
+      mileage: String(getVal("edit-car-mileage", "mileage", "0")).trim(),
+      price_day: parseInt(getVal("edit-car-pday", "price_day", 1000) || "1000", 10),
+      price_week: parseInt(getVal("edit-car-pweek", "price_week", 6000) || "6000", 10),
+      price_month: parseInt(getVal("edit-car-pmonth", "price_month", 20000) || "20000", 10),
       chassis_no: vinVal,
-      tax_expiry: this.ymdToDmy((document.getElementById("edit-car-tax")?.value || "").trim()) || "-",
-      act_expiry: this.ymdToDmy((document.getElementById("edit-car-act")?.value || "").trim()) || "-",
-      ins_expiry: this.ymdToDmy((document.getElementById("edit-car-ins")?.value || "").trim()) || "-",
-      ins_company: (document.getElementById("edit-car-ins-comp")?.value || "-").trim(),
-      owner: (document.getElementById("edit-car-owner")?.value || "-").trim(),
-      beneficiary: (document.getElementById("edit-car-beneficiary")?.value || "-").trim(),
-      reg_year: (document.getElementById("edit-car-reg-year")?.value || "-").trim(),
-      prb_price: (document.getElementById("edit-car-prb-price")?.value || "").trim() !== "" ? parseFloat(document.getElementById("edit-car-prb-price")?.value) : null,
-      act_price: (document.getElementById("edit-car-prb-price")?.value || "").trim() !== "" ? parseFloat(document.getElementById("edit-car-prb-price")?.value) : null,
-      insurance_premium: (document.getElementById("edit-car-ins-premium")?.value || "").trim() !== "" ? parseFloat(document.getElementById("edit-car-ins-premium")?.value) : null,
-      ins_premium: (document.getElementById("edit-car-ins-premium")?.value || "").trim() !== "" ? parseFloat(document.getElementById("edit-car-ins-premium")?.value) : null,
-      last_service_date: this.ymdToDmy((document.getElementById("edit-car-last-srv")?.value || "").trim()) || "-",
-      next_service_date: this.ymdToDmy((document.getElementById("edit-car-next-srv-date")?.value || "").trim()) || "-",
-      next_service_mileage: parseInt(document.getElementById("edit-car-next-srv-mileage")?.value || "0", 10) || 0,
-      next_service: (this.ymdToDmy((document.getElementById("edit-car-next-srv-date")?.value || "").trim()) || "-") !== "-"
-        ? (this.ymdToDmy((document.getElementById("edit-car-next-srv-date")?.value || "").trim()) || "-")
-        : (parseInt(document.getElementById("edit-car-next-srv-mileage")?.value || "0", 10) ? String(parseInt(document.getElementById("edit-car-next-srv-mileage")?.value || "0", 10)) : "-"),
-      notes: (document.getElementById("edit-car-notes")?.value || "").trim(),
-      status: document.getElementById("edit-car-status")?.value || "ว่างพร้อมใช้งาน",
+      tax_expiry: this.ymdToDmy(getVal("edit-car-tax", "tax_expiry", "")) || "-",
+      act_expiry: this.ymdToDmy(getVal("edit-car-act", "act_expiry", "")) || "-",
+      ins_expiry: this.ymdToDmy(getVal("edit-car-ins", "ins_expiry", "")) || "-",
+      ins_company: String(getVal("edit-car-ins-comp", "ins_company", "-")).trim(),
+      owner: String(getVal("edit-car-owner", "owner", "-")).trim(),
+      beneficiary: String(getVal("edit-car-beneficiary", "beneficiary", "-")).trim(),
+      reg_year: String(getVal("edit-car-reg-year", "reg_year", "-")).trim(),
+      prb_price: prbPrice,
+      act_price: prbPrice,
+      insurance_premium: insPremium,
+      ins_premium: insPremium,
+      last_service_date: this.ymdToDmy(getVal("edit-car-last-srv", "last_service_date", "")) || "-",
+      next_service_date: dmyNextSrvDate,
+      next_service_mileage: nextSrvMileage,
+      next_service: dmyNextSrvDate !== "-" ? dmyNextSrvDate : (nextSrvMileage > 0 ? String(nextSrvMileage) : "-"),
+      notes: String(getVal("edit-car-notes", "notes", "")).trim(),
+      status: getVal("edit-car-status", "status", "ว่างพร้อมใช้งาน"),
       image: imgUrl,
-      is_debt_free: Boolean(document.getElementById("edit-car-debt-free")?.checked),
-      finance_company: Boolean(document.getElementById("edit-car-debt-free")?.checked) ? "-" : ((document.getElementById("edit-car-finance-company")?.value || "").trim() || "-"),
-      installment_amount: Boolean(document.getElementById("edit-car-debt-free")?.checked) ? 0 : (parseFloat(document.getElementById("edit-car-installment-amount")?.value || 0) || 0),
-      total_installments: Boolean(document.getElementById("edit-car-debt-free")?.checked) ? 0 : (parseInt(document.getElementById("edit-car-total-installments")?.value || 0, 10) || 0),
-      current_installment: Boolean(document.getElementById("edit-car-debt-free")?.checked) ? 0 : (parseInt(document.getElementById("edit-car-current-installment")?.value || 0, 10) || 0),
-      payment_due_date: Boolean(document.getElementById("edit-car-debt-free")?.checked) || !(document.getElementById("edit-car-payment-due-date")?.value || "").trim() ? "-" : (document.getElementById("edit-car-payment-due-date")?.value || "").trim()
+      is_debt_free: isDebtFree,
+      finance_company: isDebtFree ? "-" : (String(getVal("edit-car-finance-company", "finance_company", "-")).trim() || "-"),
+      installment_amount: isDebtFree ? 0 : (parseFloat(getVal("edit-car-installment-amount", "installment_amount", 0)) || 0),
+      total_installments: isDebtFree ? 0 : (parseInt(getVal("edit-car-total-installments", "total_installments", 0), 10) || 0),
+      current_installment: isDebtFree ? 0 : (parseInt(getVal("edit-car-current-installment", "current_installment", 0), 10) || 0),
+      payment_due_date: isDebtFree || !getVal("edit-car-payment-due-date", "payment_due_date", "") ? "-" : String(getVal("edit-car-payment-due-date", "payment_due_date", "-")).trim()
     };
 
     try {
-      const res = await fetch("/api/cars", {
+      let res = await fetch("/api/vehicles", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });
+      if (res.status === 404) {
+        res = await fetch("/api/cars", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+      }
       const data = await res.json().catch(() => ({}));
       if (res.ok && data.success) {
         this.closeModal("modal-edit-car");
@@ -2840,7 +2975,7 @@ class App {
           ? `Vehicle data saved successfully (${plate})`
           : `บันทึกข้อมูลรถยนต์ทะเบียน ${plate} เรียบร้อยแล้ว!`;
         this.showToast(`✅ ${successMsg}`, "success");
-        await this.loadCars();
+        this.loadCars().catch(err => console.error("loadCars background err:", err));
       } else {
         const isEn = (this.currentLang === "EN");
         let errMsg = data.message || data.detail || (isEn ? "Failed to save vehicle" : "บันทึกข้อมูลไม่สำเร็จ");
@@ -4531,7 +4666,308 @@ class App {
     }
   }
 
-  // --- Back Office Rendering ---
+  // --- Back Office Calendar & Rendering ---
+  populateBackofficeStaffFilter() {
+    const sel = document.getElementById("bo-staff-filter");
+    if (!sel) return;
+    const currentVal = sel.value || this.boStaffFilter || "";
+    const isEn = (this.currentLang === "EN");
+    const staffSet = new Set();
+    (this.backofficeJobs || []).forEach(j => {
+      const w = String(j.worker || "").trim();
+      if (w && w !== "-" && w !== "ยังไม่มอบหมาย") {
+        staffSet.add(w);
+      }
+    });
+    let html = `<option value="">${isEn ? 'All Staff (ทุกคน)' : 'ทุกคน (All Staff)'}</option>`;
+    Array.from(staffSet).sort().forEach(st => {
+      html += `<option value="${st}">${st}</option>`;
+    });
+    sel.innerHTML = html;
+    if (currentVal) sel.value = currentVal;
+  }
+
+  onBackofficeStaffFilterChange(staff) {
+    this.boStaffFilter = staff || "";
+    this.renderBackofficeCalendar();
+    this.renderBackOfficeJobs();
+  }
+
+  setBackofficeViewMode(mode) {
+    this.boViewMode = mode;
+    const calWrap = document.getElementById("bo-calendar-wrapper");
+    const tblWrap = document.getElementById("bo-full-table-card");
+    const btnCal = document.getElementById("btn-bo-view-calendar");
+    const btnTbl = document.getElementById("btn-bo-view-table");
+
+    if (mode === "calendar") {
+      if (calWrap) calWrap.style.display = "block";
+      if (tblWrap) tblWrap.style.display = "none";
+      if (btnCal) {
+        btnCal.className = "btn btn-sm btn-primary";
+        btnCal.style.cssText = "font-size:12px; padding:4px 12px; font-weight:700;";
+      }
+      if (btnTbl) {
+        btnTbl.className = "btn btn-sm btn-secondary";
+        btnTbl.style.cssText = "font-size:12px; padding:4px 12px;";
+      }
+      setTimeout(() => {
+        if (this.boCalendar) {
+          this.boCalendar.updateSize();
+        } else {
+          this.renderBackofficeCalendar();
+        }
+      }, 80);
+    } else {
+      if (calWrap) calWrap.style.display = "none";
+      if (tblWrap) tblWrap.style.display = "block";
+      if (btnCal) {
+        btnCal.className = "btn btn-sm btn-secondary";
+        btnCal.style.cssText = "font-size:12px; padding:4px 12px;";
+      }
+      if (btnTbl) {
+        btnTbl.className = "btn btn-sm btn-primary";
+        btnTbl.style.cssText = "font-size:12px; padding:4px 12px; font-weight:700;";
+      }
+      this.renderBackOfficeJobs();
+    }
+  }
+
+  renderBackofficeCalendar() {
+    const calendarEl = document.getElementById("backoffice-calendar");
+    if (!calendarEl) return;
+    if (typeof FullCalendar === "undefined") {
+      console.warn("FullCalendar is not loaded yet");
+      return;
+    }
+
+    const isEn = (this.currentLang === "EN");
+    const staffFilter = (document.getElementById("bo-staff-filter")?.value || this.boStaffFilter || "").trim();
+
+    const jobs = (this.backofficeJobs || []).filter(j => {
+      if (staffFilter && String(j.worker || "").trim() !== staffFilter) {
+        return false;
+      }
+      return true;
+    });
+
+    const events = jobs.map(j => {
+      const isDisp = j.job_type === "Dispatch";
+      const isMnt = j.is_maintenance || j.job_type === "Maintenance" || j.job_type === "Renewal";
+      
+      let title = "";
+      let color = "#2563EB";
+      let startStr = j.date_iso;
+
+      if (isMnt) {
+        title = `[🛠️ ${isEn ? 'Maint' : 'ซ่อม'}] ${j.car_id || ''} (${j.booking_id})`;
+        color = "#EA580C"; // Orange for maintenance/renewal
+        startStr = j.start_date || j.date_iso;
+      } else if (isDisp) {
+        title = `[🚚 ${isEn ? 'Dispatch' : 'ส่ง'}] ${j.car_id || ''} - ${j.customer || ''} (${j.booking_id})`;
+        color = "#2563EB"; // Blue for dispatch
+        if (j.start_date && j.start_time) {
+          startStr = `${j.start_date}T${j.start_time}`;
+        } else if (j.start_date) {
+          startStr = j.start_date;
+        }
+      } else {
+        title = `[🔙 ${isEn ? 'Return' : 'รับคืน'}] ${j.car_id || ''} - ${j.customer || ''} (${j.booking_id})`;
+        color = "#16A34A"; // Green for return
+        if (j.end_date && j.end_time) {
+          startStr = `${j.end_date}T${j.end_time}`;
+        } else if (j.end_date) {
+          startStr = j.end_date;
+        }
+      }
+
+      return {
+        id: `${j.job_type}_${j.booking_id}`,
+        title: title,
+        start: startStr,
+        backgroundColor: color,
+        borderColor: color,
+        textColor: "#FFFFFF",
+        extendedProps: j
+      };
+    });
+
+    if (this.boCalendar) {
+      this.boCalendar.removeAllEvents();
+      this.boCalendar.addEventSource(events);
+      this.boCalendar.setOption('locale', isEn ? 'en' : 'th');
+      this.boCalendar.updateSize();
+      return;
+    }
+
+    this.boCalendar = new FullCalendar.Calendar(calendarEl, {
+      initialView: 'dayGridMonth',
+      headerToolbar: {
+        left: 'prev,next today',
+        center: 'title',
+        right: 'dayGridMonth,timeGridWeek,listMonth'
+      },
+      locale: isEn ? 'en' : 'th',
+      buttonText: isEn ? {
+        today: 'Today',
+        month: 'Month',
+        week: 'Week',
+        list: 'List'
+      } : {
+        today: 'วันนี้',
+        month: 'เดือน',
+        week: 'สัปดาห์',
+        list: 'รายการ'
+      },
+      events: events,
+      eventTimeFormat: {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      },
+      displayEventTime: true,
+      dayMaxEvents: 3,
+      dateClick: (info) => {
+        this.onCalendarDateClick(info.dateStr);
+      },
+      eventClick: (info) => {
+        this.onCalendarEventClick(info.event);
+      }
+    });
+
+    this.boCalendar.render();
+  }
+
+  onCalendarDateClick(dateStr) {
+    const dayCard = document.getElementById("bo-day-jobs-card");
+    const dayTbody = document.getElementById("bo-day-jobs-tbody");
+    const dayTitle = document.getElementById("bo-day-jobs-title");
+    if (!dayCard || !dayTbody) return;
+
+    const isEn = (this.currentLang === "EN");
+    const matched = (this.backofficeJobs || []).filter(j => {
+      const d1 = j.date_iso;
+      const d2 = j.start_date;
+      const d3 = j.end_date;
+      return d1 === dateStr || d2 === dateStr || d3 === dateStr;
+    });
+
+    if (dayTitle) {
+      dayTitle.textContent = isEn
+        ? `📋 Work Orders for ${dateStr} (${matched.length} jobs)`
+        : `📋 ตารางงานประจำวันที่ ${dateStr} (${matched.length} รายการ)`;
+    }
+
+    if (matched.length === 0) {
+      dayTbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:24px; color:#64748B;">${isEn ? 'No work orders scheduled on this date' : 'ไม่มีงานที่นัดหมายในวันนี้'}</td></tr>`;
+    } else {
+      dayTbody.innerHTML = matched.map(j => this.renderSingleBackofficeJobRow(j, isEn)).join("");
+    }
+
+    dayCard.style.display = "block";
+    dayCard.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+
+  onCalendarEventClick(calEvent) {
+    const j = calEvent.extendedProps;
+    if (!j) return;
+    const isEn = (this.currentLang === "EN");
+
+    const dayCard = document.getElementById("bo-day-jobs-card");
+    const dayTbody = document.getElementById("bo-day-jobs-tbody");
+    const dayTitle = document.getElementById("bo-day-jobs-title");
+    if (dayCard && dayTbody) {
+      if (dayTitle) {
+        dayTitle.textContent = isEn
+          ? `📋 Work Order: ${j.booking_id} (${j.job_type})`
+          : `📋 รายละเอียดใบงาน: ${j.booking_id} (${j.job_type})`;
+      }
+      dayTbody.innerHTML = this.renderSingleBackofficeJobRow(j, isEn);
+      dayCard.style.display = "block";
+      dayCard.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+
+    if (j.is_maintenance || j.job_type === "Maintenance" || j.job_type === "Renewal") {
+      this.openCloseMaintenanceModal(j.booking_id);
+    } else {
+      this.openHandoverModal(j.booking_id, j.job_type);
+    }
+  }
+
+  renderSingleBackofficeJobRow(j, isEn) {
+    const isDisp = j.job_type === "Dispatch";
+    const isMnt = j.is_maintenance || j.job_type === "Maintenance" || j.job_type === "Renewal";
+    let typeBadge = '';
+    if (j.job_type === "Maintenance") {
+      typeBadge = `<span class="badge" style="background:#FFF7ED; color:#C2410C; border:1px solid #FDBA74; font-weight:700;">${isEn ? 'Maintenance' : 'ซ่อมบำรุง'}</span>`;
+    } else if (j.job_type === "Renewal") {
+      typeBadge = `<span class="badge" style="background:#F0FDF4; color:#15803D; border:1px solid #BBF7D0; font-weight:700;">${isEn ? 'Renewal' : 'ต่อทะเบียน/พรบ./ประกัน'}</span>`;
+    } else if (isDisp) {
+      typeBadge = `<span class="badge badge-info">${isEn ? 'Dispatch' : 'ส่งมอบรถ (Dispatch)'}</span>`;
+    } else {
+      typeBadge = `<span class="badge badge-warning">${isEn ? 'Return' : 'รับรถคืน (Return)'}</span>`;
+    }
+
+    let actionButtons = '';
+    if (isMnt) {
+      const isRenewalJob = j.job_type === "Renewal" || (j.order_type && (String(j.order_type).includes("ต่อทะเบียน") || String(j.order_type).includes("ประกัน") || String(j.order_type).includes("พ.ร.บ.") || String(j.order_type).includes("ภาษี") || String(j.order_type).includes("แพ็กคู่")));
+      const btnLabel = isRenewalJob ? (isEn ? "Submit / Update" : "ส่งงาน / อัปเดตวัน") : (isEn ? "Inspect & Close" : "ตรวจรับ & ปิดงาน");
+      actionButtons = `
+        <a href="/api/pdf/maintenance/${j.booking_id}" target="_blank" class="btn btn-sm btn-secondary" title="${isEn ? 'Print Job PDF' : 'พิมพ์ใบงาน PDF'}">${isEn ? 'Job PDF' : 'ใบงาน PDF'}</a>
+        <button onclick="app.openCloseMaintenanceModal('${j.booking_id}')" class="btn btn-sm btn-success" style="font-weight:700;" title="${btnLabel}">
+          ${btnLabel}
+        </button>
+      `;
+    } else {
+      const lockTitle = isEn ? 'Wait for Dispatch completion' : 'ต้องปิดงานส่งมอบก่อน';
+      const inspectBtnLabel = isEn ? 'Inspect & Complete' : 'ตรวจรับส่ง & ปิดงาน';
+      actionButtons = `
+        <a href="/api/pdf/job/${j.booking_id}" target="_blank" class="btn btn-sm btn-secondary" title="${isEn ? 'Inspection PDF' : 'ใบตรวจสภาพ PDF'}">PDF</a>
+        <button onclick="app.openHandoverModal('${j.booking_id}', '${j.job_type}')" class="btn btn-sm btn-primary" ${j.is_locked ? `disabled title="${lockTitle}"` : ''}>
+          ${inspectBtnLabel}
+        </button>
+      `;
+    }
+
+    let statusBadge = '';
+    if (j.status === "กำลังซ่อมบำรุง") {
+      statusBadge = `<span class="badge" style="background:#FFF7ED; color:#C2410C; border:1px solid #FDBA74;">${isEn ? '🛠️ In Maintenance' : '🛠️ กำลังซ่อมบำรุง'}</span>`;
+    } else if (j.status === "กำลังต่อภาษี/ประกัน") {
+      statusBadge = `<span class="badge" style="background:#FEF3C7; color:#D97706; border:1px solid #FCD34D;">${isEn ? '⏳ Renewing Tax/Ins.' : '⏳ กำลังต่อภาษี/ประกัน'}</span>`;
+    } else {
+      let displayStatus = j.status;
+      if (isEn) {
+        if (displayStatus === "รอส่งมอบ") displayStatus = "Ready for Dispatch";
+        else if (displayStatus === "กำลังเช่า") displayStatus = "Active Rental";
+        else if (displayStatus === "รอรับคืน") displayStatus = "Ready for Return";
+        else if (displayStatus === "🔒 รอส่งรถก่อน") displayStatus = "🔒 Wait for Dispatch";
+        else if (displayStatus === "รอชำระมัดจำ") displayStatus = "Pending Deposit";
+      }
+      statusBadge = `<span class="badge badge-gray">${displayStatus}</span>`;
+    }
+
+    return `
+      <tr>
+        <td>${typeBadge}</td>
+        <td><b style="color:#D97706;">${j.booking_id}</b></td>
+        <td><b>${j.car_id}</b></td>
+        <td>
+          <b>${j.customer}</b><br/>
+          ${j.customer_phone && j.customer_phone !== '-' ? `<a href="tel:${j.customer_phone}" style="color:#2563EB; font-size:11.5px; text-decoration:none;">📞 ${j.customer_phone}</a>` : ''}
+        </td>
+        <td style="font-size:12px;">${j.schedule}</td>
+        <td><span style="font-weight:600; color:#334155;">${j.worker}</span></td>
+        <td style="max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${j.location}">
+          ${j.location.startsWith("http") ? `<a href="${j.location}" target="_blank" style="color:#2563EB;">📍 แผนที่นัดหมาย</a>` : j.location}
+        </td>
+        <td>${statusBadge}</td>
+        <td style="text-align:center; white-space:nowrap;">
+          ${actionButtons}
+        </td>
+      </tr>
+    `;
+  }
+
   renderBackOfficeJobs() {
     const tbody = document.getElementById("backoffice-jobs-tbody");
     if (!tbody) return;
@@ -4539,8 +4975,12 @@ class App {
     const boKw = (document.getElementById("bo-search-input")?.value || "").toLowerCase().trim();
     const sbKw = (this.sidebarSearchKw || "").toLowerCase().trim();
     const kw = boKw || sbKw;
+    const staffFilter = (document.getElementById("bo-staff-filter")?.value || this.boStaffFilter || "").trim();
 
-    const filtered = this.backofficeJobs.filter(j => {
+    const filtered = (this.backofficeJobs || []).filter(j => {
+      if (staffFilter && String(j.worker || "").trim() !== staffFilter) {
+        return false;
+      }
       if (kw) {
         const s = `${j.booking_id} ${j.car_id} ${j.customer} ${j.job_type} ${j.worker || ''} ${j.location || ''}`.toLowerCase();
         if (!s.includes(kw)) return false;
@@ -4555,79 +4995,7 @@ class App {
       return;
     }
 
-    tbody.innerHTML = filtered.map(j => {
-      const isDisp = j.job_type === "Dispatch";
-      const isMnt = j.is_maintenance || j.job_type === "Maintenance" || j.job_type === "Renewal";
-      let typeBadge = '';
-      if (j.job_type === "Maintenance") {
-        typeBadge = `<span class="badge" style="background:#FFF7ED; color:#C2410C; border:1px solid #FDBA74; font-weight:700;">${isEn ? 'Maintenance' : 'ซ่อมบำรุง'}</span>`;
-      } else if (j.job_type === "Renewal") {
-        typeBadge = `<span class="badge" style="background:#F0FDF4; color:#15803D; border:1px solid #BBF7D0; font-weight:700;">${isEn ? 'Renewal' : 'ต่อทะเบียน/พรบ./ประกัน'}</span>`;
-      } else if (isDisp) {
-        typeBadge = `<span class="badge badge-info">${isEn ? 'Dispatch' : 'ส่งมอบรถ (Dispatch)'}</span>`;
-      } else {
-        typeBadge = `<span class="badge badge-warning">${isEn ? 'Return' : 'รับรถคืน (Return)'}</span>`;
-      }
-
-      let actionButtons = '';
-      if (isMnt) {
-        const isRenewalJob = j.job_type === "Renewal" || (j.order_type && (String(j.order_type).includes("ต่อทะเบียน") || String(j.order_type).includes("ประกัน") || String(j.order_type).includes("พ.ร.บ.") || String(j.order_type).includes("ภาษี") || String(j.order_type).includes("แพ็กคู่")));
-        const btnLabel = isRenewalJob ? (isEn ? "Submit / Update" : "ส่งงาน / อัปเดตวัน") : (isEn ? "Inspect & Close" : "ตรวจรับ & ปิดงาน");
-        actionButtons = `
-          <a href="/api/pdf/maintenance/${j.booking_id}" target="_blank" class="btn btn-sm btn-secondary" title="${isEn ? 'Print Job PDF' : 'พิมพ์ใบงาน PDF'}">${isEn ? 'Job PDF' : 'ใบงาน PDF'}</a>
-          <button onclick="app.openCloseMaintenanceModal('${j.booking_id}')" class="btn btn-sm btn-success" style="font-weight:700;" title="${btnLabel}">
-            ${btnLabel}
-          </button>
-        `;
-      } else {
-        const lockTitle = isEn ? 'Wait for Dispatch completion' : 'ต้องปิดงานส่งมอบก่อน';
-        const inspectBtnLabel = isEn ? 'Inspect & Complete' : 'ตรวจรับส่ง & ปิดงาน';
-        actionButtons = `
-          <a href="/api/pdf/job/${j.booking_id}" target="_blank" class="btn btn-sm btn-secondary" title="${isEn ? 'Inspection PDF' : 'ใบตรวจสภาพ PDF'}">PDF</a>
-          <button onclick="app.openHandoverModal('${j.booking_id}', '${j.job_type}')" class="btn btn-sm btn-primary" ${j.is_locked ? `disabled title="${lockTitle}"` : ''}>
-            ${inspectBtnLabel}
-          </button>
-        `;
-      }
-
-      let statusBadge = '';
-      if (j.status === "กำลังซ่อมบำรุง") {
-        statusBadge = `<span class="badge" style="background:#FFF7ED; color:#C2410C; border:1px solid #FDBA74;">${isEn ? '🛠️ In Maintenance' : '🛠️ กำลังซ่อมบำรุง'}</span>`;
-      } else if (j.status === "กำลังต่อภาษี/ประกัน") {
-        statusBadge = `<span class="badge" style="background:#FEF3C7; color:#D97706; border:1px solid #FCD34D;">${isEn ? '⏳ Renewing Tax/Ins.' : '⏳ กำลังต่อภาษี/ประกัน'}</span>`;
-      } else {
-        let displayStatus = j.status;
-        if (isEn) {
-          if (displayStatus === "รอส่งมอบ") displayStatus = "Ready for Dispatch";
-          else if (displayStatus === "กำลังเช่า") displayStatus = "Active Rental";
-          else if (displayStatus === "รอรับคืน") displayStatus = "Ready for Return";
-          else if (displayStatus === "🔒 รอส่งรถก่อน") displayStatus = "🔒 Wait for Dispatch";
-          else if (displayStatus === "รอชำระมัดจำ") displayStatus = "Pending Deposit";
-        }
-        statusBadge = `<span class="badge badge-gray">${displayStatus}</span>`;
-      }
-
-      return `
-        <tr>
-          <td>${typeBadge}</td>
-          <td><b style="color:#D97706;">${j.booking_id}</b></td>
-          <td><b>${j.car_id}</b></td>
-          <td>
-            <b>${j.customer}</b><br/>
-            ${j.customer_phone && j.customer_phone !== '-' ? `<a href="tel:${j.customer_phone}" style="color:#2563EB; font-size:11.5px; text-decoration:none;">📞 ${j.customer_phone}</a>` : ''}
-          </td>
-          <td style="font-size:12px;">${j.schedule}</td>
-          <td><span style="font-weight:600; color:#334155;">${j.worker}</span></td>
-          <td style="max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${j.location}">
-            ${j.location.startsWith("http") ? `<a href="${j.location}" target="_blank" style="color:#2563EB;">📍 แผนที่นัดหมาย</a>` : j.location}
-          </td>
-          <td>${statusBadge}</td>
-          <td style="text-align:center; white-space:nowrap;">
-            ${actionButtons}
-          </td>
-        </tr>
-      `;
-    }).join("");
+    tbody.innerHTML = filtered.map(j => this.renderSingleBackofficeJobRow(j, isEn)).join("");
   }
 
   // --- Modal: Handover Inspection ---

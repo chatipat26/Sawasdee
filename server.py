@@ -1218,6 +1218,8 @@ async def list_backoffice_jobs():
 
         # 1. Dispatch Job
         if not is_disp_closed:
+            s_d = b.get('start_date')
+            s_d_str = s_d.strftime("%Y-%m-%d") if isinstance(s_d, (date, datetime)) else str(s_d or "")
             jobs.append({
                 "job_type": "Dispatch",
                 "job_type_label": "จัดส่งรถ (Dispatch)",
@@ -1226,6 +1228,9 @@ async def list_backoffice_jobs():
                 "customer": b.get("customer"),
                 "customer_phone": cust_phone,
                 "schedule": f"{format_date_dmy(b.get('start_date'))} ({b.get('start_time', '10:00')})",
+                "date_iso": s_d_str,
+                "start_date": s_d_str,
+                "start_time": b.get("start_time", "10:00"),
                 "worker": b.get("worker_delivery") or "Wait",
                 "location": b.get("loc_delivery") or "-",
                 "status": b.get("status", "รอส่งมอบ"),
@@ -1237,6 +1242,8 @@ async def list_backoffice_jobs():
 
         # 2. Return Job
         if not is_ret_closed:
+            e_d = b.get('end_date')
+            e_d_str = e_d.strftime("%Y-%m-%d") if isinstance(e_d, (date, datetime)) else str(e_d or "")
             is_ret_locked = not is_disp_closed
             ret_status = "🔒 รอส่งรถก่อน" if is_ret_locked else (b.get("status") if b.get("status") != "รอชำระมัดจำ" else "รอรับคืน")
             jobs.append({
@@ -1247,6 +1254,9 @@ async def list_backoffice_jobs():
                 "customer": b.get("customer"),
                 "customer_phone": cust_phone,
                 "schedule": f"คืน: {format_date_dmy(b.get('end_date'))} ({b.get('end_time', '10:00')})",
+                "date_iso": e_d_str,
+                "end_date": e_d_str,
+                "end_time": b.get("end_time", "10:00"),
                 "worker": b.get("worker_return") or "Wait",
                 "location": b.get("loc_return") or b.get("loc_delivery") or "-",
                 "status": ret_status,
@@ -1266,6 +1276,7 @@ async def list_backoffice_jobs():
         j_type = "Renewal" if is_renewal else "Maintenance"
         j_label = "📄 ต่อทะเบียน/พรบ./ประกัน" if is_renewal else "🛠️ ซ่อมบำรุง (Maintenance)"
         
+        m_sd_str = str(m.get("schedule_date") or "")
         jobs.append({
             "job_type": j_type,
             "job_type_label": j_label,
@@ -1274,6 +1285,10 @@ async def list_backoffice_jobs():
             "customer": f"🏢 {m.get('service_center', '-')}",
             "customer_phone": m.get("service_center_phone") or "-",
             "schedule": f"นัด: {format_date_dmy(m.get('schedule_date'))} ({m.get('schedule_time', '09:00')}) ➔ รับ: {format_date_dmy(m.get('expected_finish_date'))}",
+            "date_iso": m_sd_str,
+            "start_date": m_sd_str,
+            "start_time": str(m.get("schedule_time") or "09:00"),
+            "end_date": str(m.get("expected_finish_date") or ""),
             "worker": m.get("assigned_worker") or "Wait",
             "location": m.get("service_location") or m.get("service_center") or "-",
             "status": m_stat,

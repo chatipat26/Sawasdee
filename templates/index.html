@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="/static/css/app.css?v=3.1">
   <link rel="icon" type="image/png" href="/static/sawasdee-logo.png">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
 </head>
 <body>
 
@@ -846,21 +847,106 @@
                 <span id="bo-title-text">Dispatch & Return Work Orders</span>
               </h2>
               <div id="bo-subtitle-text" style="font-size:12px; color:#6B7280; margin-top:3px;">
-                Dispatch & Return Work Orders
+                Dispatch & Return Work Orders Calendar & Task Management
               </div>
             </div>
-            <div style="display:flex; align-items:center; gap:10px;">
-              <span id="bo-admin-badge" style="background:#FFF7ED; color:#C2410C; border:1px solid #FFEDD5; padding:5px 14px; border-radius:20px; font-size:12px; font-weight:700;">Admin: Full Access</span>
-              <input type="text" id="bo-search-input" class="form-control" placeholder="Search work orders..." style="width:160px; padding:6px 10px; font-size:12px;" oninput="app.renderBackOfficeJobs()">
-              <button id="bo-refresh-btn" onclick="app.loadBackOfficeJobs()" class="btn btn-secondary btn-sm" style="padding:6px 12px; font-size:12px;">Refresh</button>
+            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+              <span id="bo-admin-badge" style="background:#FFF7ED; color:#C2410C; border:1px solid #FFEDD5; padding:5px 12px; border-radius:20px; font-size:12px; font-weight:700;">Admin: Full Access</span>
+              
+              <!-- Filter by Staff Dropdown -->
+              <div style="display:flex; align-items:center; gap:6px;">
+                <label for="bo-staff-filter" id="bo-lbl-filter-staff" style="font-size:11.5px; font-weight:700; color:#475569; margin:0; white-space:nowrap;">กรองพนักงาน:</label>
+                <select id="bo-staff-filter" class="form-control" onchange="app.onBackofficeStaffFilterChange(this.value)" style="font-size:12px; padding:5px 10px; font-weight:700; min-width:140px; height:32px;">
+                  <option value="ทั้งหมด" id="opt-bo-staff-all">พนักงานทั้งหมด (All Staff)</option>
+                </select>
+              </div>
+
+              <!-- View Mode Toggle Buttons -->
+              <div style="display:flex; border:1px solid #CBD5E1; border-radius:8px; overflow:hidden;">
+                <button type="button" id="btn-bo-view-calendar" onclick="app.setBackofficeViewMode('calendar')" class="btn btn-sm btn-primary" style="border-radius:0; padding:5px 12px; font-size:12px; font-weight:700;">
+                  📅 ปฏิทิน
+                </button>
+                <button type="button" id="btn-bo-view-table" onclick="app.setBackofficeViewMode('table')" class="btn btn-sm btn-secondary" style="border-radius:0; padding:5px 12px; font-size:12px; font-weight:700;">
+                  📋 ตาราง
+                </button>
+              </div>
+
+              <input type="text" id="bo-search-input" class="form-control" placeholder="Search work orders..." style="width:140px; padding:5px 10px; font-size:12px; height:32px;" oninput="app.onBackofficeSearch(this.value)">
+              <button id="bo-refresh-btn" onclick="app.loadBackOfficeJobs()" class="btn btn-secondary btn-sm" style="padding:5px 12px; font-size:12px; height:32px;">Refresh</button>
             </div>
           </div>
         </div>
 
-        <!-- Section Box -->
-        <div class="card">
-          <div class="card-title" style="font-size:15px; color:#1F2937; margin-bottom:14px;">
-            <span id="bo-table-header-text">Vehicle Dispatch & Return Work Orders</span>
+        <!-- 1. Interactive Calendar View (FullCalendar) -->
+        <div id="bo-calendar-wrapper" class="card" style="padding:18px; margin-bottom:14px; background:#FFFFFF;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
+            <div style="font-size:13.5px; font-weight:700; color:#1E293B;" id="bo-calendar-heading">
+              📅 ปฏิทินตารางงานส่งมอบ - รับคืนรถยนต์ (Schedule Calendar)
+            </div>
+            <div style="display:flex; gap:12px; font-size:11.5px; font-weight:700;">
+              <span style="display:inline-flex; align-items:center; gap:5px; color:#2563EB;">
+                <span style="width:10px; height:10px; border-radius:50%; background:#2563EB; display:inline-block;"></span>
+                <span id="legend-dispatch-lbl">ส่งมอบ (Dispatch)</span>
+              </span>
+              <span style="display:inline-flex; align-items:center; gap:5px; color:#16A34A;">
+                <span style="width:10px; height:10px; border-radius:50%; background:#16A34A; display:inline-block;"></span>
+                <span id="legend-return-lbl">รับคืน (Return)</span>
+              </span>
+              <span style="display:inline-flex; align-items:center; gap:5px; color:#EA580C;">
+                <span style="width:10px; height:10px; border-radius:50%; background:#EA580C; display:inline-block;"></span>
+                <span id="legend-maint-lbl">ซ่อมบำรุง/ต่อภาษี</span>
+              </span>
+            </div>
+          </div>
+          <div id="backoffice-calendar" style="min-height:560px;"></div>
+        </div>
+
+        <!-- 2. Selected Day Work Orders Panel (Shown upon clicking a calendar date or event) -->
+        <div id="bo-day-jobs-card" class="card" style="margin-bottom:14px; display:none; border-left:4px solid #2563EB; background:#F8FAFC;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <div>
+              <h4 id="bo-day-jobs-title" style="margin:0; font-size:14px; font-weight:800; color:#1E293B;">
+                📋 งานประจำวันที่เลือก
+              </h4>
+              <div id="bo-day-jobs-subtitle" style="font-size:11.5px; color:#64748B; margin-top:2px;">
+                คลิกที่ปุ่มจัดการเพื่อเปิดฟอร์มตรวจสภาพหรือดูเอกสาร
+              </div>
+            </div>
+            <button type="button" onclick="document.getElementById('bo-day-jobs-card').style.display='none'" class="btn btn-sm btn-secondary" style="font-size:11.5px; padding:3px 10px;">
+              ✕ ปิด
+            </button>
+          </div>
+          <div class="table-responsive">
+            <table class="custom-table" style="background:#FFFFFF;">
+              <thead>
+                <tr>
+                  <th>ประเภทงาน</th>
+                  <th>รหัสการจอง</th>
+                  <th>ทะเบียนรถ</th>
+                  <th>ลูกค้า & เบอร์โทร</th>
+                  <th>กำหนดวัน-เวลา</th>
+                  <th>พนักงาน</th>
+                  <th>สถานที่</th>
+                  <th>สถานะ</th>
+                  <th style="text-align:center;">จัดการ</th>
+                </tr>
+              </thead>
+              <tbody id="bo-day-jobs-tbody">
+                <!-- Populated on date or event click -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 3. Work Orders Full Table View (Collapsible / Toggleable) -->
+        <div class="card" id="bo-full-table-card" style="display:none;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+            <div class="card-title" style="font-size:15px; color:#1F2937; margin:0;">
+              <span id="bo-table-header-text">Vehicle Dispatch & Return Work Orders</span>
+            </div>
+            <button type="button" onclick="app.setBackofficeViewMode('calendar')" class="btn btn-sm btn-secondary" style="font-size:12px; padding:4px 10px;">
+              📅 กลับไปดูปฏิทิน
+            </button>
           </div>
 
           <div class="table-responsive">
@@ -1653,260 +1739,264 @@
         <button class="modal-close" onclick="app.closeModal('modal-edit-car')">✕</button>
       </div>
 
-      <input type="hidden" id="edit-car-original-plate" value="">
-      <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; margin-bottom:12px;">
-        <div class="form-group">
-          <label id="lbl-modal-car-plate">License Plate (Plate)*</label>
-          <input type="text" id="edit-car-plate" class="form-control" placeholder="5ขศ 5181" oninput="app.checkDuplicatePlate(this.value)" autofocus>
-          <div id="edit-car-plate-warn" style="display:none; font-size:11.5px; color:#DC2626; font-weight:600; margin-top:4px;">
-            ⚠️ ทะเบียนนี้มีอยู่ในระบบแล้ว
-          </div>
-        </div>
-        <div class="form-group">
-          <label id="lbl-modal-car-brand">Brand / Make*</label>
-          <input type="text" id="edit-car-brand" class="form-control" list="car-brands-list" placeholder="Toyota">
-          <datalist id="car-brands-list">
-            <option value="Toyota"></option>
-            <option value="Honda"></option>
-            <option value="Isuzu"></option>
-            <option value="Mitsubishi"></option>
-            <option value="Nissan"></option>
-            <option value="Mazda"></option>
-            <option value="Ford"></option>
-            <option value="BYD"></option>
-            <option value="GWM"></option>
-            <option value="MG"></option>
-            <option value="Mercedes-Benz"></option>
-            <option value="BMW"></option>
-            <option value="Hyundai"></option>
-          </datalist>
-        </div>
-        <div class="form-group">
-          <label id="lbl-modal-car-model">Vehicle Model*</label>
-          <input type="text" id="edit-car-model" class="form-control" list="car-models-list" placeholder="Yaris Ativ">
-          <datalist id="car-models-list"></datalist>
-        </div>
-      </div>
-
-      <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; margin-bottom:12px;">
-        <div class="form-group">
-          <label id="lbl-modal-car-group">Vehicle Group*</label>
-          <select id="edit-car-group" class="form-control">
-            <option id="opt-modal-group-sedan" value="รถเก๋ง (Sedan/Hatchback)">รถเก๋ง (Sedan/Hatchback)</option>
-            <option id="opt-modal-group-suv" value="SUV">SUV</option>
-            <option id="opt-modal-group-van" value="รถตู้ (Van)">รถตู้ (Van)</option>
-            <option id="opt-modal-group-pickup" value="รถกระบะ">รถกระบะ</option>
-            <option id="opt-modal-group-sport" value="รถสปอร์ต/หรูหรา">รถสปอร์ต/หรูหรา</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label id="lbl-modal-car-fuel">Fuel System*</label>
-          <select id="edit-car-fuel" class="form-control">
-            <option id="opt-modal-fuel-gasoline" value="เบนซิน">เบนซิน</option>
-            <option id="opt-modal-fuel-gas-hybrid" value="เบนซิน/Hybrid">เบนซิน/Hybrid</option>
-            <option id="opt-modal-fuel-diesel" value="ดีเซล">ดีเซล</option>
-            <option id="opt-modal-fuel-die-hybrid" value="ดีเซล/Hybrid">ดีเซล/Hybrid</option>
-            <option id="opt-modal-fuel-ev" value="ไฟฟ้า (EV)">ไฟฟ้า (EV)</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label id="lbl-modal-car-cc">Engine Capacity (CC / EV)</label>
-          <input type="text" id="edit-car-cc" class="form-control" placeholder="1200">
-        </div>
-      </div>
-
-      <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; margin-bottom:12px;">
-        <div class="form-group">
-          <label id="lbl-modal-car-company">Ownership / Company*</label>
-          <input type="text" id="edit-car-company" class="form-control" list="car-companies-list" placeholder="ชื่อบริษัท / ผู้ถือกรรมสิทธิ์">
-          <datalist id="car-companies-list">
-            <option value="Sawasdee Rent A Car"></option>
-            <option value="P.D.P. Co., Ltd."></option>
-            <option value="Sawasdee Car Rent"></option>
-            <option value="บจก.สวัสดี เรนทัล (Sawasdee Rental)"></option>
-            <option value="โตโยต้า ลีสซิ่ง"></option>
-          </datalist>
-        </div>
-        <div class="form-group">
-          <label id="lbl-modal-car-color">Body Color</label>
-          <input type="text" id="edit-car-color" class="form-control" list="car-colors-list" placeholder="สีตัวถัง">
-          <datalist id="car-colors-list"></datalist>
-        </div>
-        <div class="form-group">
-          <label id="lbl-modal-car-mileage">Odometer Mileage (km)</label>
-          <input type="text" id="edit-car-mileage" class="form-control" placeholder="0">
-        </div>
-      </div>
-
-      <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; margin-bottom:12px;">
-        <div class="form-group">
-          <label id="lbl-modal-car-pday">Daily Rate (THB)*</label>
-          <input type="number" id="edit-car-pday" class="form-control" value="1000" min="0" step="100">
-        </div>
-        <div class="form-group">
-          <label id="lbl-modal-car-pweek">Weekly Rate (THB)</label>
-          <input type="number" id="edit-car-pweek" class="form-control" value="6000" min="0" step="500">
-        </div>
-        <div class="form-group">
-          <label id="lbl-modal-car-pmonth">Monthly Rate (THB)</label>
-          <input type="number" id="edit-car-pmonth" class="form-control" value="20000" min="0" step="1000">
-        </div>
-      </div>
-
-      <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:12px; margin-bottom:12px;">
-        <div class="form-group">
-          <label id="lbl-modal-car-vin">VIN / Chassis Number*</label>
-          <input type="text" id="edit-car-vin" class="form-control" placeholder="-" oninput="app.checkDuplicateChassis(this.value)">
-          <div id="edit-car-vin-warn" style="display:none; font-size:11px; color:#DC2626; font-weight:600; margin-top:4px;">
-            ⚠️ เลขตัวถังนี้ซ้ำกับรถคันอื่นในระบบ
-          </div>
-        </div>
-        <div class="form-group">
-          <label id="lbl-modal-car-tax">Tax Expiry Date</label>
-          <input type="date" id="edit-car-tax" class="form-control">
-        </div>
-        <div class="form-group">
-          <label id="lbl-modal-car-act">ACT Expiry Date</label>
-          <input type="date" id="edit-car-act" class="form-control">
-        </div>
-        <div class="form-group">
-          <label id="lbl-modal-car-ins">Insurance Expiry Date</label>
-          <input type="date" id="edit-car-ins" class="form-control">
-        </div>
-      </div>
-
-      <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:12px; margin-bottom:12px;">
-        <div class="form-group">
-          <label id="lbl-modal-car-ins-comp">Insurance Company</label>
-          <input type="text" id="edit-car-ins-comp" class="form-control" list="car-ins-comps-list" placeholder="ชื่อบริษัทประกันภัย">
-          <datalist id="car-ins-comps-list"></datalist>
-        </div>
-        <div class="form-group">
-          <label id="lbl-modal-car-owner">Vehicle Owner</label>
-          <input type="text" id="edit-car-owner" class="form-control" list="car-owners-list" placeholder="ชื่อผู้ถือกรรมสิทธิ์">
-          <datalist id="car-owners-list"></datalist>
-        </div>
-        <div class="form-group">
-          <label id="lbl-modal-car-beneficiary">Beneficiary</label>
-          <input type="text" id="edit-car-beneficiary" class="form-control" list="car-beneficiaries-list" placeholder="ชื่อผู้รับผลประโยชน์">
-          <datalist id="car-beneficiaries-list"></datalist>
-        </div>
-        <div class="form-group">
-          <label id="lbl-modal-car-reg-year">Registration Year (B.E./A.D.)</label>
-          <input type="text" id="edit-car-reg-year" class="form-control" list="car-reg-years-list" placeholder="2567">
-          <datalist id="car-reg-years-list"></datalist>
-        </div>
-      </div>
-
-      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:12px;">
-        <div class="form-group">
-          <label id="lbl-modal-car-prb-price">ราคา พ.ร.บ. (บาท)</label>
-          <input type="number" id="edit-car-prb-price" class="form-control" min="0" step="10" placeholder="0.00">
-        </div>
-        <div class="form-group">
-          <label id="lbl-modal-car-ins-premium">เบี้ยประกัน (บาท)</label>
-          <input type="number" id="edit-car-ins-premium" class="form-control" min="0" step="100" placeholder="0.00">
-        </div>
-      </div>
-
-      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:12px;">
-        <div class="form-group">
-          <label id="lbl-modal-car-last-srv">Last Service Date</label>
-          <input type="date" id="edit-car-last-srv" class="form-control">
-        </div>
-        <div class="form-group">
-          <label id="lbl-modal-car-status">Vehicle Status*</label>
-          <select id="edit-car-status" class="form-control">
-            <option id="opt-modal-status-available" value="ว่างพร้อมใช้งาน">ว่างพร้อมใช้งาน</option>
-            <option id="opt-modal-status-maint" value="ซ่อมบำรุง">ซ่อมบำรุง</option>
-            <option id="opt-modal-status-prep-disp" value="เตรียมส่งมอบ">เตรียมส่งมอบ</option>
-            <option id="opt-modal-status-renting" value="กำลังเช่า">กำลังเช่า</option>
-            <option id="opt-modal-status-booked" value="ติดจอง">ติดจอง</option>
-          </select>
-        </div>
-      </div>
-
-      <!-- Service Interval: Distinct Date Picker & Mileage Dual-Input -->
-      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:12px;">
-        <div class="form-group" style="margin-bottom:0;">
-          <label id="lbl-modal-car-next-srv-date">Next Service Due (Date)</label>
-          <input type="date" id="edit-car-next-srv-date" class="form-control">
-        </div>
-        <div class="form-group" style="margin-bottom:0;">
-          <label id="lbl-modal-car-next-srv-mileage">Next Service Due (Mileage)</label>
-          <input type="number" id="edit-car-next-srv-mileage" class="form-control" min="0" step="500" placeholder="0">
-        </div>
-      </div>
-
-      <!-- Installment & Financial Tracking -->
-      <div style="border:1px solid #E2E8F0; border-radius:8px; padding:12px; margin-bottom:12px; background:#F8FAFC;">
-        <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
-          <input type="checkbox" id="edit-car-debt-free" onchange="app.onDebtFreeToggle(this.checked)" style="width:16px; height:16px; cursor:pointer;">
-          <label for="edit-car-debt-free" id="lbl-modal-car-debt-free" style="margin:0; font-weight:600; cursor:pointer; color:#1E293B;">รถปลอดภาระ / ซื้อเงินสด</label>
-        </div>
-        <div id="edit-car-installment-fields">
-          <!-- Row 1: Finance Company Single Searchable/Creatable Datalist Input (Unslop) -->
-          <div class="form-group" style="margin-bottom:12px;">
-            <label id="lbl-modal-car-finance-comp">บริษัทไฟแนนซ์</label>
-            <input type="text" id="edit-car-finance-company" class="form-control" list="finance-companies-list" placeholder="ระบุบริษัทไฟแนนซ์...">
-            <datalist id="finance-companies-list"></datalist>
-          </div>
-
-          <!-- Row 2: 4 Installment Metrics -->
-          <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:12px;">
-            <div class="form-group">
-              <label id="lbl-modal-car-installment-amt">ค่างวดต่อเดือน (THB)</label>
-              <input type="number" id="edit-car-installment-amount" class="form-control" min="0" step="100" placeholder="0">
-            </div>
-            <div class="form-group">
-              <label id="lbl-modal-car-total-inst">จำนวนงวดทั้งหมด</label>
-              <input type="number" id="edit-car-total-installments" class="form-control" min="0" step="1" placeholder="48">
-            </div>
-            <div class="form-group">
-              <label id="lbl-modal-car-curr-inst">งวดปัจจุบัน (ชำระแล้ว)</label>
-              <input type="number" id="edit-car-current-installment" class="form-control" min="0" step="1" placeholder="0">
-            </div>
-            <div class="form-group">
-              <label id="lbl-modal-car-due-date">วันกำหนดชำระ (ทุกวันที่)</label>
-              <input type="date" id="edit-car-payment-due-date" class="form-control">
+      <form id="form-edit-car" onsubmit="app.submitEditCar(event); return false;">
+        <input type="hidden" id="edit-car-original-plate" value="">
+        <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; margin-bottom:12px;">
+          <div class="form-group">
+            <label id="lbl-modal-car-plate">License Plate (Plate)*</label>
+            <input type="text" id="edit-car-plate" class="form-control" placeholder="5ขศ 5181" oninput="app.updateCarFormField('plate', this.value); app.checkDuplicatePlate(this.value);" autofocus>
+            <div id="edit-car-plate-warn" style="display:none; font-size:11.5px; color:#DC2626; font-weight:600; margin-top:4px;">
+              ⚠️ ทะเบียนนี้มีอยู่ในระบบแล้ว
             </div>
           </div>
-        </div>
-      </div>
-
-      <div class="form-group" style="margin-bottom:14px;">
-        <label id="lbl-modal-car-notes">Additional Notes & Info</label>
-        <input type="text" id="edit-car-notes" class="form-control" placeholder="หมายเหตุเพิ่มเติม (ถ้ามี)">
-      </div>
-
-      <!-- Car Photo Preview & Upload (Positioned at bottom before save button) -->
-      <div style="display:flex; align-items:center; gap:16px; margin-bottom:14px; padding:12px; background:#F8FAFC; border:1px solid #E2E8F0; border-radius:10px;">
-        <div id="edit-car-photo-preview" style="width:110px; height:80px; border-radius:8px; background:#E2E8F0; display:flex; align-items:center; justify-content:center; overflow:hidden; flex-shrink:0; border:1px solid #CBD5E1;">
-          <span style="font-size:12px; color:#94A3B8; font-weight:600;">ยังไม่มีรูป</span>
-        </div>
-        <div style="flex:1;">
-          <label style="font-size:12px; font-weight:700; color:#334155; margin-bottom:4px; display:block;" id="lbl-modal-car-photo">รูปรถยนต์ (Car Photo)</label>
-          <div style="display:flex; gap:8px; align-items:center;">
-            <input type="file" id="edit-car-photo-file" accept="image/*" class="form-control" style="font-size:12px; padding:4px 8px;">
-            <button type="button" class="btn btn-secondary" onclick="app.clearCarPhoto()" style="padding:6px 10px; font-size:11.5px; white-space:nowrap;" id="btn-clear-car-photo">ลบรูป</button>
+          <div class="form-group">
+            <label id="lbl-modal-car-brand">Brand / Make*</label>
+            <input type="text" id="edit-car-brand" class="form-control" list="car-brands-list" placeholder="Toyota" oninput="app.updateCarFormField('brand', this.value)">
+            <datalist id="car-brands-list">
+              <option value="Toyota"></option>
+              <option value="Honda"></option>
+              <option value="Isuzu"></option>
+              <option value="Mitsubishi"></option>
+              <option value="Nissan"></option>
+              <option value="Mazda"></option>
+              <option value="Ford"></option>
+              <option value="BYD"></option>
+              <option value="GWM"></option>
+              <option value="MG"></option>
+              <option value="Mercedes-Benz"></option>
+              <option value="BMW"></option>
+              <option value="Hyundai"></option>
+            </datalist>
           </div>
-          <small style="color:#64748B; font-size:11px; margin-top:2px; display:block;" id="lbl-modal-car-photo-hint">รองรับไฟล์ JPG, PNG, WEBP (บีบอัดอัตโนมัติ)</small>
+          <div class="form-group">
+            <label id="lbl-modal-car-model">Vehicle Model*</label>
+            <input type="text" id="edit-car-model" class="form-control" list="car-models-list" placeholder="Yaris Ativ" oninput="app.updateCarFormField('model', this.value)">
+            <datalist id="car-models-list"></datalist>
+          </div>
         </div>
-      </div>
 
-      <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-top:16px;">
-        <div>
-          <button type="button" onclick="app.deleteCurrentEditingCar()" class="btn btn-danger" id="btn-modal-car-delete" style="background:#DC2626; color:#ffffff; border:1px solid #B91C1C; padding:9px 18px; border-radius:8px; font-weight:700; font-size:13px; display:none; align-items:center; gap:6px; cursor:pointer; box-shadow:0 1px 3px rgba(220,38,38,0.25);">
-            Delete This Vehicle
-          </button>
+        <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; margin-bottom:12px;">
+          <div class="form-group">
+            <label id="lbl-modal-car-group">Vehicle Group*</label>
+            <select id="edit-car-group" class="form-control" onchange="app.updateCarFormField('car_group', this.value)">
+              <option id="opt-modal-group-sedan" value="รถเก๋ง (Sedan/Hatchback)">รถเก๋ง (Sedan/Hatchback)</option>
+              <option id="opt-modal-group-suv" value="SUV">SUV</option>
+              <option id="opt-modal-group-van" value="รถตู้ (Van)">รถตู้ (Van)</option>
+              <option id="opt-modal-group-pickup" value="รถกระบะ">รถกระบะ</option>
+              <option id="opt-modal-group-sport" value="รถสปอร์ต/หรูหรา">รถสปอร์ต/หรูหรา</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label id="lbl-modal-car-fuel">Fuel System*</label>
+            <select id="edit-car-fuel" class="form-control" onchange="app.updateCarFormField('fuel_type', this.value)">
+              <option id="opt-modal-fuel-gasoline" value="เบนซิน">เบนซิน</option>
+              <option id="opt-modal-fuel-gas-hybrid" value="เบนซิน/Hybrid">เบนซิน/Hybrid</option>
+              <option id="opt-modal-fuel-diesel" value="ดีเซล">ดีเซล</option>
+              <option id="opt-modal-fuel-die-hybrid" value="ดีเซล/Hybrid">ดีเซล/Hybrid</option>
+              <option id="opt-modal-fuel-ev" value="ไฟฟ้า (EV)">ไฟฟ้า (EV)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label id="lbl-modal-car-cc">Engine Capacity (CC / EV)</label>
+            <input type="text" id="edit-car-cc" class="form-control" placeholder="1200" oninput="app.updateCarFormField('engine_cc', this.value)">
+          </div>
         </div>
-        <div style="display:flex; gap:10px;">
-          <button type="button" onclick="app.closeModal('modal-edit-car')" class="btn btn-secondary" id="btn-modal-car-cancel">Cancel</button>
-          <button type="button" onclick="app.submitEditCar()" class="btn btn-primary" id="btn-submit-edit-car">
-            Save Vehicle Data
-          </button>
+
+        <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; margin-bottom:12px;">
+          <div class="form-group">
+            <label id="lbl-modal-car-company">Ownership / Company*</label>
+            <input type="text" id="edit-car-company" class="form-control" list="car-companies-list" placeholder="ชื่อบริษัท / ผู้ถือกรรมสิทธิ์" oninput="app.updateCarFormField('company', this.value)">
+            <datalist id="car-companies-list">
+              <option value="Sawasdee Rent A Car"></option>
+              <option value="P.D.P. Co., Ltd."></option>
+              <option value="Sawasdee Car Rent"></option>
+              <option value="บจก.สวัสดี เรนทัล (Sawasdee Rental)"></option>
+              <option value="โตโยต้า ลีสซิ่ง"></option>
+            </datalist>
+          </div>
+          <div class="form-group">
+            <label id="lbl-modal-car-color">Body Color</label>
+            <input type="text" id="edit-car-color" class="form-control" list="car-colors-list" placeholder="สีตัวถัง" oninput="app.updateCarFormField('color', this.value)">
+            <datalist id="car-colors-list"></datalist>
+          </div>
+          <div class="form-group">
+            <label id="lbl-modal-car-mileage">Odometer Mileage (km)</label>
+            <input type="text" id="edit-car-mileage" class="form-control" placeholder="0" oninput="app.updateCarFormField('mileage', this.value)">
+          </div>
         </div>
-      </div>
+
+        <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; margin-bottom:12px;">
+          <div class="form-group">
+            <label id="lbl-modal-car-pday">Daily Rate (THB)*</label>
+            <input type="number" id="edit-car-pday" class="form-control" value="1000" min="0" step="100" oninput="app.updateCarFormField('price_day', this.value)">
+          </div>
+          <div class="form-group">
+            <label id="lbl-modal-car-pweek">Weekly Rate (THB)</label>
+            <input type="number" id="edit-car-pweek" class="form-control" value="6000" min="0" step="500" oninput="app.updateCarFormField('price_week', this.value)">
+          </div>
+          <div class="form-group">
+            <label id="lbl-modal-car-pmonth">Monthly Rate (THB)</label>
+            <input type="number" id="edit-car-pmonth" class="form-control" value="20000" min="0" step="1000" oninput="app.updateCarFormField('price_month', this.value)">
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:12px; margin-bottom:12px;">
+          <div class="form-group">
+            <label id="lbl-modal-car-vin">VIN / Chassis Number*</label>
+            <input type="text" id="edit-car-vin" class="form-control" placeholder="-" oninput="app.updateCarFormField('chassis_no', this.value); app.checkDuplicateChassis(this.value);">
+            <div id="edit-car-vin-warn" style="display:none; font-size:11px; color:#DC2626; font-weight:600; margin-top:4px;">
+              ⚠️ เลขตัวถังนี้ซ้ำกับรถคันอื่นในระบบ
+            </div>
+          </div>
+          <div class="form-group">
+            <label id="lbl-modal-car-tax">Tax Expiry Date</label>
+            <input type="date" id="edit-car-tax" class="form-control" onchange="app.updateCarFormField('tax_expiry', this.value)">
+          </div>
+          <div class="form-group">
+            <label id="lbl-modal-car-act">ACT Expiry Date</label>
+            <input type="date" id="edit-car-act" class="form-control" onchange="app.updateCarFormField('act_expiry', this.value)">
+          </div>
+          <div class="form-group">
+            <label id="lbl-modal-car-ins">Insurance Expiry Date</label>
+            <input type="date" id="edit-car-ins" class="form-control" onchange="app.updateCarFormField('ins_expiry', this.value)">
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:12px; margin-bottom:12px;">
+          <div class="form-group">
+            <label id="lbl-modal-car-ins-comp">Insurance Company</label>
+            <input type="text" id="edit-car-ins-comp" class="form-control" list="car-ins-comps-list" placeholder="ชื่อบริษัทประกันภัย" oninput="app.updateCarFormField('ins_company', this.value)">
+            <datalist id="car-ins-comps-list"></datalist>
+          </div>
+          <div class="form-group">
+            <label id="lbl-modal-car-owner">Vehicle Owner</label>
+            <input type="text" id="edit-car-owner" class="form-control" list="car-owners-list" placeholder="ชื่อผู้ถือกรรมสิทธิ์" oninput="app.updateCarFormField('owner', this.value)">
+            <datalist id="car-owners-list"></datalist>
+          </div>
+          <div class="form-group">
+            <label id="lbl-modal-car-beneficiary">Beneficiary</label>
+            <input type="text" id="edit-car-beneficiary" class="form-control" list="car-beneficiaries-list" placeholder="ชื่อผู้รับผลประโยชน์" oninput="app.updateCarFormField('beneficiary', this.value)">
+            <datalist id="car-beneficiaries-list"></datalist>
+          </div>
+          <div class="form-group">
+            <label id="lbl-modal-car-reg-year">Registration Year (B.E./A.D.)</label>
+            <input type="text" id="edit-car-reg-year" class="form-control" list="car-reg-years-list" placeholder="2567" oninput="app.updateCarFormField('reg_year', this.value)">
+            <datalist id="car-reg-years-list"></datalist>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:12px;">
+          <div class="form-group">
+            <label id="lbl-modal-car-prb-price">ราคา พ.ร.บ. (บาท)</label>
+            <input type="number" id="edit-car-prb-price" class="form-control" min="0" step="10" placeholder="0.00" oninput="app.updateCarFormField('prb_price', this.value)">
+          </div>
+          <div class="form-group">
+            <label id="lbl-modal-car-ins-premium">เบี้ยประกัน (บาท)</label>
+            <input type="number" id="edit-car-ins-premium" class="form-control" min="0" step="100" placeholder="0.00" oninput="app.updateCarFormField('insurance_premium', this.value)">
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:12px;">
+          <div class="form-group">
+            <label id="lbl-modal-car-last-srv">Last Service Date</label>
+            <input type="date" id="edit-car-last-srv" class="form-control" onchange="app.updateCarFormField('last_service_date', this.value)">
+          </div>
+          <div class="form-group">
+            <label id="lbl-modal-car-status">Vehicle Status*</label>
+            <select id="edit-car-status" class="form-control" onchange="app.updateCarFormField('status', this.value)">
+              <option id="opt-modal-status-available" value="ว่างพร้อมใช้งาน">ว่างพร้อมใช้งาน</option>
+              <option id="opt-modal-status-maint" value="ซ่อมบำรุง">ซ่อมบำรุง</option>
+              <option id="opt-modal-status-prep-disp" value="เตรียมส่งมอบ">เตรียมส่งมอบ</option>
+              <option id="opt-modal-status-renting" value="กำลังเช่า">กำลังเช่า</option>
+              <option id="opt-modal-status-booked" value="ติดจอง">ติดจอง</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Service Interval: Distinct Date Picker & Mileage Dual-Input -->
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:12px;">
+          <div class="form-group" style="margin-bottom:0;">
+            <label id="lbl-modal-car-next-srv-date">Next Service Due (Date)</label>
+            <input type="date" id="edit-car-next-srv-date" class="form-control" onchange="app.updateCarFormField('next_service_date', this.value)">
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label id="lbl-modal-car-next-srv-mileage">Next Service Due (Mileage)</label>
+            <input type="number" id="edit-car-next-srv-mileage" class="form-control" min="0" step="500" placeholder="0" oninput="app.updateCarFormField('next_service_mileage', this.value)">
+          </div>
+        </div>
+
+        <!-- Installment & Financial Tracking -->
+        <div style="border:1px solid #E2E8F0; border-radius:8px; padding:12px; margin-bottom:12px; background:#F8FAFC;">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+            <input type="checkbox" id="edit-car-debt-free" onchange="app.onDebtFreeToggle(this.checked); app.updateCarFormField('is_debt_free', this.checked);" style="width:16px; height:16px; cursor:pointer;">
+            <label for="edit-car-debt-free" id="lbl-modal-car-debt-free" style="margin:0; font-weight:600; cursor:pointer; color:#1E293B;">รถปลอดภาระ / ซื้อเงินสด</label>
+          </div>
+          <div id="edit-car-installment-fields">
+            <!-- Row 1: Finance Company Single Searchable/Creatable Datalist Input (Unslop) -->
+            <div class="form-group" style="margin-bottom:12px;">
+              <label id="lbl-modal-car-finance-comp">บริษัทไฟแนนซ์</label>
+              <input type="text" id="edit-car-finance-company" class="form-control" list="finance-companies-list" placeholder="ระบุบริษัทไฟแนนซ์..." oninput="app.updateCarFormField('finance_company', this.value)">
+              <datalist id="finance-companies-list"></datalist>
+            </div>
+
+            <!-- Row 2: 4 Installment Metrics -->
+            <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:12px;">
+              <div class="form-group">
+                <label id="lbl-modal-car-installment-amt">ค่างวดต่อเดือน (THB)</label>
+                <input type="number" id="edit-car-installment-amount" class="form-control" min="0" step="100" placeholder="0" oninput="app.updateCarFormField('installment_amount', this.value)">
+              </div>
+              <div class="form-group">
+                <label id="lbl-modal-car-total-inst">จำนวนงวดทั้งหมด</label>
+                <input type="number" id="edit-car-total-installments" class="form-control" min="0" step="1" placeholder="48" oninput="app.updateCarFormField('total_installments', this.value)">
+              </div>
+              <div class="form-group">
+                <label id="lbl-modal-car-curr-inst">งวดปัจจุบัน (ชำระแล้ว)</label>
+                <input type="number" id="edit-car-current-installment" class="form-control" min="0" step="1" placeholder="0" oninput="app.updateCarFormField('current_installment', this.value)">
+              </div>
+              <div class="form-group">
+                <label id="lbl-modal-car-due-date">วันกำหนดชำระ (ทุกวันที่)</label>
+                <input type="date" id="edit-car-payment-due-date" class="form-control" onchange="app.updateCarFormField('payment_due_date', this.value)">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom:14px;">
+          <label id="lbl-modal-car-notes">Additional Notes & Info</label>
+          <input type="text" id="edit-car-notes" class="form-control" placeholder="หมายเหตุเพิ่มเติม (ถ้ามี)" oninput="app.updateCarFormField('notes', this.value)">
+        </div>
+
+        <!-- Car Photo Preview & Upload (Positioned at bottom before save button) -->
+        <div style="display:flex; align-items:center; gap:16px; margin-bottom:14px; padding:12px; background:#F8FAFC; border:1px solid #E2E8F0; border-radius:10px;">
+          <div id="edit-car-photo-preview" style="width:110px; height:80px; border-radius:8px; background:#E2E8F0; display:flex; align-items:center; justify-content:center; overflow:hidden; flex-shrink:0; border:1px solid #CBD5E1;">
+            <img id="edit-car-img-preview" src="" alt="Car" style="width:100%; height:100%; object-fit:cover; display:none;">
+            <span id="edit-car-no-img-text" style="font-size:12px; color:#94A3B8; font-weight:600;">ยังไม่มีรูป</span>
+          </div>
+          <input type="hidden" id="edit-car-image-url" value="">
+          <div style="flex:1;">
+            <label style="font-size:12px; font-weight:700; color:#334155; margin-bottom:4px; display:block;" id="lbl-modal-car-photo">รูปรถยนต์ (Car Photo)</label>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <input type="file" id="edit-car-photo-file" accept="image/*" class="form-control" onchange="app.onEditCarModalPhotoSelected(this)" style="font-size:12px; padding:4px 8px;">
+              <button type="button" class="btn btn-secondary" onclick="app.clearCarPhoto()" style="padding:6px 10px; font-size:11.5px; white-space:nowrap;" id="btn-clear-car-photo">ลบรูป</button>
+            </div>
+            <small style="color:#64748B; font-size:11px; margin-top:2px; display:block;" id="lbl-modal-car-photo-hint">รองรับไฟล์ JPG, PNG, WEBP (บีบอัดอัตโนมัติ)</small>
+          </div>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-top:16px;">
+          <div>
+            <button type="button" onclick="app.deleteCurrentEditingCar()" class="btn btn-danger" id="btn-modal-car-delete" style="background:#DC2626; color:#ffffff; border:1px solid #B91C1C; padding:9px 18px; border-radius:8px; font-weight:700; font-size:13px; display:none; align-items:center; gap:6px; cursor:pointer; box-shadow:0 1px 3px rgba(220,38,38,0.25);">
+              Delete This Vehicle
+            </button>
+          </div>
+          <div style="display:flex; gap:10px;">
+            <button type="button" onclick="app.closeModal('modal-edit-car')" class="btn btn-secondary" id="btn-modal-car-cancel">Cancel</button>
+            <button type="submit" onclick="app.submitEditCar(event)" class="btn btn-primary" id="btn-submit-edit-car">
+              Save Vehicle Data
+            </button>
+          </div>
+        </div>
+      </form>
     </div>
   </div>
 
@@ -2219,7 +2309,7 @@
   <div class="toast-container" id="toast-container"></div>
 
   <!-- Scripts with cache busting -->
-  <script src="/static/js/app.js?v=7.8"></script>
+  <script src="/static/js/app.js?v=8.0"></script>
 
   <!-- ===================================================================== -->
   <!-- MODAL: ACTIVE RENTALS / CARS WITH CUSTOMERS (POPUP FOR CARD 1) -->
