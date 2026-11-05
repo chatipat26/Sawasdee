@@ -12,21 +12,19 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 INTERNAL_DATABASE_URL = "postgresql://sawasdeedb:Sawasdee_Secure_2026_Db@svvconnectct-sawasdeedb-m78xfy:5432/sawasdee_db"
 DATABASE_URL = os.environ.get("DATABASE_URL", INTERNAL_DATABASE_URL)
 
-_sb_client = None
-def get_supabase_client():
-    global _sb_client
-    if _sb_client is not None:
-        return _sb_client
+_db_client = None
+def get_db_client():
+    global _db_client
+    if _db_client is not None:
+        return _db_client
     db_url = os.environ.get("DATABASE_URL", INTERNAL_DATABASE_URL)
     try:
         from pg_client import PgClient
-        _sb_client = PgClient(db_url)
-        return _sb_client
+        _db_client = PgClient(db_url)
+        return _db_client
     except Exception as e:
         print(f"PostgreSQL client init error: {e}")
         return None
-
-get_db_client = get_supabase_client
 
 # -------------------------------------------------------------------------
 # DATE & TIME HELPERS
@@ -374,11 +372,11 @@ class DataStore:
         except Exception as e:
             print(f"Error saving local cars: {e}")
 
-    def sync_from_supabase(self, force=False):
-        """Synchronous full sync from Supabase Cloud"""
+    def sync_from_database(self, force=False):
+        """Synchronous full sync from PostgreSQL"""
         self._sync_task(force=force)
 
-    def sync_from_supabase_async(self, force=False):
+    def sync_from_database_async(self, force=False):
         """Non-blocking background thread sync"""
         t = threading.Thread(target=self._sync_task, args=(force,), daemon=True)
         t.start()
@@ -388,11 +386,11 @@ class DataStore:
             return
         self.is_syncing = True
         try:
-            sb = get_supabase_client()
+            sb = get_db_client()
             if not sb:
                 return
 
-            # 1. Users (from 'users' table + Supabase Auth admin list)
+            # 1. Users (from 'users' table)
             try:
                 u_res = sb.table("users").select("*").execute()
                 fresh_users = {}
@@ -407,28 +405,6 @@ class DataStore:
                                 u_copy["role"] = "Admin" if un.lower() == "admin" else "Staff"
                             fresh_users[un] = u_copy
 
-                # Also merge any accounts from Supabase Auth (e.g., Chatipat)
-                try:
-                    auth_list = sb.auth.admin.list_users()
-                    existing_lower = {k.lower(): k for k in fresh_users.keys()}
-                    for au in auth_list:
-                        meta = au.user_metadata or {}
-                        un = meta.get("username") or (au.email.split("@")[0] if au.email else None)
-                        if un and un.lower() not in existing_lower:
-                            new_u = {
-                                "username": un,
-                                "name": meta.get("name") or un,
-                                "role": meta.get("role") or ("Admin" if un.lower() == "admin" else "Staff"),
-                                "status": meta.get("status") or "approved"
-                            }
-                            fresh_users[un] = new_u
-                            existing_lower[un.lower()] = un
-                            try:
-                                sb.table("users").upsert(new_u).execute()
-                            except Exception:
-                                pass
-                except Exception:
-                    pass
 
                 if fresh_users:
                     with self.lock:
@@ -485,7 +461,7 @@ class DataStore:
             except Exception as e:
                 print(f"Bookings sync error: {e}")
 
-            # 3. Cars (and auto-release cars whose bookings were deleted from Supabase)
+            # 3. Cars (and auto-release cars whose bookings were deleted from the database)
             try:
                 c_res = sb.table("cars").select("*").execute()
                 if c_res.data is not None:
@@ -661,7 +637,7 @@ class DataStore:
 
     def async_sync_booking(self, b_obj):
         def _task():
-            sb = get_supabase_client()
+            sb = get_db_client()
             if not sb or not b_obj: return
             try:
                 row = dict(b_obj)
@@ -702,7 +678,7 @@ class DataStore:
         with self.lock:
             self.bookings = [b for b in self.bookings if b.get("booking_id") != bk_id]
         def _task():
-            sb = get_supabase_client()
+            sb = get_db_client()
             if not sb: return
             try:
                 sb.table("bookings").delete().eq("booking_id", bk_id).execute()
@@ -721,12 +697,12 @@ class DataStore:
             'car_status', 'is_debt_free', 'installment_amount', 'total_installments', 'current_installment',
             'payment_due_date', 'finance_company', 'notes', 'image_url'
         }
-        SUPABASE_CAR_COLS = STANDARD_34_COLS | {
+        CAR_DB_COLS = STANDARD_34_COLS | {
             'engine_cc', 'fuel_type', 'company', 'price_day', 'price_week', 'price_month',
             'status', 'chassis_no', 'act_expiry', 'ins_expiry', 'image', 'created_at',
             'owner', 'reg_year', 'tax_expiry', 'ins_company', 'act_price', 'ins_premium'
         }
-        ALL_CAR_COLS = SUPABASE_CAR_COLS | {
+        ALL_CAR_COLS = CAR_DB_COLS | {
             'next_service', 'tire_change', 'hp_contract_no', 'hp_installment',
             'next_engine_oil_date', 'next_engine_oil_mileage',
             'next_tire_change_date', 'next_tire_change_mileage'
@@ -770,10 +746,10 @@ class DataStore:
 
             clean_mem = {k: v for k, v in existing.items() if k in ALL_CAR_COLS}
             self.cars[plate] = clean_mem
-            sb_payload = {k: v for k, v in clean_mem.items() if k in SUPABASE_CAR_COLS}
+            sb_payload = {k: v for k, v in clean_mem.items() if k in CAR_DB_COLS}
         self.save_local_cars()
         def _task():
-            sb = get_supabase_client()
+            sb = get_db_client()
             if not sb: return
             try:
                 db_cols = None
@@ -805,7 +781,7 @@ class DataStore:
             self.deleted_car_plates.add(clean_plate)
         self.save_local_cars()
         def _task():
-            sb = get_supabase_client()
+            sb = get_db_client()
             if not sb: return
             try:
                 sb.table("cars").delete().eq("plate", clean_plate).execute()
@@ -850,7 +826,7 @@ class DataStore:
         with self.lock:
             self.customers[name] = cust_dict
         def _task():
-            sb = get_supabase_client()
+            sb = get_db_client()
             if not sb: return
             CUSTOMER_10_COLS = {
                 'full_name', 'phone_number', 'id_card_no', 'driver_license_no',
@@ -889,7 +865,7 @@ class DataStore:
         with self.lock:
             self.customers.pop(name, None)
         def _task():
-            sb = get_supabase_client()
+            sb = get_db_client()
             if not sb: return
             try:
                 sb.table("customers").delete().eq("full_name", name).execute()
@@ -905,7 +881,7 @@ class DataStore:
             else:
                 self.completed_jobs.insert(0, job_dict)
         def _task():
-            sb = get_supabase_client()
+            sb = get_db_client()
             if not sb: return
             try:
                 VALID_CJ_COLS = {
@@ -927,7 +903,7 @@ class DataStore:
         with self.lock:
             self.financial_records.insert(0, f_dict)
         def _task():
-            sb = get_supabase_client()
+            sb = get_db_client()
             if not sb: return
             try:
                 row = dict(f_dict)
@@ -946,7 +922,7 @@ class DataStore:
             self.users[username] = existing
         self.save_local_users()
         def _task():
-            sb = get_supabase_client()
+            sb = get_db_client()
             if not sb: return
             row = dict(existing)
             row["username"] = username
@@ -965,7 +941,7 @@ class DataStore:
             self.users.pop(username, None)
         self.save_local_users()
         def _task():
-            sb = get_supabase_client()
+            sb = get_db_client()
             if not sb: return
             try:
                 sb.table("users").delete().eq("username", username).execute()
@@ -1004,7 +980,7 @@ class DataStore:
                 self.maintenance_records.insert(0, m_dict)
         self.save_local_maintenance()
         def _task():
-            sb = get_supabase_client()
+            sb = get_db_client()
             if not sb: return
             try:
                 sb.table("maintenance_records").upsert(m_dict).execute()
@@ -1017,7 +993,7 @@ class DataStore:
             self.maintenance_records = [x for x in self.maintenance_records if x.get("id") != mnt_id]
         self.save_local_maintenance()
         def _task():
-            sb = get_supabase_client()
+            sb = get_db_client()
             if not sb: return
             try:
                 sb.table("maintenance_records").delete().eq("id", mnt_id).execute()
@@ -1085,19 +1061,6 @@ class DataStore:
     def upload_photo(self, filename, file_bytes, content_type="image/jpeg"):
         import base64
         import io
-        sb = get_supabase_client()
-        if sb:
-            try:
-                sb.storage.from_("inspection-photos").upload(
-                    path=filename,
-                    file=file_bytes,
-                    file_options={"content-type": content_type, "upsert": "true"}
-                )
-                pub_url = sb.storage.from_("inspection-photos").get_public_url(filename)
-                if pub_url:
-                    return pub_url
-            except Exception as e:
-                print(f"Supabase storage upload fallback to base64: {e}")
         try:
             # Compress image with PIL before base64 encoding to prevent payload bloat
             try:
@@ -1203,12 +1166,10 @@ def start_background_cloud_sync():
         time.sleep(5)
         while True:
             try:
-                store.sync_from_supabase_async()
+                store.sync_from_database_async()
             except Exception as e:
                 print(f"Background cloud sync loop error: {e}")
             time.sleep(120)
     t = threading.Thread(target=_loop, daemon=True, name="PostgresBackgroundSync")
     t.start()
 
-store.sync_from_database = store.sync_from_supabase
-store.sync_from_database_async = store.sync_from_supabase_async

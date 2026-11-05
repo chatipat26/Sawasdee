@@ -189,7 +189,7 @@ CREATE INDEX IF NOT EXISTS idx_maintenance_status ON public.maintenance_records(
 CREATE INDEX IF NOT EXISTS idx_financial_date ON public.financial_records(date);
 
 -- ==============================================================================
--- Master SQL Migration Scripts (Run in DBeaver / Supabase / PostgreSQL)
+-- Master SQL Migration Scripts (Run in DBeaver / PostgreSQL)
 -- ==============================================================================
 
 -- 1. อัปเดตตารางรถยนต์ (cars / vehicles)

@@ -25,7 +25,7 @@ def convert_gdrive_url(url: str) -> str:
 
 from db import (
     store,
-    get_supabase_client,
+    get_db_client,
     get_car_fleet_status,
     calculate_rental_duration_and_days,
     format_date_dmy,
@@ -86,13 +86,13 @@ def startup_event():
     # Attempt direct PostgreSQL schema check/migration
     try:
         init_db()
-        sb = get_supabase_client()
+        sb = get_db_client()
         if sb and hasattr(sb, "_connection"):
             sb._connection()
     except Exception as e:
         print(f"Startup schema check note: {e}")
     # Perform initial synchronous sync so all database tables are immediately available
-    store.sync_from_supabase(force=True)
+    store.sync_from_database(force=True)
     start_background_cloud_sync()
     init_expiry_scheduler_thread()
 
@@ -138,13 +138,13 @@ async def get_system_status():
 
 @app.post("/api/sync")
 async def trigger_manual_sync():
-    store.sync_from_supabase(force=True)
+    store.sync_from_database(force=True)
     return {"success": True, "message": "ซิงค์ข้อมูลกับฐานข้อมูล PostgreSQL สำเร็จเรียบร้อย"}
 
 @app.post("/api/admin/migrate-cars")
 async def trigger_cars_migration():
     """Execute raw ALTER TABLE commands on PostgreSQL to guarantee all 34 columns."""
-    sb = get_supabase_client()
+    sb = get_db_client()
     if sb and hasattr(sb, "_connection"):
         try:
             conn = sb._connection()
@@ -230,7 +230,7 @@ async def login(payload: Dict[str, Any]):
     elif not user_rec and un.lower() in ["chaiwat.u", "chaiwat"] and pw in ["A248624", "admin123", "123456"]:
         user_rec = {"username": "chaiwat.u", "name": "chaiwat.u", "role": "Staff", "status": "approved"}
 
-    sb = get_supabase_client() if not user_rec else None
+    sb = get_db_client() if not user_rec else None
 
     # 3. Direct query to PostgreSQL users table with password check
     if not user_rec and sb:
@@ -343,7 +343,7 @@ async def change_password(payload: Dict[str, Any]):
 @app.get("/api/users")
 async def list_users():
     if not store.initial_sync_done or len(store.users) <= 1:
-        store.sync_from_supabase(force=True)
+        store.sync_from_database(force=True)
     users_list = []
     for u in store.users.values():
         u_safe = dict(u)
@@ -415,7 +415,7 @@ async def test_user_line_push(username: str):
 @app.get("/api/vehicles")
 async def list_cars(start_date: Optional[str] = None, end_date: Optional[str] = None):
     if not store.initial_sync_done:
-        store.sync_from_supabase(force=True)
+        store.sync_from_database(force=True)
     cars_data = []
     for plate, car in store.cars.items():
         status_key, status_desc, color, bg, border = get_car_fleet_status(
@@ -441,9 +441,9 @@ async def get_finance_companies():
         if fc and fc not in ("-", "None", "none", "null", ""):
             companies.add(fc)
     
-    # Also fetch from PostgreSQL/Supabase table if available
+    # Also fetch from PostgreSQL table if available
     try:
-        sb = get_supabase_client()
+        sb = get_db_client()
         if sb:
             res = sb.table("cars").select("finance_company").execute()
             for r in (res.data or []):
@@ -612,10 +612,10 @@ async def create_or_update_car(payload: Union[VehicleCreate, Dict[str, Any]], pl
                 conflict_car = c_obj
                 break
 
-    # 2. Query Database (PostgreSQL / Supabase) directly to ensure complete consistency
+    # 2. Query Database (PostgreSQL) directly to ensure complete consistency
     if not plate_exists and not vin_exists:
         try:
-            sb = get_supabase_client()
+            sb = get_db_client()
             if sb:
                 db_res = sb.table("cars").select("plate, chassis_no, brand, model").execute()
                 for row in (db_res.data or []):
@@ -820,7 +820,7 @@ async def delete_car(plate: str):
 @app.get("/api/customers")
 async def list_customers():
     if not store.initial_sync_done:
-        store.sync_from_supabase(force=True)
+        store.sync_from_database(force=True)
     return list(store.customers.values())
 
 @app.post("/api/customers")
@@ -887,6 +887,11 @@ async def create_or_update_customer(payload: Union[CustomerCreate, Dict[str, Any
     clean_payload = dict(payload)
     clean_payload.pop("original_name", None)
     clean_payload["full_name"] = name
+    for _k, _default in (("phone_number", "-"), ("id_card_no", "-"), ("driver_license_no", "-"),
+                         ("nationality", "THAI"), ("whatsapp", "-"), ("dob", "-"),
+                         ("license_expire_date", "-"), ("home_address", "-"), ("current_address", "-")):
+        if clean_payload.get(_k) is None or str(clean_payload.get(_k)).strip() == "":
+            clean_payload[_k] = _default
     store.async_sync_customer(name, clean_payload)
     return {"success": True, "customer": clean_payload}
 
@@ -903,7 +908,7 @@ async def delete_customer(name: str):
 @app.get("/api/bookings")
 async def list_bookings():
     if not store.initial_sync_done:
-        store.sync_from_supabase(force=True)
+        store.sync_from_database(force=True)
     res = []
     for b in store.bookings:
         b_copy = dict(b)

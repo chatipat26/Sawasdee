@@ -1180,7 +1180,7 @@ section,
 }
 
 /* =========================================================================
-   AUTHENTICATION GATE SCREEN (EXCLUSIVE LOGIN SCREEN MATCHING STREAMLIT)
+   AUTHENTICATION GATE SCREEN (EXCLUSIVE LOGIN SCREEN)
    ========================================================================= */
 .auth-gate-wrapper {
   position: fixed;
@@ -1413,7 +1413,7 @@ section,
 }
 
 /* ========================================================================= */
-/* COLLAPSIBLE EXPANDER CARDS (STREAMLIT EXPANDER PARITY)                    */
+/* COLLAPSIBLE EXPANDER CARDS                                                */
 /* ========================================================================= */
 .expander-card {
   background: var(--surface);

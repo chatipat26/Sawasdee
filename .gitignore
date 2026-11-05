@@ -1,7 +1,6 @@
 venv/
 __pycache__/
 *.pyc
-.streamlit/secrets.toml
 .DS_Store
 data_cars.json
 data_users.json

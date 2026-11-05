@@ -22,12 +22,11 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          pip install requests
+          pip install requests "psycopg[binary]"
 
       - name: Run Expiry Alert Check
         env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
           LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
         run: |
           python check_expiry_alert.py

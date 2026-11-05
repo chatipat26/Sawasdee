@@ -1,6 +1,5 @@
 import os
 import sys
-import base64
 import requests
 from datetime import datetime, date, timedelta
 
@@ -10,10 +9,6 @@ if hasattr(sys.stdout, "reconfigure"):
 if hasattr(sys.stderr, "reconfigure"):
     sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
-# ข้อมูลการเชื่อมต่อ Supabase และ LINE
-HARDCODED_SUPABASE_URL = "https://brhuafypxrqtoznsuhaa.supabase.co"
-HARDCODED_SERVICE_KEY = base64.b64decode("c2Jfc2VjcmV0X05qd3JsQWl6WW4tOFdhSFE3QTRHM2dfR1VmTUFyWFI=").decode()
-
 LINE_BROADCAST_URL = "https://api.line.me/v2/bot/message/broadcast"
 LINE_DEFAULT_CHANNEL_ACCESS_TOKEN = (
     "V9Sc5Zmu4av4UzX+NbGNmkNCWM21aKchTJQw8ueOsGwilCWGv9c+AEqFtrKC4OG0fVwFy7l+"
@@ -22,23 +17,16 @@ LINE_DEFAULT_CHANNEL_ACCESS_TOKEN = (
 
 
 def get_credentials():
-    token = os.environ.get("LINE_CHANNEL_ACCESS_TOKEN", LINE_DEFAULT_CHANNEL_ACCESS_TOKEN)
-    sb_url = os.environ.get("SUPABASE_URL", HARDCODED_SUPABASE_URL)
-    sb_key = os.environ.get("SUPABASE_SERVICE_KEY", HARDCODED_SERVICE_KEY)
-    
-    # ลองอ่านจาก .streamlit/secrets.toml ถ้ามี
-    try:
-        import toml
-        secrets_path = os.path.join(os.path.dirname(__file__), ".streamlit", "secrets.toml")
-        if os.path.exists(secrets_path):
-            sec = toml.load(secrets_path)
-            sb_url = sec.get("SUPABASE_URL", sb_url)
-            sb_key = sec.get("SUPABASE_SERVICE_KEY", sb_key)
-            token = sec.get("LINE_CHANNEL_ACCESS_TOKEN", token)
-    except Exception:
-        pass
+    return os.environ.get("LINE_CHANNEL_ACCESS_TOKEN", LINE_DEFAULT_CHANNEL_ACCESS_TOKEN)
 
-    return token, sb_url, sb_key
+
+def _get_db():
+    db_url = os.environ.get("DATABASE_URL")
+    if db_url:
+        from pg_client import PgClient
+        return PgClient(db_url)
+    from db import get_db_client
+    return get_db_client()
 
 
 def parse_date(d_str):
@@ -57,12 +45,11 @@ def parse_date(d_str):
     return None
 
 
-def fetch_cars_from_supabase(sb_url, sb_key):
+def fetch_cars_from_database():
     """ดึงข้อมูลรถยนต์ทั้งหมดจากฐานข้อมูล"""
     try:
-        from pg_client import RestClient
-        sb = RestClient(sb_url, sb_key)
-        res = sb.table("cars").select("plate, brand, model, company, act_expiry, ins_expiry, status").execute()
+        sb = _get_db()
+        res = sb.table("cars").select("*").execute()
         return res.data or []
     except Exception as e:
         print(f"❌ เกิดข้อผิดพลาดในการดึงข้อมูล: {e}")
@@ -192,10 +179,9 @@ def send_line_broadcast(message, channel_access_token, to_user_id=None):
         return False
 
 
-def has_already_sent_today(sb_url, sb_key, today_tag):
+def has_already_sent_today(today_tag):
     try:
-        from pg_client import RestClient
-        sb = RestClient(sb_url, sb_key)
+        sb = _get_db()
         res = sb.table("financial_records").select("id").eq("type", "SYSTEM_LOCK").eq("category", "LINE_EXPIRY_ALERT").eq("date", today_tag).limit(1).execute()
         return bool(res.data and len(res.data) > 0)
     except Exception as e:
@@ -203,10 +189,9 @@ def has_already_sent_today(sb_url, sb_key, today_tag):
         return False
 
 
-def mark_sent_today(sb_url, sb_key, today_tag):
+def mark_sent_today(today_tag):
     try:
-        from pg_client import RestClient
-        sb = RestClient(sb_url, sb_key)
+        sb = _get_db()
         sb.table("financial_records").insert({
             "company": "SYSTEM",
             "type": "SYSTEM_LOCK",
@@ -223,11 +208,11 @@ def mark_sent_today(sb_url, sb_key, today_tag):
 def run_daily_check(force_send=False):
     """
     ฟังก์ชันหลักในการตรวจสอบและส่งแจ้งเตือน:
-    - ตรวจสอบ Shared Lock บน Supabase ก่อน เพื่อป้องกันการส่งซ้ำระหว่าง Render / GitHub Actions / Streamlit
+    - ตรวจสอบ Shared Lock บนฐานข้อมูล PostgreSQL ก่อน เพื่อป้องกันการส่งซ้ำระหว่าง Render / GitHub Actions
     - ถ้าไม่มีรายการที่เข้าเงื่อนไข (30 วัน, 7 วัน, 0 วัน) -> จะไม่ส่งข้อความ (ไม่กินโควต้า LINE)
     - ถ้ามีรายการ -> ส่งข้อความ Broadcast ไปหาพนักงานทุกคนเพียง 1 ครั้งต่อวัน
     """
-    token, sb_url, sb_key = get_credentials()
+    token = get_credentials()
     now_bkk = datetime.utcnow() + timedelta(hours=7)
     today = now_bkk.date()
     today_tag = today.strftime("%Y-%m-%d")
@@ -235,7 +220,7 @@ def run_daily_check(force_send=False):
     print(f"🔍 เริ่มการตรวจสอบวันหมดอายุ พ.ร.บ. / ประกันภัย ประจำวันที่: {today.strftime('%d/%m/%Y')}")
     print("=" * 60)
 
-    if not force_send and has_already_sent_today(sb_url, sb_key, today_tag):
+    if not force_send and has_already_sent_today(today_tag):
         print(f"ℹ️ วันนี้ ({today_tag}) ระบบได้ส่งแจ้งเตือนเวลา 20:00 น. ไปเรียบร้อยแล้ว (ป้องกันการส่งซ้ำ)")
         return {
             "status": "already_sent_today",
@@ -243,14 +228,14 @@ def run_daily_check(force_send=False):
             "message": "ส่งแจ้งเตือนของวันนี้ไปแล้ว"
         }
 
-    cars = fetch_cars_from_supabase(sb_url, sb_key)
-    print(f"📊 โหลดข้อมูลรถยนต์จาก Supabase ทั้งหมด: {len(cars)} คัน")
+    cars = fetch_cars_from_database()
+    print(f"📊 โหลดข้อมูลรถยนต์จากฐานข้อมูลทั้งหมด: {len(cars)} คัน")
 
     target_days = (30, 31, 7, 0)
     expiring_items = check_expiring_cars(cars, target_days=target_days, check_date=today)
 
     if not expiring_items:
-        mark_sent_today(sb_url, sb_key, today_tag)
+        mark_sent_today(today_tag)
         print("ℹ️ ไม่มีรายการ พ.ร.บ. หรือ ประกันภัย ที่ตรงกับเงื่อนไขแจ้งเตือนในวันนี้ (ล่วงหน้า 30 วัน, 7 วัน, หรือวันหมดอายุ)")
         print("🛑 ระบบจะไม่ส่งข้อความทาง LINE (เพื่อประหยัดโควต้าข้อความ)")
         return {
@@ -263,8 +248,8 @@ def run_daily_check(force_send=False):
     for item in expiring_items:
         print(f"  - [{item['doc_type']}] ทะเบียน: {item['plate']} ({item['model']}) -> {item['status_desc']} (หมดอายุ {item['expiry_date']})")
 
-    # บันทึก Lock ลง Supabase ทันทีก่อนส่ง เพื่อป้องกันอีกเซิร์ฟเวอร์ส่งซ้ำ
-    mark_sent_today(sb_url, sb_key, today_tag)
+    # บันทึก Lock ลงฐานข้อมูลทันทีก่อนส่ง เพื่อป้องกันอีกเซิร์ฟเวอร์ส่งซ้ำ
+    mark_sent_today(today_tag)
     alert_msg = build_alert_message(expiring_items)
     success = send_line_broadcast(alert_msg, token)
 

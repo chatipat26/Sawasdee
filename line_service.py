@@ -25,15 +25,6 @@ EXPIRY_ALERT_RECIPIENT_MODE = os.environ.get("EXPIRY_ALERT_RECIPIENT_MODE", "adm
 def get_line_credentials():
     token = os.environ.get("LINE_CHANNEL_ACCESS_TOKEN", LINE_DEFAULT_CHANNEL_ACCESS_TOKEN)
     user_id = os.environ.get("LINE_TARGET_USER_ID", LINE_TARGET_USER_ID)
-    try:
-        import toml
-        secrets_path = os.path.join(os.path.dirname(__file__), ".streamlit", "secrets.toml")
-        if os.path.exists(secrets_path):
-            sec = toml.load(secrets_path)
-            token = sec.get("LINE_CHANNEL_ACCESS_TOKEN", token)
-            user_id = sec.get("LINE_TARGET_USER_ID", user_id)
-    except Exception:
-        pass
     return token, user_id
 
 
@@ -522,9 +513,8 @@ def check_and_send_expiry_alerts(cars_dict=None, target_days=(30, 31, 7, 0), rec
                 c_copy["plate"] = pl
                 cars_list.append(c_copy)
         else:
-            from check_expiry_alert import fetch_cars_from_supabase, get_credentials
-            _, sb_url, sb_key = get_credentials()
-            cars_list = fetch_cars_from_supabase(sb_url, sb_key)
+            from check_expiry_alert import fetch_cars_from_database
+            cars_list = fetch_cars_from_database()
 
         expiring = check_expiring_cars(cars_list, target_days=target_days)
         if not expiring:
@@ -564,8 +554,8 @@ def _has_sent_expiry_today(today_tag: str) -> bool:
     if _last_run_tag == today_tag:
         return True
     try:
-        from db import get_supabase_client
-        sb = get_supabase_client()
+        from db import get_db_client
+        sb = get_db_client()
         if sb:
             res = sb.table("financial_records").select("id").eq("type", "SYSTEM_LOCK").eq("category", "LINE_EXPIRY_ALERT").eq("date", today_tag).limit(1).execute()
             if res.data and len(res.data) > 0:
@@ -580,8 +570,8 @@ def _mark_sent_expiry_today(today_tag: str):
     global _last_run_tag
     _last_run_tag = today_tag
     try:
-        from db import get_supabase_client
-        sb = get_supabase_client()
+        from db import get_db_client
+        sb = get_db_client()
         if sb:
             sb.table("financial_records").insert({
                 "company": "SYSTEM",
