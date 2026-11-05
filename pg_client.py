@@ -273,25 +273,74 @@ class PgClient:
                         for m_sql in car_migrations:
                             cur.execute(m_sql)
 
-                        customer_migrations = [
-                            "CREATE TABLE IF NOT EXISTS public.customers (full_name VARCHAR(150) PRIMARY KEY);",
-                            "ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS full_name VARCHAR(150);",
-                            "ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS phone_number VARCHAR(50);",
-                            "ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS id_card_no VARCHAR(50);",
-                            "ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS driver_license_no VARCHAR(50);",
-                            "ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS nationality VARCHAR(50);",
-                            "ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS whatsapp VARCHAR(50);",
-                            "ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS dob VARCHAR(50);",
-                            "ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS license_expire_date VARCHAR(50);",
-                            "ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS home_address TEXT;",
-                            "ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS current_address TEXT;"
-                        ]
-                        for c_sql in customer_migrations:
-                            cur.execute(c_sql)
-                    print("✅ PostgreSQL cars (34 cols) and customers (10 cols) schema ensured via ALTER TABLE.")
+                    print("✅ PostgreSQL cars (34 cols) schema ensured via ALTER TABLE.")
                 except Exception as e:
                     print(f"PostgreSQL Schema check note: {e}")
+                self._migrate_customers()
         return self._conn
+
+    def _migrate_customers(self):
+        """Add the 10 customer columns and backfill them from legacy columns.
+        Each statement runs on its own so one failure cannot skip the rest."""
+        cols = [
+            ("full_name", "VARCHAR(150)"), ("phone_number", "VARCHAR(50)"), ("id_card_no", "VARCHAR(50)"),
+            ("driver_license_no", "VARCHAR(50)"), ("nationality", "VARCHAR(50)"), ("whatsapp", "VARCHAR(50)"),
+            ("dob", "VARCHAR(50)"), ("license_expire_date", "VARCHAR(50)"), ("home_address", "TEXT"),
+            ("current_address", "TEXT"),
+        ]
+        stmts = ["CREATE TABLE IF NOT EXISTS public.customers (full_name VARCHAR(150) PRIMARY KEY);"]
+        stmts += [f"ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS {n} {t};" for n, t in cols]
+        try:
+            with self._conn.cursor() as cur:
+                cur.execute("SELECT column_name FROM information_schema.columns "
+                            "WHERE table_schema='public' AND table_name='customers'")
+                existing = {r["column_name"] for r in cur.fetchall()}
+        except Exception:
+            existing = set()
+        for s in stmts:
+            try:
+                with self._conn.cursor() as cur:
+                    cur.execute(s)
+            except Exception as e:
+                print(f"Customer migration note: {e}")
+        try:
+            with self._conn.cursor() as cur:
+                cur.execute("SELECT column_name FROM information_schema.columns "
+                            "WHERE table_schema='public' AND table_name='customers'")
+                existing = {r["column_name"] for r in cur.fetchall()}
+        except Exception:
+            pass
+        legacy = [
+            ("phone_number", ["phone", "contact_no"]),
+            ("id_card_no", ["id_card", "passport_id"]),
+            ("driver_license_no", ["driver_license", "licence_no"]),
+            ("license_expire_date", ["licence_expiry"]),
+            ("home_address", ["thai_address", "address"]),
+            ("current_address", ["address", "thai_address"]),
+        ]
+        for new, olds in legacy:
+            for old in olds:
+                if new in existing and old in existing:
+                    try:
+                        with self._conn.cursor() as cur:
+                            cur.execute(
+                                f"UPDATE public.customers SET {new} = {old} "
+                                f"WHERE ({new} IS NULL OR {new} IN ('', '-')) "
+                                f"AND {old} IS NOT NULL AND {old}::text NOT IN ('', '-')"
+                            )
+                    except Exception as e:
+                        print(f"Customer backfill note: {e}")
+        defaults = {"nationality": "THAI", "whatsapp": "-", "dob": "-", "license_expire_date": "-",
+                    "home_address": "-", "current_address": "-", "phone_number": "-",
+                    "id_card_no": "-", "driver_license_no": "-"}
+        for col, val in defaults.items():
+            if col in existing:
+                try:
+                    with self._conn.cursor() as cur:
+                        cur.execute(f"UPDATE public.customers SET {col} = %s WHERE {col} IS NULL", (val,))
+                except Exception as e:
+                    print(f"Customer default note: {e}")
+        print("PostgreSQL customers (10 cols) schema ensured and backfilled.")
 
     def run(self, statements):
         """Run statements in one transaction; reconnect once if the connection dropped."""

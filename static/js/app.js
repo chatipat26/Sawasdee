@@ -2179,7 +2179,7 @@ class App {
       }
 
       // 2. Thai License Plate Badge (Clickable Toggle Trigger)
-      const isExpanded = false;
+      const isExpanded = true;
       const { plateNo, province, isRed } = this.formatPlateDisplay(c.plate);
       const plateTooltip = isEn ? "Click to toggle price & actions" : "คลิกป้ายทะเบียนเพื่อเปิด/ปิดราคาและปุ่มทำรายการ";
       const plateHtml = isRed
@@ -2224,7 +2224,7 @@ class App {
       const bookNowLabel = isAvail ? (dict ? dict.book_now : (isEn ? 'Book Now' : 'จองรถ')) : (dict ? dict.queue : (isEn ? 'Queue' : 'จองคิว'));
 
       return `
-        <div class="car-card-modern">
+        <div class="car-card-modern" data-expanded="true">
           <!-- MISSION 1: หน้าการ์ด (CARD FRONT) -->
           <div class="car-top-row">
             <div class="car-code-group">

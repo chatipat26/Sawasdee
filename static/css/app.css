@@ -408,7 +408,7 @@ section,
   position: -webkit-sticky !important;
   position: sticky !important;
   top: 0px !important;
-  z-index: 100 !important;
+  z-index: 1000 !important;
   background-color: #FFF7ED !important;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
