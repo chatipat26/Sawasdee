@@ -35,6 +35,7 @@ class App {
     this.activeTab = "fleet";
     this.uploadedPhotos = [];
     this.currentSelectedBooking = null;
+    this.expandedFleetCardFooters = new Set();
 
     // Search and Dashboard Charts State
     this.sidebarSearchKw = "";
@@ -154,7 +155,9 @@ class App {
           show_filters: "แสดงตัวกรอง ▾",
           prb_alert_in_days: "พ.ร.บ. เหลือ {days} วัน",
           prb_alert_expired: "พ.ร.บ. หมดอายุ",
-          prb_alert_due_today: "พ.ร.บ. หมดอายุวันนี้"
+          prb_alert_due_today: "พ.ร.บ. หมดอายุวันนี้",
+          show_price_actions: "▼ แสดงราคาและทำรายการ",
+          hide_price_actions: "▲ ซ่อน"
         },
         EN: {
           available: "Available",
@@ -212,7 +215,9 @@ class App {
           show_filters: "Show Filters ▾",
           prb_alert_in_days: "PRB in {days} days",
           prb_alert_expired: "PRB Expired",
-          prb_alert_due_today: "PRB Expired Today"
+          prb_alert_due_today: "PRB Expired Today",
+          show_price_actions: "▼ Show Price & Actions",
+          hide_price_actions: "▲ Hide"
         }
       };
       window.translations_dict = window.translations;
@@ -346,6 +351,19 @@ class App {
     }
     const btnAddCarBB = document.getElementById("btn-add-car-booking-bar");
     if (btnAddCarBB) btnAddCarBB.textContent = isEn ? "Add Vehicle" : "เพิ่มรถยนต์";
+
+    // Update all collapsible card footer toggle buttons (Mission 3)
+    const cardToggleBtns = document.querySelectorAll(".car-footer-toggle-btn");
+    cardToggleBtns.forEach(btn => {
+      const plate = btn.getAttribute("data-plate");
+      if (plate) {
+        const isExp = this.expandedFleetCardFooters && this.expandedFleetCardFooters.has(plate);
+        const txt = isExp
+          ? (isEn ? "▲ Hide" : "▲ ซ่อน")
+          : (isEn ? "▼ Show Price & Actions" : "▼ แสดงราคาและทำรายการ");
+        btn.innerHTML = `<span>${txt}</span>`;
+      }
+    });
 
     // --- Front Office Tab 2: Deposit & Finance ---
     const t2Title = document.getElementById("title-tab2");
@@ -2001,6 +2019,39 @@ class App {
     }
   }
 
+  toggleCardFooter(plate) {
+    if (!this.expandedFleetCardFooters) {
+      this.expandedFleetCardFooters = new Set();
+    }
+    const cleanPlate = String(plate || "").trim();
+    const safeId = cleanPlate.replace(/[^a-zA-Z0-9]/g, "_");
+    const isCurrentlyExpanded = this.expandedFleetCardFooters.has(cleanPlate);
+
+    if (isCurrentlyExpanded) {
+      this.expandedFleetCardFooters.delete(cleanPlate);
+    } else {
+      this.expandedFleetCardFooters.add(cleanPlate);
+    }
+
+    const nowExpanded = this.expandedFleetCardFooters.has(cleanPlate);
+    const panel = document.getElementById(`card-footer-${safeId}`);
+    const btn = document.getElementById(`btn-toggle-footer-${safeId}`);
+
+    if (panel) {
+      panel.style.display = nowExpanded ? "block" : "none";
+    }
+
+    if (btn) {
+      const isEn = (this.currentLang === "EN");
+      const l = isEn ? "EN" : "TH";
+      const dict = (window.translations && window.translations[l]) ? window.translations[l] : null;
+      const txt = nowExpanded
+        ? (dict ? dict.hide_price_actions : (isEn ? "▲ Hide" : "▲ ซ่อน"))
+        : (dict ? dict.show_price_actions : (isEn ? "▼ Show Price & Actions" : "▼ แสดงราคาและทำรายการ"));
+      btn.innerHTML = `<span>${txt}</span>`;
+    }
+  }
+
   // --- Rendering: Fleet Cards ---
   renderFleetCards() {
     const container = document.getElementById("fleet-cards-container");
@@ -2139,6 +2190,12 @@ class App {
       const detailsLabel = dict ? dict.details : (isEn ? 'Details' : 'ดูรายละเอียด');
       const bookNowLabel = isAvail ? (dict ? dict.book_now : (isEn ? 'Book Now' : 'จองรถ')) : (dict ? dict.queue : (isEn ? 'Queue' : 'จองคิว'));
 
+      // Collapsible Footer State (Default: false) - Mission 1
+      const isExpanded = this.expandedFleetCardFooters ? this.expandedFleetCardFooters.has(c.plate) : false;
+      const toggleLabel = isExpanded
+        ? (dict ? dict.hide_price_actions : (isEn ? "▲ Hide" : "▲ ซ่อน"))
+        : (dict ? dict.show_price_actions : (isEn ? "▼ Show Price & Actions" : "▼ แสดงราคาและทำรายการ"));
+
       return `
         <div class="car-card-modern">
           <!-- MISSION 1: หน้าการ์ด (CARD FRONT) -->
@@ -2160,23 +2217,37 @@ class App {
             ${alertPillHtml}
           </div>
 
-          <!-- Rate summary & View Details / Book Modal Button (Unslop) -->
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px; padding-top:10px; border-top:1px dashed #E2E8F0;">
-            <div style="font-size:11.5px; color:#64748B;">
-              ${dailyRateLabel}: <b style="color:#0F172A; font-size:13.5px;">฿${priceDay.toLocaleString()}</b>
-            </div>
-            <div style="font-size:11.5px; color:#E85826; font-weight:700;">
-              ${dur.days > 0 ? (isEn ? `${dur.days}d: ฿${basePrice.toLocaleString()}` : `${dur.days} วัน: ฿${basePrice.toLocaleString()}`) : ''}
-            </div>
-          </div>
+          <!-- MISSION 3: Toggle Button for Collapsible Footer -->
+          <button type="button" 
+                  class="car-footer-toggle-btn" 
+                  id="btn-toggle-footer-${safeId}" 
+                  data-plate="${safePlate}" 
+                  onclick="app.toggleCardFooter('${safePlate}')">
+            <span>${toggleLabel}</span>
+          </button>
 
-          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-top:10px;">
-            <button type="button" class="btn btn-secondary" onclick="app.openCarDetailsModal('${safePlate}')" style="width:100%; font-weight:700; font-size:12px; padding:8px 6px; border-radius:8px; display:flex; align-items:center; justify-content:center; gap:5px; cursor:pointer; background:#FAF7F2; border:1px solid #CBD5E1; color:#334155;">
-              <span>${detailsLabel}</span>
-            </button>
-            <button type="button" class="btn btn-primary" onclick="app.openBookModal('${safePlate}')" style="width:100%; font-weight:700; font-size:12px; padding:8px 6px; border-radius:8px; display:flex; align-items:center; justify-content:center; gap:5px; cursor:pointer; box-shadow:0 1px 3px rgba(232,88,38,0.25);" ${!isAvail ? `title="${isEn ? 'Reserved - click to reserve queue' : 'ติดจอง - คลิกเพื่อจองคิวต่อ'}"` : ''}>
-              <span>${bookNowLabel}</span>
-            </button>
+          <!-- MISSION 2: Collapsible Price and Action Buttons Footer -->
+          <div class="car-card-collapsible-footer" 
+               id="card-footer-${safeId}" 
+               style="${isExpanded ? 'display:block;' : 'display:none;'}">
+            <!-- Rate summary & View Details / Book Modal Button (Unslop) -->
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px; padding-top:10px; border-top:1px dashed #E2E8F0;">
+              <div style="font-size:11.5px; color:#64748B;">
+                ${dailyRateLabel}: <b style="color:#0F172A; font-size:13.5px;">฿${priceDay.toLocaleString()}</b>
+              </div>
+              <div style="font-size:11.5px; color:#E85826; font-weight:700;">
+                ${dur.days > 0 ? (isEn ? `${dur.days}d: ฿${basePrice.toLocaleString()}` : `${dur.days} วัน: ฿${basePrice.toLocaleString()}`) : ''}
+              </div>
+            </div>
+
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-top:10px;">
+              <button type="button" class="btn btn-secondary" onclick="app.openCarDetailsModal('${safePlate}')" style="width:100%; font-weight:700; font-size:12px; padding:8px 6px; border-radius:8px; display:flex; align-items:center; justify-content:center; gap:5px; cursor:pointer; background:#FAF7F2; border:1px solid #CBD5E1; color:#334155;">
+                <span>${detailsLabel}</span>
+              </button>
+              <button type="button" class="btn btn-primary" onclick="app.openBookModal('${safePlate}')" style="width:100%; font-weight:700; font-size:12px; padding:8px 6px; border-radius:8px; display:flex; align-items:center; justify-content:center; gap:5px; cursor:pointer; box-shadow:0 1px 3px rgba(232,88,38,0.25);" ${!isAvail ? `title="${isEn ? 'Reserved - click to reserve queue' : 'ติดจอง - คลิกเพื่อจองคิวต่อ'}"` : ''}>
+                <span>${bookNowLabel}</span>
+              </button>
+            </div>
           </div>
         </div>
       `;

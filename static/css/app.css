@@ -616,6 +616,45 @@ body::before {
   display: inline-block;
 }
 
+/* Fleet Card Collapsible Price & Actions Footer */
+.car-footer-toggle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  margin-top: 10px;
+  padding: 6px 12px;
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: 8px;
+  color: #475569;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.car-footer-toggle-btn:hover {
+  background: #FFF7ED;
+  border-color: #FED7AA;
+  color: #EA580C;
+}
+
+.car-card-collapsible-footer {
+  animation: carFooterFadeIn 0.2s ease-in-out;
+}
+
+@keyframes carFooterFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .car-expander-toggle-btn {
   width: 100%;
   margin-top: 10px;
