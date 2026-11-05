@@ -1585,22 +1585,218 @@ if "language" not in st.session_state:
 
 translations = {
     "TH": {
+        # Sidebar & Global Navigation
         "nav_front": "🖥️ Front Office",
         "nav_back": "📋 Back Office (ตารางใบงาน)",
         "nav_crm": "🛠️ ซ่อมบำรุง & บริการ",
         "nav_dash": "📊 สรุปแดชบอร์ด & การเงิน",
         "menu_header": "เมนูระบบงานหลัก:",
         "btn_logout": "🚪 ออกจากระบบ (Auth)",
-        "btn_lang": "🌐 English"
+        "btn_lang": "🌐 English",
+        "logged_in_as": "เข้าสู่ระบบโดย:",
+        "btn_manage_staff": "👥 จัดการ & อนุมัติพนักงาน",
+        "role_admin_badge": "👑 ผู้ดูแลระบบ (Admin)",
+        "role_staff_badge": "👷 พนักงาน (Staff)",
+        "cloud_sync_auto": "● ซิงค์ Cloud อัตโนมัติ:",
+
+        # Back Office
+        "bo_page_title": "📋 Back Office (ตารางใบงานสำหรับคนงาน / พนักงานขับรถ)",
+        "bo_page_subtitle": "Vehicle Dispatch & Return Work Orders Table & PDF Document Center",
+        "bo_page_subtitle_th": "ตารางใบงานรับ-ส่งรถยนต์และศูนย์รวมเอกสาร PDF",
+        "bo_admin_privilege": "👑 สิทธิ์ผู้ดูแลระบบ (Admin): สั่งงานได้ทุกใบงาน",
+        "bo_staff_privilege": "👷 สิทธิ์พนักงาน: {name} (ส่งงานได้เฉพาะงานที่ได้รับมอบหมาย)",
+        "bo_search_placeholder": "🔍 ค้นหาใบงาน...",
+        "bo_btn_refresh": "🔄 รีเฟรช",
+        "bo_table_title": "🚚 รายการใบงานรับ-ส่งรถทั้งหมดในระบบ",
+        "bo_empty_msg": "📋 ไม่มีใบงานในระบบขณะนี้",
+        "bo_empty_info": "📋 ยังไม่มีรายการใบงานในระบบ (เมื่อจัดทำสัญญาหรือจองรถแล้ว รายการจะปรากฏบนตารางงานนี้ทันที)",
+        "bo_btn_new_booking": "➕ ไปจัดทำสัญญา / จองรถใหม่ (Front Office)",
+        "bo_filter_caption": "🔎 กรองตารางใบงานตามคำค้นหาจากไซด์บาร์:",
+
+        # Back Office Table Columns
+        "bo_col_type": "ประเภทงาน",
+        "bo_col_booking_id": "รหัสการจอง",
+        "bo_col_plate": "ทะเบียนรถ",
+        "bo_col_customer": "ลูกค้า & เบอร์โทร",
+        "bo_col_customer_name": "ลูกค้า",
+        "bo_col_schedule": "กำหนดวัน-เวลา",
+        "bo_col_schedule_range": "กำหนดวันส่ง - วันคืน",
+        "bo_col_staff": "พนักงาน",
+        "bo_col_location": "สถานที่นัดหมาย",
+        "bo_col_location_simple": "สถานที่",
+        "bo_col_status": "สถานะ",
+        "bo_col_actions": "เอกสาร & ส่งงาน",
+        "bo_col_actions_full": "เอกสาร & จัดการส่งงาน",
+
+        # Back Office Badges & Action Buttons
+        "bo_job_dispatch": "🚚 ส่งมอบรถ (Dispatch)",
+        "bo_job_return": "🔙 รับรถคืน (Return)",
+        "bo_job_maintenance": "🛠️ ซ่อมบำรุง",
+        "bo_job_renewal": "📄 ต่อทะเบียน/พรบ./ประกัน",
+        "bo_btn_inspect_handover": "🔍 ตรวจรับส่ง & ปิดงาน",
+        "bo_btn_complete_maintenance": "🏁 ตรวจรับ & ปิดงาน",
+        "bo_btn_complete_renewal": "🏁 ส่งงาน / อัปเดตวัน",
+        "bo_status_repairing": "🛠️ กำลังซ่อมบำรุง",
+        "bo_status_renewing": "⏳ กำลังต่อภาษี/ประกัน",
+        "bo_status_wait_dispatch": "🔒 รอส่งรถก่อน",
+
+        # Front Office Tabs & Header
+        "fo_title": "📂 Front Office (ระบบปฏิบัติการเช่ารถ)",
+        "fo_subtitle": "เลือกลำดับขั้นตอนตามแฟ้มงานด้านล่างเพื่อดำเนินการจัดเตรียมรถ สัญญา และส่งมอบ",
+        "tab_fleet": "1. เลือกรถยนต์ & จองด่วน",
+        "tab_deposit": "2. เงินมัดจำ & การเงิน",
+        "tab_dispatch": "3. ออกใบงานส่ง/รับรถ",
+        "tab_contract": "4. จัดทำสัญญาเช่า",
+        "tab_pipeline": "5. แผงควบคุมคิวการจอง",
+        "tab_fleet_display": "🚘 2. ค้นหารถยนต์ (Fleet Selection)",
+        "tab_deposit_display": "💳 4. การเงินและมัดจำ (Financial & Deposit)",
+        "tab_dispatch_display": "🚚 5. ระบบงานภาคสนาม (Dispatch & Return)",
+        "tab_contract_display": "📝 3. สัญญาเช่า (Lease Agreement)",
+        "tab_pipeline_display": "📂 1. แผงควบคุม (Booking Dashboard)",
+
+        # Tab 1: Fleet & Instant Booking
+        "hero_booking_bar_title": "✨ 2. INSTANT BOOKING FORM (THE BOOKING BAR) — ค้นหาและเลือกรถด่วนสำหรับเซล",
+        "hero_booking_bar_desc": "เลือกวัน-เวลา เพื่อเช็คสถานะรถว่างและคำนวณระยะเวลาเช่าตามจริงอัตโนมัติ (เกิน 4 ชม. ปรับเป็น 1 วัน)",
+        "btn_add_customer": "➕ เพิ่มลูกค้าใหม่",
+        "filter_cat": "🚘 หมวดหมู่รถ (Category)",
+        "filter_brand": "🏷️ ยี่ห้อ (Brand)",
+        "filter_owner": "🏢 กรรมสิทธิ์ / บริษัท (Owner)",
+        "filter_status": "🚦 สถานะรถ (Status)",
+        "filter_all": "ทั้งหมด",
+        "btn_reset_filters": "🔄 รีเซ็ตตัวกรองทั้งหมด",
+
+        # Tab 2: Deposit & Finance
+        "deposit_title": "💳 การเงินและบันทึกเงินมัดจำ (Deposit & Financial Management)",
+        "deposit_subtitle": "บันทึกและตรวจสอบการชำระเงินมัดจำจองรถ มัดจำประกันสัญญา และค่าเช่าส่วนที่เหลือ",
+        "deposit_queue_title": "📋 คิวการจองที่รอจัดการการเงิน / ชำระมัดจำ",
+
+        # Tab 3: Dispatch & Return Work Orders
+        "dispatch_title": "🚚 จัดการออกใบงานส่งมอบรถและรับรถคืน",
+        "dispatch_subtitle": "มอบหมายพนักงานขับรถ ระบุสถานที่นัดหมาย และพิมพ์ใบงานปฏิบัติหน้าที่",
+
+        # Tab 4: Rental Agreement
+        "contract_title": "📝 ศูนย์จัดทำและตรวจสอบสัญญาเช่ารถยนต์ (Rental Agreement Center)",
+        "contract_subtitle": "สร้างเอกสารสัญญาเช่าอิเล็กทรอนิกส์พร้อมลายเซ็นและข้อมูลผู้เช่าอย่างสมบูรณ์",
+
+        # Tab 5: Booking Pipeline
+        "pipeline_title": "📂 แผงควบคุมคิวการจองและติดตามสถานะงาน",
+        "pipeline_subtitle": "ภาพรวมคิวการจองทั้งหมดในระบบ สามารถค้นหา จัดการ และแก้ไขข้อมูลการจองได้ทันที",
+
+        # CRM & Maintenance
+        "crm_title": "🛠️ ซ่อมบำรุง & บริการ",
+        "crm_subtitle": "บันทึกประวัติการซ่อมบำรุง ตรวจเช็กระยะ เปลี่ยนถ่ายน้ำมันเครื่อง และต่อภาษี/พ.ร.บ./ประกันภัย",
+
+        # Dashboard & Analytics
+        "dash_title": "📊 สรุปแดชบอร์ด & การเงิน",
+        "dash_subtitle_badge": "INTERACTIVE EXECUTIVE DASHBOARD",
+        "dash_subtitle": "รายงานภาพรวมอัตราการใช้งานรถยนต์ (Utilization Rate) รายรับ รายจ่าย และผลกำไรสุทธิ"
     },
     "EN": {
+        # Sidebar & Global Navigation
         "nav_front": "🖥️ Front Office",
         "nav_back": "📋 Back Office (Work Orders)",
         "nav_crm": "🛠️ Maintenance & Services",
         "nav_dash": "📊 Dashboard & Finance",
         "menu_header": "Main Navigation:",
         "btn_logout": "🚪 Sign Out (Auth)",
-        "btn_lang": "🌐 ภาษาไทย"
+        "btn_lang": "🌐 ภาษาไทย",
+        "logged_in_as": "Logged in as:",
+        "btn_manage_staff": "👥 Manage & Approve Staff",
+        "role_admin_badge": "👑 Administrator (Admin)",
+        "role_staff_badge": "👷 Staff",
+        "cloud_sync_auto": "● Auto Cloud Sync:",
+
+        # Back Office
+        "bo_page_title": "📋 Back Office (Vehicle Dispatch & Return Work Orders)",
+        "bo_page_subtitle": "Vehicle Dispatch & Return Work Orders Table & PDF Document Center",
+        "bo_page_subtitle_th": "Vehicle Dispatch & Return Work Orders Table & PDF Document Center",
+        "bo_admin_privilege": "👑 Admin Privilege: Can manage all work orders",
+        "bo_staff_privilege": "👷 Staff Privilege: {name} (Assigned jobs only)",
+        "bo_search_placeholder": "🔍 Search work orders...",
+        "bo_btn_refresh": "🔄 Refresh",
+        "bo_table_title": "🚚 All Vehicle Dispatch & Return Work Orders",
+        "bo_empty_msg": "📋 No work orders in the system currently",
+        "bo_empty_info": "📋 No work orders in the system currently (Work orders will appear here once booked or contracted)",
+        "bo_btn_new_booking": "➕ Create New Booking / Contract (Front Office)",
+        "bo_filter_caption": "🔎 Filtered work orders by sidebar search:",
+
+        # Back Office Table Columns
+        "bo_col_type": "Job Type",
+        "bo_col_booking_id": "Booking ID",
+        "bo_col_plate": "Plate No.",
+        "bo_col_customer": "Customer & Phone",
+        "bo_col_customer_name": "Customer",
+        "bo_col_schedule": "Schedule Date-Time",
+        "bo_col_schedule_range": "Delivery - Return Schedule",
+        "bo_col_staff": "Staff",
+        "bo_col_location": "Meeting Location",
+        "bo_col_location_simple": "Location",
+        "bo_col_status": "Status",
+        "bo_col_actions": "Documents & Actions",
+        "bo_col_actions_full": "Documents & Job Actions",
+
+        # Back Office Badges & Action Buttons
+        "bo_job_dispatch": "🚚 Dispatch",
+        "bo_job_return": "🔙 Return",
+        "bo_job_maintenance": "🛠️ Maintenance",
+        "bo_job_renewal": "📄 Tax / Act / Insurance Renewal",
+        "bo_btn_inspect_handover": "🔍 Inspect & Complete",
+        "bo_btn_complete_maintenance": "🏁 Inspect & Close Job",
+        "bo_btn_complete_renewal": "🏁 Submit & Update Expiry",
+        "bo_status_repairing": "🛠️ In Maintenance",
+        "bo_status_renewing": "⏳ Renewing Tax/Insurance",
+        "bo_status_wait_dispatch": "🔒 Wait for Dispatch",
+
+        # Front Office Tabs & Header
+        "fo_title": "📂 Front Office (Vehicle Rental Operations)",
+        "fo_subtitle": "Select workflow stage below to manage vehicle booking, agreements, and handovers",
+        "tab_fleet": "1. Fleet & Instant Booking",
+        "tab_deposit": "2. Deposit & Finance",
+        "tab_dispatch": "3. Dispatch/Return Orders",
+        "tab_contract": "4. Rental Agreement",
+        "tab_pipeline": "5. Booking Pipeline",
+        "tab_fleet_display": "🚘 2. Fleet Selection",
+        "tab_deposit_display": "💳 4. Financial & Deposit",
+        "tab_dispatch_display": "🚚 5. Field Operations (Dispatch & Return)",
+        "tab_contract_display": "📝 3. Lease Agreement",
+        "tab_pipeline_display": "📂 1. Booking Dashboard",
+
+        # Tab 1: Fleet & Instant Booking
+        "hero_booking_bar_title": "✨ 2. INSTANT BOOKING FORM (THE BOOKING BAR) — Fast Fleet Selection for Sales",
+        "hero_booking_bar_desc": "Select dates to check availability and calculate rental duration (Over 4 hrs rounded to 1 day)",
+        "btn_add_customer": "➕ Add New Customer",
+        "filter_cat": "🚘 Vehicle Category",
+        "filter_brand": "🏷️ Brand / Make",
+        "filter_owner": "🏢 Owner / Company",
+        "filter_status": "🚦 Fleet Status",
+        "filter_all": "All",
+        "btn_reset_filters": "🔄 Reset All Filters",
+
+        # Tab 2: Deposit & Finance
+        "deposit_title": "💳 Deposit & Financial Management",
+        "deposit_subtitle": "Record and verify booking deposits, security deposits, and remaining rental fees",
+        "deposit_queue_title": "📋 Booking Queue Awaiting Deposit / Payment",
+
+        # Tab 3: Dispatch & Return Work Orders
+        "dispatch_title": "🚚 Vehicle Dispatch & Return Work Orders Management",
+        "dispatch_subtitle": "Assign drivers/staff, specify meeting points, and print official work orders",
+
+        # Tab 4: Rental Agreement
+        "contract_title": "📝 Rental Agreement Formulation & Document Center",
+        "contract_subtitle": "Generate digital rental agreements with signatures and tenant verification",
+
+        # Tab 5: Booking Pipeline
+        "pipeline_title": "📂 Booking Pipeline & Job Status Tracking",
+        "pipeline_subtitle": "Overview of all system bookings with instant search, management, and editing",
+
+        # CRM & Maintenance
+        "crm_title": "🛠️ Maintenance & Services",
+        "crm_subtitle": "Record maintenance logs, routine inspections, oil changes, and tax/insurance renewals",
+
+        # Dashboard & Analytics
+        "dash_title": "📊 Fleet Performance & Financials",
+        "dash_subtitle_badge": "INTERACTIVE EXECUTIVE DASHBOARD",
+        "dash_subtitle": "Overview of fleet utilization rates, total revenue, operating expenses, and net profit"
     }
 }
 
@@ -3026,11 +3222,12 @@ else:
         u_uname = curr_u.get("username", "admin")
         is_admin_user = (u_role == "Admin" or u_uname.lower() == "admin")
         is_pending_user = False
-        role_label = "👑 ผู้ดูแลระบบ (Admin)" if is_admin_user else "👷 พนักงานปฏิบัติงาน"
+        role_label = translations[st.session_state.language].get("role_admin_badge", "👑 ผู้ดูแลระบบ (Admin)") if is_admin_user else translations[st.session_state.language].get("role_staff_badge", "👷 พนักงานปฏิบัติงาน")
+        logged_in_label = translations[st.session_state.language].get("logged_in_as", "เข้าสู่ระบบโดย:")
         
         st.markdown(f"""
             <div style="background:#FFFFFF; border:1px solid #EFEAE3; border-left:4px solid #E85826; border-radius:8px; padding:8px 12px; margin-bottom:12px; box-shadow:0 1px 3px rgba(0,0,0,0.03);">
-                <div style="font-size:11px; color:#8C827A;">เข้าสู่ระบบโดย:</div>
+                <div style="font-size:11px; color:#8C827A;">{logged_in_label}</div>
                 <div style="font-size:13px; font-weight:700; color:#1F2937;">👤 {u_uname}</div>
                 <div style="font-size:11px; color:#E85826; font-weight:600;">{role_label}</div>
             </div>
@@ -3052,7 +3249,8 @@ else:
         # --- ADMIN USER APPROVAL EXPANDER (แอดมินอนุมัติพนักงาน) ---
         if is_admin_user:
             pending_users = [u for u in st.session_state.users_db.values() if u.get("status") == "pending"]
-            appr_title = f"👥 จัดการ & อนุมัติพนักงาน {f'(⚠️ รออนุมัติ {len(pending_users)})' if pending_users else ''}"
+            lbl_staff = translations[st.session_state.language].get("btn_manage_staff", "👥 จัดการ & อนุมัติพนักงาน")
+            appr_title = f"{lbl_staff} {f'(⚠️ รออนุมัติ {len(pending_users)})' if pending_users else ''}"
             with st.expander(appr_title, expanded=bool(pending_users)):
                 st.caption("อนุมัติพนักงานเพื่อให้เข้าใช้งาน Front/Back Office และปรากฏในดรอปดาวน์เลือกพนักงานส่ง/รับรถ")
                 for u_k, u_v in list(st.session_state.users_db.items()):
@@ -3511,12 +3709,14 @@ else:
             st.html(folder_tabs_luxury_css)
         else:
             st.markdown(folder_tabs_luxury_css, unsafe_allow_html=True)
-        st.markdown("""
+        fo_hdr = translations[st.session_state.language].get("fo_title", "Front Office (ระบบปฏิบัติการเช่ารถ)")
+        fo_sub = translations[st.session_state.language].get("fo_subtitle", "เลือกลำดับขั้นตอนตามแฟ้มงานด้านล่างเพื่อดำเนินการจัดเตรียมรถ สัญญา และส่งมอบ")
+        st.markdown(f"""
             <div style="margin-bottom: 16px;">
                 <h1 style="font-size: 25px; font-weight: 700; color: #1F2937; margin: 0; display:flex; align-items:center; gap:8px;">
-                    <span>📂</span> Front Office (ระบบปฏิบัติการเช่ารถ)
+                    <span>📂</span> {fo_hdr}
                 </h1>
-                <div style="font-size: 12px; color: #6B7280; margin-top: 4px;">เลือกลำดับขั้นตอนตามแฟ้มงานด้านล่างเพื่อดำเนินการจัดเตรียมรถ สัญญา และส่งมอบ</div>
+                <div style="font-size: 12px; color: #6B7280; margin-top: 4px;">{fo_sub}</div>
             </div>
         """, unsafe_allow_html=True)
         
@@ -3550,11 +3750,11 @@ else:
             "5. แผงควบคุมการจอง"
         ]
         tab_display_map = {
-            "1. เลือกรถยนต์": "🚘 2. ค้นหารถยนต์ (Fleet Selection)",
-            "2. ชำระเงินจอง & การเงิน": "💳 4. การเงินและมัดจำ (Financial & Deposit)",
-            "3. ใบงานส่ง/รับรถ": "🚚 5. ระบบงานภาคสนาม (Dispatch & Return)",
-            "4. จัดทำสัญญาเช่า": "📝 3. สัญญาเช่า (Lease Agreement)",
-            "5. แผงควบคุมการจอง": "📂 1. แผงควบคุม (Booking Dashboard)"
+            "1. เลือกรถยนต์": translations[st.session_state.language].get("tab_fleet_display", "🚘 2. ค้นหารถยนต์ (Fleet Selection)"),
+            "2. ชำระเงินจอง & การเงิน": translations[st.session_state.language].get("tab_deposit_display", "💳 4. การเงินและมัดจำ (Financial & Deposit)"),
+            "3. ใบงานส่ง/รับรถ": translations[st.session_state.language].get("tab_dispatch_display", "🚚 5. ระบบงานภาคสนาม (Dispatch & Return)"),
+            "4. จัดทำสัญญาเช่า": translations[st.session_state.language].get("tab_contract_display", "📝 3. สัญญาเช่า (Lease Agreement)"),
+            "5. แผงควบคุมการจอง": translations[st.session_state.language].get("tab_pipeline_display", "📂 1. แผงควบคุม (Booking Dashboard)")
         }
         
         with st.container(key="folder_tabs_bar"):
@@ -3638,8 +3838,9 @@ else:
             ]
 
             with st.container(border=True, key="fleet_filter_bar"):
+                bk_bar_title = translations[st.session_state.language].get("hero_booking_bar_title", "✨ 2. INSTANT BOOKING FORM (THE BOOKING BAR) — ค้นหาและเลือกรถด่วนสำหรับเซล")
                 st.markdown(
-                    '<div class="fleet-booking-title">✨ 2. INSTANT BOOKING FORM (THE BOOKING BAR) — ค้นหาและเลือกรถด่วนสำหรับเซล</div>',
+                    f'<div class="fleet-booking-title">{bk_bar_title}</div>',
                     unsafe_allow_html=True
                 )
                 
@@ -6088,7 +6289,8 @@ else:
                 
                 c_q_head, c_q_filter = st.columns([1.4, 1.6])
                 with c_q_head:
-                    st.markdown("<h3 style='font-size:16px; font-weight:700;'>📋 แผงควบคุมคิวการจอง (Booking Operations)</h3>", unsafe_allow_html=True)
+                    pipe_hdr = translations[st.session_state.language].get("pipeline_title", "📋 แผงควบคุมคิวการจอง (Booking Operations)")
+                    st.markdown(f"<h3 style='font-size:16px; font-weight:700;'>{pipe_hdr}</h3>", unsafe_allow_html=True)
                 with c_q_filter:
                     q_view_mode = st.radio(
                         "ตัวกรองคิว:",
@@ -6112,6 +6314,7 @@ else:
                     ]
                     st.caption(f"🔎 กรองผลลัพธ์ตามคำค้นหาจากไซด์บาร์: **{sb_kw}**")
                 
+                btn_go_bo = translations[st.session_state.language].get("nav_back", "📋 Back Office (ตารางใบงาน)")
                 if not display_jobs:
                     if sb_kw:
                         sb_kw_clean = sb_kw.replace("-", "").replace(" ", "")
@@ -6138,7 +6341,7 @@ else:
                                     st.session_state.workflow_tab = "1. เลือกรถยนต์"
                                     st.rerun()
                             with c_no_j2:
-                                if st.button("📋 ไปที่ Back Office (ตารางใบงาน)", type="secondary", use_container_width=True):
+                                if st.button(btn_go_bo, type="secondary", use_container_width=True, key="btn_go_bo_1"):
                                     st.session_state.selected_module = "Back Office"
                                     st.rerun()
                         else:
@@ -6149,7 +6352,7 @@ else:
                                     st.session_state.workflow_tab = "1. เลือกรถยนต์"
                                     st.rerun()
                             with c_no_j2:
-                                if st.button("📋 ไปที่ Back Office (ตารางใบงาน)", type="secondary", use_container_width=True):
+                                if st.button(btn_go_bo, type="secondary", use_container_width=True, key="btn_go_bo_2"):
                                     st.session_state.selected_module = "Back Office"
                                     st.rerun()
                 else:
@@ -6246,16 +6449,24 @@ else:
         curr_role = curr_u.get("role", "Staff")
         is_admin_user = (curr_role == "Admin" or curr_username.lower() == "admin")
         
+        bo_page_title = translations[st.session_state.language].get("bo_page_title", "📋 Back Office (ตารางใบงานสำหรับคนงาน / พนักงานขับรถ)")
+        bo_page_subtitle = translations[st.session_state.language].get("bo_page_subtitle", "Vehicle Dispatch & Return Work Orders Table & PDF Document Center")
+        if is_admin_user:
+            bo_privilege = translations[st.session_state.language].get("bo_admin_privilege", "👑 สิทธิ์ผู้ดูแลระบบ (Admin): ส่งงานได้ทุกใบงาน")
+        else:
+            bo_privilege = translations[st.session_state.language].get("bo_staff_privilege", f"👷 สิทธิ์พนักงาน: {curr_username} (ส่งงานได้เฉพาะงานที่ได้รับมอบหมาย)").replace("{name}", curr_username)
+        bo_table_title = translations[st.session_state.language].get("bo_table_title", "🚚 รายการใบงานรับ-ส่งรถทั้งหมดในระบบ")
+        
         st.markdown(f"""
             <div style="margin-bottom: 16px;">
                 <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
                     <div>
-                        <h1 style="font-size: 25px; font-weight: 700; color: #1F2937; margin: 0;"><span>📋</span> Back Office (ตารางใบงานสำหรับคนงาน / พนักงานขับรถ)</h1>
-                        <div style="font-size: 12px; color: #6B7280; margin-top: 4px;">Vehicle Dispatch & Return Work Orders Table & PDF Document Center</div>
+                        <h1 style="font-size: 25px; font-weight: 700; color: #1F2937; margin: 0;">{bo_page_title}</h1>
+                        <div style="font-size: 12px; color: #6B7280; margin-top: 4px;">{bo_page_subtitle}</div>
                     </div>
                     <div>
                         <span style="background:{'#FFF7ED' if is_admin_user else '#EFF6FF'}; border:1.5px solid {'#FDBA74' if is_admin_user else '#BFDBFE'}; color:{'#C2410C' if is_admin_user else '#1D4ED8'}; padding:6px 14px; border-radius:20px; font-size:12px; font-weight:700;">
-                            {'👑 สิทธิ์ผู้ดูแลระบบ (Admin): ส่งงานได้ทุกใบงาน' if is_admin_user else f'👷 สิทธิ์พนักงาน: {curr_username} (ส่งงานได้เฉพาะงานที่ได้รับมอบหมาย)'}
+                            {bo_privilege}
                         </span>
                     </div>
                 </div>
@@ -6263,7 +6474,7 @@ else:
         """, unsafe_allow_html=True)
         
         with st.container(border=True):
-            st.markdown("<h3 style='font-size:16px; font-weight:700;'>🚚 รายการใบงานรับ-ส่งรถทั้งหมดในระบบ</h3>", unsafe_allow_html=True)
+            st.markdown(f"<h3 style='font-size:16px; font-weight:700;'>{bo_table_title}</h3>", unsafe_allow_html=True)
             
             jobs_list = []
             # งานที่ส่งงานครบทั้งสองงานแล้วจะถูกแบคอัพลง completed_jobs_db และไม่แสดงใน Back Office อีก
@@ -6769,25 +6980,35 @@ else:
                     else:
                         st.info(f"🔍 ไม่พบรายการใบงานตามคำค้นหา '{bo_kw}'")
                 else:
-                    st.info("📋 ยังไม่มีรายการใบงานในระบบ (เมื่อจัดทำสัญญาหรือจองรถแล้ว รายการจะปรากฏบนตารางงานนี้ทันที)")
-                    if st.button("➕ ไปจัดทำสัญญา / จองรถใหม่ (Front Office)", type="primary"):
+                    st.info(translations[st.session_state.language].get("bo_empty_info", "📋 ยังไม่มีรายการใบงานในระบบ (เมื่อจัดทำสัญญาหรือจองรถแล้ว รายการจะปรากฏบนตารางงานนี้ทันที)"))
+                    if st.button(translations[st.session_state.language].get("bo_btn_new_booking", "➕ ไปจัดทำสัญญา / จองรถใหม่ (Front Office)"), type="primary"):
                         st.session_state.selected_module = "Front Office"
                         st.session_state.workflow_tab = "1. เลือกรถยนต์"
                         st.rerun()
             else:
+                th_type = translations[st.session_state.language].get("bo_col_type", "ประเภทงาน")
+                th_bkid = translations[st.session_state.language].get("bo_col_booking_id", "รหัสการจอง")
+                th_plate = translations[st.session_state.language].get("bo_col_plate", "ทะเบียนรถ")
+                th_cust = translations[st.session_state.language].get("bo_col_customer_name", "ลูกค้า")
+                th_sched = translations[st.session_state.language].get("bo_col_schedule_range", "กำหนดวันส่ง - วันคืน")
+                th_staff = translations[st.session_state.language].get("bo_col_staff", "พนักงาน")
+                th_loc = translations[st.session_state.language].get("bo_col_location_simple", "สถานที่")
+                th_status = translations[st.session_state.language].get("bo_col_status", "สถานะ")
+                th_acts = translations[st.session_state.language].get("bo_col_actions_full", "เอกสาร & จัดการส่งงาน")
+                
                 table_html = (
                     '<div style="max-height: 250px; overflow-y: auto; overflow-x: auto; border-radius: 8px; border: 1px solid #EFEAE3;">'
                     '<table class="bo-table">'
                     '<tr>'
-                    '<th>ประเภทงาน</th>'
-                    '<th>รหัสการจอง</th>'
-                    '<th>ทะเบียนรถ</th>'
-                    '<th>ลูกค้า</th>'
-                    '<th>กำหนดวันส่ง - วันคืน</th>'
-                    '<th>พนักงาน</th>'
-                    '<th>สถานที่</th>'
-                    '<th>สถานะ</th>'
-                    '<th style="text-align:center;">เอกสาร & จัดการส่งงาน<br/><span style="font-size:11px; font-weight:normal; color:#8C827A;">(📝 สัญญา | 🧾 ใบเสร็จ | 💳 มัดจำ | 🚚 ใบงาน | 📤 ตรวจรับส่ง | 🗑️ ลบ)</span></th>'
+                    f'<th>{th_type}</th>'
+                    f'<th>{th_bkid}</th>'
+                    f'<th>{th_plate}</th>'
+                    f'<th>{th_cust}</th>'
+                    f'<th>{th_sched}</th>'
+                    f'<th>{th_staff}</th>'
+                    f'<th>{th_loc}</th>'
+                    f'<th>{th_status}</th>'
+                    f'<th style="text-align:center;">{th_acts}<br/><span style="font-size:11px; font-weight:normal; color:#8C827A;">(📝 สัญญา | 🧾 ใบเสร็จ | 💳 มัดจำ | 🚚 ใบงาน | 📤 ตรวจรับส่ง | 🗑️ ลบ)</span></th>'
                     '</tr>'
                 )
                 
@@ -6910,13 +7131,15 @@ else:
                 st.html(dashboard_luxury_css)
             else:
                 st.markdown(dashboard_luxury_css, unsafe_allow_html=True)
-            st.markdown("""
+            dash_hdr = translations[st.session_state.language].get("dash_title", "Fleet Performance & Financials")
+            dash_sub_badge = translations[st.session_state.language].get("dash_subtitle_badge", "INTERACTIVE EXECUTIVE DASHBOARD")
+            st.markdown(f"""
                 <div style="margin-bottom: 20px;">
                     <h1 style="font-size: 28px; font-weight: 700; color: #1F2937; margin: 0; display:flex; align-items:center; gap:8px;">
-                        <span>📊</span> Fleet Performance & Financials
+                        <span>📊</span> {dash_hdr}
                     </h1>
                     <div style="font-size: 13px; color: #E85826; font-weight: 600; margin-top: 6px;">
-                        <span style="display:inline-block; width:7px; height:7px; border-radius:50%; background:#E85826;"></span> INTERACTIVE EXECUTIVE DASHBOARD
+                        <span style="display:inline-block; width:7px; height:7px; border-radius:50%; background:#E85826;"></span> {dash_sub_badge}
                     </div>
                 </div>
             """, unsafe_allow_html=True)

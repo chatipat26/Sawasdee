@@ -159,7 +159,7 @@
         <!-- Live Cloud Sync Pill -->
         <div class="cloud-pill" onclick="app.manualSync()" title="คลิกเพื่อซิงค์ข้อมูลกับ Supabase Cloud ทันที">
           <span class="pulse-dot"></span>
-          <span>ซิงค์ Cloud อัตโนมัติ: <b id="sync-time-txt">กำลังเชื่อมต่อ...</b></span>
+          <span><span id="sync-label">ซิงค์ Cloud อัตโนมัติ:</span> <b id="sync-time-txt">กำลังเชื่อมต่อ...</b></span>
           <span style="font-size:11px; margin-left:2px;">🔄</span>
         </div>
 
@@ -187,7 +187,7 @@
 
         <!-- User Profile Card in Sidebar -->
         <div class="sb-user-card">
-          <div style="font-size: 11px; color: #8C827A;">เข้าสู่ระบบโดย:</div>
+          <div id="sb-user-card-label" style="font-size: 11px; color: #8C827A;">เข้าสู่ระบบโดย:</div>
           <div style="font-size: 13.5px; font-weight: 700; color: #1F2937;">👤 <span id="sb-user-name">admin</span></div>
           <div style="font-size: 11px; color: #E85826; font-weight: 600;" id="sb-user-role">👑 ผู้ดูแลระบบ (Admin)</div>
         </div>
@@ -199,7 +199,7 @@
 
         <!-- Admin Staff Management Button -->
         <div id="sb-admin-staff-btn" class="sb-admin-staff-btn" onclick="app.switchModule('users')" style="display:none;">
-          <span>👥 จัดการ & อนุมัติพนักงาน</span>
+          <span id="sb-admin-staff-text">👥 จัดการ & อนุมัติพนักงาน</span>
           <span id="badge-pending-users" style="background:#EF4444; color:white; font-size:10.5px; font-weight:700; padding:1px 7px; border-radius:10px; display:none;">0</span>
         </div>
 
@@ -836,16 +836,16 @@
           <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
             <div>
               <h2 style="font-size:19px; font-weight:800; color:#1F2937; margin:0; display:flex; align-items:center; gap:8px;">
-                📋 Back Office (ตารางใบงานสำหรับคนงาน / พนักงานขับรถ)
+                <span>📋</span> <span id="bo-title-text">Back Office (ตารางใบงานสำหรับคนงาน / พนักงานขับรถ)</span>
               </h2>
-              <div style="font-size:12px; color:#6B7280; margin-top:3px;">
+              <div id="bo-subtitle-text" style="font-size:12px; color:#6B7280; margin-top:3px;">
                 Vehicle Dispatch & Return Work Orders Table & PDF Document Center
               </div>
             </div>
             <div style="display:flex; align-items:center; gap:10px;">
-              <span style="background:#FFF7ED; color:#C2410C; border:1px solid #FFEDD5; padding:5px 14px; border-radius:20px; font-size:12px; font-weight:700;">👑 สิทธิ์ผู้ดูแลระบบ (Admin): สั่งงานได้ทุกใบงาน</span>
+              <span id="bo-admin-badge" style="background:#FFF7ED; color:#C2410C; border:1px solid #FFEDD5; padding:5px 14px; border-radius:20px; font-size:12px; font-weight:700;">👑 สิทธิ์ผู้ดูแลระบบ (Admin): สั่งงานได้ทุกใบงาน</span>
               <input type="text" id="bo-search-input" class="form-control" placeholder="🔍 ค้นหาใบงาน..." style="width:160px; padding:6px 10px; font-size:12px;" oninput="app.renderBackOfficeJobs()">
-              <button onclick="app.loadBackOfficeJobs()" class="btn btn-secondary btn-sm" style="padding:6px 12px; font-size:12px;">🔄 รีเฟรช</button>
+              <button id="bo-refresh-btn" onclick="app.loadBackOfficeJobs()" class="btn btn-secondary btn-sm" style="padding:6px 12px; font-size:12px;">🔄 รีเฟรช</button>
             </div>
           </div>
         </div>
@@ -853,22 +853,22 @@
         <!-- Section Box -->
         <div class="card">
           <div class="card-title" style="font-size:15px; color:#1F2937; margin-bottom:14px;">
-            <span>🚚</span> รายการใบงานรับ-ส่งรถทั้งหมดในระบบ
+            <span>🚚</span> <span id="bo-table-header-text">รายการใบงานรับ-ส่งรถทั้งหมดในระบบ</span>
           </div>
 
           <div class="table-responsive">
             <table class="custom-table">
               <thead>
                 <tr>
-                  <th>ประเภทงาน</th>
-                  <th>รหัสการจอง</th>
-                  <th>ทะเบียนรถ</th>
-                  <th>ลูกค้า & เบอร์โทร</th>
-                  <th>กำหนดวัน-เวลา</th>
-                  <th>พนักงาน</th>
-                  <th>สถานที่นัดหมาย</th>
-                  <th>สถานะ</th>
-                  <th style="text-align:center;">เอกสาร & ส่งงาน</th>
+                  <th id="bo-th-type">ประเภทงาน</th>
+                  <th id="bo-th-bkid">รหัสการจอง</th>
+                  <th id="bo-th-plate">ทะเบียนรถ</th>
+                  <th id="bo-th-cust">ลูกค้า & เบอร์โทร</th>
+                  <th id="bo-th-sched">กำหนดวัน-เวลา</th>
+                  <th id="bo-th-staff">พนักงาน</th>
+                  <th id="bo-th-loc">สถานที่นัดหมาย</th>
+                  <th id="bo-th-status">สถานะ</th>
+                  <th id="bo-th-acts" style="text-align:center;">เอกสาร & ส่งงาน</th>
                 </tr>
               </thead>
               <tbody id="backoffice-jobs-tbody">

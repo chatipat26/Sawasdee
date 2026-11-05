@@ -122,6 +122,61 @@ class App {
     if (sbInput) {
       sbInput.placeholder = isEn ? "🔍 Search (Booking / Plate / Customer)" : "🔍 ค้นหา (เลขที่จอง / ทะเบียน / ลูกค้า)";
     }
+
+    // 6. Topbar & Sidebar Labels
+    const syncLbl = document.getElementById("sync-label");
+    if (syncLbl) syncLbl.textContent = isEn ? "Auto Cloud Sync:" : "ซิงค์ Cloud อัตโนมัติ:";
+    const sbCardLbl = document.getElementById("sb-user-card-label");
+    if (sbCardLbl) sbCardLbl.textContent = isEn ? "Logged in as:" : "เข้าสู่ระบบโดย:";
+    const sbAdminStaff = document.getElementById("sb-admin-staff-text");
+    if (sbAdminStaff) sbAdminStaff.textContent = isEn ? "👥 Manage & Approve Staff" : "👥 จัดการ & อนุมัติพนักงาน";
+
+    // 7. Back Office Module Content
+    const boTitle = document.getElementById("bo-title-text");
+    if (boTitle) boTitle.textContent = isEn ? "Back Office (Vehicle Dispatch & Return Work Orders)" : "Back Office (ตารางใบงานสำหรับคนงาน / พนักงานขับรถ)";
+    const boSubtitle = document.getElementById("bo-subtitle-text");
+    if (boSubtitle) boSubtitle.textContent = isEn ? "Vehicle Dispatch & Return Work Orders Table & PDF Document Center" : "Vehicle Dispatch & Return Work Orders Table & PDF Document Center";
+    const boAdminBadge = document.getElementById("bo-admin-badge");
+    if (boAdminBadge) {
+      const isUserAdmin = (this.user && (this.user.role === "Admin" || (this.user.username || "").toLowerCase() === "admin"));
+      if (isUserAdmin) {
+        boAdminBadge.textContent = isEn ? "👑 Admin Privilege: Can manage all work orders" : "👑 สิทธิ์ผู้ดูแลระบบ (Admin): สั่งงานได้ทุกใบงาน";
+      } else {
+        const uName = this.user ? this.user.username : "";
+        boAdminBadge.textContent = isEn ? `👷 Staff Privilege: ${uName} (Assigned jobs only)` : `👷 สิทธิ์พนักงาน: ${uName} (ส่งงานได้เฉพาะงานที่ได้รับมอบหมาย)`;
+      }
+    }
+    const boSearch = document.getElementById("bo-search-input");
+    if (boSearch) boSearch.placeholder = isEn ? "🔍 Search work orders..." : "🔍 ค้นหาใบงาน...";
+    const boRefresh = document.getElementById("bo-refresh-btn");
+    if (boRefresh) boRefresh.textContent = isEn ? "🔄 Refresh" : "🔄 รีเฟรช";
+    const boTblHdr = document.getElementById("bo-table-header-text");
+    if (boTblHdr) boTblHdr.textContent = isEn ? "All Vehicle Dispatch & Return Work Orders" : "รายการใบงานรับ-ส่งรถทั้งหมดในระบบ";
+
+    // 8. Back Office Table Column Headers
+    const thType = document.getElementById("bo-th-type");
+    if (thType) thType.textContent = isEn ? "Job Type" : "ประเภทงาน";
+    const thBkid = document.getElementById("bo-th-bkid");
+    if (thBkid) thBkid.textContent = isEn ? "Booking ID" : "รหัสการจอง";
+    const thPlate = document.getElementById("bo-th-plate");
+    if (thPlate) thPlate.textContent = isEn ? "Plate No." : "ทะเบียนรถ";
+    const thCust = document.getElementById("bo-th-cust");
+    if (thCust) thCust.textContent = isEn ? "Customer & Phone" : "ลูกค้า & เบอร์โทร";
+    const thSched = document.getElementById("bo-th-sched");
+    if (thSched) thSched.textContent = isEn ? "Schedule Date-Time" : "กำหนดวัน-เวลา";
+    const thStaff = document.getElementById("bo-th-staff");
+    if (thStaff) thStaff.textContent = isEn ? "Staff" : "พนักงาน";
+    const thLoc = document.getElementById("bo-th-loc");
+    if (thLoc) thLoc.textContent = isEn ? "Meeting Location" : "สถานที่นัดหมาย";
+    const thStatus = document.getElementById("bo-th-status");
+    if (thStatus) thStatus.textContent = isEn ? "Status" : "สถานะ";
+    const thActs = document.getElementById("bo-th-acts");
+    if (thActs) thActs.textContent = isEn ? "Documents & Actions" : "เอกสาร & ส่งงาน";
+
+    // 9. Re-render jobs in Back Office if table exists
+    if (this.renderBackOfficeJobs) {
+      this.renderBackOfficeJobs();
+    }
   }
 
   initGlobalEnterKeyNavigation() {
@@ -2883,8 +2938,10 @@ class App {
       return true;
     });
 
+    const isEn = (this.currentLang === "EN");
     if (filtered.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:30px; color:#64748B;">📋 ไม่มีใบงานในระบบขณะนี้</td></tr>`;
+      const emptyMsg = isEn ? "📋 No work orders in the system currently" : "📋 ไม่มีใบงานในระบบขณะนี้";
+      tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:30px; color:#64748B;">${emptyMsg}</td></tr>`;
       return;
     }
 
@@ -2893,41 +2950,51 @@ class App {
       const isMnt = j.is_maintenance || j.job_type === "Maintenance" || j.job_type === "Renewal";
       let typeBadge = '';
       if (j.job_type === "Maintenance") {
-        typeBadge = '<span class="badge" style="background:#FFF7ED; color:#C2410C; border:1px solid #FDBA74; font-weight:700;">🛠️ ซ่อมบำรุง</span>';
+        typeBadge = `<span class="badge" style="background:#FFF7ED; color:#C2410C; border:1px solid #FDBA74; font-weight:700;">${isEn ? '🛠️ Maintenance' : '🛠️ ซ่อมบำรุง'}</span>`;
       } else if (j.job_type === "Renewal") {
-        typeBadge = '<span class="badge" style="background:#F0FDF4; color:#15803D; border:1px solid #BBF7D0; font-weight:700;">📄 ต่อทะเบียน/พรบ./ประกัน</span>';
+        typeBadge = `<span class="badge" style="background:#F0FDF4; color:#15803D; border:1px solid #BBF7D0; font-weight:700;">${isEn ? '📄 Renewal' : '📄 ต่อทะเบียน/พรบ./ประกัน'}</span>`;
       } else if (isDisp) {
-        typeBadge = '<span class="badge badge-info">🚚 ส่งมอบรถ (Dispatch)</span>';
+        typeBadge = `<span class="badge badge-info">${isEn ? '🚚 Dispatch' : '🚚 ส่งมอบรถ (Dispatch)'}</span>`;
       } else {
-        typeBadge = '<span class="badge badge-warning">🔙 รับรถคืน (Return)</span>';
+        typeBadge = `<span class="badge badge-warning">${isEn ? '🔙 Return' : '🔙 รับรถคืน (Return)'}</span>`;
       }
 
       let actionButtons = '';
       if (isMnt) {
         const isRenewalJob = j.job_type === "Renewal" || (j.order_type && (String(j.order_type).includes("ต่อทะเบียน") || String(j.order_type).includes("ประกัน") || String(j.order_type).includes("พ.ร.บ.") || String(j.order_type).includes("ภาษี") || String(j.order_type).includes("แพ็กคู่")));
-        const btnLabel = isRenewalJob ? "🏁 ส่งงาน / อัปเดตวัน" : "🏁 ตรวจรับ & ปิดงาน";
+        const btnLabel = isRenewalJob ? (isEn ? "🏁 Submit / Update" : "🏁 ส่งงาน / อัปเดตวัน") : (isEn ? "🏁 Inspect & Close" : "🏁 ตรวจรับ & ปิดงาน");
         actionButtons = `
-          <a href="/api/pdf/maintenance/${j.booking_id}" target="_blank" class="btn btn-sm btn-secondary" title="พิมพ์ใบงาน PDF">📄 ใบงาน PDF</a>
+          <a href="/api/pdf/maintenance/${j.booking_id}" target="_blank" class="btn btn-sm btn-secondary" title="${isEn ? 'Print Job PDF' : 'พิมพ์ใบงาน PDF'}">${isEn ? '📄 Job PDF' : '📄 ใบงาน PDF'}</a>
           <button onclick="app.openCloseMaintenanceModal('${j.booking_id}')" class="btn btn-sm btn-success" style="font-weight:700;" title="${btnLabel}">
             ${btnLabel}
           </button>
         `;
       } else {
+        const lockTitle = isEn ? 'Wait for Dispatch completion' : 'ต้องปิดงานส่งมอบก่อน';
+        const inspectBtnLabel = isEn ? '🔍 Inspect & Complete' : '🔍 ตรวจรับส่ง & ปิดงาน';
         actionButtons = `
-          <a href="/api/pdf/job/${j.booking_id}" target="_blank" class="btn btn-sm btn-secondary" title="ใบตรวจสภาพ PDF">📋</a>
-          <button onclick="app.openHandoverModal('${j.booking_id}', '${j.job_type}')" class="btn btn-sm btn-primary" ${j.is_locked ? 'disabled title="ต้องปิดงานส่งมอบก่อน"' : ''}>
-            🔍 ตรวจรับส่ง & ปิดงาน
+          <a href="/api/pdf/job/${j.booking_id}" target="_blank" class="btn btn-sm btn-secondary" title="${isEn ? 'Inspection PDF' : 'ใบตรวจสภาพ PDF'}">📋</a>
+          <button onclick="app.openHandoverModal('${j.booking_id}', '${j.job_type}')" class="btn btn-sm btn-primary" ${j.is_locked ? `disabled title="${lockTitle}"` : ''}>
+            ${inspectBtnLabel}
           </button>
         `;
       }
 
       let statusBadge = '';
       if (j.status === "กำลังซ่อมบำรุง") {
-        statusBadge = '<span class="badge" style="background:#FFF7ED; color:#C2410C; border:1px solid #FDBA74;">🛠️ กำลังซ่อมบำรุง</span>';
+        statusBadge = `<span class="badge" style="background:#FFF7ED; color:#C2410C; border:1px solid #FDBA74;">${isEn ? '🛠️ In Maintenance' : '🛠️ กำลังซ่อมบำรุง'}</span>`;
       } else if (j.status === "กำลังต่อภาษี/ประกัน") {
-        statusBadge = '<span class="badge" style="background:#FEF3C7; color:#D97706; border:1px solid #FCD34D;">⏳ กำลังต่อภาษี/ประกัน</span>';
+        statusBadge = `<span class="badge" style="background:#FEF3C7; color:#D97706; border:1px solid #FCD34D;">${isEn ? '⏳ Renewing Tax/Ins.' : '⏳ กำลังต่อภาษี/ประกัน'}</span>`;
       } else {
-        statusBadge = `<span class="badge badge-gray">${j.status}</span>`;
+        let displayStatus = j.status;
+        if (isEn) {
+          if (displayStatus === "รอส่งมอบ") displayStatus = "Ready for Dispatch";
+          else if (displayStatus === "กำลังเช่า") displayStatus = "Active Rental";
+          else if (displayStatus === "รอรับคืน") displayStatus = "Ready for Return";
+          else if (displayStatus === "🔒 รอส่งรถก่อน") displayStatus = "🔒 Wait for Dispatch";
+          else if (displayStatus === "รอชำระมัดจำ") displayStatus = "Pending Deposit";
+        }
+        statusBadge = `<span class="badge badge-gray">${displayStatus}</span>`;
       }
 
       return `
