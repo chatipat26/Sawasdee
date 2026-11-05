@@ -58,16 +58,30 @@ CREATE OR REPLACE VIEW public.vehicles AS
 SELECT * FROM public.cars;
 
 
--- 3. Customers Table (CRM)
+-- 3. Customers Table (CRM - Strict 10-Field Schema)
 CREATE TABLE IF NOT EXISTS public.customers (
     full_name VARCHAR(200) PRIMARY KEY,
-    nickname VARCHAR(100),
+    phone_number VARCHAR(50),
+    id_card_no VARCHAR(50),
+    driver_license_no VARCHAR(50),
+    nationality VARCHAR(50) DEFAULT 'THAI',
+    whatsapp VARCHAR(50) DEFAULT '-',
+    dob VARCHAR(50) DEFAULT '-',
+    license_expire_date VARCHAR(50) DEFAULT '-',
+    home_address TEXT DEFAULT '-',
+    current_address TEXT DEFAULT '-',
     phone VARCHAR(50),
+    contact_no VARCHAR(50),
     id_card VARCHAR(50),
+    passport_id VARCHAR(50),
     driver_license VARCHAR(50),
+    licence_no VARCHAR(50),
+    licence_expiry VARCHAR(50) DEFAULT '-',
+    thai_address TEXT DEFAULT '-',
+    address TEXT DEFAULT '-',
+    nickname VARCHAR(100),
     line_id VARCHAR(100),
     line_user_id TEXT,
-    address TEXT,
     notes TEXT,
     id_card_photo TEXT,
     driver_license_photo TEXT,
@@ -173,3 +187,55 @@ CREATE INDEX IF NOT EXISTS idx_bookings_status ON public.bookings(status);
 CREATE INDEX IF NOT EXISTS idx_bookings_dates ON public.bookings(start_date, end_date);
 CREATE INDEX IF NOT EXISTS idx_maintenance_status ON public.maintenance_records(status);
 CREATE INDEX IF NOT EXISTS idx_financial_date ON public.financial_records(date);
+
+-- ==============================================================================
+-- Master SQL Migration Scripts (Run in DBeaver / Supabase / PostgreSQL)
+-- ==============================================================================
+
+-- 1. อัปเดตตารางรถยนต์ (cars / vehicles)
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS brand VARCHAR(100);
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS model VARCHAR(100);
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS car_group VARCHAR(100);
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS fuel_system VARCHAR(50);
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS cc_ev VARCHAR(50);
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS owner_company VARCHAR(150);
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS color VARCHAR(50);
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS mileage VARCHAR(50);
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS daily_rate NUMERIC;
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS weekly_rate NUMERIC;
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS monthly_rate NUMERIC;
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS vin VARCHAR(100);
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS tax_expire_date VARCHAR(50);
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS prb_expire_date VARCHAR(50);
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS insurance_expire_date VARCHAR(50);
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS insurance_company VARCHAR(150);
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS car_owner VARCHAR(150);
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS beneficiary VARCHAR(150);
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS register_year VARCHAR(50);
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS prb_price NUMERIC;
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS insurance_premium NUMERIC;
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS last_service_date VARCHAR(50);
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS next_service_date VARCHAR(50);
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS next_service_mileage NUMERIC;
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS car_status VARCHAR(50);
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS is_debt_free BOOLEAN;
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS installment_amount NUMERIC;
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS total_installments INTEGER;
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS current_installment INTEGER;
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS payment_due_date VARCHAR(50);
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS finance_company VARCHAR(150);
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS notes TEXT;
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS image_url TEXT;
+
+-- 2. อัปเดตตารางลูกค้า (customers)
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS full_name VARCHAR(150);
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS phone_number VARCHAR(50);
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS id_card_no VARCHAR(50);
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS driver_license_no VARCHAR(50);
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS nationality VARCHAR(50);
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS whatsapp VARCHAR(50);
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS dob VARCHAR(50);
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS license_expire_date VARCHAR(50);
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS home_address TEXT;
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS current_address TEXT;
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
