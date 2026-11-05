@@ -2171,15 +2171,6 @@ class App {
       }
 
       const { plateNo, province, isRed } = this.formatPlateDisplay(c.plate);
-      const plateHtml = isRed
-        ? `<div class="thai-plate-badge red-plate" id="plate-badge-${safeId}">
-             <div class="thai-plate-num">${isEn ? "Red Plate" : "ป้ายแดง"}</div>
-             <div class="thai-plate-prov">${isEn ? "Red plate" : "ป้ายแดง"}</div>
-           </div>`
-        : `<div class="thai-plate-badge" id="plate-badge-${safeId}">
-             <div class="thai-plate-num">${plateNo}</div>
-             <div class="thai-plate-prov">${province}</div>
-           </div>`;
 
       // 3. Status Pill
       const l = isEn ? "EN" : "TH";
@@ -2214,13 +2205,26 @@ class App {
       const bookNowLabel = isAvail
         ? ((dict && dict.book_now) || (isEn ? 'Book Now' : 'จองรถ'))
         : ((dict && dict.queue) || (isEn ? 'Queue' : 'จองคิว'));
+      const bookTitle = !isAvail
+        ? (isEn ? "Reserved - click to reserve queue" : "ติดจอง - คลิกเพื่อจองคิวต่อ")
+        : bookNowLabel;
+      const durLabel = dur.days > 0
+        ? (isEn ? `${dur.days}d ฿${basePrice.toLocaleString()}` : `${dur.days} วัน ฿${basePrice.toLocaleString()}`)
+        : "";
+      const eyeIcon = `<svg class="car-plate-eye" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>`;
+      const plateInner = isRed
+        ? `<div class="thai-plate-num">${isEn ? "Red Plate" : "ป้ายแดง"}</div><div class="thai-plate-prov">${isEn ? "Red plate" : "ป้ายแดง"}</div>`
+        : `<div class="thai-plate-num">${plateNo}</div><div class="thai-plate-prov">${province}</div>`;
+      const plateHtml = `<div class="thai-plate-badge${isRed ? " red-plate" : ""}" id="plate-badge-${safeId}" role="button" tabindex="0" title="${detailsLabel}" onclick="app.openCarDetailsModal('${safePlate}')">${eyeIcon}${plateInner}</div>`;
 
       return `
         <div class="car-card-modern">
-          <!-- MISSION 1: หน้าการ์ด (CARD FRONT) -->
           <div class="car-top-row">
             <div class="car-code-group">
-              <div class="car-code-title">${carCode}</div>
+              <button type="button" class="car-code-book" title="${bookTitle}" onclick="app.openBookModal('${safePlate}')">
+                <span class="car-code-title">${carCode}</span>
+                <svg class="car-code-book-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+              </button>
               <div class="car-cat-subtag">${catTag}</div>
             </div>
             ${plateHtml}
@@ -2234,27 +2238,9 @@ class App {
               <span class="car-pill-dot" style="background:${statusDot};"></span> ${statusText}
             </span>
             ${alertPillHtml}
-          </div>
-
-          <div class="car-card-collapsible-footer" id="card-footer-${safeId}">
-            <div class="car-card-rate-row">
-              <div class="car-card-rate-label">
-                ${dailyRateLabel}: <b>฿${priceDay.toLocaleString()}</b>
-              </div>
-              <div class="car-card-rate-total">
-                ${dur.days > 0 ? (isEn ? `${dur.days}d: ฿${basePrice.toLocaleString()}` : `${dur.days} วัน: ฿${basePrice.toLocaleString()}`) : ''}
-              </div>
-            </div>
-            <div class="car-card-actions">
-              <button type="button" class="btn btn-secondary car-card-btn-details" onclick="app.openCarDetailsModal('${safePlate}')">
-                <svg class="car-card-btn-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
-                <span>${detailsLabel}</span>
-              </button>
-              <button type="button" class="btn btn-primary car-card-btn-book" onclick="app.openBookModal('${safePlate}')" ${!isAvail ? `title="${isEn ? 'Reserved - click to reserve queue' : 'ติดจอง - คลิกเพื่อจองคิวต่อ'}"` : ''}>
-                <svg class="car-card-btn-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M12 14v4M10 16h4"/></svg>
-                <span>${bookNowLabel}</span>
-              </button>
-            </div>
+            <span class="car-rate-chip" title="${dailyRateLabel}">
+              <b>฿${priceDay.toLocaleString()}</b>${durLabel ? `<span>${durLabel}</span>` : ""}
+            </span>
           </div>
         </div>
       `;
@@ -2267,15 +2253,12 @@ class App {
         console.error("renderFleetCards: card build failed", c && c.plate, err);
         const sp = String((c && c.plate) || "").replace(/'/g, "\\'");
         return `
-        <div class="car-card-modern" data-expanded="true">
-          <div class="car-model-title">${(c && c.brand) || ''} ${(c && c.model) || ''}</div>
-          <div class="car-specs-subtitle">${(c && c.plate) || ''}</div>
-          <div class="car-card-collapsible-footer" style="display:block;">
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-top:10px;">
-              <button type="button" class="btn btn-secondary" onclick="app.openCarDetailsModal('${sp}')"><span>${isEn ? 'Details' : 'ดูรายละเอียด'}</span></button>
-              <button type="button" class="btn btn-primary" onclick="app.openBookModal('${sp}')"><span>${isEn ? 'Book Now' : 'จองรถ'}</span></button>
-            </div>
+        <div class="car-card-modern">
+          <div class="car-top-row">
+            <button type="button" class="car-code-book" title="${isEn ? 'Book Now' : 'จองรถ'}" onclick="app.openBookModal('${sp}')"><span class="car-code-title">${(c && (c.car_code || c.code)) || 'SW'}</span></button>
+            <div class="thai-plate-badge" role="button" title="${isEn ? 'Details' : 'ดูรายละเอียด'}" onclick="app.openCarDetailsModal('${sp}')"><div class="thai-plate-num">${(c && c.plate) || ''}</div></div>
           </div>
+          <div class="car-model-title">${(c && c.brand) || ''} ${(c && c.model) || ''}</div>
         </div>`;
       }
     }).join("");
