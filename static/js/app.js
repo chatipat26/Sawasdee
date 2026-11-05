@@ -91,6 +91,25 @@ class App {
     return false;
   }
 
+  t(key, fallback = "") {
+    const dict = {
+      duplicate_vehicle_error: {
+        TH: "ข้อมูลซ้ำ: พบเลขทะเบียนหรือเลขตัวถังนี้ในระบบแล้ว",
+        EN: "Duplicate Data: Vehicle plate or VIN (Chassis No) already exists in system"
+      },
+      finance_company: {
+        TH: "บริษัทไฟแนนซ์",
+        EN: "Finance Company"
+      },
+      select_or_enter_finance: {
+        TH: "เลือกจากรายการ หรือพิมพ์ชื่อบริษัทไฟแนนซ์ใหม่...",
+        EN: "Select or type new finance company..."
+      }
+    };
+    const lang = this.currentLang === "EN" ? "EN" : "TH";
+    return dict[key]?.[lang] || fallback || key;
+  }
+
   initLanguage() {
     this.currentLang = localStorage.getItem("sawasdee_lang") || "TH";
     this.applyLanguage();
@@ -559,11 +578,9 @@ class App {
     const lblCarDebtFree = document.getElementById("lbl-modal-car-debt-free");
     if (lblCarDebtFree) lblCarDebtFree.textContent = isEn ? "Debt-Free / Fully Paid" : "รถปลอดภาระ / ซื้อเงินสด";
     const lblCarFinComp = document.getElementById("lbl-modal-car-finance-comp");
-    if (lblCarFinComp) lblCarFinComp.textContent = isEn ? "Finance Company" : "บริษัทไฟแนนซ์";
-    const lblCarNewFin = document.getElementById("lbl-modal-car-new-finance");
-    if (lblCarNewFin) lblCarNewFin.textContent = isEn ? "Enter new finance company name" : "ระบุชื่อบริษัทไฟแนนซ์ใหม่";
-    const inpCarCustomFin = document.getElementById("edit-car-custom-finance");
-    if (inpCarCustomFin) inpCarCustomFin.placeholder = isEn ? "e.g. Toyota Leasing, Krungsri Auto..." : "เช่น โตโยต้า ลีสซิ่ง, กรุงศรี ออโต้...";
+    if (lblCarFinComp) lblCarFinComp.textContent = this.t("finance_company");
+    const inpCarFinComp = document.getElementById("edit-car-finance-company");
+    if (inpCarFinComp) inpCarFinComp.placeholder = this.t("select_or_enter_finance");
     const lblCarInstAmt = document.getElementById("lbl-modal-car-installment-amt");
     if (lblCarInstAmt) lblCarInstAmt.textContent = isEn ? "Monthly Installment (THB)" : "ค่างวดต่อเดือน (THB)";
     const lblCarTotInst = document.getElementById("lbl-modal-car-total-inst");
@@ -2235,6 +2252,13 @@ class App {
     setVal("edit-car-payment-due-date", this.dmyToYmd(car.payment_due_date));
 
     this.openModal("modal-edit-car");
+    setTimeout(() => {
+      const plateEl = document.getElementById("edit-car-plate");
+      if (plateEl) {
+        plateEl.focus();
+        if (isNew) plateEl.select();
+      }
+    }, 120);
   }
 
   onDebtFreeToggle(isDebtFree) {
@@ -2271,12 +2295,28 @@ class App {
     return combined;
   }
 
-  populateFinanceCompanyDropdown(selectedVal = "") {
+  async populateFinanceCompanyDropdown(selectedVal = "") {
     const inputEl = document.getElementById("edit-car-finance-company");
     const datalistEl = document.getElementById("finance-companies-list");
     if (!inputEl) return;
 
-    const companies = this.getExistingFinanceCompanies();
+    let companies = [];
+    try {
+      const res = await fetch("/api/finance-companies");
+      if (res.ok) {
+        const data = await res.json();
+        if (data && Array.isArray(data.companies) && data.companies.length > 0) {
+          companies = data.companies;
+        }
+      }
+    } catch (e) {
+      console.warn("Could not fetch finance companies from API, using fallback", e);
+    }
+
+    if (!companies.length) {
+      companies = this.getExistingFinanceCompanies();
+    }
+
     if (datalistEl) {
       datalistEl.innerHTML = "";
       companies.forEach(comp => {
@@ -2431,8 +2471,8 @@ class App {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });
-      const data = await res.json();
-      if (data.success) {
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.success) {
         this.closeModal("modal-edit-car");
         if (origPlate && origPlate !== plate) {
           const oldIdx = this.cars.findIndex(c => c.plate === origPlate);
@@ -2447,10 +2487,24 @@ class App {
         this.renderFleetCards();
         this.renderFleetOverviewTable();
         this.populateFleetDropdowns();
-        this.showToast(`✅ บันทึกข้อมูลรถยนต์ทะเบียน ${plate} เรียบร้อยแล้ว!`, "success");
+        const successMsg = (this.currentLang === "EN")
+          ? `Vehicle data saved successfully (${plate})`
+          : `บันทึกข้อมูลรถยนต์ทะเบียน ${plate} เรียบร้อยแล้ว!`;
+        this.showToast(`✅ ${successMsg}`, "success");
         await this.loadCars();
       } else {
-        this.showToast("❌ บันทึกไม่สำเร็จ: " + (data.detail || "เกิดข้อผิดพลาด"), "danger");
+        const isEn = (this.currentLang === "EN");
+        let errMsg = data.message || data.detail || (isEn ? "Failed to save vehicle" : "บันทึกข้อมูลไม่สำเร็จ");
+        if (typeof errMsg === "object" && errMsg.message) errMsg = errMsg.message;
+        if (res.status === 409 || data.error === "duplicate_vehicle") {
+          errMsg = this.t("duplicate_vehicle_error");
+          const plateEl = document.getElementById("edit-car-plate");
+          if (plateEl) {
+            plateEl.focus();
+            plateEl.select();
+          }
+        }
+        this.showToast(`⚠️ ${errMsg}`, "danger");
       }
     } catch (e) {
       this.showToast("❌ เกิดข้อผิดพลาด: " + e.message, "danger");

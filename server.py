@@ -372,6 +372,7 @@ async def test_user_line_push(username: str):
 # CARS FLEET
 # -------------------------------------------------------------------------
 @app.get("/api/cars")
+@app.get("/api/vehicles")
 async def list_cars(start_date: Optional[str] = None, end_date: Optional[str] = None):
     if not store.initial_sync_done:
         store.sync_from_supabase(force=True)
@@ -389,6 +390,42 @@ async def list_cars(start_date: Optional[str] = None, end_date: Optional[str] = 
         cars_data.append(c_copy)
     return cars_data
 
+@app.get("/api/finance-companies")
+@app.get("/api/cars/finance-companies")
+@app.get("/api/vehicles/finance-companies")
+async def get_finance_companies():
+    """Fetch existing finance companies from database and in-memory store."""
+    companies = set()
+    for c in store.cars.values():
+        fc = str(c.get("finance_company", "") or "").strip()
+        if fc and fc not in ("-", "None", "none", "null", ""):
+            companies.add(fc)
+    
+    # Also fetch from PostgreSQL/Supabase table if available
+    try:
+        sb = get_supabase_client()
+        if sb:
+            res = sb.table("cars").select("finance_company").execute()
+            for r in (res.data or []):
+                fc = str(r.get("finance_company") or "").strip()
+                if fc and fc not in ("-", "None", "none", "null", ""):
+                    companies.add(fc)
+    except Exception as e:
+        print(f"Finance companies DB query note: {e}")
+
+    defaults = [
+        "โตโยต้า ลีสซิ่ง (Toyota Leasing)",
+        "ทีทีบีไดรฟ์ / ธนชาต (ttb DRIVE)",
+        "กรุงศรี ออโต้ (Krungsri Auto)",
+        "กสิกร ลีสซิ่ง (KLeasing)",
+        "ฮอนด้า ลีสซิ่ง (Honda Leasing)",
+        "ไทยพาณิชย์ (SCB)",
+        "เกียรตินาคินภัทร (KKP)",
+        "ทิสโก้ (TISCO)"
+    ]
+    combined = sorted(list(companies.union(defaults)))
+    return {"success": True, "companies": combined}
+
 def normalize_plate(plate: str) -> str:
     if not plate:
         return ""
@@ -396,40 +433,83 @@ def normalize_plate(plate: str) -> str:
     return re.sub(r"[\s\-\.]+", "", str(plate)).lower()
 
 @app.post("/api/cars")
+@app.post("/api/vehicles")
 async def create_or_update_car(payload: Dict[str, Any]):
     plate = str(payload.get("plate", "")).strip()
     if not plate:
-        raise HTTPException(status_code=400, detail="กรุณาระบุเลขทะเบียนรถ")
+        return JSONResponse(
+            status_code=400,
+            content={"error": "missing_plate", "message": "กรุณาระบุเลขทะเบียนรถ"}
+        )
     
     original_plate = str(payload.get("original_plate") or "").strip()
     norm_new = normalize_plate(plate)
     norm_orig = normalize_plate(original_plate) if original_plate else ""
 
-    new_chassis = str(payload.get("chassis_no") or "").strip().upper()
-    has_valid_chassis = bool(new_chassis and new_chassis != "-" and len(new_chassis) >= 8)
+    new_chassis = str(payload.get("chassis_no") or payload.get("vin") or "").strip().upper()
+    has_valid_chassis = bool(new_chassis and new_chassis != "-" and len(new_chassis) >= 6)
 
-    # 1. Block duplicate License Plate (ignoring spaces, dashes, dots) and duplicate Chassis / VIN
+    # 1. Query in-memory store for duplicates (normalized plate and chassis/VIN)
+    plate_exists = False
+    vin_exists = False
+    conflict_car = None
+
     for existing_plate, c_obj in store.cars.items():
         if norm_orig and normalize_plate(existing_plate) == norm_orig:
             continue  # Editing same vehicle is allowed
         if normalize_plate(existing_plate) == norm_new:
-            dup_brand = c_obj.get("brand", "")
-            dup_model = c_obj.get("model", "")
-            raise HTTPException(
-                status_code=400,
-                detail=f"เลขทะเบียนรถ '{plate}' ซ้ำกับรถ '{dup_brand} {dup_model}' (ทะเบียน {existing_plate}) ในระบบแล้ว ไม่สามารถบันทึกได้"
-            )
+            plate_exists = True
+            conflict_car = c_obj
+            break
         if has_valid_chassis:
-            existing_chassis = str(c_obj.get("chassis_no") or "").strip().upper()
+            existing_chassis = str(c_obj.get("chassis_no") or c_obj.get("vin") or "").strip().upper()
             if existing_chassis and existing_chassis == new_chassis:
-                dup_brand = c_obj.get("brand", "")
-                dup_model = c_obj.get("model", "")
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"หมายเลขตัวถัง (VIN) '{new_chassis}' ซ้ำกับรถ '{dup_brand} {dup_model}' (ทะเบียน {existing_plate}) ในระบบแล้ว ไม่สามารถบันทึกได้"
-                )
+                vin_exists = True
+                conflict_car = c_obj
+                break
 
-    # 2. If plate renamed/corrected from a different original_plate
+    # 2. Query Database (PostgreSQL / Supabase) directly to ensure complete consistency
+    if not plate_exists and not vin_exists:
+        try:
+            sb = get_supabase_client()
+            if sb:
+                db_res = sb.table("cars").select("plate, chassis_no, brand, model").execute()
+                for row in (db_res.data or []):
+                    r_plate = str(row.get("plate") or "").strip()
+                    if norm_orig and normalize_plate(r_plate) == norm_orig:
+                        continue
+                    if normalize_plate(r_plate) == norm_new:
+                        plate_exists = True
+                        conflict_car = row
+                        break
+                    if has_valid_chassis:
+                        r_chassis = str(row.get("chassis_no") or "").strip().upper()
+                        if r_chassis and r_chassis == new_chassis:
+                            vin_exists = True
+                            conflict_car = row
+                            break
+        except Exception as e:
+            print(f"Direct DB duplicate query check note: {e}")
+
+    # Return 409 Conflict if duplicate detected
+    if plate_exists or vin_exists:
+        err_msg = "ข้อมูลซ้ำ: พบเลขทะเบียนหรือเลขตัวถังนี้ในระบบแล้ว"
+        if conflict_car:
+            c_p = conflict_car.get("plate") or ""
+            c_b = conflict_car.get("brand") or ""
+            c_m = conflict_car.get("model") or ""
+            if c_p:
+                err_msg += f" (ทะเบียน {c_p} {c_b} {c_m})".strip()
+        return JSONResponse(
+            status_code=409,
+            content={
+                "error": "duplicate_vehicle",
+                "message": err_msg,
+                "detail": err_msg
+            }
+        )
+
+    # 3. If plate renamed/corrected from a different original_plate
     if original_plate and original_plate != plate and original_plate in store.cars:
         store.async_delete_car(original_plate)
         with store.lock:
