@@ -434,8 +434,12 @@ def normalize_plate(plate: str) -> str:
 
 @app.post("/api/cars")
 @app.post("/api/vehicles")
-async def create_or_update_car(payload: Dict[str, Any]):
-    plate = str(payload.get("plate", "")).strip()
+@app.put("/api/cars")
+@app.put("/api/vehicles")
+@app.put("/api/cars/{plate_param}")
+@app.put("/api/vehicles/{plate_param}")
+async def create_or_update_car(payload: Dict[str, Any], plate_param: Optional[str] = None):
+    plate = str(payload.get("plate", "") or plate_param or "").strip()
     if not plate:
         return JSONResponse(
             status_code=400,
@@ -537,6 +541,17 @@ async def create_or_update_car(payload: Dict[str, Any]):
                 payload["image"] = f"data:image/jpeg;base64,{new_b64}"
         except Exception as e:
             print(f"Car image compression note: {e}")
+
+    # Sanitize service interval fields (date string and mileage number)
+    raw_ns_date = payload.get("next_service_date")
+    if raw_ns_date:
+        payload["next_service_date"] = str(raw_ns_date).strip()
+    raw_ns_mileage = payload.get("next_service_mileage")
+    if raw_ns_mileage is not None:
+        try:
+            payload["next_service_mileage"] = int(float(str(raw_ns_mileage).replace(",", "").strip()))
+        except Exception:
+            payload["next_service_mileage"] = 0
 
     payload["plate"] = plate
     store.async_sync_car(plate, payload)

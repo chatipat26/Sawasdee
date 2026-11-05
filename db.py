@@ -683,7 +683,8 @@ class DataStore:
             'is_debt_free', 'installment_amount', 'payment_due_date',
             'total_installments', 'current_installment', 'finance_company',
             'next_engine_oil_date', 'next_engine_oil_mileage',
-            'next_tire_change_date', 'next_tire_change_mileage'
+            'next_tire_change_date', 'next_tire_change_mileage',
+            'next_service_date', 'next_service_mileage'
         }
         with self.lock:
             existing = dict(self.cars.get(plate, {}))

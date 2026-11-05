@@ -121,6 +121,14 @@ class App {
         TH: "กำหนดเปลี่ยนยางครั้งต่อไป (เลขไมล์)",
         EN: "Next Tire Change (Mileage)"
       },
+      next_service_date: {
+        TH: "กำหนดเช็คระยะครั้งต่อไป (วันที่)",
+        EN: "Next Service Due (Date)"
+      },
+      next_service_mileage: {
+        TH: "กำหนดเช็คระยะครั้งต่อไป (เลขไมล์)",
+        EN: "Next Service Due (Mileage)"
+      },
       service_interval_header: {
         TH: "กำหนดการเช็คระยะ (น้ำมันเครื่อง & ยาง)",
         EN: "Service Intervals (Engine Oil & Tires)"
@@ -577,21 +585,12 @@ class App {
     const inpCarLastSrv = document.getElementById("edit-car-last-srv");
     if (inpCarLastSrv) inpCarLastSrv.placeholder = isEn ? "DD/MM/YYYY or -" : "DD/MM/YYYY หรือ -";
 
-    const lblCarSrvHeader = document.getElementById("lbl-modal-car-srv-header");
-    if (lblCarSrvHeader) lblCarSrvHeader.textContent = isEn ? "Service Intervals (Engine Oil & Tires)" : "กำหนดการเช็คระยะ (น้ำมันเครื่อง & ยาง)";
-    const lblCarOilDate = document.getElementById("lbl-modal-car-oil-date");
-    if (lblCarOilDate) lblCarOilDate.textContent = isEn ? "Next Engine Oil Change (Date)" : "กำหนดถ่ายน้ำมันเครื่องครั้งต่อไป (วันที่)";
-    const lblCarOilMileage = document.getElementById("lbl-modal-car-oil-mileage");
-    if (lblCarOilMileage) lblCarOilMileage.textContent = isEn ? "Next Engine Oil Change (Mileage)" : "กำหนดถ่ายน้ำมันเครื่องครั้งต่อไป (เลขไมล์)";
-    const inpCarOilMileage = document.getElementById("edit-car-oil-mileage");
-    if (inpCarOilMileage) inpCarOilMileage.placeholder = isEn ? "e.g. 20000" : "เช่น 20000";
-
-    const lblCarTireDate = document.getElementById("lbl-modal-car-tire-date");
-    if (lblCarTireDate) lblCarTireDate.textContent = isEn ? "Next Tire Change (Date)" : "กำหนดเปลี่ยนยางครั้งต่อไป (วันที่)";
-    const lblCarTireMileage = document.getElementById("lbl-modal-car-tire-mileage");
-    if (lblCarTireMileage) lblCarTireMileage.textContent = isEn ? "Next Tire Change (Mileage)" : "กำหนดเปลี่ยนยางครั้งต่อไป (เลขไมล์)";
-    const inpCarTireMileage = document.getElementById("edit-car-tire-mileage");
-    if (inpCarTireMileage) inpCarTireMileage.placeholder = isEn ? "e.g. 50000" : "เช่น 50000";
+    const lblCarNextSrvDate = document.getElementById("lbl-modal-car-next-srv-date");
+    if (lblCarNextSrvDate) lblCarNextSrvDate.textContent = isEn ? "Next Service Due (Date)" : "กำหนดเช็คระยะครั้งต่อไป (วันที่)";
+    const lblCarNextSrvMileage = document.getElementById("lbl-modal-car-next-srv-mileage");
+    if (lblCarNextSrvMileage) lblCarNextSrvMileage.textContent = isEn ? "Next Service Due (Mileage)" : "กำหนดเช็คระยะครั้งต่อไป (เลขไมล์)";
+    const inpCarNextSrvMileage = document.getElementById("edit-car-next-srv-mileage");
+    if (inpCarNextSrvMileage) inpCarNextSrvMileage.placeholder = isEn ? "e.g. 20000" : "เช่น 20000";
 
     const lblCarStatus = document.getElementById("lbl-modal-car-status");
     if (lblCarStatus) lblCarStatus.textContent = isEn ? "Vehicle Status*" : "สถานะรถยนต์*";
@@ -2266,10 +2265,12 @@ class App {
     setVal("edit-car-beneficiary", car.beneficiary || car.company || "-");
     setVal("edit-car-reg-year", car.reg_year || "-");
     setVal("edit-car-last-srv", this.dmyToYmd(car.last_service_date));
-    setVal("edit-car-oil-date", this.dmyToYmd(car.next_engine_oil_date));
-    setVal("edit-car-oil-mileage", car.next_engine_oil_mileage !== undefined && car.next_engine_oil_mileage !== null && Number(car.next_engine_oil_mileage) > 0 ? car.next_engine_oil_mileage : "");
-    setVal("edit-car-tire-date", this.dmyToYmd(car.next_tire_change_date));
-    setVal("edit-car-tire-mileage", car.next_tire_change_mileage !== undefined && car.next_tire_change_mileage !== null && Number(car.next_tire_change_mileage) > 0 ? car.next_tire_change_mileage : "");
+    const srvDateVal = car.next_service_date || car.next_engine_oil_date || car.next_service || "";
+    setVal("edit-car-next-srv-date", this.dmyToYmd(srvDateVal));
+    const srvMileageVal = car.next_service_mileage !== undefined && car.next_service_mileage !== null && Number(car.next_service_mileage) > 0
+      ? car.next_service_mileage
+      : (car.next_engine_oil_mileage && Number(car.next_engine_oil_mileage) > 0 ? car.next_engine_oil_mileage : "");
+    setVal("edit-car-next-srv-mileage", srvMileageVal);
     setVal("edit-car-notes", car.notes || "");
     setVal("edit-car-status", car.status || "ว่างพร้อมใช้งาน");
 
@@ -2487,10 +2488,11 @@ class App {
       beneficiary: (document.getElementById("edit-car-beneficiary")?.value || "-").trim(),
       reg_year: (document.getElementById("edit-car-reg-year")?.value || "-").trim(),
       last_service_date: this.ymdToDmy((document.getElementById("edit-car-last-srv")?.value || "").trim()) || "-",
-      next_engine_oil_date: this.ymdToDmy((document.getElementById("edit-car-oil-date")?.value || "").trim()) || "-",
-      next_engine_oil_mileage: parseInt(document.getElementById("edit-car-oil-mileage")?.value || "0", 10) || 0,
-      next_tire_change_date: this.ymdToDmy((document.getElementById("edit-car-tire-date")?.value || "").trim()) || "-",
-      next_tire_change_mileage: parseInt(document.getElementById("edit-car-tire-mileage")?.value || "0", 10) || 0,
+      next_service_date: this.ymdToDmy((document.getElementById("edit-car-next-srv-date")?.value || "").trim()) || "-",
+      next_service_mileage: parseInt(document.getElementById("edit-car-next-srv-mileage")?.value || "0", 10) || 0,
+      next_service: (this.ymdToDmy((document.getElementById("edit-car-next-srv-date")?.value || "").trim()) || "-") !== "-"
+        ? (this.ymdToDmy((document.getElementById("edit-car-next-srv-date")?.value || "").trim()) || "-")
+        : (parseInt(document.getElementById("edit-car-next-srv-mileage")?.value || "0", 10) ? String(parseInt(document.getElementById("edit-car-next-srv-mileage")?.value || "0", 10)) : "-"),
       notes: (document.getElementById("edit-car-notes")?.value || "").trim(),
       status: document.getElementById("edit-car-status")?.value || "ว่างพร้อมใช้งาน",
       image: imgUrl,
@@ -5081,11 +5083,9 @@ class App {
 
       const srvInfo = [];
       if (c.last_service_date && c.last_service_date !== "-") srvInfo.push(`ล่าสุด: ${c.last_service_date}`);
-      if (c.next_service && c.next_service !== "-") srvInfo.push(`ถัดไป: ${c.next_service}`);
-      if (c.next_engine_oil_date && c.next_engine_oil_date !== "-") srvInfo.push(`น/ม: ${c.next_engine_oil_date}`);
-      if (c.next_engine_oil_mileage && Number(c.next_engine_oil_mileage) > 0) srvInfo.push(`ไมล์ น/ม: ${Number(c.next_engine_oil_mileage).toLocaleString()}`);
-      if (c.next_tire_change_date && c.next_tire_change_date !== "-") srvInfo.push(`ยาง: ${c.next_tire_change_date}`);
-      if (c.next_tire_change_mileage && Number(c.next_tire_change_mileage) > 0) srvInfo.push(`ไมล์ยาง: ${Number(c.next_tire_change_mileage).toLocaleString()}`);
+      if (c.next_service_date && c.next_service_date !== "-") srvInfo.push(`กำหนดเช็ค: ${c.next_service_date}`);
+      if (c.next_service_mileage && Number(c.next_service_mileage) > 0) srvInfo.push(`ไมล์เช็ค: ${Number(c.next_service_mileage).toLocaleString()} กม.`);
+      else if (c.next_service && c.next_service !== "-" && c.next_service !== c.next_service_date) srvInfo.push(`ถัดไป: ${c.next_service}`);
       const srvHtml = srvInfo.length > 0
         ? `<div style="font-size:10.5px; color:#475569;">${srvInfo.join(" | ")}</div>`
         : "";
