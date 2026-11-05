@@ -2068,17 +2068,6 @@ class App {
     }
   }
 
-  // Expanded state is local to each card element (data-expanded), scoped via closest().
-  toggleCardFooter(badgeEl) {
-    const card = badgeEl && badgeEl.closest ? badgeEl.closest(".car-card-modern") : null;
-    if (!card) return;
-    card.dataset.expanded = "true";
-    const panel = card.querySelector(".car-card-collapsible-footer");
-    if (panel) panel.style.display = "block";
-    const badge = card.querySelector(".thai-plate-badge");
-    if (badge) badge.classList.add("active");
-  }
-
   // --- Rendering: Fleet Cards ---
   renderFleetCards() {
     const container = document.getElementById("fleet-cards-container");
@@ -2181,16 +2170,13 @@ class App {
         catTag = "FLEET";
       }
 
-      // 2. Thai License Plate Badge (Clickable Toggle Trigger)
-      const isExpanded = true;
       const { plateNo, province, isRed } = this.formatPlateDisplay(c.plate);
-      const plateTooltip = isEn ? "Click to toggle price & actions" : "คลิกป้ายทะเบียนเพื่อเปิด/ปิดราคาและปุ่มทำรายการ";
       const plateHtml = isRed
-        ? `<div class="thai-plate-badge red-plate ${isExpanded ? 'active' : ''}"         id="plate-badge-${safeId}" onclick="app.toggleCardFooter(this)" role="button" tabindex="0" title="${plateTooltip}">
+        ? `<div class="thai-plate-badge red-plate" id="plate-badge-${safeId}">
              <div class="thai-plate-num">${isEn ? "Red Plate" : "ป้ายแดง"}</div>
-             <div class="thai-plate-prov">${isEn ? "Red plate" : "Red plate"}</div>
+             <div class="thai-plate-prov">${isEn ? "Red plate" : "ป้ายแดง"}</div>
            </div>`
-        : `<div class="thai-plate-badge ${isExpanded ? 'active' : ''}"         id="plate-badge-${safeId}" onclick="app.toggleCardFooter(this)" role="button" tabindex="0" title="${plateTooltip}">
+        : `<div class="thai-plate-badge" id="plate-badge-${safeId}">
              <div class="thai-plate-num">${plateNo}</div>
              <div class="thai-plate-prov">${province}</div>
            </div>`;
@@ -2230,7 +2216,7 @@ class App {
         : ((dict && dict.queue) || (isEn ? 'Queue' : 'จองคิว'));
 
       return `
-        <div class="car-card-modern" data-expanded="${isExpanded ? 'true' : 'false'}">
+        <div class="car-card-modern">
           <!-- MISSION 1: หน้าการ์ด (CARD FRONT) -->
           <div class="car-top-row">
             <div class="car-code-group">
@@ -2250,9 +2236,7 @@ class App {
             ${alertPillHtml}
           </div>
 
-          <div class="car-card-collapsible-footer" 
-               id="card-footer-${safeId}" 
-               style="${isExpanded ? 'display:block;' : 'display:none;'}">
+          <div class="car-card-collapsible-footer" id="card-footer-${safeId}">
             <div class="car-card-rate-row">
               <div class="car-card-rate-label">
                 ${dailyRateLabel}: <b>฿${priceDay.toLocaleString()}</b>
@@ -2263,9 +2247,11 @@ class App {
             </div>
             <div class="car-card-actions">
               <button type="button" class="btn btn-secondary car-card-btn-details" onclick="app.openCarDetailsModal('${safePlate}')">
+                <svg class="car-card-btn-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
                 <span>${detailsLabel}</span>
               </button>
               <button type="button" class="btn btn-primary car-card-btn-book" onclick="app.openBookModal('${safePlate}')" ${!isAvail ? `title="${isEn ? 'Reserved - click to reserve queue' : 'ติดจอง - คลิกเพื่อจองคิวต่อ'}"` : ''}>
+                <svg class="car-card-btn-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M12 14v4M10 16h4"/></svg>
                 <span>${bookNowLabel}</span>
               </button>
             </div>
