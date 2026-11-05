@@ -1676,7 +1676,8 @@
         </div>
         <div class="form-group">
           <label id="lbl-modal-car-model">Vehicle Model*</label>
-          <input type="text" id="edit-car-model" class="form-control" placeholder="เช่น Yaris Ativ">
+          <input type="text" id="edit-car-model" class="form-control" list="car-models-list" placeholder="เช่น Yaris Ativ">
+          <datalist id="car-models-list"></datalist>
         </div>
       </div>
 
@@ -1721,7 +1722,8 @@
         </div>
         <div class="form-group">
           <label id="lbl-modal-car-color">Body Color</label>
-          <input type="text" id="edit-car-color" class="form-control" placeholder="เช่น ขาว, ดำ, เทา">
+          <input type="text" id="edit-car-color" class="form-control" list="car-colors-list" placeholder="เช่น ขาว, ดำ, เทา">
+          <datalist id="car-colors-list"></datalist>
         </div>
         <div class="form-group">
           <label id="lbl-modal-car-mileage">Odometer Mileage (km)</label>
@@ -1769,11 +1771,13 @@
       <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:12px; margin-bottom:12px;">
         <div class="form-group">
           <label id="lbl-modal-car-ins-comp">Insurance Company</label>
-          <input type="text" id="edit-car-ins-comp" class="form-control" placeholder="เช่น คุ้มภัยโตเกียวมารีน">
+          <input type="text" id="edit-car-ins-comp" class="form-control" list="car-ins-comps-list" placeholder="เช่น คุ้มภัยโตเกียวมารีน">
+          <datalist id="car-ins-comps-list"></datalist>
         </div>
         <div class="form-group">
           <label id="lbl-modal-car-owner">Vehicle Owner</label>
-          <input type="text" id="edit-car-owner" class="form-control" placeholder="เช่น SWD, บีคลิ๊ก">
+          <input type="text" id="edit-car-owner" class="form-control" list="car-owners-list" placeholder="เช่น SWD, บีคลิ๊ก">
+          <datalist id="car-owners-list"></datalist>
         </div>
         <div class="form-group">
           <label id="lbl-modal-car-beneficiary">Beneficiary</label>
@@ -1882,6 +1886,28 @@
             Save Vehicle Data
           </button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL: FLEET CAR DETAILS & BOOKING POPUP (UNSLOP) -->
+  <!-- ===================================================================== -->
+  <div id="modal-car-details" class="modal-backdrop">
+    <div class="modal-dialog" style="max-width:840px; width:95%; max-height:92vh; display:flex; flex-direction:column;">
+      <div class="modal-header" style="border-bottom:1px solid #E2E8F0; padding:14px 20px; display:flex; justify-content:space-between; align-items:center;">
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+          <div class="modal-title" id="modal-car-details-title" style="font-size:16px; font-weight:800; color:#1E293B; margin:0;">
+            ดูรายละเอียด / จองรถ
+          </div>
+          <div id="car-details-plate-badge"></div>
+          <div id="car-details-status-badge"></div>
+        </div>
+        <button class="modal-close" onclick="app.closeModal('modal-car-details')" style="font-size:18px; cursor:pointer;">✕</button>
+      </div>
+
+      <div class="modal-body" id="car-details-modal-body" style="padding:18px 20px; overflow-y:auto; flex:1;">
+        <!-- Dynamic Content rendered by app.openCarDetailsModal -->
       </div>
     </div>
   </div>
@@ -2173,7 +2199,7 @@
   <div class="toast-container" id="toast-container"></div>
 
   <!-- Scripts with cache busting -->
-  <script src="/static/js/app.js?v=7.2"></script>
+  <script src="/static/js/app.js?v=7.3"></script>
 
   <!-- ===================================================================== -->
   <!-- MODAL: ACTIVE RENTALS / CARS WITH CUSTOMERS (POPUP FOR CARD 1) -->

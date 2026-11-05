@@ -426,6 +426,50 @@ async def get_finance_companies():
     combined = sorted(list(companies.union(defaults)))
     return {"success": True, "companies": combined}
 
+@app.get("/api/cars/options")
+@app.get("/api/vehicles/options")
+async def get_vehicle_form_options():
+    """Fetch unique values for Brand, Model, Company, Color, Insurance Co, Owner for Creatable Comboboxes."""
+    brands = set()
+    models = set()
+    companies = set()
+    colors = set()
+    ins_companies = set()
+    owners = set()
+
+    for c in store.cars.values():
+        for field, s in [
+            ("brand", brands),
+            ("model", models),
+            ("company", companies),
+            ("color", colors),
+            ("ins_company", ins_companies),
+            ("owner", owners),
+        ]:
+            val = str(c.get(field, "") or "").strip()
+            if val and val not in ("-", "None", "none", "null", ""):
+                s.add(val)
+
+    default_brands = ["Toyota", "Honda", "Isuzu", "Mitsubishi", "Nissan", "Mazda", "Ford", "BYD", "GWM", "MG", "Mercedes-Benz", "BMW", "Hyundai"]
+    default_companies = ["บจก.สวัสดี เรนทัล (Sawasdee Rental)", "Sawasdee Rent A Car", "P.D.P. Co., Ltd.", "Sawasdee Car Rent"]
+    default_colors = ["ขาว", "ดำ", "เทา", "บรอนซ์เงิน", "แดง", "น้ำเงิน", "WHITE", "BLACK", "GREY", "SILVER"]
+    default_ins = ["คุ้มภัยโตเกียวมารีน", "วิริยะประกันภัย", "ทิพยประกันภัย", "กรุงเทพประกันภัย", "ธนชาตประกันภัย", "เมืองไทยประกันภัย"]
+
+    brands.update(default_brands)
+    companies.update(default_companies)
+    colors.update(default_colors)
+    ins_companies.update(default_ins)
+
+    return {
+        "success": True,
+        "brands": sorted(list(brands)),
+        "models": sorted(list(models)),
+        "companies": sorted(list(companies)),
+        "colors": sorted(list(colors)),
+        "ins_companies": sorted(list(ins_companies)),
+        "owners": sorted(list(owners))
+    }
+
 def normalize_plate(plate: str) -> str:
     if not plate:
         return ""

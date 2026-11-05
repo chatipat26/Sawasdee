@@ -132,6 +132,14 @@ class App {
       service_interval_header: {
         TH: "กำหนดการเช็คระยะ (น้ำมันเครื่อง & ยาง)",
         EN: "Service Intervals (Engine Oil & Tires)"
+      },
+      view_details_or_book: {
+        TH: "ดูรายละเอียด / จองรถ",
+        EN: "View Details / Book"
+      },
+      car_details_modal_title: {
+        TH: "รายละเอียดรถยนต์ & จองรถ",
+        EN: "Vehicle Details & Booking"
       }
     };
     const lang = this.currentLang === "EN" ? "EN" : "TH";
@@ -631,6 +639,9 @@ class App {
     if (btnCarCancelModal) btnCarCancelModal.textContent = isEn ? "Cancel" : "ยกเลิก";
     const btnCarSaveModal = document.getElementById("btn-submit-edit-car");
     if (btnCarSaveModal) btnCarSaveModal.textContent = isEn ? "Save Vehicle Data" : "บันทึกข้อมูลรถยนต์";
+
+    const modalCarDetailsTitle = document.getElementById("modal-car-details-title");
+    if (modalCarDetailsTitle) modalCarDetailsTitle.textContent = isEn ? "Vehicle Details & Booking" : "ดูรายละเอียด / จองรถ";
 
     // 5. Search box placeholder
     const sbInput = document.getElementById("sb-search-input");
@@ -1297,6 +1308,7 @@ class App {
     if (res.ok) {
       this.cars = await res.json();
       this.populateFleetDropdowns();
+      this.populateCarFormCreatableSelects();
       this.renderFleetCards();
       this.renderFleetOverviewTable();
       if (this.activeModule === "dashboard") {
@@ -1974,103 +1986,217 @@ class App {
             ${alertPillHtml}
           </div>
 
-          <!-- MISSION 2: ซ่อนรูปภาพและข้อมูลเชิงลึกใน EXPANDER (100% DATASET RETENTION) -->
-          <button type="button" class="car-expander-toggle-btn" onclick="app.toggleCarExpander('${safePlate}')">
-            <span>${isEn ? 'View Image & Details' : 'ดูรูปรถและข้อมูลเพิ่มเติม'}</span>
-            <span id="exp-arrow-${safeId}">▼</span>
-          </button>
-
-          <div id="exp-panel-${safeId}" class="car-expander-content">
-            <!-- 1. Vehicle Photo -->
-            <div class="car-expander-img-box">
-              ${carImg ? `<img src="${carImg}" alt="${c.brand || ''} ${c.model || ''}">` : `<div style="height:140px; display:flex; align-items:center; justify-content:center; background:#F8FAFC; color:#94A3B8; font-size:12px; font-weight:600; border-radius:8px; border:1px dashed #CBD5E1;">${isEn ? 'No Image' : 'ไม่มีรูปภาพ (No Image)'}</div>`}
-              <button type="button" onclick="app.triggerCarPhotoUpload('${safePlate}')" class="btn btn-sm" style="position:absolute; bottom:8px; right:8px; background:rgba(255,255,255,0.92); border:1px solid #CBD5E1; border-radius:20px; padding:3px 10px; font-size:11px; font-weight:700; cursor:pointer;">
-                ${isEn ? 'Upload Photo' : 'อัปโหลดรูป'}
-              </button>
+          <!-- Rate summary & View Details / Book Modal Button (Unslop) -->
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px; padding-top:10px; border-top:1px dashed #E2E8F0;">
+            <div style="font-size:11.5px; color:#64748B;">
+              ${isEn ? 'Daily Rate' : 'ค่าเช่ารายวัน'}: <b style="color:#0F172A; font-size:13.5px;">฿${priceDay.toLocaleString()}</b>
             </div>
-
-            <!-- 2. ข้อมูลกรมธรรม์ประกันภัย -->
-            <div class="car-exp-section">
-              <div class="car-exp-section-title">${isEn ? 'Insurance Policy' : 'ข้อมูลกรมธรรม์ประกันภัย'}</div>
-              <div class="car-exp-grid">
-                <div><b>${isEn ? 'Company:' : 'ยี่ห้อ/บริษัท:'}</b> ${c.insurance_brand || c.ins_company || '-'}</div>
-                <div><b>${isEn ? 'Premium:' : 'เบี้ยประกัน:'}</b> ${c.insurance_premium ? Number(c.insurance_premium).toLocaleString() + ' ฿' : '-'}</div>
-                <div><b>${isEn ? 'Coverage:' : 'ทุนประกัน:'}</b> ${c.insurance_coverage ? Number(c.insurance_coverage).toLocaleString() + ' ฿' : '-'}</div>
-                <div><b>${isEn ? 'Start:' : 'วันเริ่ม:'}</b> ${c.ins_start_date || '-'}</div>
-                <div><b>${isEn ? 'Expiry:' : 'วันหมดอายุ:'}</b> <span style="color:#DC2626; font-weight:700;">${c.ins_expiry || '-'}</span></div>
-              </div>
-            </div>
-
-            <!-- 3. ข้อมูล พ.ร.บ. และภาษี -->
-            <div class="car-exp-section">
-              <div class="car-exp-section-title">${isEn ? 'ACT & Tax Registration' : 'ข้อมูล พ.ร.บ. และภาษี'}</div>
-              <div class="car-exp-grid">
-                <div><b>${isEn ? 'ACT Brand:' : 'ยี่ห้อ พ.ร.บ.:'}</b> ${c.act_brand || '-'}</div>
-                <div><b>${isEn ? 'ACT Price:' : 'ราคา พ.ร.บ.:'}</b> ${c.act_price ? Number(c.act_price).toLocaleString() + ' ฿' : '-'}</div>
-                <div><b>${isEn ? 'ACT Expiry:' : 'หมดอายุ พ.ร.บ.:'}</b> <span style="color:#DC2626; font-weight:700;">${c.act_expiry || '-'}</span></div>
-                <div><b>${isEn ? 'Tax Year:' : 'ปีภาษี:'}</b> ${c.tax_year || '-'}</div>
-                <div><b>${isEn ? 'Tax Expiry:' : 'หมดอายุภาษี:'}</b> <span style="color:#DC2626; font-weight:700;">${c.tax_expiry || '-'}</span></div>
-              </div>
-            </div>
-
-            <!-- 4. ข้อมูลสัญญาเช่าซื้อ / ลิสซิ่ง (HP / Leasing) -->
-            <div class="car-exp-section">
-              <div class="car-exp-section-title">${isEn ? 'Hire Purchase / Leasing' : 'ข้อมูลสัญญาเช่าซื้อ / ลิสซิ่ง (HP / Leasing)'}</div>
-              <div class="car-exp-grid">
-                <div><b>${isEn ? 'Finance Co:' : 'บริษัทไฟแนนซ์:'}</b> ${c.finance_company || '-'}</div>
-                <div><b>${isEn ? 'Contract No:' : 'เลขที่สัญญา:'}</b> ${c.leasing_contract || c.hp_contract_no || '-'}</div>
-                <div><b>${isEn ? 'Installment/Mo:' : 'ค่างวด/เดือน:'}</b> ${(c.installment_amount || c.leasing_installment_amount || c.hp_installment) ? Number(c.installment_amount || c.leasing_installment_amount || c.hp_installment).toLocaleString() + ' ฿' : '-'}</div>
-                <div><b>${isEn ? 'Total Terms:' : 'จำนวนงวด:'}</b> ${c.total_installments || c.leasing_total_installments || '-'} ${isEn ? 'terms' : 'งวด'}</div>
-                <div><b>${isEn ? 'Current Term:' : 'งวดปัจจุบัน:'}</b> ${c.current_installment || c.leasing_current_installment || '-'}</div>
-                <div><b>${isEn ? 'Due / Last Paid:' : 'วันครบกำหนด:'}</b> ${c.payment_due_date || c.leasing_last_payment_date || '-'}</div>
-              </div>
-            </div>
-
-            <!-- 5. ข้อมูลตัวรถเชิงลึก -->
-            <div class="car-exp-section">
-              <div class="car-exp-section-title">${isEn ? 'Vehicle Specifications' : 'ข้อมูลตัวรถเชิงลึก'}</div>
-              <div class="car-exp-grid">
-                <div><b>${isEn ? 'Plate:' : 'ทะเบียน:'}</b> ${c.plate}</div>
-                <div><b>${isEn ? 'Mileage:' : 'เลขไมล์:'}</b> ${Number(String(c.mileage || '0').replace(/,/g, '')).toLocaleString()} km</div>
-                <div><b>${isEn ? 'Engine No:' : 'เลขเครื่อง:'}</b> ${c.engine_no || '-'}</div>
-                <div><b>${isEn ? 'VIN (Chassis):' : 'เลขตัวถัง:'}</b> ${c.chassis_no || '-'}</div>
-                <div><b>${isEn ? 'Engine CC:' : 'ขนาด CC:'}</b> ${c.engine_cc || '1500'} cc</div>
-                <div><b>${isEn ? 'Fuel:' : 'เชื้อเพลิง:'}</b> ${c.fuel_type || 'Gasoline'}</div>
-                <div><b>${isEn ? 'Ownership:' : 'กรรมสิทธิ์:'}</b> ${c.company || c.owner || 'Sawasdee'}</div>
-                <div><b>${isEn ? 'Manager:' : 'ผู้ดูแล:'}</b> ${c.manager || '-'}</div>
-              </div>
-            </div>
-
-            <!-- 6. อัตราค่าเช่าที่ตั้งไว้ -->
-            <div class="car-exp-section">
-              <div class="car-exp-section-title">${isEn ? 'Rental Pricing Rates' : 'อัตราค่าเช่าที่ตั้งไว้'}</div>
-              <div class="car-exp-grid">
-                <div><b>${isEn ? 'Daily:' : 'รายวัน:'}</b> ฿${priceDay.toLocaleString()}/d</div>
-                <div><b>${isEn ? 'Weekly:' : 'รายสัปดาห์:'}</b> ฿${priceWeek.toLocaleString()}/w</div>
-                <div><b>${isEn ? 'Monthly:' : 'รายเดือน:'}</b> ฿${priceMonth.toLocaleString()}/m</div>
-                <div><b>${isEn ? `Rental (${dur.days}d):` : `คำนวณ (${dur.days} วัน):`}</b> <b style="color:#E85826;">฿${basePrice.toLocaleString()}</b></div>
-              </div>
-            </div>
-
-            <!-- 7. ปุ่ม Action ต่างๆ -->
-            <div style="display:flex; gap:6px; margin-top:10px; flex-wrap:wrap;">
-              <button onclick="app.openBookModal('${safePlate}')" class="btn btn-sm ${isAvail ? 'btn-primary' : 'btn-secondary'}" style="flex:1; min-width:130px;" ${!isAvail ? `title="${isEn ? 'This vehicle is reserved, but you can inspect details or queue up' : 'รถคันนี้ติดจอง แต่สามารถคลิกดูรายละเอียดหรือจองคิวต่อได้'}"` : ''}>
-                ${isAvail ? (isEn ? 'Book Now' : 'สร้างสัญญาเช่า / จอง') : (isEn ? 'Reserve Queue' : 'จองคิว')}
-              </button>
-              <button type="button" onclick="app.openNewMaintenanceModal('${safePlate}')" class="btn btn-sm" style="padding:4px 8px; font-size:11px; background:#FFF7ED; border:1px solid #FDBA74; color:#C2410C; border-radius:6px; font-weight:700; cursor:pointer;" title="${isEn ? 'Report maintenance / Issue renewal order' : 'แจ้งซ่อมบำรุง / ออกใบงานต่อทะเบียน-ประกัน'}">
-                ${isEn ? 'Maintenance' : 'ซ่อมบำรุง'}
-              </button>
-              <button type="button" onclick="app.openEditCarModal('${safePlate}')" class="btn btn-sm btn-secondary" style="padding:4px 8px; font-size:11px; background:#FAF7F2; border:1px solid #D1D5DB; color:#374151; border-radius:6px;" title="${isEn ? 'Edit car details & photo' : 'แก้ไขรายละเอียดรถและรูปรถ'}">
-                ${isEn ? 'Edit' : 'แก้ไข'}
-              </button>
-              <button type="button" onclick="app.deleteCarByPlate('${safePlate}')" class="btn btn-sm btn-danger" style="padding:4px 8px; font-size:11px; background:#FEE2E2; border:1px solid #FCA5A5; color:#DC2626; border-radius:6px; cursor:pointer;" title="${isEn ? 'Delete this car from system' : 'ลบข้อมูลรถยนต์คันนี้ออกจากระบบ'}">
-                ${isEn ? 'Delete' : 'ลบ'}
-              </button>
+            <div style="font-size:11.5px; color:#E85826; font-weight:700;">
+              ${dur.days > 0 ? (isEn ? `${dur.days}d: ฿${basePrice.toLocaleString()}` : `${dur.days} วัน: ฿${basePrice.toLocaleString()}`) : ''}
             </div>
           </div>
+
+          <button type="button" class="btn btn-primary" onclick="app.openCarDetailsModal('${safePlate}')" style="width:100%; margin-top:10px; font-weight:700; font-size:12.5px; padding:9px 12px; border-radius:8px; display:flex; align-items:center; justify-content:center; gap:6px; cursor:pointer; box-shadow:0 1px 3px rgba(232,88,38,0.2);">
+            <span>🔍</span> <span>${isEn ? 'View Details / Book' : 'ดูรายละเอียด / จองรถ'}</span>
+          </button>
         </div>
       `;
     }).join("");
+  }
+
+  // --- Fleet Car Details Popup Modal (Unslop) ---
+  openCarDetailsModal(plate) {
+    const isEn = (this.currentLang === "EN");
+    const car = (this.cars || []).find(c => c.plate === plate);
+    if (!car) {
+      this.showToast(isEn ? "Vehicle not found" : "ไม่พบข้อมูลรถยนต์", "error");
+      return;
+    }
+
+    const c = car;
+    const safePlate = String(c.plate || "").replace(/'/g, "\\'");
+    const rates = this.getCarRates(c);
+    const dur = this.calcDuration ? this.calcDuration() : { days: 1, hours: 0, text: "1 วัน" };
+    const priceDay = rates.day || 1000;
+    const priceWeek = rates.week || 6000;
+    const priceMonth = rates.month || 20000;
+    const totalPrice = this.calculateRentalCost(c, dur.days, dur.hours);
+    const isAvail = (c.status === "ว่างพร้อมใช้งาน" || c.fleet_status_key === "available");
+    const carImg = c.image && c.image !== "-" ? c.image : "";
+
+    const titleEl = document.getElementById("modal-car-details-title");
+    if (titleEl) {
+      titleEl.textContent = `${c.brand || ''} ${c.model || ''}`;
+    }
+
+    const plateBadge = document.getElementById("car-details-plate-badge");
+    if (plateBadge) {
+      plateBadge.innerHTML = `
+        <span style="display:inline-block; border:1.5px solid #1E293B; border-radius:4px; padding:2px 8px; font-size:12px; font-weight:800; background:#FFF; color:#1E293B; letter-spacing:0.5px;">
+          ${c.plate}
+        </span>
+      `;
+    }
+
+    const statusBadge = document.getElementById("car-details-status-badge");
+    if (statusBadge) {
+      let statusBg = "#DCFCE7", statusColor = "#166534", statusBorder = "#86EFAC";
+      if (c.status === "ซ่อมบำรุง") {
+        statusBg = "#FEE2E2"; statusColor = "#991B1B"; statusBorder = "#FCA5A5";
+      } else if (c.status === "ติดจอง" || c.status === "เตรียมส่งมอบ") {
+        statusBg = "#FFF7ED"; statusColor = "#9A3412"; statusBorder = "#FED7AA";
+      } else if (c.status === "กำลังเช่า") {
+        statusBg = "#EFF6FF"; statusColor = "#1E40AF"; statusBorder = "#BFDBFE";
+      }
+      statusBadge.innerHTML = `
+        <span style="display:inline-block; background:${statusBg}; color:${statusColor}; border:1px solid ${statusBorder}; border-radius:12px; padding:2px 10px; font-size:11.5px; font-weight:700;">
+          ${c.status || "ว่างพร้อมใช้งาน"}
+        </span>
+      `;
+    }
+
+    const bodyEl = document.getElementById("car-details-modal-body");
+    if (!bodyEl) return;
+
+    bodyEl.innerHTML = `
+      <!-- Top Row: Photo & Pricing Summary -->
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-bottom:16px;">
+        <!-- Photo Box -->
+        <div style="position:relative; border-radius:10px; overflow:hidden; border:1px solid #E2E8F0; background:#0F172A; min-height:190px; display:flex; align-items:center; justify-content:center;">
+          ${carImg ? `<img src="${carImg}" alt="${c.brand || ''} ${c.model || ''}" style="width:100%; height:190px; object-fit:cover; display:block;">` : `<div style="color:#94A3B8; font-size:13px; font-weight:600; text-align:center; padding:20px;">🚗 ${isEn ? 'No Vehicle Photo' : 'ยังไม่มีรูปภาพรถยนต์'}</div>`}
+          <button type="button" onclick="app.triggerCarPhotoUpload('${safePlate}')" class="btn btn-sm" style="position:absolute; bottom:10px; right:10px; background:rgba(255,255,255,0.95); border:1px solid #CBD5E1; border-radius:20px; padding:4px 12px; font-size:11.5px; font-weight:700; cursor:pointer; box-shadow:0 2px 4px rgba(0,0,0,0.15);">
+            📷 ${isEn ? 'Upload Photo' : 'อัปโหลดรูปรถ'}
+          </button>
+        </div>
+
+        <!-- Pricing Rates Card -->
+        <div style="background:#FAF7F2; border:1px solid #FED7AA; border-radius:10px; padding:14px; display:flex; flex-direction:column; justify-content:space-between;">
+          <div>
+            <div style="font-size:12px; font-weight:700; color:#C2410C; margin-bottom:8px; text-transform:uppercase; letter-spacing:0.5px;">
+              💰 ${isEn ? 'Rental Pricing Rates' : 'อัตราค่าเช่าที่ตั้งไว้'}
+            </div>
+            <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:8px; margin-bottom:12px; background:#FFF; border:1px solid #E2E8F0; border-radius:8px; padding:8px; text-align:center;">
+              <div>
+                <div style="font-size:10.5px; color:#64748B;">${isEn ? 'Daily' : 'รายวัน'}</div>
+                <div style="font-weight:800; font-size:13px; color:#1E293B;">฿${priceDay.toLocaleString()}</div>
+              </div>
+              <div>
+                <div style="font-size:10.5px; color:#64748B;">${isEn ? 'Weekly' : 'รายสัปดาห์'}</div>
+                <div style="font-weight:800; font-size:13px; color:#1E293B;">฿${priceWeek.toLocaleString()}</div>
+              </div>
+              <div>
+                <div style="font-size:10.5px; color:#64748B;">${isEn ? 'Monthly' : 'รายเดือน'}</div>
+                <div style="font-weight:800; font-size:13px; color:#1E293B;">฿${priceMonth.toLocaleString()}</div>
+              </div>
+            </div>
+          </div>
+
+          <div style="background:#FFF7ED; border:1px solid #FDBA74; border-radius:8px; padding:10px; display:flex; justify-content:space-between; align-items:center;">
+            <div>
+              <div style="font-size:11px; color:#9A3412; font-weight:600;">${isEn ? `Calculated (${dur.days}d ${dur.hours}h)` : `คำนวณตามระยะเวลา (${dur.days} วัน ${dur.hours} ชม.)`}</div>
+              <div style="font-size:10.5px; color:#64748B;">${isEn ? 'Based on active dates filter' : 'ตามช่วงเวลาเช่าที่เลือกด้านบน'}</div>
+            </div>
+            <div style="font-size:18px; font-weight:800; color:#EA580C;">
+              ฿${totalPrice.toLocaleString()}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Mid Grid: Specifications & Detailed Records -->
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:16px;">
+        <!-- 1. ข้อมูลตัวรถเชิงลึก -->
+        <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:8px; padding:12px;">
+          <div style="font-size:12px; font-weight:700; color:#334155; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
+            <span>🚙</span> <span>${isEn ? 'Vehicle Specifications' : 'ข้อมูลตัวรถเชิงลึก'}</span>
+          </div>
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px; font-size:11.5px;">
+            <div><b style="color:#64748B;">${isEn ? 'Group:' : 'กลุ่มรถ:'}</b> ${c.car_group || '-'}</div>
+            <div><b style="color:#64748B;">${isEn ? 'Reg Year:' : 'ปีจดทะเบียน:'}</b> ${c.reg_year || '-'}</div>
+            <div><b style="color:#64748B;">${isEn ? 'Color:' : 'สีตัวถัง:'}</b> ${c.color || '-'}</div>
+            <div><b style="color:#64748B;">${isEn ? 'Fuel:' : 'เชื้อเพลิง:'}</b> ${c.fuel_type || '-'}</div>
+            <div><b style="color:#64748B;">${isEn ? 'Engine CC:' : 'ขนาด CC:'}</b> ${c.engine_cc || '-'}</div>
+            <div><b style="color:#64748B;">${isEn ? 'Mileage:' : 'เลขไมล์:'}</b> ${Number(String(c.mileage || '0').replace(/,/g, '')).toLocaleString()} km</div>
+            <div style="grid-column: span 2;"><b style="color:#64748B;">${isEn ? 'VIN (Chassis):' : 'เลขตัวถัง:'}</b> <code>${c.chassis_no || '-'}</code></div>
+            <div style="grid-column: span 2;"><b style="color:#64748B;">${isEn ? 'Owner / Company:' : 'ผู้ถือกรรมสิทธิ์:'}</b> ${c.company || c.owner || '-'}</div>
+          </div>
+        </div>
+
+        <!-- 2. ข้อมูล พ.ร.บ. และภาษี -->
+        <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:8px; padding:12px;">
+          <div style="font-size:12px; font-weight:700; color:#334155; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
+            <span>📋</span> <span>${isEn ? 'ACT & Tax Registration' : 'ข้อมูล พ.ร.บ. และภาษี'}</span>
+          </div>
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px; font-size:11.5px;">
+            <div><b style="color:#64748B;">${isEn ? 'ACT Expiry:' : 'หมดอายุ พ.ร.บ.:'}</b> <span style="color:#DC2626; font-weight:700;">${c.act_expiry || '-'}</span></div>
+            <div><b style="color:#64748B;">${isEn ? 'Tax Expiry:' : 'หมดอายุภาษี:'}</b> <span style="color:#DC2626; font-weight:700;">${c.tax_expiry || '-'}</span></div>
+            <div><b style="color:#64748B;">${isEn ? 'ACT Brand:' : 'ยี่ห้อ พ.ร.บ.:'}</b> ${c.act_brand || '-'}</div>
+            <div><b style="color:#64748B;">${isEn ? 'ACT Price:' : 'ราคา พ.ร.บ.:'}</b> ${c.act_price ? Number(c.act_price).toLocaleString() + ' ฿' : '-'}</div>
+          </div>
+        </div>
+
+        <!-- 3. ข้อมูลกรมธรรม์ประกันภัย -->
+        <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:8px; padding:12px;">
+          <div style="font-size:12px; font-weight:700; color:#334155; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
+            <span>🛡️</span> <span>${isEn ? 'Insurance Policy' : 'ข้อมูลกรมธรรม์ประกันภัย'}</span>
+          </div>
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px; font-size:11.5px;">
+            <div><b style="color:#64748B;">${isEn ? 'Company:' : 'บริษัทประกัน:'}</b> ${c.ins_company || c.insurance_brand || '-'}</div>
+            <div><b style="color:#64748B;">${isEn ? 'Expiry:' : 'วันหมดอายุ:'}</b> <span style="color:#DC2626; font-weight:700;">${c.ins_expiry || '-'}</span></div>
+            <div><b style="color:#64748B;">${isEn ? 'Premium:' : 'เบี้ยประกัน:'}</b> ${c.insurance_premium ? Number(c.insurance_premium).toLocaleString() + ' ฿' : '-'}</div>
+            <div><b style="color:#64748B;">${isEn ? 'Coverage:' : 'ทุนประกัน:'}</b> ${c.insurance_coverage ? Number(c.insurance_coverage).toLocaleString() + ' ฿' : '-'}</div>
+          </div>
+        </div>
+
+        <!-- 4. กำหนดการเช็คระยะ & สัญญาเช่าซื้อ/ไฟแนนซ์ -->
+        <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:8px; padding:12px;">
+          <div style="font-size:12px; font-weight:700; color:#334155; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
+            <span>🔧</span> <span>${isEn ? 'Service Due & Financing' : 'กำหนดเช็คระยะ & การเงิน'}</span>
+          </div>
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px; font-size:11.5px;">
+            <div><b style="color:#64748B;">${isEn ? 'Last Service:' : 'เช็คล่าสุด:'}</b> ${c.last_service_date || '-'}</div>
+            <div><b style="color:#64748B;">${isEn ? 'Next Service Date:' : 'เช็คถัดไป (วันที่):'}</b> <span style="font-weight:700; color:#0369A1;">${c.next_service_date || c.next_service || '-'}</span></div>
+            <div><b style="color:#64748B;">${isEn ? 'Next Mileage:' : 'เช็คถัดไป (ไมล์):'}</b> <span style="font-weight:700; color:#0369A1;">${c.next_service_mileage ? Number(c.next_service_mileage).toLocaleString() + ' km' : '-'}</span></div>
+            <div><b style="color:#64748B;">${isEn ? 'Finance Co:' : 'บริษัทไฟแนนซ์:'}</b> ${c.finance_company || (c.is_debt_free ? 'ปลอดภาระ' : '-')}</div>
+            <div><b style="color:#64748B;">${isEn ? 'Installment/Mo:' : 'ค่างวด/เดือน:'}</b> ${(c.installment_amount || c.hp_installment) ? Number(c.installment_amount || c.hp_installment).toLocaleString() + ' ฿' : '-'}</div>
+            <div><b style="color:#64748B;">${isEn ? 'Due Date:' : 'วันตัดงวด:'}</b> ${c.payment_due_date || '-'}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Notes if any -->
+      ${c.notes ? `
+        <div style="background:#FFFBEB; border:1px solid #FDE68A; border-radius:8px; padding:10px 14px; margin-bottom:16px; font-size:12px; color:#92400E;">
+          <b>📝 ${isEn ? 'Notes / Remarks:' : 'หมายเหตุ / ข้อมูลเพิ่มเติม:'}</b> ${c.notes}
+        </div>
+      ` : ''}
+
+      <!-- Bottom Actions Bar -->
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding-top:12px; border-top:1px solid #E2E8F0; flex-wrap:wrap;">
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <button type="button" onclick="app.closeModal('modal-car-details'); app.openEditCarModal('${safePlate}')" class="btn btn-secondary" style="font-size:12px; padding:7px 12px; border-radius:6px; cursor:pointer;">
+            ✏️ ${isEn ? 'Edit Car' : 'แก้ไขข้อมูลรถ'}
+          </button>
+          <button type="button" onclick="app.closeModal('modal-car-details'); app.openNewMaintenanceModal('${safePlate}')" class="btn btn-secondary" style="font-size:12px; padding:7px 12px; border-radius:6px; background:#FFF7ED; color:#C2410C; border-color:#FDBA74; cursor:pointer;">
+            🛠️ ${isEn ? 'Maintenance' : 'เปิดใบงานซ่อมบำรุง'}
+          </button>
+          <button type="button" onclick="app.closeModal('modal-car-details'); app.deleteCarByPlate('${safePlate}')" class="btn btn-danger" style="font-size:12px; padding:7px 12px; border-radius:6px; cursor:pointer;">
+            🗑️ ${isEn ? 'Delete' : 'ลบรถ'}
+          </button>
+        </div>
+
+        <div style="display:flex; gap:8px;">
+          <button type="button" onclick="app.closeModal('modal-car-details')" class="btn btn-secondary" style="font-size:12px; padding:7px 14px; border-radius:6px; cursor:pointer;">
+            ${isEn ? 'Close' : 'ปิด'}
+          </button>
+          <button type="button" onclick="app.closeModal('modal-car-details'); app.openBookModal('${safePlate}')" class="btn btn-primary" style="font-size:12.5px; font-weight:700; padding:7px 18px; border-radius:6px; cursor:pointer;">
+            🚗 ${isEn ? 'Create Contract / Book' : 'สร้างสัญญาเช่า / จองรถ'}
+          </button>
+        </div>
+      </div>
+    `;
+
+    this.openModal("modal-car-details");
   }
 
   // --- Quick Car Photo Upload & Edit Car Modal ---
@@ -2281,6 +2407,7 @@ class App {
       this.onDebtFreeToggle(isDebtFree);
     }
     this.populateFinanceCompanyDropdown(car.finance_company || "");
+    this.populateCarFormCreatableSelects();
     setVal("edit-car-installment-amount", car.installment_amount !== undefined ? car.installment_amount : 0);
     setVal("edit-car-total-installments", car.total_installments !== undefined ? car.total_installments : 48);
     setVal("edit-car-current-installment", car.current_installment !== undefined ? car.current_installment : 0);
@@ -2371,6 +2498,62 @@ class App {
 
   onFinanceCompanyChange(val) {
     // Handled natively by single creatable/searchable datalist input
+  }
+
+  async populateCarFormCreatableSelects() {
+    let opts = null;
+    try {
+      const res = await fetch("/api/cars/options");
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.success) {
+          opts = data;
+        }
+      }
+    } catch (e) {
+      console.warn("Could not fetch car options from API, fallback to client cars", e);
+    }
+
+    if (!opts) {
+      const bSet = new Set(), mSet = new Set(), coSet = new Set(), clSet = new Set(), icSet = new Set(), owSet = new Set();
+      (this.cars || []).forEach(c => {
+        if (c.brand) bSet.add(c.brand);
+        if (c.model) mSet.add(c.model);
+        if (c.company) coSet.add(c.company);
+        if (c.color) clSet.add(c.color);
+        if (c.ins_company) icSet.add(c.ins_company);
+        if (c.owner) owSet.add(c.owner);
+      });
+      opts = {
+        brands: Array.from(bSet),
+        models: Array.from(mSet),
+        companies: Array.from(coSet),
+        colors: Array.from(clSet),
+        ins_companies: Array.from(icSet),
+        owners: Array.from(owSet)
+      };
+    }
+
+    const fillDatalist = (id, items) => {
+      const dl = document.getElementById(id);
+      if (!dl || !Array.isArray(items)) return;
+      dl.innerHTML = "";
+      items.forEach(val => {
+        const clean = String(val || "").trim();
+        if (clean && !["-", "None", "none", "null"].includes(clean)) {
+          const opt = document.createElement("option");
+          opt.value = clean;
+          dl.appendChild(opt);
+        }
+      });
+    };
+
+    fillDatalist("car-brands-list", opts.brands);
+    fillDatalist("car-models-list", opts.models);
+    fillDatalist("car-companies-list", opts.companies);
+    fillDatalist("car-colors-list", opts.colors);
+    fillDatalist("car-ins-comps-list", opts.ins_companies);
+    fillDatalist("car-owners-list", opts.owners);
   }
 
   onCarImageUrlInput(val) {
