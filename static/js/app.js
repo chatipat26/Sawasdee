@@ -378,11 +378,11 @@ class App {
     const lblDepType = document.getElementById("lbl-deposit-type");
     if (lblDepType) lblDepType.textContent = isEn ? "Payment type" : "ประเภทการชำระ";
     const optDepTypeDep = document.getElementById("opt-dep-type-deposit");
-    if (optDepTypeDep) optDepTypeDep.textContent = isEn ? "Security deposit" : "มัดจำประกันสัญญา";
+    if (optDepTypeDep) optDepTypeDep.textContent = isEn ? "Deposit" : "เงินมัดจำ";
     const optDepTypeRent = document.getElementById("opt-dep-type-rental");
-    if (optDepTypeRent) optDepTypeRent.textContent = isEn ? "Rental fee" : "ค่าเช่า";
+    if (optDepTypeRent) optDepTypeRent.textContent = isEn ? "Rental" : "ค่าเช่า";
     const optDepTypeBoth = document.getElementById("opt-dep-type-both");
-    if (optDepTypeBoth) optDepTypeBoth.textContent = isEn ? "Deposit and rental" : "มัดจำและค่าเช่า";
+    if (optDepTypeBoth) optDepTypeBoth.textContent = isEn ? "Both" : "ทั้งสอง";
     const lblDepGdrive = document.getElementById("lbl-deposit-gdrive");
     if (lblDepGdrive) lblDepGdrive.textContent = isEn ? "Google Drive link" : "ลิงก์ Google Drive";
 
@@ -3662,8 +3662,11 @@ class App {
     if (refEl) {
       refEl.value = b.deposit_ref || b.rental_ref || "";
     }
-    const typeEl = document.getElementById("deposit-type-input");
-    if (typeEl) typeEl.value = b.payment_type || "มัดจำประกันสัญญา";
+    const typeVal = b.payment_type || "มัดจำประกันสัญญา";
+    const typeRadios = document.querySelectorAll('input[name="deposit-type"]');
+    let typeMatched = false;
+    typeRadios.forEach((r) => { if (r.value === typeVal) { r.checked = true; typeMatched = true; } });
+    if (!typeMatched && typeRadios[0]) typeRadios[0].checked = true;
     const gdriveEl = document.getElementById("deposit-gdrive-input");
     if (gdriveEl) gdriveEl.value = b.google_drive_link || "";
 
@@ -3783,7 +3786,7 @@ class App {
     const depMethod = document.getElementById("deposit-method-input").value;
     const depRef = (document.getElementById("deposit-ref-input")?.value || "").trim();
     const slipUrl = (document.getElementById("deposit-slip-url")?.value || "").trim();
-    const payType = document.getElementById("deposit-type-input")?.value || "";
+    const payType = document.querySelector('input[name="deposit-type"]:checked')?.value || "";
     const gdriveLink = (document.getElementById("deposit-gdrive-input")?.value || "").trim();
     const alsoRent = document.getElementById("deposit-also-rent").checked;
 
@@ -3853,7 +3856,7 @@ class App {
     const bkId = this.currentSelectedBooking.booking_id;
     const depRef = (document.getElementById("deposit-ref-input")?.value || "").trim();
     const slipUrl = (document.getElementById("deposit-slip-url")?.value || "").trim();
-    const payType = document.getElementById("deposit-type-input")?.value || "";
+    const payType = document.querySelector('input[name="deposit-type"]:checked')?.value || "";
     const gdriveLink = (document.getElementById("deposit-gdrive-input")?.value || "").trim();
 
     try {

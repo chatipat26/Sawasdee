@@ -580,6 +580,61 @@ section,
 @media (max-width: 860px) {
   .deposit-form-grid { grid-template-columns: 1fr; }
 }
+.deposit-layout {
+  display: grid;
+  grid-template-columns: minmax(260px, 340px) 1fr;
+  gap: 20px;
+  align-items: start;
+}
+.deposit-left { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.deposit-right { min-width: 0; }
+.deposit-amount-group,
+.deposit-attach-group { grid-column: 1 / -1; }
+.deposit-amount-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.deposit-amount-row .form-control { flex: 1 1 140px; min-width: 120px; }
+.deposit-pills { display: inline-flex; gap: 6px; flex-wrap: wrap; }
+.deposit-pill { margin: 0; cursor: pointer; }
+.deposit-pill input { position: absolute; opacity: 0; pointer-events: none; }
+.deposit-pill span {
+  display: inline-block;
+  padding: 7px 14px;
+  border-radius: 999px;
+  border: 1px solid #E7E5E4;
+  background: #FFFFFF;
+  color: #57534E;
+  font-size: 12.5px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+.deposit-pill:hover span { border-color: #FDBA74; color: #C2410C; }
+.deposit-pill input:checked + span {
+  background: #C2410C;
+  border-color: #C2410C;
+  color: #FFFFFF;
+  box-shadow: 0 2px 6px rgba(194, 65, 12, 0.25);
+}
+.deposit-pill input:focus-visible + span { box-shadow: 0 0 0 3px rgba(194, 65, 12, 0.18); }
+.deposit-attach-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border: 1px dashed #FDBA74;
+  border-radius: 12px;
+  background: #FFFBF7;
+  flex-wrap: wrap;
+}
+.deposit-attach-box .deposit-slip-row { flex: 0 1 auto; }
+.deposit-attach-box .form-control { flex: 1 1 200px; min-width: 160px; }
+.deposit-attach-or { font-size: 12px; color: #A8A29E; font-weight: 600; }
+@media (max-width: 960px) {
+  .deposit-layout { grid-template-columns: 1fr; }
+}
 
 .booking-bar-grid {
   display: grid;
