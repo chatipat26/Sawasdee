@@ -2094,21 +2094,22 @@ class App {
     const dur = this.calcDuration();
     const kw = (this.sidebarSearchKw || "").toLowerCase().trim();
 
+    const isAllVal = (v) => { const s = String(v == null ? "" : v).trim().toLowerCase(); return s === "" || s === "all" || s === "ทั้งหมด"; };
     const filtered = this.cars.filter(c => {
       // 1. Group filter
-      if (groupFilter !== "ทั้งหมด" && groupFilter !== "All") {
+      if (!isAllVal(groupFilter)) {
         const cg = (c.car_group || "").toLowerCase();
         if (!cg.includes(groupFilter.toLowerCase())) return false;
       }
 
       // 2. Brand filter
-      if (brandFilter !== "ทั้งหมด" && brandFilter !== "All") {
-        if ((c.brand || "").toLowerCase() !== brandFilter.toLowerCase()) return false;
+      if (!isAllVal(brandFilter)) {
+        if ((c.brand || "").trim().toLowerCase() !== brandFilter.trim().toLowerCase()) return false;
       }
 
       // 3. Company filter
-      if (companyFilter !== "ทั้งหมด" && companyFilter !== "All") {
-        if ((c.company || "").trim() !== companyFilter.trim()) return false;
+      if (!isAllVal(companyFilter)) {
+        if ((c.company || c.owner_company || "").trim() !== companyFilter.trim()) return false;
       }
 
       // 4. Status filter (matching app.py exactly)
@@ -2161,9 +2162,13 @@ class App {
         .map(el => el.id)
     );
 
-    container.innerHTML = filtered.map((c, idx) => {
+    const buildCardHtml = (c, idx) => {
       const autoType = dur.days >= 30 ? (isEn ? "Monthly" : "รายเดือน") : (dur.days >= 7 ? (isEn ? "Weekly" : "รายสัปดาห์") : (isEn ? "Daily" : "รายวัน"));
-      const { basePrice, priceDay, priceWeek, priceMonth } = this.calculateCarRentalPrice(c, dur.days, autoType);
+      const _rp = this.calculateCarRentalPrice(c, dur.days, autoType) || {};
+      const basePrice = Number(_rp.basePrice) || 0;
+      const priceDay = Number(_rp.priceDay) || 0;
+      const priceWeek = Number(_rp.priceWeek) || 0;
+      const priceMonth = Number(_rp.priceMonth) || 0;
       const carImg = (c.image || "").trim();
       const safePlate = String(c.plate || "").replace(/'/g, "\\'");
       const safeId = `${idx}_${String(c.plate || "").replace(/[^a-zA-Z0-9]/g, "_")}`;
@@ -2275,6 +2280,26 @@ class App {
           </div>
         </div>
       `;
+    };
+
+    container.innerHTML = filtered.map((c, idx) => {
+      try {
+        return buildCardHtml(c, idx);
+      } catch (err) {
+        console.error("renderFleetCards: card build failed", c && c.plate, err);
+        const sp = String((c && c.plate) || "").replace(/'/g, "\\'");
+        return `
+        <div class="car-card-modern" data-expanded="true">
+          <div class="car-model-title">${(c && c.brand) || ''} ${(c && c.model) || ''}</div>
+          <div class="car-specs-subtitle">${(c && c.plate) || ''}</div>
+          <div class="car-card-collapsible-footer" style="display:block;">
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-top:10px;">
+              <button type="button" class="btn btn-secondary" onclick="app.openCarDetailsModal('${sp}')"><span>${isEn ? 'Details' : 'ดูรายละเอียด'}</span></button>
+              <button type="button" class="btn btn-primary" onclick="app.openBookModal('${sp}')"><span>${isEn ? 'Book Now' : 'จองรถ'}</span></button>
+            </div>
+          </div>
+        </div>`;
+      }
     }).join("");
   }
 
