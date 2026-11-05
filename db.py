@@ -9,47 +9,24 @@ from datetime import datetime, date, time as d_time, timedelta
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-HARDCODED_SUPABASE_URL = "https://brhuafypxrqtoznsuhaa.supabase.co"
-HARDCODED_SERVICE_KEY = base64.b64decode("c2Jfc2VjcmV0X05qd3JsQWl6WW4tOFdhSFE3QTRHM2dfR1VmTUFyWFI=").decode()
-
-def get_supabase_credentials():
-    sb_url = os.environ.get("SUPABASE_URL", HARDCODED_SUPABASE_URL)
-    sb_key = os.environ.get("SUPABASE_SERVICE_KEY", HARDCODED_SERVICE_KEY)
-    try:
-        import toml
-        sec_path = os.path.join(BASE_DIR, ".streamlit", "secrets.toml")
-        if os.path.exists(sec_path):
-            sec = toml.load(sec_path)
-            sb_url = sec.get("SUPABASE_URL", sb_url)
-            sb_key = sec.get("SUPABASE_SERVICE_KEY", sb_key)
-    except Exception:
-        pass
-    return sb_url, sb_key
+INTERNAL_DATABASE_URL = "postgresql://sawasdeedb:Sawasdee_Secure_2026_Db@svvconnectct-sawasdeedb-m78xfy:5432/sawasdee_db"
+DATABASE_URL = os.environ.get("DATABASE_URL", INTERNAL_DATABASE_URL)
 
 _sb_client = None
 def get_supabase_client():
     global _sb_client
     if _sb_client is not None:
         return _sb_client
-    # Prefer a direct PostgreSQL connection (Dokploy Postgres container) when DATABASE_URL is set.
-    # PgClient mimics the supabase-py query API, so the rest of the code works unchanged.
-    db_url = os.environ.get("DATABASE_URL")
-    if db_url:
-        try:
-            from pg_client import PgClient
-            _sb_client = PgClient(db_url)
-            return _sb_client
-        except Exception as e:
-            print(f"PostgreSQL client init error: {e}")
-            return None
+    db_url = os.environ.get("DATABASE_URL", INTERNAL_DATABASE_URL)
     try:
-        from pg_client import RestClient
-        url, key = get_supabase_credentials()
-        _sb_client = RestClient(url, key)
+        from pg_client import PgClient
+        _sb_client = PgClient(db_url)
         return _sb_client
     except Exception as e:
-        print(f"Database client init note: {e}")
+        print(f"PostgreSQL client init error: {e}")
         return None
+
+get_db_client = get_supabase_client
 
 # -------------------------------------------------------------------------
 # DATE & TIME HELPERS
@@ -665,7 +642,7 @@ class DataStore:
             except Exception as e:
                 print(f"Financial records sync error: {e}")
 
-            # 7. Maintenance Records (if Supabase table exists)
+            # 7. Maintenance Records (if PostgreSQL table exists)
             try:
                 m_res = sb.table("maintenance_records").select("*").order("schedule_date", desc=True).execute()
                 if m_res.data is not None:
@@ -861,25 +838,26 @@ class DataStore:
         def _task():
             sb = get_supabase_client()
             if not sb: return
+            CUSTOMER_10_COLS = {
+                'full_name', 'phone_number', 'id_card_no', 'driver_license_no',
+                'nationality', 'whatsapp', 'dob', 'license_expire_date',
+                'home_address', 'current_address'
+            }
+            ALL_CUSTOMER_COLS = CUSTOMER_10_COLS | {
+                'contact_no', 'phone', 'passport_id', 'id_card', 'licence_no',
+                'driver_license', 'licence_expiry', 'thai_address', 'address',
+                'nickname', 'line_id', 'line_user_id', 'notes', 'id_card_photo',
+                'driver_license_photo'
+            }
             try:
-                row = dict(cust_dict)
+                row = {k: v for k, v in cust_dict.items() if k in ALL_CUSTOMER_COLS}
                 row["full_name"] = name
                 sb.table("customers").upsert(row).execute()
             except Exception as e:
                 print(f"sb_sync_customer error: {e}")
                 try:
-                    fallback_row = {
-                        "full_name": name,
-                        "phone": phone_val,
-                        "contact_no": phone_val,
-                        "id_card": id_val,
-                        "passport_id": id_val,
-                        "driver_license": lic_val,
-                        "licence_no": lic_val,
-                        "address": home_val,
-                        "home_address": home_val,
-                        "notes": cust_dict.get("notes", "")
-                    }
+                    fallback_row = {k: v for k, v in cust_dict.items() if k in CUSTOMER_10_COLS}
+                    fallback_row["full_name"] = name
                     sb.table("customers").upsert(fallback_row).execute()
                 except Exception as e2:
                     print(f"sb_sync_customer fallback error: {e2}")
@@ -1207,5 +1185,8 @@ def start_background_cloud_sync():
             except Exception as e:
                 print(f"Background cloud sync loop error: {e}")
             time.sleep(120)
-    t = threading.Thread(target=_loop, daemon=True, name="SupabaseBackgroundSync")
+    t = threading.Thread(target=_loop, daemon=True, name="PostgresBackgroundSync")
     t.start()
+
+store.sync_from_database = store.sync_from_supabase
+store.sync_from_database_async = store.sync_from_supabase_async

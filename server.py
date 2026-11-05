@@ -77,18 +77,21 @@ os.makedirs(os.path.join(static_dir, "css"), exist_ok=True)
 os.makedirs(os.path.join(static_dir, "js"), exist_ok=True)
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
+from database import init_db
+
 # Start background sync and scheduler on startup
 @app.on_event("startup")
 def startup_event():
     print("🚀 Starting SawasdeeRental Web App server...")
     # Attempt direct PostgreSQL schema check/migration
     try:
+        init_db()
         sb = get_supabase_client()
         if sb and hasattr(sb, "_connection"):
             sb._connection()
     except Exception as e:
         print(f"Startup schema check note: {e}")
-    # Perform initial synchronous sync so all Supabase tables are immediately available
+    # Perform initial synchronous sync so all database tables are immediately available
     store.sync_from_supabase(force=True)
     start_background_cloud_sync()
     init_expiry_scheduler_thread()
@@ -136,7 +139,7 @@ async def get_system_status():
 @app.post("/api/sync")
 async def trigger_manual_sync():
     store.sync_from_supabase(force=True)
-    return {"success": True, "message": "ซิงค์ข้อมูลจาก Supabase Cloud สำเร็จเรียบร้อย"}
+    return {"success": True, "message": "ซิงค์ข้อมูลกับฐานข้อมูล PostgreSQL สำเร็จเรียบร้อย"}
 
 @app.post("/api/admin/migrate-cars")
 async def trigger_cars_migration():
@@ -229,29 +232,7 @@ async def login(payload: Dict[str, Any]):
 
     sb = get_supabase_client() if not user_rec else None
 
-    # 3. Supabase Auth fallback (only if not matched locally)
-    if not user_rec and sb:
-        email = un.lower()
-        if "@" not in email:
-            email = f"{email}@sawasdeecarrental.com"
-        try:
-            auth_res = sb.auth.sign_in_with_password({"email": email, "password": pw})
-            if auth_res and auth_res.user:
-                for k, v in store.users.items():
-                    if k.lower() == un.lower() or (v.get("email") and v.get("email").lower() == email):
-                        user_rec = dict(v)
-                        break
-                if not user_rec:
-                    user_rec = {
-                        "username": un,
-                        "name": (auth_res.user.user_metadata or {}).get("name", un),
-                        "role": (auth_res.user.user_metadata or {}).get("role", "Staff"),
-                        "status": "approved"
-                    }
-        except Exception:
-            pass
-
-    # 3. Direct query to Supabase users table with real password check
+    # 3. Direct query to PostgreSQL users table with password check
     if not user_rec and sb:
         try:
             res = sb.table("users").select("*").ilike("username", un).execute()

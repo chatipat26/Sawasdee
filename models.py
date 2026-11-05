@@ -50,7 +50,7 @@ Car = Vehicle
 class Customer(Base):
     __tablename__ = "customers"
 
-    full_name = Column(String(200), primary_key=True, index=True)
+    full_name = Column(String(150), primary_key=True, index=True)
     phone_number = Column(String(50), nullable=True)
     id_card_no = Column(String(50), nullable=True)
     driver_license_no = Column(String(50), nullable=True)

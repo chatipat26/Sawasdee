@@ -293,7 +293,23 @@ class PgClient:
                         ]
                         for m_sql in car_migrations:
                             cur.execute(m_sql)
-                    print("✅ PostgreSQL cars table schema ensured with all 34 columns via ALTER TABLE.")
+
+                        customer_migrations = [
+                            "CREATE TABLE IF NOT EXISTS public.customers (full_name VARCHAR(150) PRIMARY KEY);",
+                            "ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS full_name VARCHAR(150);",
+                            "ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS phone_number VARCHAR(50);",
+                            "ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS id_card_no VARCHAR(50);",
+                            "ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS driver_license_no VARCHAR(50);",
+                            "ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS nationality VARCHAR(50);",
+                            "ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS whatsapp VARCHAR(50);",
+                            "ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS dob VARCHAR(50);",
+                            "ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS license_expire_date VARCHAR(50);",
+                            "ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS home_address TEXT;",
+                            "ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS current_address TEXT;"
+                        ]
+                        for c_sql in customer_migrations:
+                            cur.execute(c_sql)
+                    print("✅ PostgreSQL cars (34 cols) and customers (10 cols) schema ensured via ALTER TABLE.")
                 except Exception as e:
                     print(f"PostgreSQL Schema check note: {e}")
         return self._conn

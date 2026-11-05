@@ -113,7 +113,7 @@
 
       <!-- Mode 3: Forgot Password -->
       <div id="gate-mode-forgot" class="auth-gate-box" style="display:none;">
-        <h4 class="gate-form-title">🔑 เปลี่ยนรหัสผ่านใหม่ (Supabase Auth)</h4>
+        <h4 class="gate-form-title">🔑 เปลี่ยนรหัสผ่านใหม่</h4>
         <p class="gate-form-desc">กรอกชื่อผู้ใช้งานเดิมและตั้งรหัสผ่านใหม่เพื่ออัปเดตระบบ</p>
 
         <div class="gate-form-group">
@@ -158,7 +158,7 @@
 
       <div class="header-actions">
         <!-- Live Cloud Sync Pill -->
-        <div class="cloud-pill" onclick="app.manualSync()" title="คลิกเพื่อซิงค์ข้อมูลกับ Supabase Cloud ทันที">
+        <div class="cloud-pill" onclick="app.manualSync()" title="คลิกเพื่อซิงค์ข้อมูลกับฐานข้อมูล PostgreSQL ทันที">
           <span class="pulse-dot"></span>
           <span><span id="sync-label">ซิงค์ Cloud อัตโนมัติ:</span> <b id="sync-time-txt">กำลังเชื่อมต่อ...</b></span>
           <span style="font-size:11px; margin-left:2px;">🔄</span>
@@ -1578,7 +1578,7 @@
 
       <!-- Photo Upload -->
       <div class="form-group" style="margin-bottom:20px;">
-        <label>📸 อัปโหลดภาพถ่ายสภาพรถ / เกจ์น้ำมัน (ขึ้น Supabase Storage):</label>
+        <label>📸 อัปโหลดภาพถ่ายสภาพรถ / เกจ์น้ำมัน:</label>
         <input type="file" id="insp-photo-input" class="form-control" accept="image/*" multiple onchange="app.handlePhotoUpload(this)">
         <div id="insp-uploaded-photos" style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;"></div>
       </div>
@@ -2317,7 +2317,7 @@
   <div class="toast-container" id="toast-container"></div>
 
   <!-- Scripts with cache busting -->
-  <script src="/static/js/app.js?v=8.8"></script>
+  <script src="/static/js/app.js?v=8.9"></script>
 
   <!-- ===================================================================== -->
   <!-- MODAL: ACTIVE RENTALS / CARS WITH CUSTOMERS (POPUP FOR CARD 1) -->

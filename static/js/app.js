@@ -1427,7 +1427,7 @@ class App {
   }
 
   async manualSync() {
-    this.showToast("🔄 กำลังซิงค์ข้อมูลกับ Supabase Cloud...", "info");
+    this.showToast("🔄 กำลังซิงค์ข้อมูลกับฐานข้อมูล PostgreSQL...", "info");
     try {
       const res = await fetch("/api/sync", { method: "POST" });
       const data = await res.json();
