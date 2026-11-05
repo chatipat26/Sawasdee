@@ -1646,59 +1646,59 @@ translations = {
         "tab_dispatch": "3. ใบงานส่ง/รับรถ",
         "tab_contract": "4. สัญญาเช่า",
         "tab_pipeline": "5. แผงควบคุมคิวการจอง",
-        "tab_fleet_display": "🚗 1. เลือกรถยนต์ & จองด่วน",
-        "tab_deposit_display": "💳 2. เงินมัดจำ & การเงิน",
-        "tab_dispatch_display": "🚚 3. ใบงานส่ง/รับรถ",
-        "tab_contract_display": "📝 4. จัดทำสัญญาเช่า",
-        "tab_pipeline_display": "📋 5. แผงควบคุมคิวการจอง",
+        "tab_fleet_display": "1. เลือกรถยนต์ & จองด่วน",
+        "tab_deposit_display": "2. เงินมัดจำ & การเงิน",
+        "tab_dispatch_display": "3. ใบงานส่ง/รับรถ",
+        "tab_contract_display": "4. จัดทำสัญญาเช่า",
+        "tab_pipeline_display": "5. แผงควบคุมคิวการจอง",
 
         # Tab 1: Fleet & Instant Booking
-        "hero_booking_bar_title": "⚡ เลือกรถยนต์ & จองด่วน (Instant Booking Bar)",
+        "hero_booking_bar_title": "เลือกรถยนต์ & จองด่วน (Instant Booking Bar)",
         "hero_booking_bar_desc": "เลือกวันรับ - คืนรถ (คำนวณระยะเวลาเช่าอัตโนมัติ)",
-        "btn_add_customer": "➕ เพิ่มลูกค้า",
-        "filter_cat": "🚘 หมวดหมู่รถ",
-        "filter_brand": "🏷️ ยี่ห้อ",
-        "filter_owner": "🏢 บริษัท / สังกัด",
-        "filter_status": "🚦 สถานะรถ",
+        "btn_add_customer": "เพิ่มลูกค้า",
+        "filter_cat": "หมวดหมู่รถ",
+        "filter_brand": "ยี่ห้อ",
+        "filter_owner": "บริษัท / สังกัด",
+        "filter_status": "สถานะรถ",
         "filter_all": "ทั้งหมด",
-        "btn_reset_filters": "🔄 ล้างตัวกรอง",
-        "fleet_expander_view": "🔍 ดูรูปรถและข้อมูลเพิ่มเติม",
-        "fleet_expander_hide": "🔼 ซ่อนข้อมูล",
+        "btn_reset_filters": "ล้างตัวกรอง",
+        "fleet_expander_view": "ดูรูปรถและข้อมูลเพิ่มเติม",
+        "fleet_expander_hide": "ซ่อนข้อมูล",
         "fleet_plate_red": "ป้ายแดง",
         "fleet_plate_red_sub": "Red plate",
         "fleet_stat_avail": "Available",
         "fleet_stat_rent": "On rent",
         "fleet_stat_workshop": "Workshop",
         "fleet_stat_res": "Reserved",
-        "fleet_exp_ins_title": "🛡️ ข้อมูลกรมธรรม์ประกันภัย",
-        "fleet_exp_act_tax_title": "📄 ข้อมูล พ.ร.บ. และภาษี",
-        "fleet_exp_hp_title": "💳 ข้อมูลสัญญาเช่าซื้อ / ลิสซิ่ง (HP / Leasing)",
-        "fleet_exp_spec_title": "🚘 ข้อมูลตัวรถเชิงลึก",
-        "fleet_exp_rates_title": "💰 อัตราค่าเช่าที่ตั้งไว้",
-        "fleet_btn_book": "✅ สร้างสัญญาเช่า / จองรถ",
-        "fleet_btn_maint": "🛠️ แจ้งซ่อมบำรุง",
-        "fleet_btn_edit": "✏️ แก้ไขข้อมูลรถ",
-        "fleet_btn_del": "🗑️ ลบรถยนต์",
+        "fleet_exp_ins_title": "ข้อมูลกรมธรรม์ประกันภัย",
+        "fleet_exp_act_tax_title": "ข้อมูล พ.ร.บ. และภาษี",
+        "fleet_exp_hp_title": "ข้อมูลสัญญาเช่าซื้อ / ลิสซิ่ง (HP / Leasing)",
+        "fleet_exp_spec_title": "ข้อมูลตัวรถเชิงลึก",
+        "fleet_exp_rates_title": "อัตราค่าเช่าที่ตั้งไว้",
+        "fleet_btn_book": "สร้างสัญญาเช่า / จองรถ",
+        "fleet_btn_maint": "แจ้งซ่อมบำรุง",
+        "fleet_btn_edit": "แก้ไขข้อมูลรถ",
+        "fleet_btn_del": "ลบรถยนต์",
 
         # Tab 2: Deposit & Finance
-        "deposit_title": "💳 เงินมัดจำ & การเงิน (Deposit & Payment)",
+        "deposit_title": "เงินมัดจำ & การเงิน (Deposit & Payment)",
         "deposit_subtitle": "บันทึกเงินมัดจำประกันสัญญาและชำระค่าเช่า",
-        "deposit_queue_title": "📋 คิวจองรอดำเนินการชำระเงิน",
+        "deposit_queue_title": "คิวจองรอดำเนินการชำระเงิน",
 
         # Tab 3: Dispatch & Return Work Orders
-        "dispatch_title": "🚚 ใบงานส่งมอบรถและรับรถคืน",
+        "dispatch_title": "ใบงานส่งมอบรถและรับรถคืน",
         "dispatch_subtitle": "มอบหมายพนักงาน ระบุสถานที่ และออกใบงาน",
 
         # Tab 4: Rental Agreement
-        "contract_title": "📝 จัดทำสัญญาเช่ารถยนต์",
+        "contract_title": "จัดทำสัญญาเช่ารถยนต์",
         "contract_subtitle": "ออกสัญญาเช่าอิเล็กทรอนิกส์พร้อมข้อมูลผู้เช่าและลายเซ็น",
 
         # Tab 5: Booking Pipeline
-        "pipeline_title": "📋 แผงควบคุมคิวการจอง (Booking Pipeline)",
+        "pipeline_title": "แผงควบคุมคิวการจอง (Booking Pipeline)",
         "pipeline_subtitle": "ติดตามสถานะงานเช่าและค้นหารายการจองทั้งหมด",
 
         # CRM & Maintenance
-        "crm_title": "🛠️ ซ่อมบำรุง & บริการ",
+        "crm_title": "ซ่อมบำรุง & บริการ",
         "crm_subtitle": "ประวัติซ่อมบำรุง ตรวจเช็กระยะ และต่อภาษี/พ.ร.บ./ประกันภัย",
 
         # Dashboard & Analytics
@@ -1708,7 +1708,7 @@ translations = {
 
         # Dashboard HP & Property Insurance & Completed Jobs
         "dash_hp_title": "ตารางผ่อนชำระค่างวดรถยนต์ (HP / Leasing ...)",
-        "dash_prop_ins_title": "🏠 กรมธรรม์ประกันภัยทรัพย์สินและประกันอุบัติเหตุส่วนบุคคล",
+        "dash_prop_ins_title": "กรมธรรม์ประกันภัยทรัพย์สินและประกันอุบัติเหตุส่วนบุคคล",
         "dash_hp_col_no": "ลำดับ",
         "dash_hp_col_model": "รุ่นรถยนต์",
         "dash_hp_col_plate": "ทะเบียน / เลขถัง",
@@ -1726,16 +1726,16 @@ translations = {
         "dash_prop_col_company": "บริษัทประกันภัย",
         "dash_prop_col_expiry": "วันหมดอายุ",
         "dash_prop_col_notes": "หมายเหตุ",
-        "dash_archive_title": "📑 คลังประวัติงานเสร็จสิ้น & รีพอร์ตรายเดือน (Completed Jobs Archive)",
-        "dash_archive_filter_month": "📅 เลือกเดือนที่ต้องการดูรายงาน:",
-        "dash_archive_filter_comp": "🏢 เลือกรีพอร์ตตามบริษัท:",
+        "dash_archive_title": "คลังประวัติงานเสร็จสิ้น & รีพอร์ตรายเดือน (Completed Jobs Archive)",
+        "dash_archive_filter_month": "เลือกเดือนที่ต้องการดูรายงาน:",
+        "dash_archive_filter_comp": "เลือกรีพอร์ตตามบริษัท:",
         "dash_archive_all_comp": "ทั้งหมด (ทุกบริษัท)",
-        "dash_archive_all_months": "🔄 ดูทุกเดือนทั้งหมด",
-        "dash_archive_download_csv": "📥 ดาวน์โหลดรายงานสรุปงานเสร็จสิ้น (CSV สำหรับ Excel)",
-        "dash_archive_kpi_jobs": "🏁 งานเสร็จสิ้นทั้งหมด",
-        "dash_archive_kpi_rev": "💰 รายรับรวมจากงานเช่า",
-        "dash_archive_kpi_cars": "🚘 รถที่ให้บริการ",
-        "dash_archive_kpi_custs": "👥 ลูกค้าที่ใช้บริการ",
+        "dash_archive_all_months": "ดูทุกเดือนทั้งหมด",
+        "dash_archive_download_csv": "ดาวน์โหลดรายงานสรุปงานเสร็จสิ้น (CSV สำหรับ Excel)",
+        "dash_archive_kpi_jobs": "งานเสร็จสิ้นทั้งหมด",
+        "dash_archive_kpi_rev": "รายรับรวมจากงานเช่า",
+        "dash_archive_kpi_cars": "รถที่ให้บริการ",
+        "dash_archive_kpi_custs": "ลูกค้าที่ใช้บริการ",
         "dash_archive_col_bkid": "รหัสการจอง",
         "dash_archive_col_date": "วันที่เสร็จสิ้น",
         "dash_archive_col_plate": "ทะเบียนรถ",
@@ -1750,20 +1750,20 @@ translations = {
         "dash_archive_col_docs": "เอกสารย้อนหลัง",
 
         # Maintenance & Service Center
-        "mnt_title": "🔧 โมดูลซ่อมบำรุง & บริการ (Fleet Maintenance & Service Center)",
+        "mnt_title": "โมดูลซ่อมบำรุง & บริการ (Fleet Maintenance & Service Center)",
         "mnt_subtitle": "ศูนย์จัดการงานซ่อมบำรุง ตรวจเช็คสภาพ เปลี่ยนถ่ายของเหลว และบันทึกประวัติการต่อภาษี/พรบ./ประกันภัยรถยนต์",
-        "mnt_btn_new": "➕ ออกใบงานซ่อมบำรุงใหม่",
-        "mnt_btn_renewal": "📄 ออกใบงานต่อทะเบียน-พรบ.-ประกัน",
-        "mnt_btn_refresh": "🔄 รีเฟรช",
-        "mnt_kpi_inprog": "🚗 กำลังซ่อมบำรุงในอู่/ศูนย์",
-        "mnt_kpi_pending": "⏳ ใบงานรอดำเนินการ",
-        "mnt_kpi_cost": "💰 รวมค่าซ่อมบำรุงและบริการ",
-        "mnt_kpi_renewals": "🛡️ งานต่อทะเบียน / พรบ. / ประกัน",
-        "mnt_lbl_search": "🔍 ค้นหาใบงาน (เลขที่ / ทะเบียน / รายการ):",
+        "mnt_btn_new": "ออกใบงานซ่อมบำรุงใหม่",
+        "mnt_btn_renewal": "ออกใบงานต่อทะเบียน-พรบ.-ประกัน",
+        "mnt_btn_refresh": "รีเฟรช",
+        "mnt_kpi_inprog": "กำลังซ่อมบำรุงในอู่/ศูนย์",
+        "mnt_kpi_pending": "ใบงานรอดำเนินการ",
+        "mnt_kpi_cost": "รวมค่าซ่อมบำรุงและบริการ",
+        "mnt_kpi_renewals": "งานต่อทะเบียน / พรบ. / ประกัน",
+        "mnt_lbl_search": "ค้นหาใบงาน (เลขที่ / ทะเบียน / รายการ):",
         "mnt_lbl_type": "ประเภทงาน:",
         "mnt_lbl_status": "สถานะงาน:",
         "mnt_lbl_car": "เลือกรถยนต์:",
-        "mnt_table_title": "📋 รายการประวัติการซ่อมบำรุงและบริการทั้งหมด",
+        "mnt_table_title": "รายการประวัติการซ่อมบำรุงและบริการทั้งหมด",
         "mnt_col_id": "เลขที่ใบงาน",
         "mnt_col_car": "ทะเบียน & รถยนต์",
         "mnt_col_type": "ประเภทงาน",
@@ -1786,24 +1786,24 @@ translations = {
         "btn_logout": "🚪 Sign Out (Auth)",
         "btn_lang": "🌐 ภาษาไทย",
         "logged_in_as": "Logged in as:",
-        "btn_manage_staff": "👥 Manage & Approve Staff",
+        "btn_manage_staff": "Manage & Approve Staff",
         "role_admin_badge": "👑 Administrator (Admin)",
         "role_staff_badge": "👷 Staff",
         "cloud_sync_auto": "● Auto Cloud Sync:",
 
         # Back Office
-        "bo_page_title": "📋 Back Office (Work Orders)",
+        "bo_page_title": "Back Office (Work Orders)",
         "bo_page_subtitle": "Vehicle Dispatch & Return Work Orders Table & PDF Document Center",
         "bo_page_subtitle_th": "Vehicle Dispatch & Return Work Orders Table & PDF Document Center",
-        "bo_admin_privilege": "👑 Admin Privilege: Can manage all work orders",
-        "bo_staff_privilege": "👷 Staff Privilege: {name} (Assigned jobs only)",
-        "bo_search_placeholder": "🔍 Search work orders...",
-        "bo_btn_refresh": "🔄 Refresh",
-        "bo_table_title": "🚚 All Dispatch & Return Work Orders",
-        "bo_empty_msg": "📋 No work orders in system",
-        "bo_empty_info": "📋 No work orders yet (Orders appear automatically upon booking)",
-        "bo_btn_new_booking": "➕ New Booking / Contract (Front Office)",
-        "bo_filter_caption": "🔎 Filtered work orders by search:",
+        "bo_admin_privilege": "Admin Privilege: Can manage all work orders",
+        "bo_staff_privilege": "Staff Privilege: {name} (Assigned jobs only)",
+        "bo_search_placeholder": "Search work orders...",
+        "bo_btn_refresh": "Refresh",
+        "bo_table_title": "All Dispatch & Return Work Orders",
+        "bo_empty_msg": "No work orders in system",
+        "bo_empty_info": "No work orders yet (Orders appear automatically upon booking)",
+        "bo_btn_new_booking": "New Booking / Contract (Front Office)",
+        "bo_filter_caption": "Filtered work orders by search:",
 
         # Back Office Table Columns
         "bo_col_type": "Job Type",
@@ -1821,16 +1821,16 @@ translations = {
         "bo_col_actions_full": "Documents & Job Actions",
 
         # Back Office Badges & Action Buttons
-        "bo_job_dispatch": "🚚 Dispatch",
-        "bo_job_return": "🔙 Return",
-        "bo_job_maintenance": "🛠️ Maintenance",
-        "bo_job_renewal": "📄 Tax / ACT / Insurance Renewal",
-        "bo_btn_inspect_handover": "🔍 Inspect & Complete",
-        "bo_btn_complete_maintenance": "🏁 Inspect & Close Job",
-        "bo_btn_complete_renewal": "🏁 Submit & Update Expiry",
-        "bo_status_repairing": "🛠️ In Maintenance",
-        "bo_status_renewing": "⏳ Renewing Tax/Insurance",
-        "bo_status_wait_dispatch": "🔒 Wait for Dispatch",
+        "bo_job_dispatch": "Dispatch",
+        "bo_job_return": "Return",
+        "bo_job_maintenance": "Maintenance",
+        "bo_job_renewal": "Tax / ACT / Insurance Renewal",
+        "bo_btn_inspect_handover": "Inspect & Complete",
+        "bo_btn_complete_maintenance": "Inspect & Close Job",
+        "bo_btn_complete_renewal": "Submit & Update Expiry",
+        "bo_status_repairing": "In Maintenance",
+        "bo_status_renewing": "Renewing Tax/Insurance",
+        "bo_status_wait_dispatch": "Wait for Dispatch",
 
         # Front Office Tabs & Header
         "fo_title": "📂 Front Office",
@@ -1840,59 +1840,59 @@ translations = {
         "tab_dispatch": "3. Dispatch & Return",
         "tab_contract": "4. Rental Agreement",
         "tab_pipeline": "5. Booking Pipeline",
-        "tab_fleet_display": "🚗 1. Fleet & Booking",
-        "tab_deposit_display": "💳 2. Deposit & Finance",
-        "tab_dispatch_display": "🚚 3. Dispatch & Return",
-        "tab_contract_display": "📝 4. Rental Agreement",
-        "tab_pipeline_display": "📋 5. Booking Pipeline",
+        "tab_fleet_display": "1. Fleet & Booking",
+        "tab_deposit_display": "2. Deposit & Finance",
+        "tab_dispatch_display": "3. Dispatch & Return",
+        "tab_contract_display": "4. Rental Agreement",
+        "tab_pipeline_display": "5. Booking Pipeline",
 
         # Tab 1: Fleet & Instant Booking
-        "hero_booking_bar_title": "⚡ Instant Fleet Booking",
+        "hero_booking_bar_title": "Instant Fleet Booking",
         "hero_booking_bar_desc": "Select Pick-up / Return dates (Auto-calculates daily rate)",
-        "btn_add_customer": "➕ Add Customer",
-        "filter_cat": "🚘 Category",
-        "filter_brand": "🏷️ Brand",
-        "filter_owner": "🏢 Company",
-        "filter_status": "🚦 Status",
+        "btn_add_customer": "Add Customer",
+        "filter_cat": "Category",
+        "filter_brand": "Brand",
+        "filter_owner": "Company",
+        "filter_status": "Status",
         "filter_all": "All",
-        "btn_reset_filters": "🔄 Reset Filters",
-        "fleet_expander_view": "🔍 View Image & Details",
-        "fleet_expander_hide": "🔼 Hide Details",
+        "btn_reset_filters": "Reset Filters",
+        "fleet_expander_view": "View Image & Details",
+        "fleet_expander_hide": "Hide Details",
         "fleet_plate_red": "Red Plate",
         "fleet_plate_red_sub": "Red plate",
         "fleet_stat_avail": "Available",
         "fleet_stat_rent": "On rent",
         "fleet_stat_workshop": "Workshop",
         "fleet_stat_res": "Reserved",
-        "fleet_exp_ins_title": "🛡️ Insurance Policy Information",
-        "fleet_exp_act_tax_title": "📄 ACT & Tax Information",
-        "fleet_exp_hp_title": "💳 Hire Purchase / Leasing Details",
-        "fleet_exp_spec_title": "🚘 Vehicle Specifications",
-        "fleet_exp_rates_title": "💰 Configured Rental Rates",
-        "fleet_btn_book": "✅ Create Agreement / Book",
-        "fleet_btn_maint": "🛠️ Request Maintenance",
-        "fleet_btn_edit": "✏️ Edit Vehicle",
-        "fleet_btn_del": "🗑️ Delete Vehicle",
+        "fleet_exp_ins_title": "Insurance Policy Information",
+        "fleet_exp_act_tax_title": "ACT & Tax Information",
+        "fleet_exp_hp_title": "Hire Purchase / Leasing Details",
+        "fleet_exp_spec_title": "Vehicle Specifications",
+        "fleet_exp_rates_title": "Configured Rental Rates",
+        "fleet_btn_book": "Create Agreement / Book",
+        "fleet_btn_maint": "Request Maintenance",
+        "fleet_btn_edit": "Edit Vehicle",
+        "fleet_btn_del": "Delete Vehicle",
 
         # Tab 2: Deposit & Finance
-        "deposit_title": "💳 Deposit & Payment",
+        "deposit_title": "Deposit & Payment",
         "deposit_subtitle": "Record security deposit and collect rental payments",
-        "deposit_queue_title": "📋 Bookings Awaiting Deposit / Payment",
+        "deposit_queue_title": "Bookings Awaiting Deposit / Payment",
 
         # Tab 3: Dispatch & Return Work Orders
-        "dispatch_title": "🚚 Dispatch & Return Work Orders",
+        "dispatch_title": "Dispatch & Return Work Orders",
         "dispatch_subtitle": "Assign staff, set meeting point, and dispatch vehicles",
 
         # Tab 4: Rental Agreement
-        "contract_title": "📝 Rental Agreement Center",
+        "contract_title": "Rental Agreement Center",
         "contract_subtitle": "Generate digital rental agreements with signatures",
 
         # Tab 5: Booking Pipeline
-        "pipeline_title": "📋 Booking Pipeline",
+        "pipeline_title": "Booking Pipeline",
         "pipeline_subtitle": "Real-time overview and management of all bookings",
 
         # CRM & Maintenance
-        "crm_title": "🛠️ Maintenance & Services",
+        "crm_title": "Maintenance & Services",
         "crm_subtitle": "Maintenance logs, routine inspections, and renewals",
 
         # Dashboard & Analytics
@@ -4249,7 +4249,7 @@ else:
                             elif add_plate in cars_db:
                                 st.error(f"⚠️ ทะเบียนรถ '{add_plate}' มีอยู่ในฐานข้อมูลแล้ว ไม่สามารถเพิ่มซ้ำได้")
                             else:
-                                new_car_img = "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?auto=format&fit=crop&q=80&w=500"
+                                new_car_img = ""
                                 if add_img_file is not None:
                                     car_bytes = add_img_file.read()
                                     mime_f = add_img_file.type or "image/jpeg"
@@ -4312,7 +4312,7 @@ else:
 
             import html as _html_esc
             _FLEET_COLS = 3
-            _FLEET_DEFAULT_IMG = "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?auto=format&fit=crop&q=80&w=500"
+            _FLEET_DEFAULT_IMG = ""
 
             def format_plate_display(plate):
                 """แยกเลขทะเบียนและจังหวัดสำหรับแสดงผลแบบป้ายทะเบียนไทย"""
@@ -4508,7 +4508,10 @@ else:
                             # --- MISSION 2: ซ่อนรูปภาพและข้อมูลเชิงลึกใน EXPANDER (100% DATASET RETENTION) ---
                             with st.expander(exp_open_lbl, expanded=False):
                                 # 1. รูปภาพรถยนต์ และปุ่มอัพเดทรูป
-                                st.image(_img, use_container_width=True)
+                                if _img:
+                                    st.image(_img, use_container_width=True)
+                                else:
+                                    st.info("ไม่มีรูปภาพ (No Image)")
                                 with st.popover("📸 อัพเดทรูปสภาพรถคันนี้", use_container_width=True):
                                     st.markdown(f"**อัพเดทรูปรถปัจจุบัน ({_p})**")
                                     t2_up = st.file_uploader("เลือกไฟล์รูปภาพ:", type=["jpg", "jpeg", "png", "webp"], key=f"t2_up_{_p}")
