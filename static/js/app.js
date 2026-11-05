@@ -2156,8 +2156,12 @@ class App {
       return;
     }
 
+    const collapsedIds = new Set(
+      Array.from(container.querySelectorAll('.car-card-modern[data-expanded="false"] .car-card-collapsible-footer'))
+        .map(el => el.id)
+    );
+
     container.innerHTML = filtered.map((c, idx) => {
-      const isAvail = c.fleet_status_key === "available" || c.fleet_status_key === "reserved";
       const autoType = dur.days >= 30 ? (isEn ? "Monthly" : "รายเดือน") : (dur.days >= 7 ? (isEn ? "Weekly" : "รายสัปดาห์") : (isEn ? "Daily" : "รายวัน"));
       const { basePrice, priceDay, priceWeek, priceMonth } = this.calculateCarRentalPrice(c, dur.days, autoType);
       const carImg = (c.image || "").trim();
@@ -2179,7 +2183,7 @@ class App {
       }
 
       // 2. Thai License Plate Badge (Clickable Toggle Trigger)
-      const isExpanded = true;
+      const isExpanded = !collapsedIds.has(`card-footer-${safeId}`);
       const { plateNo, province, isRed } = this.formatPlateDisplay(c.plate);
       const plateTooltip = isEn ? "Click to toggle price & actions" : "คลิกป้ายทะเบียนเพื่อเปิด/ปิดราคาและปุ่มทำรายการ";
       const plateHtml = isRed
@@ -2195,16 +2199,16 @@ class App {
       // 3. Status Pill
       const l = isEn ? "EN" : "TH";
       const dict = (window.translations && window.translations[l]) ? window.translations[l] : null;
-      let statusText = dict ? dict.available : (isEn ? "Available" : "ว่างพร้อมใช้งาน");
+      let statusText = (dict && dict.available) || (isEn ? "Available" : "ว่างพร้อมใช้งาน");
       let statusBg = "#ECFDF5", statusBorder = "#A7F3D0", statusColor = "#065F46", statusDot = "#10B981";
       if (c.fleet_status_key === "reserved") {
-        statusText = dict ? dict.reserved : (isEn ? "Reserved" : "ติดจอง");
+        statusText = (dict && dict.reserved) || (isEn ? "Reserved" : "ติดจอง");
         statusBg = "#FEFCE8"; statusBorder = "#FEF08A"; statusColor = "#A16207"; statusDot = "#F59E0B";
       } else if (c.fleet_status_key === "maintenance") {
-        statusText = dict ? dict.workshop : (isEn ? "Workshop" : "ซ่อมบำรุง");
+        statusText = (dict && dict.workshop) || (isEn ? "Workshop" : "ซ่อมบำรุง");
         statusBg = "#FFF7ED"; statusBorder = "#FED7AA"; statusColor = "#9A3412"; statusDot = "#F97316";
       } else if (c.fleet_status_key === "unavailable" || c.status === "กำลังเช่า") {
-        statusText = dict ? dict.on_rent : (isEn ? "On rent" : "กำลังเช่า");
+        statusText = (dict && dict.on_rent) || (isEn ? "On rent" : "กำลังเช่า");
         statusBg = "#EFF6FF"; statusBorder = "#BFDBFE"; statusColor = "#1E40AF"; statusDot = "#3B82F6";
       }
 
@@ -2219,12 +2223,14 @@ class App {
         : "";
 
       const carSpecsSub = `${c.reg_year || c.year || '2024'} · ${String(c.color || 'WHITE').toUpperCase()} · ${c.fuel_type || 'Petrol'}`;
-      const dailyRateLabel = dict ? dict.daily_rate : (isEn ? 'Daily Rate' : 'ค่าเช่ารายวัน');
-      const detailsLabel = dict ? dict.details : (isEn ? 'Details' : 'ดูรายละเอียด');
-      const bookNowLabel = isAvail ? (dict ? dict.book_now : (isEn ? 'Book Now' : 'จองรถ')) : (dict ? dict.queue : (isEn ? 'Queue' : 'จองคิว'));
+      const dailyRateLabel = (dict && dict.daily_rate) || (isEn ? 'Daily Rate' : 'ค่าเช่ารายวัน');
+      const detailsLabel = (dict && dict.details) || (isEn ? 'Details' : 'ดูรายละเอียด');
+      const bookNowLabel = isAvail
+        ? ((dict && dict.book_now) || (isEn ? 'Book Now' : 'จองรถ'))
+        : ((dict && dict.queue) || (isEn ? 'Queue' : 'จองคิว'));
 
       return `
-        <div class="car-card-modern" data-expanded="true">
+        <div class="car-card-modern" data-expanded="${isExpanded ? 'true' : 'false'}">
           <!-- MISSION 1: หน้าการ์ด (CARD FRONT) -->
           <div class="car-top-row">
             <div class="car-code-group">
