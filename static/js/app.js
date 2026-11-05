@@ -2032,10 +2032,10 @@ class App {
 
           <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-top:10px;">
             <button type="button" class="btn btn-secondary" onclick="app.openCarDetailsModal('${safePlate}')" style="width:100%; font-weight:700; font-size:12px; padding:8px 6px; border-radius:8px; display:flex; align-items:center; justify-content:center; gap:5px; cursor:pointer; background:#FAF7F2; border:1px solid #CBD5E1; color:#334155;">
-              <span>🔍</span> <span>${this.t('details', isEn ? 'Details' : 'ดูรายละเอียด')}</span>
+              <span>${this.t('details', isEn ? 'Details' : 'ดูรายละเอียด')}</span>
             </button>
             <button type="button" class="btn btn-primary" onclick="app.openBookModal('${safePlate}')" style="width:100%; font-weight:700; font-size:12px; padding:8px 6px; border-radius:8px; display:flex; align-items:center; justify-content:center; gap:5px; cursor:pointer; box-shadow:0 1px 3px rgba(232,88,38,0.25);" ${!isAvail ? `title="${isEn ? 'Reserved - click to reserve queue' : 'ติดจอง - คลิกเพื่อจองคิวต่อ'}"` : ''}>
-              <span>🚗</span> <span>${isAvail ? this.t('book_now', isEn ? 'Book Now' : 'จองรถ') : this.t('queue', isEn ? 'Queue' : 'จองคิว')}</span>
+              <span>${isAvail ? this.t('book_now', isEn ? 'Book Now' : 'จองรถ') : this.t('queue', isEn ? 'Queue' : 'จองคิว')}</span>
             </button>
           </div>
         </div>
@@ -2164,9 +2164,9 @@ class App {
       <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-bottom:16px;">
         <!-- Photo Box -->
         <div style="position:relative; border-radius:10px; overflow:hidden; border:1px solid #E2E8F0; background:#0F172A; min-height:190px; display:flex; align-items:center; justify-content:center;">
-          ${carImg ? `<img src="${carImg}" alt="${c.brand || ''} ${c.model || ''}" style="width:100%; height:190px; object-fit:cover; display:block;">` : `<div style="color:#94A3B8; font-size:13px; font-weight:600; text-align:center; padding:20px;">🚗 ${isEn ? 'No Vehicle Photo' : 'ยังไม่มีรูปภาพรถยนต์'}</div>`}
+          ${carImg ? `<img src="${carImg}" alt="${c.brand || ''} ${c.model || ''}" style="width:100%; height:190px; object-fit:cover; display:block;">` : `<div style="color:#94A3B8; font-size:13px; font-weight:600; text-align:center; padding:20px;">${isEn ? 'No Vehicle Photo' : 'ยังไม่มีรูปภาพรถยนต์'}</div>`}
           <button type="button" onclick="app.triggerCarPhotoUpload('${safePlate}')" class="btn btn-sm" style="position:absolute; bottom:10px; right:10px; background:rgba(255,255,255,0.95); border:1px solid #CBD5E1; border-radius:20px; padding:4px 12px; font-size:11.5px; font-weight:700; cursor:pointer; box-shadow:0 2px 4px rgba(0,0,0,0.15);">
-            📷 ${isEn ? 'Upload Photo' : 'อัปโหลดรูปรถ'}
+            ${isEn ? 'Upload Photo' : 'อัปโหลดรูปรถ'}
           </button>
         </div>
 
@@ -2174,7 +2174,7 @@ class App {
         <div style="background:#FAF7F2; border:1px solid #FED7AA; border-radius:10px; padding:14px; display:flex; flex-direction:column; justify-content:space-between;">
           <div>
             <div style="font-size:12px; font-weight:700; color:#C2410C; margin-bottom:8px; text-transform:uppercase; letter-spacing:0.5px;">
-              💰 ${isEn ? 'Rental Pricing Rates' : 'อัตราค่าเช่าที่ตั้งไว้'}
+              ${isEn ? 'Rental Pricing Rates' : 'อัตราค่าเช่า'}
             </div>
             <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:8px; margin-bottom:12px; background:#FFF; border:1px solid #E2E8F0; border-radius:8px; padding:8px; text-align:center;">
               <div>
@@ -2204,12 +2204,12 @@ class App {
         </div>
       </div>
 
-      <!-- Mid Grid: Specifications & Detailed Records -->
+      <!-- Mid Grid: Specifications & Detailed Records (Swapped top-right and bottom-right cards) -->
       <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:16px;">
-        <!-- 1. ข้อมูลตัวรถเชิงลึก -->
+        <!-- Top-Left: ข้อมูลตัวรถเชิงลึก -->
         <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:8px; padding:12px;">
           <div style="font-size:12px; font-weight:700; color:#334155; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
-            <span>🚙</span> <span>${isEn ? 'Vehicle Specifications' : 'ข้อมูลตัวรถเชิงลึก'}</span>
+            <span>${isEn ? 'Vehicle Specifications' : 'ข้อมูลตัวรถเชิงลึก'}</span>
           </div>
           <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px; font-size:11.5px;">
             <div><b style="color:#64748B;">${isEn ? 'Group:' : 'กลุ่มรถ:'}</b> ${c.car_group || '-'}</div>
@@ -2223,34 +2223,10 @@ class App {
           </div>
         </div>
 
-        <!-- 2. ข้อมูล พ.ร.บ. และภาษี -->
+        <!-- Top-Right: กำหนดเช็คระยะ & การเงิน (Moved from bottom-right) -->
         <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:8px; padding:12px;">
           <div style="font-size:12px; font-weight:700; color:#334155; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
-            <span>📋</span> <span>${isEn ? 'ACT & Tax Registration' : 'ข้อมูล พ.ร.บ. และภาษี'}</span>
-          </div>
-          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px; font-size:11.5px;">
-            <div><b style="color:#64748B;">${isEn ? 'ACT Expiry:' : 'หมดอายุ พ.ร.บ.:'}</b> <span style="color:#DC2626; font-weight:700;">${c.act_expiry || '-'}</span></div>
-            <div><b style="color:#64748B;">${isEn ? 'Tax Expiry:' : 'หมดอายุภาษี:'}</b> <span style="color:#DC2626; font-weight:700;">${c.tax_expiry || '-'}</span></div>
-            <div><b style="color:#64748B;">${isEn ? 'PRB Price:' : 'ราคา พ.ร.บ.:'}</b> <span style="font-weight:700; color:#0F172A;">${prbFormatted}</span></div>
-          </div>
-        </div>
-
-        <!-- 3. ข้อมูลกรมธรรม์ประกันภัย -->
-        <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:8px; padding:12px;">
-          <div style="font-size:12px; font-weight:700; color:#334155; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
-            <span>🛡️</span> <span>${isEn ? 'Insurance Policy' : 'ข้อมูลกรมธรรม์ประกันภัย'}</span>
-          </div>
-          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px; font-size:11.5px;">
-            <div><b style="color:#64748B;">${isEn ? 'Company:' : 'บริษัทประกัน:'}</b> ${c.ins_company || c.insurance_brand || '-'}</div>
-            <div><b style="color:#64748B;">${isEn ? 'Expiry:' : 'วันหมดอายุ:'}</b> <span style="color:#DC2626; font-weight:700;">${c.ins_expiry || '-'}</span></div>
-            <div><b style="color:#64748B;">${isEn ? 'Premium:' : 'เบี้ยประกัน:'}</b> <span style="font-weight:700; color:#0F172A;">${insFormatted}</span></div>
-          </div>
-        </div>
-
-        <!-- 4. กำหนดการเช็คระยะ & สัญญาเช่าซื้อ/ไฟแนนซ์ -->
-        <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:8px; padding:12px;">
-          <div style="font-size:12px; font-weight:700; color:#334155; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
-            <span>🔧</span> <span>${isEn ? 'Service Due & Financing' : 'กำหนดเช็คระยะ & การเงิน'}</span>
+            <span>${isEn ? 'Service Due & Financing' : 'กำหนดเช็คระยะ & การเงิน'}</span>
           </div>
           <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px; font-size:11.5px;">
             <div><b style="color:#64748B;">${isEn ? 'Last Service:' : 'เช็คล่าสุด:'}</b> ${c.last_service_date || '-'}</div>
@@ -2261,12 +2237,36 @@ class App {
             <div><b style="color:#64748B;">${isEn ? 'Due Date:' : 'วันตัดงวด:'}</b> ${c.payment_due_date || '-'}</div>
           </div>
         </div>
+
+        <!-- Bottom-Left: ข้อมูลกรมธรรม์ประกันภัย -->
+        <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:8px; padding:12px;">
+          <div style="font-size:12px; font-weight:700; color:#334155; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
+            <span>${isEn ? 'Insurance Policy' : 'ข้อมูลกรมธรรม์ประกันภัย'}</span>
+          </div>
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px; font-size:11.5px;">
+            <div><b style="color:#64748B;">${isEn ? 'Company:' : 'บริษัทประกัน:'}</b> ${c.ins_company || c.insurance_brand || '-'}</div>
+            <div><b style="color:#64748B;">${isEn ? 'Expiry:' : 'วันหมดอายุ:'}</b> <span style="color:#DC2626; font-weight:700;">${c.ins_expiry || '-'}</span></div>
+            <div><b style="color:#64748B;">${isEn ? 'Premium:' : 'เบี้ยประกัน:'}</b> <span style="font-weight:700; color:#0F172A;">${insFormatted}</span></div>
+          </div>
+        </div>
+
+        <!-- Bottom-Right: ข้อมูล พ.ร.บ. และภาษี (Moved from top-right) -->
+        <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:8px; padding:12px;">
+          <div style="font-size:12px; font-weight:700; color:#334155; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
+            <span>${isEn ? 'ACT & Tax Registration' : 'ข้อมูล พ.ร.บ. และภาษี'}</span>
+          </div>
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px; font-size:11.5px;">
+            <div><b style="color:#64748B;">${isEn ? 'ACT Expiry:' : 'หมดอายุ พ.ร.บ.:'}</b> <span style="color:#DC2626; font-weight:700;">${c.act_expiry || '-'}</span></div>
+            <div><b style="color:#64748B;">${isEn ? 'Tax Expiry:' : 'หมดอายุภาษี:'}</b> <span style="color:#DC2626; font-weight:700;">${c.tax_expiry || '-'}</span></div>
+            <div><b style="color:#64748B;">${isEn ? 'PRB Price:' : 'ราคา พ.ร.บ.:'}</b> <span style="font-weight:700; color:#0F172A;">${prbFormatted}</span></div>
+          </div>
+        </div>
       </div>
 
       <!-- Notes if any -->
       ${c.notes ? `
         <div style="background:#FFFBEB; border:1px solid #FDE68A; border-radius:8px; padding:10px 14px; margin-bottom:16px; font-size:12px; color:#92400E;">
-          <b>📝 ${isEn ? 'Notes / Remarks:' : 'หมายเหตุ / ข้อมูลเพิ่มเติม:'}</b> ${c.notes}
+          <b>${isEn ? 'Notes / Remarks:' : 'หมายเหตุ:'}</b> ${c.notes}
         </div>
       ` : ''}
 
@@ -2274,13 +2274,13 @@ class App {
       <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding-top:12px; border-top:1px solid #E2E8F0; flex-wrap:wrap;">
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
           <button type="button" onclick="app.closeModal('modal-car-details'); app.openEditCarModal('${safePlate}')" class="btn btn-secondary" style="font-size:12px; padding:7px 12px; border-radius:6px; cursor:pointer;">
-            ✏️ ${isEn ? 'Edit Car' : 'แก้ไขข้อมูลรถ'}
+            ${isEn ? 'Edit Details' : 'แก้ไขข้อมูล'}
           </button>
           <button type="button" onclick="app.closeModal('modal-car-details'); app.openNewMaintenanceModal('${safePlate}')" class="btn btn-secondary" style="font-size:12px; padding:7px 12px; border-radius:6px; background:#FFF7ED; color:#C2410C; border-color:#FDBA74; cursor:pointer;">
-            🛠️ ${isEn ? 'Maintenance' : 'เปิดใบงานซ่อมบำรุง'}
+            ${isEn ? 'Maintenance Order' : 'เปิดใบงานซ่อมบำรุง'}
           </button>
           <button type="button" onclick="app.closeModal('modal-car-details'); app.deleteCarByPlate('${safePlate}')" class="btn btn-danger" style="font-size:12px; padding:7px 12px; border-radius:6px; cursor:pointer;">
-            🗑️ ${isEn ? 'Delete' : 'ลบรถ'}
+            ${isEn ? 'Delete Car' : 'ลบรายการรถ'}
           </button>
         </div>
 
@@ -3056,7 +3056,7 @@ class App {
       durationBox.innerHTML = `
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:6px;">
           <div style="display:flex; align-items:center; gap:8px;">
-            <span style="font-size:13.5px; font-weight:700; color:#1E293B;">🗓️ จำนวนวันเช่ารวม:</span>
+            <span style="font-size:13.5px; font-weight:700; color:#1E293B;">จำนวนวันเช่ารวม:</span>
             <span style="background:#1D4ED8; color:#FFFFFF; font-size:15px; font-weight:800; padding:3px 14px; border-radius:20px; box-shadow:0 1px 3px rgba(0,0,0,0.12);">
               ${days} วัน
             </span>
@@ -3069,7 +3069,7 @@ class App {
       `;
     }
 
-    // 2. Render Top Car Preview Box (Screenshots 2 & 3: แสดงราคาตรงตามข้อมูลที่ลงไว้)
+    // 2. Render Top Car Preview Box (Clean professional layout)
     const preview = document.getElementById("book-car-preview");
     if (preview) {
       const activeStyle = "background:#FFFBEB; color:#B45309; border:1.5px solid #F59E0B; font-weight:800;";
@@ -3079,10 +3079,10 @@ class App {
         <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:8px;">
           <div>
             <b style="font-size:15px; color:#1E293B;">${car.brand || ''} ${car.model || ''}</b> | ทะเบียน: <b style="color:#D97706;">${car.plate}</b><br/>
-            <span style="font-size:12px; color:#64748B;">🏷️ กลุ่ม: ${car.car_group || 'รถยนต์'} | ⛽ ${car.fuel_type || 'เบนซิน'} | 🏢 ${car.company || '-'}</span>
+            <span style="font-size:12px; color:#64748B;">กลุ่ม: ${car.car_group || 'รถยนต์'} | เชื้อเพลิง: ${car.fuel_type || car.fuel_system || 'เบนซิน'} | ผู้ถือกรรมสิทธิ์: ${car.owner_company || car.company || '-'}</span>
           </div>
           <div style="text-align:right;">
-            <div style="font-size:11px; color:#64748B; margin-bottom:3px;">💰 อัตราค่าเช่าที่ตั้งค่าไว้:</div>
+            <div style="font-size:11px; color:#64748B; margin-bottom:3px;">อัตราค่าเช่า:</div>
             <div style="display:flex; gap:4px; font-size:11.5px; justify-content:flex-end; flex-wrap:wrap;">
               <span style="padding:2px 7px; border-radius:6px; ${cType === 'รายวัน' ? activeStyle : inactiveStyle}">฿${priceDay.toLocaleString()}/วัน</span>
               <span style="padding:2px 7px; border-radius:6px; ${cType === 'รายสัปดาห์' ? activeStyle : inactiveStyle}">฿${priceWeek.toLocaleString()}/สัปดาห์</span>
@@ -3091,7 +3091,7 @@ class App {
           </div>
         </div>
         <div style="margin-top:7px; padding-top:6px; border-top:1px dashed #E2E8F0; font-size:12px; color:#475569;">
-          💡 <b>คำนวณราคาประเภท ${cType}:</b> <span style="color:#D97706; font-weight:700;">${breakdownText}</span>
+          <b>การคำนวณราคา (${cType}):</b> <span style="color:#D97706; font-weight:700;">${breakdownText}</span>
         </div>
       `;
     }
@@ -4771,8 +4771,8 @@ class App {
     badge.style.display = "block";
     badge.innerHTML = `
       <div style="line-height:1.5;">
-        👤 <b>${cust.full_name}</b> | 📞 <b>${cust.contact_no || '-'}</b> | 🪪 เลขบัตร/Passport: <b style="color:#2563EB;">${cust.passport_id || '-'}</b> | 🚗 ใบขับขี่: <b>${cust.licence_no || '-'}</b><br/>
-        📍 ที่อยู่: <span style="color:#64748B;">${cust.thai_address || cust.home_address || '-'}</span>
+        <b>${cust.full_name}</b> | เบอร์โทร: <b>${cust.contact_no || '-'}</b> | เลขบัตร/Passport: <b style="color:#2563EB;">${cust.passport_id || '-'}</b> | ใบขับขี่: <b>${cust.licence_no || '-'}</b><br/>
+        ที่อยู่: <span style="color:#64748B;">${cust.thai_address || cust.home_address || '-'}</span>
       </div>
     `;
   }
@@ -4790,7 +4790,7 @@ class App {
     badge.style.display = "block";
     badge.innerHTML = `
       <div style="line-height:1.5;">
-        👤 <b>${cust.full_name}</b> | 📞 <b>${cust.contact_no || '-'}</b> | 🪪 เลขบัตร/Passport: <b style="color:#2563EB;">${cust.passport_id || '-'}</b> | 🚗 ใบขับขี่: <b>${cust.licence_no || '-'}</b>
+        <b>${cust.full_name}</b> | เบอร์โทร: <b>${cust.contact_no || '-'}</b> | เลขบัตร/Passport: <b style="color:#2563EB;">${cust.passport_id || '-'}</b> | ใบขับขี่: <b>${cust.licence_no || '-'}</b>
       </div>
     `;
   }

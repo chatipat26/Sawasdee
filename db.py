@@ -671,27 +671,67 @@ class DataStore:
         threading.Thread(target=_task, daemon=True).start()
 
     def async_sync_car(self, plate, car_dict):
-        SUPABASE_CAR_COLS = {
-            'plate', 'brand', 'model', 'color', 'car_group', 'engine_cc', 'fuel_type',
-            'company', 'price_day', 'price_week', 'price_month', 'status', 'chassis_no',
-            'act_expiry', 'ins_expiry', 'mileage', 'image', 'created_at'
+        STANDARD_34_COLS = {
+            'plate', 'brand', 'model', 'car_group', 'fuel_system', 'cc_ev',
+            'owner_company', 'color', 'mileage', 'daily_rate', 'weekly_rate', 'monthly_rate',
+            'vin', 'tax_expire_date', 'prb_expire_date', 'insurance_expire_date', 'insurance_company',
+            'car_owner', 'beneficiary', 'register_year',
+            'prb_price', 'insurance_premium',
+            'last_service_date', 'next_service_date', 'next_service_mileage',
+            'car_status', 'is_debt_free', 'installment_amount', 'total_installments', 'current_installment',
+            'payment_due_date', 'finance_company', 'notes', 'image_url'
+        }
+        SUPABASE_CAR_COLS = STANDARD_34_COLS | {
+            'engine_cc', 'fuel_type', 'company', 'price_day', 'price_week', 'price_month',
+            'status', 'chassis_no', 'act_expiry', 'ins_expiry', 'image', 'created_at',
+            'owner', 'reg_year', 'tax_expiry', 'ins_company', 'act_price', 'ins_premium'
         }
         ALL_CAR_COLS = SUPABASE_CAR_COLS | {
-            'owner', 'beneficiary', 'reg_year', 'tax_expiry', 'ins_company',
-            'last_service_date', 'next_service', 'tire_change', 'notes',
-            'hp_contract_no', 'hp_installment',
-            'is_debt_free', 'installment_amount', 'payment_due_date',
-            'total_installments', 'current_installment', 'finance_company',
+            'next_service', 'tire_change', 'hp_contract_no', 'hp_installment',
             'next_engine_oil_date', 'next_engine_oil_mileage',
-            'next_tire_change_date', 'next_tire_change_mileage',
-            'next_service_date', 'next_service_mileage',
-            'prb_price', 'act_price', 'insurance_premium', 'ins_premium',
-            'prb_brand', 'act_brand', 'insurance_coverage'
+            'next_tire_change_date', 'next_tire_change_mileage'
         }
         with self.lock:
             existing = dict(self.cars.get(plate, {}))
             existing.update(car_dict)
             existing["plate"] = plate
+
+            # Bidirectional alias synchronization
+            if 'fuel_system' in existing and 'fuel_type' not in existing: existing['fuel_type'] = existing['fuel_system']
+            if 'fuel_type' in existing and 'fuel_system' not in existing: existing['fuel_system'] = existing['fuel_type']
+            if 'cc_ev' in existing and 'engine_cc' not in existing: existing['engine_cc'] = existing['cc_ev']
+            if 'engine_cc' in existing and 'cc_ev' not in existing: existing['cc_ev'] = existing['engine_cc']
+            if 'owner_company' in existing and 'company' not in existing: existing['company'] = existing['owner_company']
+            if 'company' in existing and 'owner_company' not in existing: existing['owner_company'] = existing['company']
+            if 'daily_rate' in existing and 'price_day' not in existing: existing['price_day'] = existing['daily_rate']
+            if 'price_day' in existing and 'daily_rate' not in existing: existing['daily_rate'] = existing['price_day']
+            if 'weekly_rate' in existing and 'price_week' not in existing: existing['price_week'] = existing['weekly_rate']
+            if 'price_week' in existing and 'weekly_rate' not in existing: existing['weekly_rate'] = existing['price_week']
+            if 'monthly_rate' in existing and 'price_month' not in existing: existing['price_month'] = existing['monthly_rate']
+            if 'price_month' in existing and 'monthly_rate' not in existing: existing['monthly_rate'] = existing['price_month']
+            if 'vin' in existing and 'chassis_no' not in existing: existing['chassis_no'] = existing['vin']
+            if 'chassis_no' in existing and 'vin' not in existing: existing['vin'] = existing['chassis_no']
+            if 'tax_expire_date' in existing and 'tax_expiry' not in existing: existing['tax_expiry'] = existing['tax_expire_date']
+            if 'tax_expiry' in existing and 'tax_expire_date' not in existing: existing['tax_expire_date'] = existing['tax_expiry']
+            if 'prb_expire_date' in existing and 'act_expiry' not in existing: existing['act_expiry'] = existing['prb_expire_date']
+            if 'act_expiry' in existing and 'prb_expire_date' not in existing: existing['prb_expire_date'] = existing['act_expiry']
+            if 'insurance_expire_date' in existing and 'ins_expiry' not in existing: existing['ins_expiry'] = existing['insurance_expire_date']
+            if 'ins_expiry' in existing and 'insurance_expire_date' not in existing: existing['insurance_expire_date'] = existing['ins_expiry']
+            if 'insurance_company' in existing and 'ins_company' not in existing: existing['ins_company'] = existing['insurance_company']
+            if 'ins_company' in existing and 'insurance_company' not in existing: existing['insurance_company'] = existing['ins_company']
+            if 'car_owner' in existing and 'owner' not in existing: existing['owner'] = existing['car_owner']
+            if 'owner' in existing and 'car_owner' not in existing: existing['car_owner'] = existing['owner']
+            if 'register_year' in existing and 'reg_year' not in existing: existing['reg_year'] = existing['register_year']
+            if 'reg_year' in existing and 'register_year' not in existing: existing['register_year'] = existing['reg_year']
+            if 'car_status' in existing and 'status' not in existing: existing['status'] = existing['car_status']
+            if 'status' in existing and 'car_status' not in existing: existing['car_status'] = existing['status']
+            if 'image_url' in existing and 'image' not in existing: existing['image'] = existing['image_url']
+            if 'image' in existing and 'image_url' not in existing: existing['image_url'] = existing['image']
+            if 'prb_price' in existing and 'act_price' not in existing: existing['act_price'] = existing['prb_price']
+            if 'act_price' in existing and 'prb_price' not in existing: existing['prb_price'] = existing['act_price']
+            if 'insurance_premium' in existing and 'ins_premium' not in existing: existing['ins_premium'] = existing['insurance_premium']
+            if 'ins_premium' in existing and 'insurance_premium' not in existing: existing['insurance_premium'] = existing['ins_premium']
+
             clean_mem = {k: v for k, v in existing.items() if k in ALL_CAR_COLS}
             self.cars[plate] = clean_mem
             sb_payload = {k: v for k, v in clean_mem.items() if k in SUPABASE_CAR_COLS}

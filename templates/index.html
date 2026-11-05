@@ -1495,7 +1495,7 @@
   <div id="modal-book-car" class="modal-backdrop">
     <div class="modal-dialog">
       <div class="modal-header">
-        <div class="modal-title">🚗 ยืนยันการจองรถยนต์</div>
+        <div class="modal-title">ยืนยันการจองรถยนต์</div>
         <button class="modal-close" onclick="app.closeModal('modal-book-car')">✕</button>
       </div>
 
@@ -1506,11 +1506,11 @@
 
       <div class="form-group" style="margin-bottom:12px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-          <label style="margin:0;">👤 เลือกลูกค้าผู้เช่า:</label>
+          <label style="margin:0;">เลือกลูกค้าผู้เช่า:</label>
           <div style="display:flex; gap:6px;">
-            <button type="button" onclick="app.openEditSelectedCustomerModal('book')" class="btn btn-sm btn-secondary" style="padding:2px 8px; font-size:11.5px; background:#FAF7F2; border:1px solid #CBD5E1; color:#374151;" title="ดูและแก้ไขข้อมูลลูกค้าที่เลือก">✏️ ดู/แก้ไข</button>
-            <button type="button" onclick="app.deleteSelectedCustomer('book')" class="btn btn-sm btn-danger" style="padding:2px 8px; font-size:11.5px;" title="ลบข้อมูลลูกค้านี้ (กรณีบันทึกผิด)">🗑️ ลบ</button>
-            <button type="button" onclick="app.openAddCustomerModal()" class="btn btn-sm btn-primary" style="padding:2px 8px; font-size:11.5px;">➕ เพิ่มใหม่</button>
+            <button type="button" onclick="app.openEditSelectedCustomerModal('book')" class="btn btn-sm btn-secondary" style="padding:2px 8px; font-size:11.5px; background:#FAF7F2; border:1px solid #CBD5E1; color:#374151;" title="ดูและแก้ไขข้อมูลลูกค้าที่เลือก">ดู/แก้ไข</button>
+            <button type="button" onclick="app.deleteSelectedCustomer('book')" class="btn btn-sm btn-danger" style="padding:2px 8px; font-size:11.5px;" title="ลบข้อมูลลูกค้านี้">ลบ</button>
+            <button type="button" onclick="app.openAddCustomerModal()" class="btn btn-sm btn-primary" style="padding:2px 8px; font-size:11.5px;">เพิ่มใหม่</button>
           </div>
         </div>
         <select id="book-cust-select" class="form-control" onchange="app.onSelectBookingCustomer()"></select>
@@ -1519,14 +1519,14 @@
 
       <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;">
         <div class="form-group">
-          <label>📅 วัน-เวลารับรถ (เวลาไทย):</label>
+          <label>วัน-เวลารับรถ:</label>
           <div style="display:flex; gap:4px;">
             <input type="date" id="book-modal-start-date" class="form-control" onchange="app.recalcBookingModalFromDates(true)">
             <input type="time" id="book-modal-start-time" class="form-control" style="width:105px;" onchange="app.recalcBookingModalFromDates(true)">
           </div>
         </div>
         <div class="form-group">
-          <label>📅 วัน-เวลาคืนรถ (เวลาไทย):</label>
+          <label>วัน-เวลาคืนรถ:</label>
           <div style="display:flex; gap:4px;">
             <input type="date" id="book-modal-end-date" class="form-control" onchange="app.recalcBookingModalFromDates(true)">
             <input type="time" id="book-modal-end-time" class="form-control" style="width:105px;" onchange="app.recalcBookingModalFromDates(true)">
@@ -1540,7 +1540,7 @@
       </div>
 
       <div class="form-group" style="margin-bottom:12px;">
-        <label>📋 ประเภทสัญญา:</label>
+        <label>ประเภทสัญญา:</label>
         <select id="book-contract-type" class="form-control" onchange="app.recalcBookingModalFromDates(false)">
           <option value="รายวัน">รายวัน (Daily)</option>
           <option value="รายสัปดาห์">รายสัปดาห์ (Weekly)</option>
@@ -1567,7 +1567,7 @@
       <div style="display:flex; justify-content:flex-end; gap:10px;">
         <button onclick="app.closeModal('modal-book-car')" class="btn btn-secondary">ยกเลิก</button>
         <button onclick="app.submitInstantBooking()" class="btn btn-primary">
-          💳 ยืนยันการจอง & ไปหน้าชำระมัดจำ ➔
+          ยืนยันการจองและไปหน้าชำระมัดจำ ➔
         </button>
       </div>
     </div>
@@ -1577,7 +1577,7 @@
   <div id="modal-add-customer" class="modal-backdrop" style="z-index:2500;">
     <div class="modal-dialog" style="max-width:700px;">
       <div class="modal-header">
-        <div class="modal-title" id="modal-cust-title">➕ เพิ่มข้อมูลลูกค้าใหม่ (Add New Customer)</div>
+        <div class="modal-title" id="modal-cust-title">เพิ่มข้อมูลลูกค้าใหม่ (Customer Registration)</div>
         <button class="modal-close" onclick="app.closeModal('modal-add-customer')">✕</button>
       </div>
 
@@ -1586,21 +1586,21 @@
       <div style="display:grid; grid-template-columns: 1fr 1fr; gap:14px; margin-bottom:16px;">
         <div class="form-group">
           <label>ชื่อ-นามสกุล (Full Name)*</label>
-          <input type="text" id="cust-name-in" class="form-control" placeholder="เช่น สมเกียรติ มั่นคง">
+          <input type="text" id="cust-name-in" class="form-control" placeholder="ชื่อ-นามสกุล">
         </div>
         <div class="form-group">
           <label>เบอร์โทรศัพท์ (Contact No.)* <span style="color:#DC2626; font-size:11px; font-weight:700;">*(ห้ามซ้ำ)</span></label>
-          <input type="text" id="cust-phone-in" class="form-control" placeholder="เช่น 081-234-5678" oninput="app.checkDuplicatePhone(this.value)">
+          <input type="text" id="cust-phone-in" class="form-control" placeholder="081-234-5678" oninput="app.checkDuplicatePhone(this.value)">
           <div id="cust-phone-warn" style="font-size:11.5px; color:#DC2626; display:none; margin-top:4px; font-weight:700;"></div>
         </div>
         <div class="form-group">
           <label>หมายเลขบัตร ปชช. / Passport <span style="color:#DC2626; font-size:11px; font-weight:700;">*(ห้ามซ้ำ)</span></label>
-          <input type="text" id="cust-pass-in" class="form-control" placeholder="1100400... หรือ เลขพาสปอร์ต" oninput="app.checkDuplicatePassport(this.value)">
+          <input type="text" id="cust-pass-in" class="form-control" placeholder="หมายเลขบัตรประชาชน หรือ Passport" oninput="app.checkDuplicatePassport(this.value)">
           <div id="cust-pass-warn" style="font-size:11.5px; color:#DC2626; display:none; margin-top:4px; font-weight:700;"></div>
         </div>
         <div class="form-group">
           <label>หมายเลขใบขับขี่ (Licence No.)</label>
-          <input type="text" id="cust-lic-in" class="form-control" placeholder="6500...">
+          <input type="text" id="cust-lic-in" class="form-control" placeholder="เลขที่ใบขับขี่">
         </div>
         <div class="form-group">
           <label>สัญชาติ (Nationality)</label>
@@ -1621,18 +1621,18 @@
       </div>
       <div class="form-group" style="margin-bottom:14px;">
         <label>ที่อยู่ตามภูมิลำเนา (Home Address)</label>
-        <textarea id="cust-home-in" class="form-control" rows="2" placeholder="ที่อยู่ตามบัตร..."></textarea>
+        <textarea id="cust-home-in" class="form-control" rows="2" placeholder="ที่อยู่ตามบัตรประชาชน / ทะเบียนบ้าน..."></textarea>
       </div>
       <div class="form-group" style="margin-bottom:20px;">
         <label>ที่อยู่ในไทยระหว่างเช่า (Address in Thailand)</label>
-        <textarea id="cust-thai-in" class="form-control" rows="2" placeholder="โรงแรม / คอนโด..."></textarea>
+        <textarea id="cust-thai-in" class="form-control" rows="2" placeholder="โรงแรม / คอนโด / ที่พักอาศัย..."></textarea>
       </div>
 
       <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
-        <button type="button" id="btn-modal-cust-delete" onclick="app.deleteCurrentEditingCustomer()" class="btn btn-danger" style="display:none;">🗑️ ลบลูกค้ารายนี้</button>
+        <button type="button" id="btn-modal-cust-delete" onclick="app.deleteCurrentEditingCustomer()" class="btn btn-danger" style="display:none;">ลบข้อมูลลูกค้านี้</button>
         <div style="display:flex; justify-content:flex-end; gap:10px; margin-left:auto;">
           <button onclick="app.closeModal('modal-add-customer')" class="btn btn-secondary">ยกเลิก</button>
-          <button onclick="app.submitNewCustomer()" class="btn btn-primary" id="btn-modal-cust-save">💾 บันทึกข้อมูลลูกค้า</button>
+          <button onclick="app.submitNewCustomer()" class="btn btn-primary" id="btn-modal-cust-save">บันทึกข้อมูลลูกค้า</button>
         </div>
       </div>
     </div>
@@ -1650,14 +1650,14 @@
       <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; margin-bottom:12px;">
         <div class="form-group">
           <label id="lbl-modal-car-plate">License Plate (Plate)*</label>
-          <input type="text" id="edit-car-plate" class="form-control" placeholder="เช่น 5ขศ 5181" oninput="app.checkDuplicatePlate(this.value)" autofocus>
+          <input type="text" id="edit-car-plate" class="form-control" placeholder="5ขศ 5181" oninput="app.checkDuplicatePlate(this.value)" autofocus>
           <div id="edit-car-plate-warn" style="display:none; font-size:11.5px; color:#DC2626; font-weight:600; margin-top:4px;">
             ⚠️ ทะเบียนนี้มีอยู่ในระบบแล้ว
           </div>
         </div>
         <div class="form-group">
           <label id="lbl-modal-car-brand">Brand / Make*</label>
-          <input type="text" id="edit-car-brand" class="form-control" list="car-brands-list" placeholder="เช่น Toyota">
+          <input type="text" id="edit-car-brand" class="form-control" list="car-brands-list" placeholder="Toyota">
           <datalist id="car-brands-list">
             <option value="Toyota"></option>
             <option value="Honda"></option>
@@ -1676,7 +1676,7 @@
         </div>
         <div class="form-group">
           <label id="lbl-modal-car-model">Vehicle Model*</label>
-          <input type="text" id="edit-car-model" class="form-control" list="car-models-list" placeholder="เช่น Yaris Ativ">
+          <input type="text" id="edit-car-model" class="form-control" list="car-models-list" placeholder="Yaris Ativ">
           <datalist id="car-models-list"></datalist>
         </div>
       </div>
@@ -1704,14 +1704,14 @@
         </div>
         <div class="form-group">
           <label id="lbl-modal-car-cc">Engine Capacity (CC / EV)</label>
-          <input type="text" id="edit-car-cc" class="form-control" placeholder="เช่น 1200 หรือ 1800">
+          <input type="text" id="edit-car-cc" class="form-control" placeholder="1200">
         </div>
       </div>
 
       <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; margin-bottom:12px;">
         <div class="form-group">
           <label id="lbl-modal-car-company">Ownership / Company*</label>
-          <input type="text" id="edit-car-company" class="form-control" list="car-companies-list" placeholder="เช่น Sawasdee Rent A Car">
+          <input type="text" id="edit-car-company" class="form-control" list="car-companies-list" placeholder="ชื่อบริษัท / ผู้ถือกรรมสิทธิ์">
           <datalist id="car-companies-list">
             <option value="Sawasdee Rent A Car"></option>
             <option value="P.D.P. Co., Ltd."></option>
@@ -1722,12 +1722,12 @@
         </div>
         <div class="form-group">
           <label id="lbl-modal-car-color">Body Color</label>
-          <input type="text" id="edit-car-color" class="form-control" list="car-colors-list" placeholder="เช่น ขาว, ดำ, เทา">
+          <input type="text" id="edit-car-color" class="form-control" list="car-colors-list" placeholder="สีตัวถัง">
           <datalist id="car-colors-list"></datalist>
         </div>
         <div class="form-group">
           <label id="lbl-modal-car-mileage">Odometer Mileage (km)</label>
-          <input type="text" id="edit-car-mileage" class="form-control" placeholder="เช่น 25,000">
+          <input type="text" id="edit-car-mileage" class="form-control" placeholder="0">
         </div>
       </div>
 
@@ -1771,22 +1771,22 @@
       <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:12px; margin-bottom:12px;">
         <div class="form-group">
           <label id="lbl-modal-car-ins-comp">Insurance Company</label>
-          <input type="text" id="edit-car-ins-comp" class="form-control" list="car-ins-comps-list" placeholder="เช่น คุ้มภัยโตเกียวมารีน">
+          <input type="text" id="edit-car-ins-comp" class="form-control" list="car-ins-comps-list" placeholder="ชื่อบริษัทประกันภัย">
           <datalist id="car-ins-comps-list"></datalist>
         </div>
         <div class="form-group">
           <label id="lbl-modal-car-owner">Vehicle Owner</label>
-          <input type="text" id="edit-car-owner" class="form-control" list="car-owners-list" placeholder="เช่น SWD, บีคลิ๊ก">
+          <input type="text" id="edit-car-owner" class="form-control" list="car-owners-list" placeholder="ชื่อผู้ถือกรรมสิทธิ์">
           <datalist id="car-owners-list"></datalist>
         </div>
         <div class="form-group">
           <label id="lbl-modal-car-beneficiary">Beneficiary</label>
-          <input type="text" id="edit-car-beneficiary" class="form-control" list="car-beneficiaries-list" placeholder="เช่น สวัสดี เรนทัล">
+          <input type="text" id="edit-car-beneficiary" class="form-control" list="car-beneficiaries-list" placeholder="ชื่อผู้รับผลประโยชน์">
           <datalist id="car-beneficiaries-list"></datalist>
         </div>
         <div class="form-group">
           <label id="lbl-modal-car-reg-year">Registration Year (B.E./A.D.)</label>
-          <input type="text" id="edit-car-reg-year" class="form-control" list="car-reg-years-list" placeholder="เช่น 2567">
+          <input type="text" id="edit-car-reg-year" class="form-control" list="car-reg-years-list" placeholder="2567">
           <datalist id="car-reg-years-list"></datalist>
         </div>
       </div>
@@ -1794,11 +1794,11 @@
       <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:12px;">
         <div class="form-group">
           <label id="lbl-modal-car-prb-price">ราคา พ.ร.บ. (บาท)</label>
-          <input type="number" id="edit-car-prb-price" class="form-control" min="0" step="10" placeholder="เช่น 645.21">
+          <input type="number" id="edit-car-prb-price" class="form-control" min="0" step="10" placeholder="0.00">
         </div>
         <div class="form-group">
           <label id="lbl-modal-car-ins-premium">เบี้ยประกัน (บาท)</label>
-          <input type="number" id="edit-car-ins-premium" class="form-control" min="0" step="100" placeholder="เช่น 15000">
+          <input type="number" id="edit-car-ins-premium" class="form-control" min="0" step="100" placeholder="0.00">
         </div>
       </div>
 
@@ -1827,7 +1827,7 @@
         </div>
         <div class="form-group" style="margin-bottom:0;">
           <label id="lbl-modal-car-next-srv-mileage">Next Service Due (Mileage)</label>
-          <input type="number" id="edit-car-next-srv-mileage" class="form-control" min="0" step="500" placeholder="เช่น 20000">
+          <input type="number" id="edit-car-next-srv-mileage" class="form-control" min="0" step="500" placeholder="0">
         </div>
       </div>
 
@@ -1841,7 +1841,7 @@
           <!-- Row 1: Finance Company Single Searchable/Creatable Datalist Input (Unslop) -->
           <div class="form-group" style="margin-bottom:12px;">
             <label id="lbl-modal-car-finance-comp">บริษัทไฟแนนซ์</label>
-            <input type="text" id="edit-car-finance-company" class="form-control" list="finance-companies-list" placeholder="เลือกจากรายการ หรือพิมพ์ชื่อบริษัทไฟแนนซ์ใหม่...">
+            <input type="text" id="edit-car-finance-company" class="form-control" list="finance-companies-list" placeholder="ระบุบริษัทไฟแนนซ์...">
             <datalist id="finance-companies-list"></datalist>
           </div>
 
@@ -1869,13 +1869,13 @@
 
       <div class="form-group" style="margin-bottom:14px;">
         <label id="lbl-modal-car-notes">Additional Notes & Info</label>
-        <input type="text" id="edit-car-notes" class="form-control" placeholder="เช่น มีเล่มทะเบียน, ผู้เช่าประจำ, ประวัติเคลม...">
+        <input type="text" id="edit-car-notes" class="form-control" placeholder="หมายเหตุเพิ่มเติม (ถ้ามี)">
       </div>
 
       <!-- Car Photo Preview & Upload (Positioned at bottom before save button) -->
       <div style="display:flex; align-items:center; gap:16px; margin-bottom:14px; padding:12px; background:#F8FAFC; border:1px solid #E2E8F0; border-radius:10px;">
         <div id="edit-car-photo-preview" style="width:110px; height:80px; border-radius:8px; background:#E2E8F0; display:flex; align-items:center; justify-content:center; overflow:hidden; flex-shrink:0; border:1px solid #CBD5E1;">
-          <span style="font-size:28px; color:#94A3B8;">🚗</span>
+          <span style="font-size:12px; color:#94A3B8; font-weight:600;">ยังไม่มีรูป</span>
         </div>
         <div style="flex:1;">
           <label style="font-size:12px; font-weight:700; color:#334155; margin-bottom:4px; display:block;" id="lbl-modal-car-photo">รูปรถยนต์ (Car Photo)</label>
@@ -1965,7 +1965,7 @@
       <div style="display:flex; justify-content:flex-end; gap:10px;">
         <button onclick="app.closeModal('modal-update-expiry')" class="btn btn-secondary">ยกเลิก</button>
         <button onclick="app.submitExpiryModal()" class="btn btn-primary">
-          💾 บันทึกวันหมดอายุใหม่
+          บันทึกวันหมดอายุใหม่
         </button>
       </div>
     </div>
@@ -1977,7 +1977,7 @@
   <div class="modal-backdrop" id="modal-new-maintenance">
     <div class="modal-box" style="max-width: 680px; max-height: 90vh; overflow-y: auto;">
       <div class="modal-header">
-        <div class="modal-title" id="modal-mnt-title">🛠️ ออกใบงานซ่อมบำรุง / ต่อทะเบียน-ประกัน</div>
+        <div class="modal-title" id="modal-mnt-title">ออกใบงานซ่อมบำรุง / ต่อทะเบียน-ประกัน</div>
         <button class="modal-close" onclick="app.closeModal('modal-new-maintenance')">✕</button>
       </div>
 
@@ -1987,34 +1987,34 @@
       <div style="background:#FFF7ED; border:1px solid #FFEDD5; border-radius:10px; padding:12px 14px; margin-bottom:14px;">
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
           <div style="flex:1; min-width:240px;">
-            <label style="font-size:11.5px; font-weight:700; color:#9A3412; display:block; margin-bottom:4px;">🚘 เลือกรถยนต์ที่ต้องการดำเนินการ:</label>
+            <label style="font-size:11.5px; font-weight:700; color:#9A3412; display:block; margin-bottom:4px;">เลือกรถยนต์:</label>
             <select id="mnt-car-select" class="form-control" onchange="app.onMaintenanceCarSelected(this.value)" style="font-weight:700; font-size:13px; color:#1F2937;">
               <!-- Populated by JS -->
             </select>
           </div>
           <div id="mnt-car-expiry-pill" style="font-size:11.5px; color:#C2410C; background:white; border:1px solid #FDBA74; padding:5px 10px; border-radius:8px;">
-            📅 พ.ร.บ.: <span id="mnt-car-act">-</span> | ประกัน: <span id="mnt-car-ins">-</span>
+            พ.ร.บ.: <span id="mnt-car-act">-</span> | ประกันภัย: <span id="mnt-car-ins">-</span>
           </div>
         </div>
       </div>
 
       <!-- Job Type Selection -->
       <div class="form-group" style="margin-bottom:12px;">
-        <label style="font-weight:700;">📋 ประเภทใบงาน (Work Order Type):</label>
+        <label style="font-weight:700;">ประเภทใบงาน (Work Order Type):</label>
         <select id="mnt-order-type" class="form-control" onchange="app.onMaintenanceTypeChange(this.value)" style="font-weight:700;">
-          <option value="ซ่อมบำรุงทั่วไป / เช็คระยะ">🔧 ซ่อมบำรุงทั่วไป / เช็คระยะ (General Maintenance / Service)</option>
-          <option value="ซ่อมเครื่องยนต์ / ช่วงล่าง / ระบบไฟ">⚙️ ซ่อมเครื่องยนต์ / ช่วงล่าง / ระบบไฟ (Mechanical & Electrical)</option>
-          <option value="ซ่อมเคาะพ่นสี / ตัวถัง">🎨 ซ่อมเคาะพ่นสี / ตัวถัง (Body & Paint)</option>
-          <option value="ต่อทะเบียนภาษี และ พ.ร.บ.">📄 ต่อทะเบียนภาษี และ พ.ร.บ. (Tax & Compulsory Motor Insurance)</option>
-          <option value="ต่อประกันภัยรถยนต์">🛡️ ต่อประกันภัยรถยนต์ (Car Insurance Renewal)</option>
-          <option value="ต่อทะเบียนภาษี พ.ร.บ. และ ประกันภัย (แพ็กคู่)">🔄 ต่อทะเบียนภาษี พ.ร.บ. และ ประกันภัย (แพ็กคู่)</option>
-          <option value="ตรวจสภาพรถยนต์ ตรอ.">🔍 ตรวจสภาพรถยนต์ ตรอ. (Vehicle Inspection)</option>
+          <option value="ซ่อมบำรุงทั่วไป / เช็คระยะ">ซ่อมบำรุงทั่วไป / เช็คระยะ (General Maintenance / Service)</option>
+          <option value="ซ่อมเครื่องยนต์ / ช่วงล่าง / ระบบไฟ">ซ่อมเครื่องยนต์ / ช่วงล่าง / ระบบไฟ (Mechanical & Electrical)</option>
+          <option value="ซ่อมเคาะพ่นสี / ตัวถัง">ซ่อมเคาะพ่นสี / ตัวถัง (Body & Paint)</option>
+          <option value="ต่อทะเบียนภาษี และ พ.ร.บ.">ต่อทะเบียนภาษี และ พ.ร.บ. (Tax & Compulsory Motor Insurance)</option>
+          <option value="ต่อประกันภัยรถยนต์">ต่อประกันภัยรถยนต์ (Car Insurance Renewal)</option>
+          <option value="ต่อทะเบียนภาษี พ.ร.บ. และ ประกันภัย (แพ็กคู่)">ต่อทะเบียนภาษี พ.ร.บ. และ ประกันภัย (รวม)</option>
+          <option value="ตรวจสภาพรถยนต์ ตรอ.">ตรวจสภาพรถยนต์ ตรอ. (Vehicle Inspection)</option>
         </select>
       </div>
 
       <!-- Quick Preset Tag Buttons for Service Items -->
       <div style="margin-bottom:8px;">
-        <label style="font-size:11.5px; font-weight:700; color:#475569; display:block; margin-bottom:4px;">⚡ รายการบริการด่วน (คลิกเพื่อเพิ่มข้อความ):</label>
+        <label style="font-size:11.5px; font-weight:700; color:#475569; display:block; margin-bottom:4px;">รายการบริการด่วน:</label>
         <div style="display:flex; flex-wrap:wrap; gap:5px;" id="mnt-quick-tags-container">
           <button type="button" onclick="app.appendMntItem('เปลี่ยนถ่ายน้ำมันเครื่องสังเคราะห์แท้ + ไส้กรอง')" class="btn btn-sm" style="font-size:11px; padding:3px 8px; background:#F1F5F9; border:1px solid #CBD5E1; color:#334155;">+ ถ่ายน้ำมันเครื่อง</button>
           <button type="button" onclick="app.appendMntItem('ตรวจเช็คระบบเบรก & เปลี่ยนผ้าเบรก')" class="btn btn-sm" style="font-size:11px; padding:3px 8px; background:#F1F5F9; border:1px solid #CBD5E1; color:#334155;">+ ระบบเบรก</button>
@@ -2028,26 +2028,26 @@
 
       <!-- Service Items Textarea -->
       <div class="form-group" style="margin-bottom:12px;">
-        <label style="font-weight:700;">📝 รายการซ่อม / รายการบริการ (ระบุรายละเอียด):</label>
-        <textarea id="mnt-service-items" class="form-control" rows="3" placeholder="เช่น 1. เปลี่ยนถ่ายน้ำมันเครื่อง 2. เปลี่ยนผ้าเบรกหน้า 3. สลับยาง-ถ่วงล้อ..."></textarea>
+        <label style="font-weight:700;">รายการซ่อม / บริการ:</label>
+        <textarea id="mnt-service-items" class="form-control" rows="3" placeholder="ระบุรายละเอียดงานซ่อมหรือรายการบริการ..."></textarea>
       </div>
 
       <!-- Cost & Mileage Grid -->
       <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:12px;">
         <div class="form-group">
-          <label style="font-weight:700;">💰 ค่าซ่อมบำรุง / งบประมาณ (THB):</label>
+          <label style="font-weight:700;">ค่าซ่อมบำรุง / งบประมาณ (THB):</label>
           <input type="number" id="mnt-cost" class="form-control" placeholder="0" min="0" step="50" style="font-weight:700; color:#B45309;">
         </div>
         <div class="form-group">
-          <label style="font-weight:700;">⏱️ เลขไมล์ปัจจุบัน (กม.):</label>
-          <input type="text" id="mnt-mileage" class="form-control" placeholder="เช่น 25,400">
+          <label style="font-weight:700;">เลขไมล์ปัจจุบัน (กม.):</label>
+          <input type="text" id="mnt-mileage" class="form-control" placeholder="0">
         </div>
       </div>
 
       <!-- Garage / Service Center Info with Presets -->
       <div class="form-group" style="margin-bottom:8px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-          <label style="font-weight:700;">🏢 อู่หรือศูนย์บริการที่ทำการซ่อมบำรุง:</label>
+          <label style="font-weight:700;">อู่หรือศูนย์บริการ:</label>
           <div style="font-size:11px; color:#64748B;">
             แนะนำ:
             <a href="javascript:void(0)" onclick="app.fillMntGarage('ศูนย์บริการ โตโยต้า บัสส์ วิภาวดี', '02-555-9999', 'ถ.วิภาวดีรังสิต แขวงลาดยาว จตุจักร กทม.')" style="color:#EA580C; margin-right:4px;">โตโยต้า บัสส์</a> |
@@ -2062,18 +2062,18 @@
       <!-- Garage Phone & Location -->
       <div style="display:grid; grid-template-columns: 1fr 2fr; gap:12px; margin-bottom:12px;">
         <div class="form-group">
-          <label style="font-size:12px; font-weight:700;">📞 เบอร์โทรศัพท์อู่/ศูนย์:</label>
-          <input type="text" id="mnt-service-phone" class="form-control" placeholder="เช่น 02-xxx-xxxx">
+          <label style="font-size:12px; font-weight:700;">เบอร์โทรศัพท์:</label>
+          <input type="text" id="mnt-service-phone" class="form-control" placeholder="02-xxx-xxxx">
         </div>
         <div class="form-group">
-          <label style="font-size:12px; font-weight:700;">📍 สถานที่นัดหมาย / พิกัดอู่:</label>
+          <label style="font-size:12px; font-weight:700;">สถานที่ / พิกัดอู่:</label>
           <input type="text" id="mnt-service-loc" class="form-control" placeholder="ที่อยู่อู่ หรือ ลิงก์ Google Maps">
         </div>
       </div>
 
       <!-- Assigned Worker -->
       <div class="form-group" style="margin-bottom:12px;">
-        <label style="font-weight:700;">👤 พนักงานผู้รับผิดชอบงาน (Assigned Staff):</label>
+        <label style="font-weight:700;">พนักงานผู้รับผิดชอบงาน:</label>
         <select id="mnt-assigned-worker" class="form-control" style="font-weight:700;">
           <!-- Populated by JS from users list -->
         </select>
@@ -2082,34 +2082,34 @@
       <!-- Schedule Dates and Times -->
       <div style="display:grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap:8px; margin-bottom:14px;">
         <div class="form-group">
-          <label style="font-size:11.5px; font-weight:700;">📅 วันที่ส่งซ่อม/นัด:</label>
+          <label style="font-size:11.5px; font-weight:700;">วันที่ส่งซ่อม:</label>
           <input type="date" id="mnt-sched-date" class="form-control">
         </div>
         <div class="form-group">
-          <label style="font-size:11.5px; font-weight:700;">⏰ เวลานัด:</label>
+          <label style="font-size:11.5px; font-weight:700;">เวลานัด:</label>
           <input type="time" id="mnt-sched-time" class="form-control" value="09:00">
         </div>
         <div class="form-group">
-          <label style="font-size:11.5px; font-weight:700;">📅 กำหนดเสร็จ:</label>
+          <label style="font-size:11.5px; font-weight:700;">กำหนดเสร็จ:</label>
           <input type="date" id="mnt-exp-date" class="form-control">
         </div>
         <div class="form-group">
-          <label style="font-size:11.5px; font-weight:700;">⏰ เวลาเสร็จ:</label>
+          <label style="font-size:11.5px; font-weight:700;">เวลาเสร็จ:</label>
           <input type="time" id="mnt-exp-time" class="form-control" value="17:00">
         </div>
       </div>
 
       <!-- Additional Notes -->
       <div class="form-group" style="margin-bottom:14px;">
-        <label style="font-size:12px; font-weight:700;">📝 หมายเหตุเพิ่มเติม / คำสั่งพิเศษ:</label>
-        <input type="text" id="mnt-notes" class="form-control" placeholder="เช่น ขอใบเสร็จฉบับเต็ม / เคลมประกัน / เปลี่ยนอะไหล่แท้">
+        <label style="font-size:12px; font-weight:700;">หมายเหตุเพิ่มเติม:</label>
+        <input type="text" id="mnt-notes" class="form-control" placeholder="หมายเหตุเพิ่มเติม (ถ้ามี)">
       </div>
 
       <!-- Checkbox: Auto change car status to maintenance -->
       <div style="background:#FAF7F2; border:1px solid #E5E7EB; border-radius:8px; padding:10px 12px; margin-bottom:16px;">
         <label style="display:flex; align-items:center; gap:8px; font-size:12.5px; font-weight:700; color:#1F2937; cursor:pointer;">
           <input type="checkbox" id="mnt-update-car-status" checked style="width:16px; height:16px; accent-color:#EA580C;">
-          <span>🔒 ปรับสถานะรถเป็น 'สถานะซ่อมบำรุง' อัตโนมัติ (ป้องกันการถูกจองซ้ำซ้อนระหว่างซ่อม)</span>
+          <span>ปรับสถานะรถเป็น 'สถานะซ่อมบำรุง' อัตโนมัติ (ป้องกันการถูกจองซ้ำซ้อนระหว่างซ่อม)</span>
         </label>
       </div>
 
@@ -2118,10 +2118,10 @@
         <button type="button" onclick="app.closeModal('modal-new-maintenance')" class="btn btn-secondary">ยกเลิก</button>
         <div style="display:flex; gap:8px;">
           <button type="button" onclick="app.submitMaintenanceOrder(false)" class="btn btn-primary" style="background:#EA580C; border-color:#C2410C;">
-            💾 บันทึกใบงาน
+            บันทึกใบงาน
           </button>
           <button type="button" onclick="app.submitMaintenanceOrder(true)" class="btn" style="background:#0284C7; color:white; border-color:#0369A1; font-weight:700;">
-            🖨️ บันทึก & เปิดใบงาน PDF ทันที
+            บันทึกและเปิดใบงาน PDF
           </button>
         </div>
       </div>
@@ -2212,7 +2212,7 @@
   <div class="toast-container" id="toast-container"></div>
 
   <!-- Scripts with cache busting -->
-  <script src="/static/js/app.js?v=7.6"></script>
+  <script src="/static/js/app.js?v=7.7"></script>
 
   <!-- ===================================================================== -->
   <!-- MODAL: ACTIVE RENTALS / CARS WITH CUSTOMERS (POPUP FOR CARD 1) -->

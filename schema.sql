@@ -15,45 +15,48 @@ CREATE TABLE IF NOT EXISTS public.users (
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
--- 2. Cars Table (Fleet Management)
+-- 2. Vehicles / Cars Table (Fleet Management - Strict 34-Column Schema)
 CREATE TABLE IF NOT EXISTS public.cars (
     plate VARCHAR(50) PRIMARY KEY,
     brand VARCHAR(100),
     model VARCHAR(100),
-    color VARCHAR(50),
     car_group VARCHAR(100),
-    engine_cc VARCHAR(50),
-    fuel_type VARCHAR(50),
-    company VARCHAR(150),
-    status VARCHAR(50) DEFAULT 'ว่างพร้อมใช้งาน',
-    daily_rate NUMERIC DEFAULT 0,
+    fuel_system VARCHAR(50),
+    cc_ev VARCHAR(50),
+    owner_company VARCHAR(150),
+    color VARCHAR(50),
     mileage VARCHAR(50),
-    image TEXT,
-    reg_year VARCHAR(50),
-    engine_no VARCHAR(100),
-    chassis_no VARCHAR(100),
-    owner VARCHAR(150),
-    manager VARCHAR(150),
-    leasing_contract VARCHAR(100),
-    leasing_total_installments VARCHAR(50),
-    leasing_current_installment VARCHAR(50),
-    leasing_last_payment_date VARCHAR(50),
-    leasing_installment_amount VARCHAR(50),
-    insurance_brand VARCHAR(100),
-    insurance_premium VARCHAR(50),
-    insurance_coverage VARCHAR(50),
-    ins_start_date VARCHAR(50),
-    ins_expiry VARCHAR(50),
-    tax_year VARCHAR(50),
-    tax_start_date VARCHAR(50),
-    tax_expiry VARCHAR(50),
-    act_brand VARCHAR(100),
-    act_price VARCHAR(50),
-    act_start_date VARCHAR(50),
-    act_expiry VARCHAR(50),
-    maintenance_detail TEXT,
+    daily_rate NUMERIC DEFAULT 0,
+    weekly_rate NUMERIC DEFAULT 0,
+    monthly_rate NUMERIC DEFAULT 0,
+    vin VARCHAR(100),
+    tax_expire_date VARCHAR(50),
+    prb_expire_date VARCHAR(50),
+    insurance_expire_date VARCHAR(50),
+    insurance_company VARCHAR(150),
+    car_owner VARCHAR(150),
+    beneficiary VARCHAR(150),
+    register_year VARCHAR(50),
+    prb_price NUMERIC DEFAULT 0,
+    insurance_premium NUMERIC DEFAULT 0,
+    last_service_date VARCHAR(50),
+    next_service_date VARCHAR(50),
+    next_service_mileage NUMERIC DEFAULT 0,
+    car_status VARCHAR(50) DEFAULT 'ว่างพร้อมใช้งาน',
+    is_debt_free BOOLEAN DEFAULT FALSE,
+    installment_amount NUMERIC DEFAULT 0,
+    total_installments INTEGER DEFAULT 0,
+    current_installment INTEGER DEFAULT 0,
+    payment_due_date VARCHAR(50),
+    finance_company VARCHAR(150),
+    notes TEXT,
+    image_url TEXT,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE OR REPLACE VIEW public.vehicles AS
+SELECT * FROM public.cars;
+
 
 -- 3. Customers Table (CRM)
 CREATE TABLE IF NOT EXISTS public.customers (
