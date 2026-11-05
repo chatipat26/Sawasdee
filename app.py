@@ -259,17 +259,15 @@ def calculate_rental_duration_and_days(start_date, start_time, end_date, end_tim
     
     is_over_4hr = False
     if extra_hours > 4 or (extra_hours == 4 and rem_minutes > 0):
-        # ล่าช้าเกิน 4 ชม. ปรับเป็น 1 วันเต็ม
         billable_days = base_days + 1
         is_over_4hr = True
-        explanation = f"{base_days} วัน + ล่าช้าเกินเวลา {extra_hours} ชม. {rem_minutes} นาที (เกิน 4 ชม. ปรับคิดเพิ่มเป็น 1 วันเต็ม ➔ รวม {billable_days} วัน)"
+        explanation = f"{billable_days} วัน ({billable_days * 24} ชม. · เกิน {extra_hours} ชม. ปรับเป็น 1 วัน)"
     else:
-        # ไม่เกิน 4 ชม. (อนุโลม)
         billable_days = max(1, base_days)
         if extra_hours > 0 or rem_minutes > 0:
-            explanation = f"{base_days} วัน + เกินเวลา {extra_hours} ชม. {rem_minutes} นาที (อนุโลมไม่เกิน 4 ชม. ไม่คิดวันเพิ่ม ➔ คิด {billable_days} วัน)"
+            explanation = f"{billable_days} วัน ({billable_days * 24} ชม. · อนุโลม ≤ 4 ชม.)"
         else:
-            explanation = f"ตรงเวลาพอดี {billable_days} วัน ({billable_days * 24} ชั่วโมง)"
+            explanation = f"{billable_days} วัน ({billable_days * 24} ชม.)"
             
     return billable_days, extra_hours, rem_minutes, is_over_4hr, explanation
 
@@ -1600,18 +1598,18 @@ translations = {
         "cloud_sync_auto": "● ซิงค์ Cloud อัตโนมัติ:",
 
         # Back Office
-        "bo_page_title": "📋 Back Office (ตารางใบงานสำหรับคนงาน / พนักงานขับรถ)",
-        "bo_page_subtitle": "Vehicle Dispatch & Return Work Orders Table & PDF Document Center",
+        "bo_page_title": "📋 Back Office (ตารางใบงาน)",
+        "bo_page_subtitle": "ตารางใบงานรับ-ส่งรถยนต์และศูนย์รวมเอกสาร PDF",
         "bo_page_subtitle_th": "ตารางใบงานรับ-ส่งรถยนต์และศูนย์รวมเอกสาร PDF",
         "bo_admin_privilege": "👑 สิทธิ์ผู้ดูแลระบบ (Admin): สั่งงานได้ทุกใบงาน",
         "bo_staff_privilege": "👷 สิทธิ์พนักงาน: {name} (ส่งงานได้เฉพาะงานที่ได้รับมอบหมาย)",
         "bo_search_placeholder": "🔍 ค้นหาใบงาน...",
         "bo_btn_refresh": "🔄 รีเฟรช",
-        "bo_table_title": "🚚 รายการใบงานรับ-ส่งรถทั้งหมดในระบบ",
+        "bo_table_title": "🚚 รายการใบงานรับ-ส่งรถทั้งหมด",
         "bo_empty_msg": "📋 ไม่มีใบงานในระบบขณะนี้",
-        "bo_empty_info": "📋 ยังไม่มีรายการใบงานในระบบ (เมื่อจัดทำสัญญาหรือจองรถแล้ว รายการจะปรากฏบนตารางงานนี้ทันที)",
-        "bo_btn_new_booking": "➕ ไปจัดทำสัญญา / จองรถใหม่ (Front Office)",
-        "bo_filter_caption": "🔎 กรองตารางใบงานตามคำค้นหาจากไซด์บาร์:",
+        "bo_empty_info": "📋 ยังไม่มีรายการใบงาน (เมื่อบันทึกการจองหรือสัญญาแล้ว รายการจะแสดงบนตารางทันที)",
+        "bo_btn_new_booking": "➕ จองรถ / ทำสัญญา (Front Office)",
+        "bo_filter_caption": "🔎 กรองตารางใบงานตามคำค้นหา:",
 
         # Back Office Table Columns
         "bo_col_type": "ประเภทงาน",
@@ -1641,31 +1639,31 @@ translations = {
         "bo_status_wait_dispatch": "🔒 รอส่งรถก่อน",
 
         # Front Office Tabs & Header
-        "fo_title": "📂 Front Office (ระบบปฏิบัติการเช่ารถ)",
-        "fo_subtitle": "เลือกลำดับขั้นตอนตามแฟ้มงานด้านล่างเพื่อดำเนินการจัดเตรียมรถ สัญญา และส่งมอบ",
+        "fo_title": "📂 Front Office",
+        "fo_subtitle": "ศูนย์ปฏิบัติการเช่ารถ สัญญา และส่งมอบ",
         "tab_fleet": "1. เลือกรถยนต์ & จองด่วน",
         "tab_deposit": "2. เงินมัดจำ & การเงิน",
-        "tab_dispatch": "3. ออกใบงานส่ง/รับรถ",
-        "tab_contract": "4. จัดทำสัญญาเช่า",
+        "tab_dispatch": "3. ใบงานส่ง/รับรถ",
+        "tab_contract": "4. สัญญาเช่า",
         "tab_pipeline": "5. แผงควบคุมคิวการจอง",
-        "tab_fleet_display": "🚘 2. ค้นหารถยนต์ (Fleet Selection)",
-        "tab_deposit_display": "💳 4. การเงินและมัดจำ (Financial & Deposit)",
-        "tab_dispatch_display": "🚚 5. ระบบงานภาคสนาม (Dispatch & Return)",
-        "tab_contract_display": "📝 3. สัญญาเช่า (Lease Agreement)",
-        "tab_pipeline_display": "📂 1. แผงควบคุม (Booking Dashboard)",
+        "tab_fleet_display": "🚗 1. เลือกรถยนต์ & จองด่วน",
+        "tab_deposit_display": "💳 2. เงินมัดจำ & การเงิน",
+        "tab_dispatch_display": "🚚 3. ใบงานส่ง/รับรถ",
+        "tab_contract_display": "📝 4. จัดทำสัญญาเช่า",
+        "tab_pipeline_display": "📋 5. แผงควบคุมคิวการจอง",
 
         # Tab 1: Fleet & Instant Booking
-        "hero_booking_bar_title": "✨ 2. INSTANT BOOKING FORM (THE BOOKING BAR) — ค้นหาและเลือกรถด่วนสำหรับเซล",
-        "hero_booking_bar_desc": "เลือกวัน-เวลา เพื่อเช็คสถานะรถว่างและคำนวณระยะเวลาเช่าตามจริงอัตโนมัติ (เกิน 4 ชม. ปรับเป็น 1 วัน)",
-        "btn_add_customer": "➕ เพิ่มลูกค้าใหม่",
-        "filter_cat": "🚘 หมวดหมู่รถ (Category)",
-        "filter_brand": "🏷️ ยี่ห้อ (Brand)",
-        "filter_owner": "🏢 กรรมสิทธิ์ / บริษัท (Owner)",
-        "filter_status": "🚦 สถานะรถ (Status)",
+        "hero_booking_bar_title": "⚡ เลือกรถยนต์ & จองด่วน (Instant Booking Bar)",
+        "hero_booking_bar_desc": "เลือกวันรับ - คืนรถ (คำนวณระยะเวลาเช่าอัตโนมัติ)",
+        "btn_add_customer": "➕ เพิ่มลูกค้า",
+        "filter_cat": "🚘 หมวดหมู่รถ",
+        "filter_brand": "🏷️ ยี่ห้อ",
+        "filter_owner": "🏢 บริษัท / สังกัด",
+        "filter_status": "🚦 สถานะรถ",
         "filter_all": "ทั้งหมด",
-        "btn_reset_filters": "🔄 รีเซ็ตตัวกรองทั้งหมด",
+        "btn_reset_filters": "🔄 ล้างตัวกรอง",
         "fleet_expander_view": "🔍 ดูรูปรถและข้อมูลเพิ่มเติม",
-        "fleet_expander_hide": "🔼 ซ่อนรูปรถและข้อมูลเพิ่มเติม",
+        "fleet_expander_hide": "🔼 ซ่อนข้อมูล",
         "fleet_plate_red": "ป้ายแดง",
         "fleet_plate_red_sub": "Red plate",
         "fleet_stat_avail": "Available",
@@ -1683,30 +1681,30 @@ translations = {
         "fleet_btn_del": "🗑️ ลบรถยนต์",
 
         # Tab 2: Deposit & Finance
-        "deposit_title": "💳 การเงินและบันทึกเงินมัดจำ (Deposit & Financial Management)",
-        "deposit_subtitle": "บันทึกและตรวจสอบการชำระเงินมัดจำจองรถ มัดจำประกันสัญญา และค่าเช่าส่วนที่เหลือ",
-        "deposit_queue_title": "📋 คิวการจองที่รอจัดการการเงิน / ชำระมัดจำ",
+        "deposit_title": "💳 เงินมัดจำ & การเงิน (Deposit & Payment)",
+        "deposit_subtitle": "บันทึกเงินมัดจำประกันสัญญาและชำระค่าเช่า",
+        "deposit_queue_title": "📋 คิวจองรอดำเนินการชำระเงิน",
 
         # Tab 3: Dispatch & Return Work Orders
-        "dispatch_title": "🚚 จัดการออกใบงานส่งมอบรถและรับรถคืน",
-        "dispatch_subtitle": "มอบหมายพนักงานขับรถ ระบุสถานที่นัดหมาย และพิมพ์ใบงานปฏิบัติหน้าที่",
+        "dispatch_title": "🚚 ใบงานส่งมอบรถและรับรถคืน",
+        "dispatch_subtitle": "มอบหมายพนักงาน ระบุสถานที่ และออกใบงาน",
 
         # Tab 4: Rental Agreement
-        "contract_title": "📝 ศูนย์จัดทำและตรวจสอบสัญญาเช่ารถยนต์ (Rental Agreement Center)",
-        "contract_subtitle": "สร้างเอกสารสัญญาเช่าอิเล็กทรอนิกส์พร้อมลายเซ็นและข้อมูลผู้เช่าอย่างสมบูรณ์",
+        "contract_title": "📝 จัดทำสัญญาเช่ารถยนต์",
+        "contract_subtitle": "ออกสัญญาเช่าอิเล็กทรอนิกส์พร้อมข้อมูลผู้เช่าและลายเซ็น",
 
         # Tab 5: Booking Pipeline
-        "pipeline_title": "📂 แผงควบคุมคิวการจองและติดตามสถานะงาน",
-        "pipeline_subtitle": "ภาพรวมคิวการจองทั้งหมดในระบบ สามารถค้นหา จัดการ และแก้ไขข้อมูลการจองได้ทันที",
+        "pipeline_title": "📋 แผงควบคุมคิวการจอง (Booking Pipeline)",
+        "pipeline_subtitle": "ติดตามสถานะงานเช่าและค้นหารายการจองทั้งหมด",
 
         # CRM & Maintenance
         "crm_title": "🛠️ ซ่อมบำรุง & บริการ",
-        "crm_subtitle": "บันทึกประวัติการซ่อมบำรุง ตรวจเช็กระยะ เปลี่ยนถ่ายน้ำมันเครื่อง และต่อภาษี/พ.ร.บ./ประกันภัย",
+        "crm_subtitle": "ประวัติซ่อมบำรุง ตรวจเช็กระยะ และต่อภาษี/พ.ร.บ./ประกันภัย",
 
         # Dashboard & Analytics
         "dash_title": "📊 สรุปแดชบอร์ด & การเงิน",
-        "dash_subtitle_badge": "INTERACTIVE EXECUTIVE DASHBOARD",
-        "dash_subtitle": "รายงานภาพรวมอัตราการใช้งานรถยนต์ (Utilization Rate) รายรับ รายจ่าย และผลกำไรสุทธิ",
+        "dash_subtitle_badge": "EXECUTIVE DASHBOARD",
+        "dash_subtitle": "ภาพรวมอัตราการใช้งานรถยนต์ (Utilization) รายรับ และกำไรสุทธิ",
 
         # Dashboard HP & Property Insurance & Completed Jobs
         "dash_hp_title": "ตารางผ่อนชำระค่างวดรถยนต์ (HP / Leasing ...)",
@@ -1794,18 +1792,18 @@ translations = {
         "cloud_sync_auto": "● Auto Cloud Sync:",
 
         # Back Office
-        "bo_page_title": "📋 Back Office (Vehicle Dispatch & Return Work Orders)",
+        "bo_page_title": "📋 Back Office (Work Orders)",
         "bo_page_subtitle": "Vehicle Dispatch & Return Work Orders Table & PDF Document Center",
         "bo_page_subtitle_th": "Vehicle Dispatch & Return Work Orders Table & PDF Document Center",
         "bo_admin_privilege": "👑 Admin Privilege: Can manage all work orders",
         "bo_staff_privilege": "👷 Staff Privilege: {name} (Assigned jobs only)",
         "bo_search_placeholder": "🔍 Search work orders...",
         "bo_btn_refresh": "🔄 Refresh",
-        "bo_table_title": "🚚 All Vehicle Dispatch & Return Work Orders",
-        "bo_empty_msg": "📋 No work orders in the system currently",
-        "bo_empty_info": "📋 No work orders in the system currently (Work orders will appear here once booked or contracted)",
-        "bo_btn_new_booking": "➕ Create New Booking / Contract (Front Office)",
-        "bo_filter_caption": "🔎 Filtered work orders by sidebar search:",
+        "bo_table_title": "🚚 All Dispatch & Return Work Orders",
+        "bo_empty_msg": "📋 No work orders in system",
+        "bo_empty_info": "📋 No work orders yet (Orders appear automatically upon booking)",
+        "bo_btn_new_booking": "➕ New Booking / Contract (Front Office)",
+        "bo_filter_caption": "🔎 Filtered work orders by search:",
 
         # Back Office Table Columns
         "bo_col_type": "Job Type",
@@ -1813,7 +1811,7 @@ translations = {
         "bo_col_plate": "Plate No.",
         "bo_col_customer": "Customer & Phone",
         "bo_col_customer_name": "Customer",
-        "bo_col_schedule": "Schedule Date-Time",
+        "bo_col_schedule": "Schedule",
         "bo_col_schedule_range": "Delivery - Return Schedule",
         "bo_col_staff": "Staff",
         "bo_col_location": "Meeting Location",
@@ -1826,7 +1824,7 @@ translations = {
         "bo_job_dispatch": "🚚 Dispatch",
         "bo_job_return": "🔙 Return",
         "bo_job_maintenance": "🛠️ Maintenance",
-        "bo_job_renewal": "📄 Tax / Act / Insurance Renewal",
+        "bo_job_renewal": "📄 Tax / ACT / Insurance Renewal",
         "bo_btn_inspect_handover": "🔍 Inspect & Complete",
         "bo_btn_complete_maintenance": "🏁 Inspect & Close Job",
         "bo_btn_complete_renewal": "🏁 Submit & Update Expiry",
@@ -1835,31 +1833,31 @@ translations = {
         "bo_status_wait_dispatch": "🔒 Wait for Dispatch",
 
         # Front Office Tabs & Header
-        "fo_title": "📂 Front Office (Vehicle Rental Operations)",
-        "fo_subtitle": "Select workflow stage below to manage vehicle booking, agreements, and handovers",
+        "fo_title": "📂 Front Office",
+        "fo_subtitle": "Fleet rental operations, contracts, and handovers",
         "tab_fleet": "1. Fleet & Instant Booking",
         "tab_deposit": "2. Deposit & Finance",
-        "tab_dispatch": "3. Dispatch/Return Orders",
+        "tab_dispatch": "3. Dispatch & Return",
         "tab_contract": "4. Rental Agreement",
         "tab_pipeline": "5. Booking Pipeline",
-        "tab_fleet_display": "🚘 2. Fleet Selection",
-        "tab_deposit_display": "💳 4. Financial & Deposit",
-        "tab_dispatch_display": "🚚 5. Field Operations (Dispatch & Return)",
-        "tab_contract_display": "📝 3. Lease Agreement",
-        "tab_pipeline_display": "📂 1. Booking Dashboard",
+        "tab_fleet_display": "🚗 1. Fleet & Booking",
+        "tab_deposit_display": "💳 2. Deposit & Finance",
+        "tab_dispatch_display": "🚚 3. Dispatch & Return",
+        "tab_contract_display": "📝 4. Rental Agreement",
+        "tab_pipeline_display": "📋 5. Booking Pipeline",
 
         # Tab 1: Fleet & Instant Booking
-        "hero_booking_bar_title": "✨ 2. INSTANT BOOKING FORM (THE BOOKING BAR) — Fast Fleet Selection for Sales",
-        "hero_booking_bar_desc": "Select dates to check availability and calculate rental duration (Over 4 hrs rounded to 1 day)",
-        "btn_add_customer": "➕ Add New Customer",
-        "filter_cat": "🚘 Vehicle Category",
-        "filter_brand": "🏷️ Brand / Make",
-        "filter_owner": "🏢 Owner / Company",
-        "filter_status": "🚦 Fleet Status",
+        "hero_booking_bar_title": "⚡ Instant Fleet Booking",
+        "hero_booking_bar_desc": "Select Pick-up / Return dates (Auto-calculates daily rate)",
+        "btn_add_customer": "➕ Add Customer",
+        "filter_cat": "🚘 Category",
+        "filter_brand": "🏷️ Brand",
+        "filter_owner": "🏢 Company",
+        "filter_status": "🚦 Status",
         "filter_all": "All",
-        "btn_reset_filters": "🔄 Reset All Filters",
+        "btn_reset_filters": "🔄 Reset Filters",
         "fleet_expander_view": "🔍 View Image & Details",
-        "fleet_expander_hide": "🔼 Hide Image & Details",
+        "fleet_expander_hide": "🔼 Hide Details",
         "fleet_plate_red": "Red Plate",
         "fleet_plate_red_sub": "Red plate",
         "fleet_stat_avail": "Available",
@@ -1877,30 +1875,30 @@ translations = {
         "fleet_btn_del": "🗑️ Delete Vehicle",
 
         # Tab 2: Deposit & Finance
-        "deposit_title": "💳 Deposit & Financial Management",
-        "deposit_subtitle": "Record and verify booking deposits, security deposits, and remaining rental fees",
-        "deposit_queue_title": "📋 Booking Queue Awaiting Deposit / Payment",
+        "deposit_title": "💳 Deposit & Payment",
+        "deposit_subtitle": "Record security deposit and collect rental payments",
+        "deposit_queue_title": "📋 Bookings Awaiting Deposit / Payment",
 
         # Tab 3: Dispatch & Return Work Orders
-        "dispatch_title": "🚚 Vehicle Dispatch & Return Work Orders Management",
-        "dispatch_subtitle": "Assign drivers/staff, specify meeting points, and print official work orders",
+        "dispatch_title": "🚚 Dispatch & Return Work Orders",
+        "dispatch_subtitle": "Assign staff, set meeting point, and dispatch vehicles",
 
         # Tab 4: Rental Agreement
-        "contract_title": "📝 Rental Agreement Formulation & Document Center",
-        "contract_subtitle": "Generate digital rental agreements with signatures and tenant verification",
+        "contract_title": "📝 Rental Agreement Center",
+        "contract_subtitle": "Generate digital rental agreements with signatures",
 
         # Tab 5: Booking Pipeline
-        "pipeline_title": "📂 Booking Pipeline & Job Status Tracking",
-        "pipeline_subtitle": "Overview of all system bookings with instant search, management, and editing",
+        "pipeline_title": "📋 Booking Pipeline",
+        "pipeline_subtitle": "Real-time overview and management of all bookings",
 
         # CRM & Maintenance
         "crm_title": "🛠️ Maintenance & Services",
-        "crm_subtitle": "Record maintenance logs, routine inspections, oil changes, and tax/insurance renewals",
+        "crm_subtitle": "Maintenance logs, routine inspections, and renewals",
 
         # Dashboard & Analytics
         "dash_title": "📊 Fleet Performance & Financials",
-        "dash_subtitle_badge": "INTERACTIVE EXECUTIVE DASHBOARD",
-        "dash_subtitle": "Overview of fleet utilization rates, total revenue, operating expenses, and net profit",
+        "dash_subtitle_badge": "EXECUTIVE DASHBOARD",
+        "dash_subtitle": "Fleet utilization, gross revenue, operating costs, and net profit",
 
         # Dashboard HP & Property Insurance & Completed Jobs
         "dash_hp_title": "Vehicle Installment Plan (HP / Leasing ...)",
