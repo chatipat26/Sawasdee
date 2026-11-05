@@ -153,6 +153,18 @@ class App {
         TH: "จองคิว",
         EN: "Queue"
       },
+      add_customer: {
+        TH: "เพิ่มลูกค้า",
+        EN: "Add Customer"
+      },
+      add_vehicle: {
+        TH: "เพิ่มรถยนต์",
+        EN: "Add Vehicle"
+      },
+      quick_actions: {
+        TH: "ปุ่มดำเนินการด่วน:",
+        EN: "Quick Actions:"
+      },
       car_details_modal_title: {
         TH: "รายละเอียดรถยนต์",
         EN: "Vehicle Details"
@@ -190,7 +202,14 @@ class App {
       langBtnText.textContent = isEn ? "🌐 ภาษาไทย" : "🌐 English";
     }
 
-    // 2. Sidebar Navigation Items
+    // 2. Sidebar Navigation Items & Quick Actions
+    const lblQuickAct = document.getElementById("sb-actions-header-text");
+    if (lblQuickAct) lblQuickAct.textContent = this.t("quick_actions", isEn ? "Quick Actions:" : "ปุ่มดำเนินการด่วน:");
+    const lblAddCust = document.getElementById("sb-lbl-add-customer");
+    if (lblAddCust) lblAddCust.textContent = this.t("add_customer", isEn ? "Add Customer" : "เพิ่มลูกค้า");
+    const lblAddCar = document.getElementById("sb-lbl-add-car");
+    if (lblAddCar) lblAddCar.textContent = this.t("add_vehicle", isEn ? "Add Vehicle" : "เพิ่มรถยนต์");
+
     const lblFront = document.getElementById("nav-lbl-frontoffice");
     if (lblFront) lblFront.textContent = isEn ? "Front Office" : "Front Office";
     const lblBack = document.getElementById("nav-lbl-backoffice");

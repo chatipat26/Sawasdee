@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sawasdee Rental - ระบบบริหารจัดการรถเช่าระดับพรีเมียม</title>
-  <link rel="stylesheet" href="/static/css/app.css?v=3.0">
+  <link rel="stylesheet" href="/static/css/app.css?v=3.1">
   <link rel="icon" type="image/png" href="/static/sawasdee-logo.png">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -208,6 +208,21 @@
           <input type="text" id="sb-search-input" oninput="app.handleSidebarSearch(this.value)" placeholder="🔍 ค้นหา (เลขที่จอง / ทะเบียน / ลูกค้า)" style="width: 100%; padding: 9px 12px; border: 1.5px solid #E5DFD7; border-radius: 8px; background: #FAF7F2; font-size: 12px; outline: none; transition: all 0.2s;" onfocus="this.style.borderColor='#E85826'; this.style.background='#FFFFFF';" onblur="this.style.borderColor='#E5DFD7'; this.style.background='#FAF7F2';" />
         </div>
 
+        <!-- Quick Actions (Global Action Buttons) -->
+        <div class="sb-quick-actions">
+          <div id="sb-actions-header-text" style="font-size: 11px; font-weight: 700; color: #8C827A; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">
+            ปุ่มดำเนินการด่วน:
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 7px;">
+            <button type="button" id="sb-btn-add-customer" onclick="app.openAddCustomerModal()" class="sb-quick-btn sb-quick-btn-customer" title="เพิ่มข้อมูลลูกค้าใหม่">
+              <span style="font-size: 15px;">👤</span> <span id="sb-lbl-add-customer">เพิ่มลูกค้า</span>
+            </button>
+            <button type="button" id="sb-btn-add-car" onclick="app.openEditCarModal('')" class="sb-quick-btn sb-quick-btn-car" title="เพิ่มข้อมูลรถยนต์ใหม่เข้าสู่ระบบ">
+              <span style="font-size: 15px;">🚗</span> <span id="sb-lbl-add-car">เพิ่มรถยนต์</span>
+            </button>
+          </div>
+        </div>
+
         <!-- Main Navigation Links -->
         <div id="sb-menu-header-text" style="font-size: 11px; font-weight: 600; color: #6B7280; margin-bottom: 6px;">เมนูระบบงานหลัก:</div>
 
@@ -273,18 +288,13 @@
         <div id="subtab-fleet" class="tab-pane">
           <!-- The Booking Bar (Hero Section) -->
           <div class="booking-bar">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
-              <div>
-                <h3 id="booking-bar-title" style="font-size:16px; font-weight:800; color:#92400E; margin:0;">
-                  Instant Fleet Booking
-                </h3>
-                <div id="booking-bar-subtitle" style="font-size:12px; color:#B45309; margin-top:2px;">
-                  Select Pick-up / Return dates (Auto-calculates daily rate)
-                </div>
+            <div style="margin-bottom:14px;">
+              <h3 id="booking-bar-title" style="font-size:16px; font-weight:800; color:#92400E; margin:0;">
+                Instant Fleet Booking
+              </h3>
+              <div id="booking-bar-subtitle" style="font-size:12px; color:#B45309; margin-top:2px;">
+                Select Pick-up / Return dates (Auto-calculates daily rate)
               </div>
-              <button id="btn-add-customer-main" onclick="app.openAddCustomerModal()" class="btn btn-sm btn-primary">
-                Add Customer
-              </button>
             </div>
 
             <!-- แถวที่ 1: ดรอปดาวน์ตัวกรอง 4 ตัว (หมวดหมู่รถ, ยี่ห้อ, กรรมสิทธิ์/บริษัท, สถานะรถ) -->
@@ -354,9 +364,6 @@
                 <div style="font-size:12.5px; color:#059669; font-weight:700;" id="calc-cars-count">
                   Available Fleet: 0
                 </div>
-                <button type="button" id="btn-add-car-booking-bar" onclick="app.openEditCarModal('')" class="btn btn-sm btn-primary" style="font-size:12px; padding:5px 12px;">
-                  Add Vehicle
-                </button>
               </div>
               <input type="file" id="quick-car-photo-input" accept="image/*" style="display:none;" onchange="app.onQuickCarPhotoSelected(this)">
             </div>
@@ -1975,9 +1982,9 @@
   <!-- MODAL: CREATE / ISSUE MAINTENANCE & RENEWAL WORK ORDER               -->
   <!-- ===================================================================== -->
   <div class="modal-backdrop" id="modal-new-maintenance">
-    <div class="modal-box" style="max-width: 680px; max-height: 90vh; overflow-y: auto;">
+    <div class="modal-dialog modal-box" style="background:#ffffff !important; background-color:#ffffff !important; color:#1E293B; max-width:680px; max-height:90vh; overflow-y:auto; box-shadow:0 16px 40px rgba(0,0,0,0.18);">
       <div class="modal-header">
-        <div class="modal-title" id="modal-mnt-title">ออกใบงานซ่อมบำรุง / ต่อทะเบียน-ประกัน</div>
+        <div class="modal-title" id="modal-mnt-title" style="color:#1E293B; font-weight:800;">ออกใบงานซ่อมบำรุง / ต่อทะเบียน-ประกัน</div>
         <button class="modal-close" onclick="app.closeModal('modal-new-maintenance')">✕</button>
       </div>
 
@@ -2212,7 +2219,7 @@
   <div class="toast-container" id="toast-container"></div>
 
   <!-- Scripts with cache busting -->
-  <script src="/static/js/app.js?v=7.7"></script>
+  <script src="/static/js/app.js?v=7.8"></script>
 
   <!-- ===================================================================== -->
   <!-- MODAL: ACTIVE RENTALS / CARS WITH CUSTOMERS (POPUP FOR CARD 1) -->
