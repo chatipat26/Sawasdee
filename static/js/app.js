@@ -2035,10 +2035,15 @@ class App {
 
     const nowExpanded = this.expandedFleetCardFooters.has(cleanPlate);
     const panel = document.getElementById(`card-footer-${safeId}`);
+    const badge = document.getElementById(`plate-badge-${safeId}`);
     const btn = document.getElementById(`btn-toggle-footer-${safeId}`);
 
     if (panel) {
       panel.style.display = nowExpanded ? "block" : "none";
+    }
+
+    if (badge) {
+      badge.classList.toggle("active", nowExpanded);
     }
 
     if (btn) {
@@ -2147,14 +2152,16 @@ class App {
         catTag = "FLEET";
       }
 
-      // 2. Thai License Plate Badge
+      // 2. Thai License Plate Badge (Clickable Toggle Trigger)
+      const isExpanded = this.expandedFleetCardFooters ? this.expandedFleetCardFooters.has(c.plate) : false;
       const { plateNo, province, isRed } = this.formatPlateDisplay(c.plate);
+      const plateTooltip = isEn ? "Click to toggle price & actions" : "คลิกป้ายทะเบียนเพื่อเปิด/ปิดราคาและปุ่มทำรายการ";
       const plateHtml = isRed
-        ? `<div class="thai-plate-badge red-plate">
+        ? `<div class="thai-plate-badge red-plate ${isExpanded ? 'active' : ''}" id="plate-badge-${safeId}" onclick="app.toggleCardFooter('${safePlate}')" role="button" tabindex="0" title="${plateTooltip}">
              <div class="thai-plate-num">${isEn ? "Red Plate" : "ป้ายแดง"}</div>
              <div class="thai-plate-prov">${isEn ? "Red plate" : "Red plate"}</div>
            </div>`
-        : `<div class="thai-plate-badge">
+        : `<div class="thai-plate-badge ${isExpanded ? 'active' : ''}" id="plate-badge-${safeId}" onclick="app.toggleCardFooter('${safePlate}')" role="button" tabindex="0" title="${plateTooltip}">
              <div class="thai-plate-num">${plateNo}</div>
              <div class="thai-plate-prov">${province}</div>
            </div>`;
@@ -2190,12 +2197,6 @@ class App {
       const detailsLabel = dict ? dict.details : (isEn ? 'Details' : 'ดูรายละเอียด');
       const bookNowLabel = isAvail ? (dict ? dict.book_now : (isEn ? 'Book Now' : 'จองรถ')) : (dict ? dict.queue : (isEn ? 'Queue' : 'จองคิว'));
 
-      // Collapsible Footer State (Default: false) - Mission 1
-      const isExpanded = this.expandedFleetCardFooters ? this.expandedFleetCardFooters.has(c.plate) : false;
-      const toggleLabel = isExpanded
-        ? (dict ? dict.hide_price_actions : (isEn ? "▲ Hide" : "▲ ซ่อน"))
-        : (dict ? dict.show_price_actions : (isEn ? "▼ Show Price & Actions" : "▼ แสดงราคาและทำรายการ"));
-
       return `
         <div class="car-card-modern">
           <!-- MISSION 1: หน้าการ์ด (CARD FRONT) -->
@@ -2215,17 +2216,6 @@ class App {
               <span class="car-pill-dot" style="background:${statusDot};"></span> ${statusText}
             </span>
             ${alertPillHtml}
-          </div>
-
-          <!-- MISSION 3: Toggle Button for Collapsible Footer (Hanging Folder Tab Centered) -->
-          <div class="car-footer-tab-center-wrap">
-            <button type="button" 
-                    class="car-footer-toggle-btn car-folder-tab-btn" 
-                    id="btn-toggle-footer-${safeId}" 
-                    data-plate="${safePlate}" 
-                    onclick="app.toggleCardFooter('${safePlate}')">
-              <span>${toggleLabel}</span>
-            </button>
           </div>
 
           <!-- MISSION 2: Collapsible Price and Action Buttons Footer -->
