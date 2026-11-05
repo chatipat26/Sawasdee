@@ -566,6 +566,16 @@ async def create_or_update_car(payload: Union[VehicleCreate, Dict[str, Any]], pl
         if not _has(payload.get(new_key)) and _has(payload.get(legacy_key)):
             payload[new_key] = payload[legacy_key]
         payload[new_key] = payload.get(new_key) if payload.get(new_key) is not None else "-"
+    for new_key, legacy_key in (("daily_rate", "price_day"), ("weekly_rate", "price_week"), ("monthly_rate", "price_month")):
+        try:
+            new_v = float(payload.get(new_key) or 0)
+            old_v = float(payload.get(legacy_key) or 0)
+        except (TypeError, ValueError):
+            continue
+        if new_v <= 0 < old_v:
+            payload[new_key] = old_v
+        elif old_v <= 0 < new_v:
+            payload[legacy_key] = new_v
     if payload.get("payment_due_date") is None:
         payload["payment_due_date"] = "-"
 

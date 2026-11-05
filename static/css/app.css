@@ -403,11 +403,13 @@ section,
 }
 
 /* The Booking Bar Hero - Sticky Header (top: 0; z-index: 50) */
-.booking-bar {
-  position: -webkit-sticky;
-  position: sticky;
-  top: 0;
-  z-index: 50;
+.booking-bar,
+.instant-booking-bar {
+  position: -webkit-sticky !important;
+  position: sticky !important;
+  top: 0px !important;
+  z-index: 100 !important;
+  background-color: #FFF7ED !important;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   background: rgba(255, 247, 237, 0.98);
