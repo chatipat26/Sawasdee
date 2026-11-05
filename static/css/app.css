@@ -460,6 +460,99 @@ section,
   border-radius: 8px;
 }
 
+.deposit-summary-card {
+  background: #FFF7ED;
+  border: 1px solid #F3E8DC;
+  border-radius: 14px;
+  padding: 14px 16px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+.deposit-summary-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12.5px;
+  color: #57534E;
+}
+.deposit-summary-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.deposit-summary-row > span:first-child {
+  width: 72px;
+  flex-shrink: 0;
+  color: #A8A29E;
+  font-size: 11px;
+}
+.deposit-summary-price {
+  color: #C2410C;
+  font-size: 15px;
+}
+.deposit-summary-slip {
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #C2410C;
+  text-decoration: none;
+}
+.deposit-summary-extra {
+  margin-top: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.deposit-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 14px;
+  margin-bottom: 14px;
+}
+#deposit-action-section .form-control {
+  border-radius: 10px;
+  background: #FFFFFF;
+  border: 1px solid #E7E5E4;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+#deposit-action-section .form-control:focus {
+  outline: none;
+  border-color: #FDBA74;
+  box-shadow: 0 0 0 3px rgba(194, 65, 12, 0.12);
+}
+.deposit-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.deposit-actions-secondary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.deposit-btn-primary {
+  min-width: 180px;
+  padding: 10px 18px;
+  border-radius: 10px;
+}
+.deposit-btn-ghost {
+  background: #FFFFFF !important;
+  border: 1px solid #E7E5E4 !important;
+  color: #57534E !important;
+  box-shadow: none !important;
+  font-weight: 600;
+}
+.deposit-btn-ghost:hover {
+  border-color: #FDBA74 !important;
+  color: #C2410C !important;
+  background: #FFF7ED !important;
+}
+@media (max-width: 860px) {
+  .deposit-form-grid { grid-template-columns: 1fr; }
+}
+
 .booking-bar-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(185px, 1fr));

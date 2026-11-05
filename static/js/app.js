@@ -3681,28 +3681,13 @@ class App {
     }
 
     summary.innerHTML = `
-      <div style="font-size:13px; line-height:1.6;">
-        <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:8px;">
-          <div>
-            <b style="color:#92400E; font-size:14px;">${isEn ? 'ID' : 'รหัส'}: ${b.booking_id}</b> | ${isEn ? 'Plate' : 'ทะเบียน'}: <b>${b.car_id}</b><br/>
-            👤 ${isEn ? 'Customer' : 'ลูกค้า'}: <b>${b.customer}</b> (📞 ${b.customer_phone || '-'})<br/>
-            📅 ${isEn ? 'Duration' : 'ระยะเวลา'}: ${b.start_date_formatted || b.start_date} ${isEn ? 'to' : 'ถึง'} ${b.end_date_formatted || b.end_date}<br/>
-            💰 ${isEn ? 'Net Rental' : 'ค่าเช่าสุทธิ'}: <b style="color:#D97706; font-size:15px;">฿${netP.toLocaleString()}</b> |
-            🛡️ ${isEn ? 'Deposit' : 'มัดจำ'}: <b style="color:${isDep ? '#059669' : '#DC2626'};">${isDep ? (isEn ? 'Paid' : 'ชำระแล้ว') : (isEn ? 'Pending Deposit' : 'รอมัดจำ')}</b>
-          </div>
-          ${b.deposit_slip ? `
-            <div>
-              <a href="${b.deposit_slip}" target="_blank" title="${isEn ? 'Click to view full slip' : 'คลิกดูสลิปขนาดเต็ม'}">
-                <img src="${b.deposit_slip}" alt="Slip" style="width:58px; height:58px; object-fit:cover; border-radius:6px; border:2px solid #CBD5E1; box-shadow:0 1px 3px rgba(0,0,0,0.1); cursor:pointer;">
-              </a>
-            </div>
-          ` : ''}
-        </div>
-        ${slipBadges.length > 0 ? `
-          <div style="margin-top:8px; padding-top:8px; border-top:1px dashed #FCD34D; display:flex; flex-wrap:wrap; gap:14px; align-items:center;">
-            ${slipBadges.join("")}
-          </div>
-        ` : ''}
+      <div class="deposit-summary-rows">
+        <div class="deposit-summary-row"><span>${isEn ? 'ID' : 'รหัส'}</span><b>${b.booking_id}</b><span>${b.car_id || ''}</span></div>
+        <div class="deposit-summary-row"><span>${isEn ? 'Customer' : 'ลูกค้า'}</span><b>${b.customer || '-'}</b><span>${b.customer_phone || ''}</span></div>
+        <div class="deposit-summary-row"><span>${isEn ? 'Dates' : 'ระยะเวลา'}</span><b>${b.start_date_formatted || b.start_date || '-'} – ${b.end_date_formatted || b.end_date || '-'}</b></div>
+        <div class="deposit-summary-row"><span>${isEn ? 'Net' : 'ค่าเช่าสุทธิ'}</span><b class="deposit-summary-price">฿${netP.toLocaleString()}</b><span style="color:${isDep ? '#059669' : '#DC2626'};">${isDep ? (isEn ? 'Deposit paid' : 'มัดจำชำระแล้ว') : (isEn ? 'Deposit pending' : 'รอมัดจำ')}</span></div>
+        ${b.deposit_slip ? `<a class="deposit-summary-slip" href="${b.deposit_slip}" target="_blank">${isEn ? 'View slip' : 'ดูสลิป'}</a>` : ''}
+        ${slipBadges.length > 0 ? `<div class="deposit-summary-extra">${slipBadges.join("")}</div>` : ''}
       </div>
     `;
 

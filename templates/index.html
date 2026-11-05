@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sawasdee Rental - ระบบบริหารจัดการรถเช่าระดับพรีเมียม</title>
-  <link rel="stylesheet" href="/static/css/app.css?v=4.4">
+  <link rel="stylesheet" href="/static/css/app.css?v=4.5">
   <link rel="icon" type="image/png" href="/static/sawasdee-logo.png">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
@@ -397,14 +397,14 @@
                   <option id="opt-dep-sel-default" value="">-- กรุณาเลือกรายการจอง --</option>
                 </select>
               </div>
-              <div id="deposit-booking-summary" style="display:none; background:#FFFBEB; border:1px solid #FDE68A; border-radius:8px; padding:12px 16px;">
+              <div id="deposit-booking-summary" class="deposit-summary-card" style="display:none;">
                 <!-- Summary of selected booking -->
               </div>
             </div>
 
             <!-- Deposit Action Form -->
             <div id="deposit-action-section" style="display:none; border-top:1px solid var(--border); padding-top:16px;">
-              <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:16px; margin-bottom:14px;">
+              <div class="deposit-form-grid">
                 <div class="form-group">
                   <label id="lbl-deposit-amount">💵 ยอดเงินมัดจำประกันสัญญา (บาท):</label>
                   <input type="number" id="deposit-amount-input" class="form-control" value="5000" min="0" step="500">
@@ -458,31 +458,33 @@
                 </label>
               </div>
 
-              <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
-                <button id="btn-submit-deposit" onclick="app.submitDeposit()" class="btn btn-primary">
-                  💳 ยืนยันบันทึกรับเงินมัดจำ & ล็อกคิวรถ
+              <div class="deposit-actions">
+                <button id="btn-submit-deposit" onclick="app.submitDeposit()" class="btn btn-primary deposit-btn-primary">
+                  ยืนยันรับเงินมัดจำ
                 </button>
-                <button id="btn-save-slip-only" onclick="app.submitUpdateSlipOnly()" class="btn btn-secondary" style="display:none; background:#EFF6FF; border:1px solid #93C5FD; color:#1D4ED8; font-weight:700;" title="อัปเดตสลิปและเลข Ref เพิ่มเติม">
-                  💾 อัปเดตสลิป & เลข Ref
-                </button>
-                <button id="btn-settle-rental" onclick="app.submitSettle()" class="btn btn-success" style="display:none;">
-                  🧾 บันทึกชำระค่าเช่าคงเหลือ
-                </button>
-                <button id="btn-dl-dep-receipt" onclick="app.downloadDepositReceipt()" class="btn btn-secondary" style="display:none;">
-                  📥 โหลดใบเสร็จรับเงินมัดจำ (PDF)
-                </button>
-                <button id="btn-dl-rent-receipt" onclick="app.downloadRentalReceipt()" class="btn btn-secondary" style="display:none;">
-                  📥 โหลดใบเสร็จค่าเช่า (PDF)
-                </button>
-                <button id="btn-dl-contract-from-dep" onclick="app.downloadContractPdf()" class="btn btn-secondary" style="display:none;">
-                  📝 โหลดสัญญาเช่า (Rental Agreement PDF)
-                </button>
-                <button id="btn-goto-assign-from-dep" onclick="app.goToTabWithBooking('assign', document.getElementById('deposit-sel-booking').value)" class="btn btn-secondary" style="background:#FFF7ED; border:1px solid #FDBA74; color:#C2410C; font-weight:700;">
-                  🚚 ไปหน้าออกใบงานส่ง/รับรถ (แท็บ 3) ➔
-                </button>
-                <button id="btn-goto-contract-from-dep" onclick="app.goToTabWithBooking('contract', document.getElementById('deposit-sel-booking').value)" class="btn btn-secondary" style="background:#FAF7F2; border:1px solid #CBD5E1; color:#374151;">
-                  📝 ไปหน้าจัดทำสัญญา (แท็บ 4) ➔
-                </button>
+                <div class="deposit-actions-secondary">
+                  <button id="btn-save-slip-only" onclick="app.submitUpdateSlipOnly()" class="btn btn-secondary deposit-btn-ghost" style="display:none;" title="อัปเดตสลิปและเลข Ref เพิ่มเติม">
+                    อัปเดตสลิป & เลข Ref
+                  </button>
+                  <button id="btn-settle-rental" onclick="app.submitSettle()" class="btn btn-success" style="display:none;">
+                    บันทึกชำระค่าเช่าคงเหลือ
+                  </button>
+                  <button id="btn-dl-dep-receipt" onclick="app.downloadDepositReceipt()" class="btn btn-secondary deposit-btn-ghost" style="display:none;">
+                    ใบเสร็จรับเงินมัดจำ (PDF)
+                  </button>
+                  <button id="btn-dl-rent-receipt" onclick="app.downloadRentalReceipt()" class="btn btn-secondary deposit-btn-ghost" style="display:none;">
+                    ใบเสร็จค่าเช่า (PDF)
+                  </button>
+                  <button id="btn-dl-contract-from-dep" onclick="app.downloadContractPdf()" class="btn btn-secondary deposit-btn-ghost" style="display:none;">
+                    สัญญาเช่า (PDF)
+                  </button>
+                  <button id="btn-goto-assign-from-dep" onclick="app.goToTabWithBooking('assign', document.getElementById('deposit-sel-booking').value)" class="btn btn-secondary deposit-btn-ghost">
+                    ไปหน้าออกใบงาน
+                  </button>
+                  <button id="btn-goto-contract-from-dep" onclick="app.goToTabWithBooking('contract', document.getElementById('deposit-sel-booking').value)" class="btn btn-secondary deposit-btn-ghost">
+                    ไปหน้าทำสัญญา
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -2323,7 +2325,7 @@
   <div class="toast-container" id="toast-container"></div>
 
   <!-- Scripts with cache busting -->
-  <script src="/static/js/app.js?v=9.7"></script>
+  <script src="/static/js/app.js?v=9.8"></script>
 
   <!-- ===================================================================== -->
   <!-- MODAL: ACTIVE RENTALS / CARS WITH CUSTOMERS (POPUP FOR CARD 1) -->

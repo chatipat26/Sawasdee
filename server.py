@@ -1169,11 +1169,11 @@ async def record_deposit(bk_id: str, payload: Dict[str, Any]):
         }
         store.async_sync_financial(f_rent)
 
-    # Trigger LINE notification for deposit payment & slip
-    try:
-        notify_line_deposit(target, dep_amount, dep_method, dep_ref, dep_slip, also_pay_rental)
-    except Exception as line_err:
-        print(f"Error sending LINE deposit notification: {line_err}")
+    # Deposit confirmation no longer sends LINE. Receipt PDF and DB save stay unchanged.
+    # try:
+    #     notify_line_deposit(target, dep_amount, dep_method, dep_ref, dep_slip, also_pay_rental)
+    # except Exception as line_err:
+    #     print(f"Error sending LINE deposit notification: {line_err}")
 
     return {"success": True, "booking": target}
 
