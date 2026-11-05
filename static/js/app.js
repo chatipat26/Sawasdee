@@ -558,6 +558,12 @@ class App {
 
     const lblCarDebtFree = document.getElementById("lbl-modal-car-debt-free");
     if (lblCarDebtFree) lblCarDebtFree.textContent = isEn ? "Debt-Free / Fully Paid" : "รถปลอดภาระ / ซื้อเงินสด";
+    const lblCarFinComp = document.getElementById("lbl-modal-car-finance-comp");
+    if (lblCarFinComp) lblCarFinComp.textContent = isEn ? "Finance Company" : "บริษัทไฟแนนซ์";
+    const lblCarNewFin = document.getElementById("lbl-modal-car-new-finance");
+    if (lblCarNewFin) lblCarNewFin.textContent = isEn ? "Enter new finance company name" : "ระบุชื่อบริษัทไฟแนนซ์ใหม่";
+    const inpCarCustomFin = document.getElementById("edit-car-custom-finance");
+    if (inpCarCustomFin) inpCarCustomFin.placeholder = isEn ? "e.g. Toyota Leasing, Krungsri Auto..." : "เช่น โตโยต้า ลีสซิ่ง, กรุงศรี ออโต้...";
     const lblCarInstAmt = document.getElementById("lbl-modal-car-installment-amt");
     if (lblCarInstAmt) lblCarInstAmt.textContent = isEn ? "Monthly Installment (THB)" : "ค่างวดต่อเดือน (THB)";
     const lblCarTotInst = document.getElementById("lbl-modal-car-total-inst");
@@ -1964,11 +1970,12 @@ class App {
             <div class="car-exp-section">
               <div class="car-exp-section-title">${isEn ? 'Hire Purchase / Leasing' : 'ข้อมูลสัญญาเช่าซื้อ / ลิสซิ่ง (HP / Leasing)'}</div>
               <div class="car-exp-grid">
+                <div><b>${isEn ? 'Finance Co:' : 'บริษัทไฟแนนซ์:'}</b> ${c.finance_company || '-'}</div>
                 <div><b>${isEn ? 'Contract No:' : 'เลขที่สัญญา:'}</b> ${c.leasing_contract || c.hp_contract_no || '-'}</div>
-                <div><b>${isEn ? 'Installment/Mo:' : 'ค่างวด/เดือน:'}</b> ${(c.leasing_installment_amount || c.hp_installment) ? Number(c.leasing_installment_amount || c.hp_installment).toLocaleString() + ' ฿' : '-'}</div>
-                <div><b>${isEn ? 'Total Terms:' : 'จำนวนงวด:'}</b> ${c.leasing_total_installments || '-'} ${isEn ? 'terms' : 'งวด'}</div>
-                <div><b>${isEn ? 'Current Term:' : 'งวดปัจจุบัน:'}</b> ${c.leasing_current_installment || '-'}</div>
-                <div><b>${isEn ? 'Last Paid:' : 'ชำระล่าสุด:'}</b> ${c.leasing_last_payment_date || '-'}</div>
+                <div><b>${isEn ? 'Installment/Mo:' : 'ค่างวด/เดือน:'}</b> ${(c.installment_amount || c.leasing_installment_amount || c.hp_installment) ? Number(c.installment_amount || c.leasing_installment_amount || c.hp_installment).toLocaleString() + ' ฿' : '-'}</div>
+                <div><b>${isEn ? 'Total Terms:' : 'จำนวนงวด:'}</b> ${c.total_installments || c.leasing_total_installments || '-'} ${isEn ? 'terms' : 'งวด'}</div>
+                <div><b>${isEn ? 'Current Term:' : 'งวดปัจจุบัน:'}</b> ${c.current_installment || c.leasing_current_installment || '-'}</div>
+                <div><b>${isEn ? 'Due / Last Paid:' : 'วันครบกำหนด:'}</b> ${c.payment_due_date || c.leasing_last_payment_date || '-'}</div>
               </div>
             </div>
 
@@ -2221,6 +2228,7 @@ class App {
       debtFreeEl.checked = isDebtFree;
       this.onDebtFreeToggle(isDebtFree);
     }
+    this.populateFinanceCompanyDropdown(car.finance_company || "");
     setVal("edit-car-installment-amount", car.installment_amount !== undefined ? car.installment_amount : 0);
     setVal("edit-car-total-installments", car.total_installments !== undefined ? car.total_installments : 48);
     setVal("edit-car-current-installment", car.current_installment !== undefined ? car.current_installment : 0);
@@ -2232,7 +2240,97 @@ class App {
   onDebtFreeToggle(isDebtFree) {
     const fieldsContainer = document.getElementById("edit-car-installment-fields");
     if (fieldsContainer) {
-      fieldsContainer.style.display = isDebtFree ? "none" : "grid";
+      fieldsContainer.style.display = isDebtFree ? "none" : "block";
+    }
+  }
+
+  getExistingFinanceCompanies() {
+    const baseDefaults = [
+      "โตโยต้า ลีสซิ่ง (Toyota Leasing)",
+      "ทีทีบีไดรฟ์ / ธนชาต (ttb DRIVE)",
+      "กรุงศรี ออโต้ (Krungsri Auto)",
+      "กสิกร ลีสซิ่ง (KLeasing)",
+      "ฮอนด้า ลีสซิ่ง (Honda Leasing)",
+      "ไทยพาณิชย์ (SCB)",
+      "เกียรตินาคินภัทร (KKP)",
+      "ทิสโก้ (TISCO)"
+    ];
+    const found = new Set();
+    (this.cars || []).forEach(c => {
+      const fc = String(c.finance_company || "").trim();
+      if (fc && !["-", "None", "none", "null", ""].includes(fc)) {
+        found.add(fc);
+      }
+    });
+    const combined = [...baseDefaults];
+    Array.from(found).sort().forEach(item => {
+      if (!combined.includes(item)) {
+        combined.push(item);
+      }
+    });
+    return combined;
+  }
+
+  populateFinanceCompanyDropdown(selectedVal = "") {
+    const selectEl = document.getElementById("edit-car-finance-company");
+    const customWrap = document.getElementById("edit-car-custom-finance-wrap");
+    const customInp = document.getElementById("edit-car-custom-finance");
+    if (!selectEl) return;
+
+    const isEn = (this.currentLang === "EN");
+    const placeholderText = isEn ? "-- Select or Add Finance --" : "-- เลือกรถปลอดภาระ หรือระบุไฟแนนซ์ --";
+    const addNewText = isEn ? "➕ Add New Finance Company" : "➕ เพิ่มบริษัทไฟแนนซ์ใหม่ (Add New)";
+
+    const companies = this.getExistingFinanceCompanies();
+    const cleanSel = String(selectedVal || "").trim();
+
+    selectEl.innerHTML = "";
+    const optDefault = document.createElement("option");
+    optDefault.value = "";
+    optDefault.textContent = placeholderText;
+    selectEl.appendChild(optDefault);
+
+    companies.forEach(comp => {
+      const opt = document.createElement("option");
+      opt.value = comp;
+      opt.textContent = comp;
+      selectEl.appendChild(opt);
+    });
+
+    const optNew = document.createElement("option");
+    optNew.value = "__ADD_NEW__";
+    optNew.textContent = addNewText;
+    selectEl.appendChild(optNew);
+
+    if (cleanSel && !["-", "None", "none", "null"].includes(cleanSel)) {
+      if (companies.includes(cleanSel)) {
+        selectEl.value = cleanSel;
+        if (customWrap) customWrap.style.display = "none";
+        if (customInp) customInp.value = "";
+      } else {
+        selectEl.value = "__ADD_NEW__";
+        if (customWrap) customWrap.style.display = "block";
+        if (customInp) customInp.value = cleanSel;
+      }
+    } else {
+      selectEl.value = "";
+      if (customWrap) customWrap.style.display = "none";
+      if (customInp) customInp.value = "";
+    }
+  }
+
+  onFinanceCompanyChange(val) {
+    const customWrap = document.getElementById("edit-car-custom-finance-wrap");
+    const customInp = document.getElementById("edit-car-custom-finance");
+    if (val === "__ADD_NEW__") {
+      if (customWrap) customWrap.style.display = "block";
+      if (customInp) {
+        customInp.value = "";
+        customInp.focus();
+      }
+    } else {
+      if (customWrap) customWrap.style.display = "none";
+      if (customInp) customInp.value = "";
     }
   }
 
@@ -2350,6 +2448,7 @@ class App {
       status: document.getElementById("edit-car-status")?.value || "ว่างพร้อมใช้งาน",
       image: imgUrl,
       is_debt_free: Boolean(document.getElementById("edit-car-debt-free")?.checked),
+      finance_company: Boolean(document.getElementById("edit-car-debt-free")?.checked) ? "-" : ((document.getElementById("edit-car-finance-company")?.value === "__ADD_NEW__" ? (document.getElementById("edit-car-custom-finance")?.value || "").trim() : (document.getElementById("edit-car-finance-company")?.value || "").trim()) || "-"),
       installment_amount: Boolean(document.getElementById("edit-car-debt-free")?.checked) ? 0 : (parseFloat(document.getElementById("edit-car-installment-amount")?.value || 0) || 0),
       total_installments: Boolean(document.getElementById("edit-car-debt-free")?.checked) ? 0 : (parseInt(document.getElementById("edit-car-total-installments")?.value || 0, 10) || 0),
       current_installment: Boolean(document.getElementById("edit-car-debt-free")?.checked) ? 0 : (parseInt(document.getElementById("edit-car-current-installment")?.value || 0, 10) || 0),

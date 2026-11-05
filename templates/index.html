@@ -1826,22 +1826,39 @@
           <input type="checkbox" id="edit-car-debt-free" onchange="app.onDebtFreeToggle(this.checked)" style="width:16px; height:16px; cursor:pointer;">
           <label for="edit-car-debt-free" id="lbl-modal-car-debt-free" style="margin:0; font-weight:600; cursor:pointer; color:#1E293B;">รถปลอดภาระ / ซื้อเงินสด</label>
         </div>
-        <div id="edit-car-installment-fields" style="display:grid; grid-template-columns: repeat(4, 1fr); gap:12px;">
-          <div class="form-group">
-            <label id="lbl-modal-car-installment-amt">ค่างวดต่อเดือน (THB)</label>
-            <input type="number" id="edit-car-installment-amount" class="form-control" min="0" step="100" placeholder="0">
+        <div id="edit-car-installment-fields">
+          <!-- Row 1: Finance Company Dropdown + Add New Custom Input -->
+          <div style="display:flex; gap:12px; margin-bottom:12px; flex-wrap:wrap;">
+            <div class="form-group" style="flex:1; min-width:240px; margin-bottom:0;">
+              <label id="lbl-modal-car-finance-comp">บริษัทไฟแนนซ์</label>
+              <select id="edit-car-finance-company" class="form-control" onchange="app.onFinanceCompanyChange(this.value)">
+                <!-- populated dynamically -->
+              </select>
+            </div>
+            <div class="form-group" id="edit-car-custom-finance-wrap" style="flex:1; min-width:240px; margin-bottom:0; display:none;">
+              <label id="lbl-modal-car-new-finance">ระบุชื่อบริษัทไฟแนนซ์ใหม่</label>
+              <input type="text" id="edit-car-custom-finance" class="form-control" placeholder="เช่น โตโยต้า ลีสซิ่ง, กรุงศรี ออโต้...">
+            </div>
           </div>
-          <div class="form-group">
-            <label id="lbl-modal-car-total-inst">จำนวนงวดทั้งหมด</label>
-            <input type="number" id="edit-car-total-installments" class="form-control" min="0" step="1" placeholder="48">
-          </div>
-          <div class="form-group">
-            <label id="lbl-modal-car-curr-inst">งวดปัจจุบัน (ชำระแล้ว)</label>
-            <input type="number" id="edit-car-current-installment" class="form-control" min="0" step="1" placeholder="0">
-          </div>
-          <div class="form-group">
-            <label id="lbl-modal-car-due-date">วันกำหนดชำระ (ทุกวันที่)</label>
-            <input type="date" id="edit-car-payment-due-date" class="form-control">
+
+          <!-- Row 2: 4 Installment Metrics -->
+          <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:12px;">
+            <div class="form-group">
+              <label id="lbl-modal-car-installment-amt">ค่างวดต่อเดือน (THB)</label>
+              <input type="number" id="edit-car-installment-amount" class="form-control" min="0" step="100" placeholder="0">
+            </div>
+            <div class="form-group">
+              <label id="lbl-modal-car-total-inst">จำนวนงวดทั้งหมด</label>
+              <input type="number" id="edit-car-total-installments" class="form-control" min="0" step="1" placeholder="48">
+            </div>
+            <div class="form-group">
+              <label id="lbl-modal-car-curr-inst">งวดปัจจุบัน (ชำระแล้ว)</label>
+              <input type="number" id="edit-car-current-installment" class="form-control" min="0" step="1" placeholder="0">
+            </div>
+            <div class="form-group">
+              <label id="lbl-modal-car-due-date">วันกำหนดชำระ (ทุกวันที่)</label>
+              <input type="date" id="edit-car-payment-due-date" class="form-control">
+            </div>
           </div>
         </div>
       </div>
@@ -2154,7 +2171,7 @@
   <div class="toast-container" id="toast-container"></div>
 
   <!-- Scripts with cache busting -->
-  <script src="/static/js/app.js?v=6.6"></script>
+  <script src="/static/js/app.js?v=6.7"></script>
 
   <!-- ===================================================================== -->
   <!-- MODAL: ACTIVE RENTALS / CARS WITH CUSTOMERS (POPUP FOR CARD 1) -->

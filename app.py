@@ -110,6 +110,30 @@ def format_date_for_db(d, fmt="%d/%m/%Y"):
         return parsed.strftime(fmt) if parsed else (cleaned or "-")
     return str(d)
 
+DEFAULT_FINANCE_COMPANIES = [
+    "โตโยต้า ลีสซิ่ง (Toyota Leasing)",
+    "ทีทีบีไดรฟ์ / ธนชาต (ttb DRIVE)",
+    "กรุงศรี ออโต้ (Krungsri Auto)",
+    "กสิกร ลีสซิ่ง (KLeasing)",
+    "ฮอนด้า ลีสซิ่ง (Honda Leasing)",
+    "ไทยพาณิชย์ (SCB)",
+    "เกียรตินาคินภัทร (KKP)",
+    "ทิสโก้ (TISCO)"
+]
+
+def get_existing_finance_companies(cars_data):
+    found = set()
+    car_list = cars_data.values() if isinstance(cars_data, dict) else (cars_data or [])
+    for c in car_list:
+        fc = str(c.get("finance_company", "") or "").strip()
+        if fc and fc not in ("-", "None", "none", "null", ""):
+            found.add(fc)
+    combined = list(DEFAULT_FINANCE_COMPANIES)
+    for f in sorted(found):
+        if f not in combined:
+            combined.append(f)
+    return combined
+
 def is_car_available_on_date(car_plate, car_obj, check_date, bookings):
     if car_obj.get('status') == 'ซ่อมบำรุง':
         return False
@@ -1718,6 +1742,10 @@ translations = {
         "total_installments": "จำนวนงวดทั้งหมด",
         "current_installment": "งวดปัจจุบัน (ชำระแล้ว)",
         "dashboard_monthly_expense": "รายจ่ายค่างวดรถรวมต่อเดือน",
+        "finance_company": "บริษัทไฟแนนซ์",
+        "add_new_finance": "➕ เพิ่มบริษัทไฟแนนซ์ใหม่ (Add New)",
+        "new_finance_name": "ระบุชื่อบริษัทไฟแนนซ์ใหม่",
+        "select_finance_placeholder": "-- เลือกรถปลอดภาระ หรือระบุไฟแนนซ์ --",
 
         # Tab 2: Deposit & Finance
         "deposit_title": "เงินมัดจำ & การเงิน (Deposit & Payment)",
@@ -1928,6 +1956,10 @@ translations = {
         "total_installments": "Total Installments",
         "current_installment": "Current Paid Installment",
         "dashboard_monthly_expense": "Total Monthly Fleet Installments",
+        "finance_company": "Finance Company",
+        "add_new_finance": "➕ Add New Finance Company",
+        "new_finance_name": "Enter new finance company name",
+        "select_finance_placeholder": "-- Select or Add Finance --",
 
         # Tab 2: Deposit & Finance
         "deposit_title": "Deposit & Payment",
@@ -4298,6 +4330,28 @@ else:
                     st.markdown("<hr style='margin:12px 0; border:0.5px solid #EFEAE3;'>", unsafe_allow_html=True)
                     add_debt_free = st.checkbox(translations[st.session_state.language].get("is_debt_free", "รถปลอดภาระ / ซื้อเงินสด"), value=True, key="add_car_debt_free")
                     if not add_debt_free:
+                        dyn_fin_list = get_existing_finance_companies(cars_db)
+                        add_new_fin_lbl = translations[st.session_state.language].get("add_new_finance", "➕ เพิ่มบริษัทไฟแนนซ์ใหม่ (Add New)")
+                        fin_opts = dyn_fin_list + [add_new_fin_lbl]
+
+                        f_col1, f_col2 = st.columns([1.5, 1.5])
+                        with f_col1:
+                            add_sel_fin = st.selectbox(
+                                translations[st.session_state.language].get("finance_company", "บริษัทไฟแนนซ์"),
+                                fin_opts,
+                                key="add_car_fin_sel"
+                            )
+                        with f_col2:
+                            if add_sel_fin == add_new_fin_lbl:
+                                add_custom_fin = st.text_input(
+                                    translations[st.session_state.language].get("new_finance_name", "ระบุชื่อบริษัทไฟแนนซ์ใหม่"),
+                                    placeholder="เช่น โตโยต้า ลีสซิ่ง, กรุงศรี ออโต้...",
+                                    key="add_car_fin_custom"
+                                ).strip()
+                                add_final_fin = add_custom_fin or "-"
+                            else:
+                                add_final_fin = add_sel_fin
+
                         inst_c1, inst_c2, inst_c3, inst_c4 = st.columns(4)
                         with inst_c1:
                             add_inst_amt = st.number_input(translations[st.session_state.language].get("installment_amount", "ค่างวดต่อเดือน (THB)"), min_value=0.0, value=0.0, step=500.0, key="add_car_inst_amt")
@@ -4308,6 +4362,7 @@ else:
                         with inst_c4:
                             add_due_date = st.date_input(translations[st.session_state.language].get("payment_due_date", "วันกำหนดชำระ (ทุกวันที่)"), value=None, format="DD/MM/YYYY", key="add_car_due_date")
                     else:
+                        add_final_fin = "-"
                         add_inst_amt = 0.0
                         add_total_inst = 0
                         add_curr_inst = 0
@@ -4355,6 +4410,7 @@ else:
                                     "mileage": add_mileage or "0",
                                     "image": new_car_img,
                                     "is_debt_free": bool(add_debt_free),
+                                    "finance_company": add_final_fin if not add_debt_free else "-",
                                     "installment_amount": float(add_inst_amt) if not add_debt_free else 0.0,
                                     "total_installments": int(add_total_inst) if not add_debt_free else 0,
                                     "current_installment": int(add_curr_inst) if not add_debt_free else 0,
@@ -4656,10 +4712,11 @@ else:
                                 # 4. ข้อมูลสัญญาเช่าซื้อ / ลิสซิ่ง (HP / Leasing)
                                 st.markdown(f"**{translations[st.session_state.language].get('fleet_exp_hp_title', '💳 ข้อมูลสัญญาเช่าซื้อ / ลิสซิ่ง (HP / Leasing)')}**")
                                 st.markdown(f"""
+                                - **บริษัทไฟแนนซ์:** {_c.get('finance_company', '-')}
                                 - **เลขที่สัญญา:** {_c.get('leasing_contract') or _c.get('hp_contract_no', '-')}
-                                - **ค่างวดต่อเดือน:** {_c.get('leasing_installment_amount') or _c.get('hp_installment', '-')} บาท
-                                - **จำนวนงวด:** {_c.get('leasing_total_installments', '-')} งวด | **งวดปัจจุบัน:** {_c.get('leasing_current_installment', '-')}
-                                - **วันที่ชำระล่าสุด:** {_c.get('leasing_last_payment_date', '-')}
+                                - **ค่างวดต่อเดือน:** {_c.get('installment_amount') or _c.get('leasing_installment_amount') or _c.get('hp_installment', '-')} บาท
+                                - **จำนวนงวด:** {_c.get('total_installments') or _c.get('leasing_total_installments', '-')} งวด | **งวดปัจจุบัน:** {_c.get('current_installment') or _c.get('leasing_current_installment', '-')}
+                                - **วันกำหนดชำระ:** {_c.get('payment_due_date') or _c.get('leasing_last_payment_date', '-')}
                                 """)
 
                                 # 5. ข้อมูลตัวรถเชิงลึก
@@ -4743,6 +4800,33 @@ else:
                                             _is_df = bool(_c.get('is_debt_free', True if not _c.get('installment_amount') else False))
                                             e_debt_free = st.checkbox(translations[st.session_state.language].get("is_debt_free", "รถปลอดภาระ / ซื้อเงินสด"), value=_is_df, key=f"gedf_{_p}")
                                             if not e_debt_free:
+                                                e_dyn_fin_list = get_existing_finance_companies(cars_db)
+                                                curr_car_fin = str(_c.get('finance_company') or '').strip()
+                                                if curr_car_fin and curr_car_fin not in ("-", "None", "none", "null", "") and curr_car_fin not in e_dyn_fin_list:
+                                                    e_dyn_fin_list.append(curr_car_fin)
+                                                
+                                                e_add_new_lbl = translations[st.session_state.language].get("add_new_finance", "➕ เพิ่มบริษัทไฟแนนซ์ใหม่ (Add New)")
+                                                e_fin_opts = e_dyn_fin_list + [e_add_new_lbl]
+                                                e_def_idx = e_fin_opts.index(curr_car_fin) if curr_car_fin in e_fin_opts else 0
+
+                                                e_fc1, e_fc2 = st.columns([1.5, 1.5])
+                                                with e_fc1:
+                                                    e_sel_fin = st.selectbox(
+                                                        translations[st.session_state.language].get("finance_company", "บริษัทไฟแนนซ์"),
+                                                        e_fin_opts,
+                                                        index=e_def_idx,
+                                                        key=f"gefc_{_p}"
+                                                    )
+                                                with e_fc2:
+                                                    if e_sel_fin == e_add_new_lbl:
+                                                        e_custom_fin = st.text_input(
+                                                            translations[st.session_state.language].get("new_finance_name", "ระบุชื่อบริษัทไฟแนนซ์ใหม่"),
+                                                            key=f"gecf_{_p}"
+                                                        ).strip()
+                                                        e_final_fin = e_custom_fin or "-"
+                                                    else:
+                                                        e_final_fin = e_sel_fin
+
                                                 e_ia1, e_ia2 = st.columns(2)
                                                 with e_ia1:
                                                     e_inst_amt = st.number_input(translations[st.session_state.language].get("installment_amount", "ค่างวดต่อเดือน (THB)"), min_value=0.0, value=float(_c.get('installment_amount', 0.0) or 0.0), step=500.0, key=f"geia_{_p}")
@@ -4751,6 +4835,7 @@ else:
                                                     e_curr_inst = st.number_input(translations[st.session_state.language].get("current_installment", "งวดปัจจุบัน (ชำระแล้ว)"), min_value=0, value=int(_c.get('current_installment', 0) or 0), step=1, key=f"geci_{_p}")
                                                     e_due_date = st.date_input(translations[st.session_state.language].get("payment_due_date", "วันกำหนดชำระ (ทุกวันที่)"), value=to_date_safe(_c.get('payment_due_date')), format="DD/MM/YYYY", key=f"gedd_{_p}")
                                             else:
+                                                e_final_fin = "-"
                                                 e_inst_amt = 0.0
                                                 e_tot_inst = 0
                                                 e_curr_inst = 0
@@ -4780,6 +4865,7 @@ else:
                                                 up_car["ins_expiry"] = format_date_for_db(e_ins, "%d/%m/%Y")
                                                 up_car["status"] = e_status
                                                 up_car["is_debt_free"] = bool(e_debt_free)
+                                                up_car["finance_company"] = e_final_fin if not e_debt_free else "-"
                                                 up_car["installment_amount"] = float(e_inst_amt) if not e_debt_free else 0.0
                                                 up_car["total_installments"] = int(e_tot_inst) if not e_debt_free else 0
                                                 up_car["current_installment"] = int(e_curr_inst) if not e_debt_free else 0
