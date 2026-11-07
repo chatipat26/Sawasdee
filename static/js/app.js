@@ -1749,10 +1749,10 @@ class App {
       }
       this.onSelectAssignDispBooking();
       this.onSelectAssignRetBooking();
+      this.setAssignMode(this.assignMode || "Dispatch");
     } else if (tabName === "contract") {
       this.populateBookingDropdowns();
       this.populateStaffDropdowns();
-      this.populateWalkinDropdowns();
       const contractSel = document.getElementById("contract-sel-bk");
       if (contractSel) {
         if (!contractSel.value) {
@@ -2149,6 +2149,12 @@ class App {
         if ((c.company || "").trim() !== companyFilter.trim()) return false;
       }
 
+      // 3b. Date lock: cars that are reserved / on rent during the locked period must not be shown
+      const lockS = document.getElementById("filter-start-date")?.value;
+      const lockE = document.getElementById("filter-end-date")?.value;
+      const wantsBusy = statusFilter.startsWith("ไม่ว่างในวันที่เลือก") || statusFilter.startsWith("Unavailable on Dates") || statusFilter === "กำลังเช่า" || statusFilter === "Currently Renting";
+      if ((lockS || lockE) && c.fleet_status_key === "unavailable" && !wantsBusy) return false;
+
       // 4. Status filter (matching app.py exactly)
       if (statusFilter.startsWith("ว่างไม่มีการจอง") || statusFilter.startsWith("Vacant without Bookings")) {
         if (c.fleet_status_key !== "available") return false;
@@ -2241,9 +2247,13 @@ class App {
       } else if (c.fleet_status_key === "maintenance") {
         statusText = dict ? dict.workshop : (isEn ? "Workshop" : "ซ่อมบำรุง");
         statusBg = "#FFF7ED"; statusBorder = "#FED7AA"; statusColor = "#9A3412"; statusDot = "#F97316";
-      } else if (c.fleet_status_key === "unavailable" || c.status === "กำลังเช่า") {
+      } else if (c.is_on_rent) {
         statusText = dict ? dict.on_rent : (isEn ? "On rent" : "กำลังเช่า");
         statusBg = "#EFF6FF"; statusBorder = "#BFDBFE"; statusColor = "#1E40AF"; statusDot = "#3B82F6";
+      } else if (c.fleet_status_key === "unavailable") {
+        // Booked (deposit stage / awaiting hand-over) but NOT yet handed over -> "Reserved", never "On rent"
+        statusText = dict ? dict.reserved : (isEn ? "Reserved" : "ติดจอง");
+        statusBg = "#FEFCE8"; statusBorder = "#FEF08A"; statusColor = "#A16207"; statusDot = "#F59E0B";
       }
 
       // 4. Expiry Alert Pills (Insurance, PRB, Tax)
@@ -3546,6 +3556,20 @@ class App {
     document.getElementById("book-modal-net-price").textContent = `฿${net.toLocaleString('th-TH', {minimumFractionDigits: 2})}`;
   }
 
+  // Returns the first active booking of the car that overlaps [sDate, eDate] (YYYY-MM-DD), else null
+  findBookingConflict(plate, sDate, eDate, excludeId = null) {
+    if (!plate || !sDate || !eDate) return null;
+    const norm = (v) => String(v || "").split("T")[0];
+    return (this.bookings || []).find(b => {
+      if (b.car_id !== plate) return false;
+      if (excludeId && b.booking_id === excludeId) return false;
+      if (b.status === "เสร็จสิ้น" || b.status === "ยกเลิก") return false;
+      const bs = norm(b.start_date), be = norm(b.end_date);
+      if (!bs || !be) return false;
+      return !(be < sDate || bs > eDate);
+    }) || null;
+  }
+
   async submitInstantBooking() {
     const thNow = this.getThaiDateTime(0);
     const plate = document.getElementById("book-car-plate").value;
@@ -3567,6 +3591,13 @@ class App {
     if (eDate < sDate) {
       alert(`⚠️ วันที่สิ้นสุดสัญญา (${eDate}) ต้องไม่น้อยกว่าวันที่เริ่มต้น (${sDate})`);
       this.showToast(`⚠️ วันที่สิ้นสุดสัญญาต้องไม่น้อยกว่าวันที่เริ่มต้น`, "danger");
+      return;
+    }
+
+    const overlap = this.findBookingConflict(plate, sDate, eDate);
+    if (overlap) {
+      alert(`⚠️ ไม่สามารถจองได้: วันที่ทับซ้อนกับคิวเดิมของรถคันนี้\n\nรหัสจอง: ${overlap.booking_id}\nลูกค้า: ${overlap.customer}\nช่วงวันที่: ${overlap.start_date_formatted || overlap.start_date} - ${overlap.end_date_formatted || overlap.end_date}\n\nกรุณาเลือกช่วงวันที่อื่นที่ว่าง`);
+      this.showToast("⚠️ วันที่ทับซ้อนกับคิวเดิม ระบบระงับการบันทึกการจอง", "danger");
       return;
     }
 
@@ -3942,6 +3973,27 @@ class App {
     });
   }
 
+  // --- Unified Work Order (Dispatch / Return toggle) ---
+  setAssignMode(mode) {
+    const isDisp = mode !== "Return";
+    this.assignMode = isDisp ? "Dispatch" : "Return";
+    const dispCard = document.getElementById("assign-card-disp");
+    const retCard = document.getElementById("assign-card-ret");
+    if (dispCard) dispCard.style.display = isDisp ? "block" : "none";
+    if (retCard) retCard.style.display = isDisp ? "none" : "block";
+    document.querySelectorAll('input[name="assign-mode"]').forEach(r => { r.checked = (r.value === this.assignMode); });
+    // Keep the same booking selected on whichever side is shown
+    const dispSel = document.getElementById("assign-disp-bk");
+    const retSel = document.getElementById("assign-ret-bk");
+    if (isDisp && dispSel && retSel && !dispSel.value && retSel.value) {
+      dispSel.value = retSel.value;
+      this.onSelectAssignDispBooking();
+    } else if (!isDisp && dispSel && retSel && !retSel.value && dispSel.value) {
+      retSel.value = dispSel.value;
+      this.onSelectAssignRetBooking();
+    }
+  }
+
   async goToTabWithBooking(tabName, bkId) {
     if (bkId) {
       const b = this.bookings.find(x => x.booking_id === bkId);
@@ -3968,6 +4020,8 @@ class App {
         retSel.value = bkId;
         this.onSelectAssignRetBooking();
       }
+      const bkObj = this.bookings.find(x => x.booking_id === bkId);
+      this.setAssignMode(bkObj && ["กำลังเช่า", "เตรียมรับคืน"].includes(bkObj.status) ? "Return" : "Dispatch");
     } else if (tabName === "contract") {
       const sel = document.getElementById("contract-sel-bk");
       if (sel) {
@@ -4181,8 +4235,11 @@ class App {
           const nextSideLabel = isDisp ? "ออกใบงานรับรถคืน (ฝั่งขวา)" : "ออกใบงานส่งรถ (ฝั่งซ้าย)";
           this.showToast(`✅ บันทึกเตรียมนัดหมาย ${isDisp ? 'ส่งรถ' : 'รับรถคืน'} (${data.booking?.status || 'เตรียมส่งมอบ'}) เรียบร้อย! (กรุณากดยืนยัน ${nextSideLabel} ต่อ)`, "success");
         }
+      } else {
+        throw new Error(data.detail || data.error || "บันทึกใบงานไม่สำเร็จ");
       }
     } catch (e) {
+      alert(e.message);
       this.showToast("เกิดข้อผิดพลาด: " + e.message, "danger");
     }
   }
@@ -4340,6 +4397,11 @@ class App {
         : `<span style="color:#E85826;">฿${remP.toLocaleString('th-TH', {minimumFractionDigits: 2})}</span>`;
     }
 
+    // Extend-contract button only for rentals that are currently On Rent
+    const extBtn = document.getElementById("btn-extend-contract");
+    if (extBtn) extBtn.style.display = ["กำลังเช่า", "เตรียมรับคืน"].includes(b.status) ? "inline-flex" : "none";
+    this.closeExtendContract();
+
     // Status pill
     const pill = document.getElementById("contract-issued-status-pill");
     if (pill) {
@@ -4452,7 +4514,7 @@ class App {
       }
     } catch (e) {
       if (!silent) this.showToast("เกิดข้อผิดพลาด: " + e.message, "danger");
-      else alert("เกิดข้อผิดพลาด: " + e.message);
+      alert(e.message);
     }
   }
 
@@ -4486,6 +4548,7 @@ class App {
         throw new Error(data.detail || "อัปเดตสถานะไม่สำเร็จ");
       }
     } catch (e) {
+      alert(e.message);
       this.showToast("เกิดข้อผิดพลาด: " + e.message, "danger");
     }
   }
@@ -4538,8 +4601,106 @@ class App {
         this.showToast("✅ บันทึกสถานะออกสัญญาเช่าเรียบร้อย!", "success");
         await this.loadBookings();
         this.onSelectContractBooking();
+      } else {
+        throw new Error(data.detail || "ไม่สามารถออกสัญญาได้");
       }
     } catch (e) {
+      alert(e.message);
+      this.showToast("เกิดข้อผิดพลาด: " + e.message, "danger");
+    }
+  }
+
+  // --- Extend Contract (Flow 6.2) ---
+  openExtendContract() {
+    const bkId = document.getElementById("contract-sel-bk")?.value;
+    const b = (this.bookings || []).find(x => x.booking_id === bkId);
+    const panel = document.getElementById("contract-extend-panel");
+    if (!b || !panel) return;
+    if (!["กำลังเช่า", "เตรียมรับคืน"].includes(b.status)) {
+      alert("⚠️ ต่อสัญญาได้เฉพาะรายการที่อยู่ในสถานะ \"กำลังเช่า\" เท่านั้น");
+      return;
+    }
+    const curEnd = String(b.end_date || "").split("T")[0];
+    const dEl = document.getElementById("contract-extend-end-date");
+    const tEl = document.getElementById("contract-extend-end-time");
+    const info = document.getElementById("contract-extend-current");
+    if (info) info.textContent = `สัญญาเดิมสิ้นสุด: ${b.end_date_formatted || curEnd} (${b.end_time || "10:00"} น.)`;
+    if (dEl) {
+      const d = new Date(`${curEnd}T00:00:00`);
+      d.setDate(d.getDate() + 1);
+      const nextDay = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      dEl.min = nextDay;
+      dEl.value = nextDay;
+    }
+    if (tEl) tEl.value = b.end_time || "10:00";
+    panel.style.display = "block";
+    this.onExtendDateChange();
+  }
+
+  closeExtendContract() {
+    const panel = document.getElementById("contract-extend-panel");
+    if (panel) panel.style.display = "none";
+  }
+
+  async onExtendDateChange() {
+    const bkId = document.getElementById("contract-sel-bk")?.value;
+    const newEnd = document.getElementById("contract-extend-end-date")?.value;
+    const prev = document.getElementById("contract-extend-preview");
+    const btn = document.getElementById("btn-submit-extend");
+    if (!prev || !bkId || !newEnd) return;
+    try {
+      const res = await fetch(`/api/bookings/${encodeURIComponent(bkId)}/extend-check?new_end_date=${encodeURIComponent(newEnd)}`);
+      const data = await res.json();
+      if (data.ok) {
+        prev.innerHTML = `<span style="color:#15803D; font-weight:700;">✅ คิวว่าง ต่อสัญญาได้</span> · เพิ่ม ${data.extra_days} วัน · ค่าเช่าเพิ่ม ฿${Number(data.extra_price).toLocaleString("th-TH", { minimumFractionDigits: 2 })}`;
+        if (btn) btn.disabled = false;
+      } else {
+        prev.innerHTML = `<span style="color:#DC2626; font-weight:700;">⛔ ${data.message || "ไม่สามารถต่อสัญญาได้"}</span>`;
+        if (btn) btn.disabled = true;
+      }
+    } catch (e) {
+      prev.textContent = "ไม่สามารถตรวจสอบคิวได้: " + e.message;
+    }
+  }
+
+  async submitExtendContract() {
+    const bkId = document.getElementById("contract-sel-bk")?.value;
+    const newEnd = document.getElementById("contract-extend-end-date")?.value;
+    const newTime = document.getElementById("contract-extend-end-time")?.value;
+    if (!bkId || !newEnd) {
+      alert("กรุณาระบุวันที่ต่อสัญญาใหม่");
+      return;
+    }
+    const conflict = this.findBookingConflict(
+      (this.bookings.find(x => x.booking_id === bkId) || {}).car_id,
+      String((this.bookings.find(x => x.booking_id === bkId) || {}).end_date || "").split("T")[0],
+      newEnd,
+      bkId
+    );
+    if (conflict) {
+      alert(`⚠️ ไม่สามารถต่อสัญญาได้: ติดจองคิวอื่นในวันที่จะต่อ\n\nรหัสจอง: ${conflict.booking_id}\nลูกค้า: ${conflict.customer}\nช่วงวันที่: ${conflict.start_date_formatted || conflict.start_date} - ${conflict.end_date_formatted || conflict.end_date}`);
+      return;
+    }
+    if (!confirm(`ยืนยันต่อสัญญา ${bkId} ถึงวันที่ ${newEnd} และออกสัญญาเช่าใหม่?`)) return;
+    try {
+      const res = await fetch(`/api/bookings/${encodeURIComponent(bkId)}/extend`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ new_end_date: newEnd, new_end_time: newTime })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.detail || data.error || "ต่อสัญญาไม่สำเร็จ");
+      }
+      this.closeExtendContract();
+      this.showToast(`🔁 ต่อสัญญา ${bkId} ถึง ${newEnd} เรียบร้อย (+${data.extra_days} วัน ฿${Number(data.extra_price).toLocaleString("th-TH")}) — บันทึกสัญญาใหม่เป็น PDF`, "success");
+      await this.loadBookings();
+      await this.loadCars();
+      this.onSelectContractBooking();
+      if (data.pdf_url) window.open(`${data.pdf_url}&t=${Date.now()}`, "_blank");
+      alert("✅ ออกสัญญาเช่าใหม่เรียบร้อย (ไฟล์ PDF ถูกดาวน์โหลดแล้ว)\nกรุณาชำระค่าเช่าส่วนที่ต่อที่หน้า \"ชำระเงิน\" (เงินสด / QR / บัตรเครดิต / PayPal)");
+    } catch (e) {
+      alert(e.message);
       this.showToast("เกิดข้อผิดพลาด: " + e.message, "danger");
     }
   }
@@ -4599,246 +4760,6 @@ class App {
     }
     this.showToast(`📋 กำลังดาวน์โหลดใบตรวจสภาพรถ PDF สำหรับ ${id}...`, "info");
     window.open(`/api/pdf/job/${encodeURIComponent(id)}?t=${Date.now()}`, "_blank");
-  }
-
-  // --- Walk-in Direct Contract Formulation Logic ---
-  populateWalkinDropdowns() {
-    // 1. Car select
-    const carSel = document.getElementById("walkin-car-select");
-    if (carSel) {
-      const curVal = carSel.value;
-      const opts = this.cars.map(c => {
-        const { priceDay, priceWeek, priceMonth } = this.getCarRates(c);
-        return `<option value="${c.plate}">${c.plate} - ${c.brand || ''} ${c.model || ''} (฿${priceDay.toLocaleString()}/ว | ฿${priceWeek.toLocaleString()}/ส | ฿${priceMonth.toLocaleString()}/ด)</option>`;
-      }).join("");
-      carSel.innerHTML = '<option value="">-- เลือกรถยนต์จากฝูงรถ --</option>' + opts;
-      if (curVal) carSel.value = curVal;
-    }
-
-    // 2. Customer select
-    const custSel = document.getElementById("walkin-cust-select");
-    if (custSel) {
-      const curVal = custSel.value;
-      const opts = this.customers.map(c => 
-        `<option value="${c.full_name}">${c.full_name} (📞 ${c.contact_no || '-'})</option>`
-      ).join("");
-      custSel.innerHTML = '<option value="">-- เลือกลูกค้าผู้เช่า --</option>' + opts;
-      if (curVal) custSel.value = curVal;
-    }
-
-    // 3. Worker select
-    const workerSel = document.getElementById("walkin-worker-select");
-    if (workerSel) {
-      const curVal = workerSel.value;
-      const approved = this.users.filter(u => u.status === "approved");
-      const opts = approved.map(u => `<option value="${u.username}">${u.name || u.username} (${u.role})</option>`).join("");
-      workerSel.innerHTML = opts || `<option value="admin">ผู้ดูแลระบบ (admin)</option>`;
-      if (curVal) workerSel.value = curVal;
-    }
-
-    // 4. Default dates & times in Thailand timezone if empty
-    const sDate = document.getElementById("walkin-start-date");
-    const eDate = document.getElementById("walkin-end-date");
-    const sTime = document.getElementById("walkin-start-time");
-    const eTime = document.getElementById("walkin-end-time");
-    const thNow = this.getThaiDateTime(0);
-    const thNext3 = this.getThaiDateTime(3);
-    if (sDate) {
-      if (!sDate.value || sDate.value < thNow.dateStr) sDate.value = thNow.dateStr;
-      sDate.min = thNow.dateStr;
-    }
-    if (eDate) {
-      if (!eDate.value || eDate.value < (sDate?.value || thNow.dateStr)) eDate.value = thNext3.dateStr;
-      eDate.min = (sDate?.value || thNow.dateStr);
-    }
-    if (sTime && !sTime.value) sTime.value = thNow.timeStr;
-    if (eTime && !eTime.value) eTime.value = thNow.timeStr;
-
-    this.recalcWalkinPrice(true);
-  }
-
-  calcWalkinDuration() {
-    const isEn = (this.currentLang === "EN");
-    const thNow = this.getThaiDateTime(0);
-    const sDate = document.getElementById("walkin-start-date")?.value;
-    const sTime = document.getElementById("walkin-start-time")?.value || thNow.timeStr;
-    const eDate = document.getElementById("walkin-end-date")?.value;
-    const eTime = document.getElementById("walkin-end-time")?.value || thNow.timeStr;
-
-    if (!sDate || !eDate) return { days: 1, text: isEn ? "1 Day" : "1 วัน" };
-
-    const start = new Date(`${sDate}T${sTime}`);
-    const end = new Date(`${eDate}T${eTime}`);
-    if (end <= start) return { days: 1, text: isEn ? "1 Day (Minimum)" : "1 วัน (ขั้นต่ำ)" };
-
-    const diffMs = end - start;
-    const totalHours = Math.floor(diffMs / (1000 * 60 * 60));
-    const remMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-    const baseDays = Math.floor(totalHours / 24);
-    const extraHours = totalHours % 24;
-
-    let billableDays = baseDays;
-    let desc = "";
-
-    if (extraHours > 4 || (extraHours === 4 && remMins > 0)) {
-      billableDays = baseDays + 1;
-      desc = isEn
-        ? `${baseDays} Days + Overtime ${extraHours} hrs ${remMins} mins (Over 4 hrs counted as 1 day ➔ Total ${billableDays} Days)`
-        : `${baseDays} วัน + เกินเวลา ${extraHours} ชม. ${remMins} น. (เกิน 4 ชม. ปรับเป็น 1 วัน ➔ คิด ${billableDays} วัน)`;
-    } else if (extraHours > 0 || remMins > 0) {
-      desc = isEn
-        ? `${baseDays} Days + Extra ${extraHours} hrs ${remMins} mins (≤ 4 hrs ➔ Total ${billableDays} Days)`
-        : `${baseDays} วัน + เศษ ${extraHours} ชม. ${remMins} น. (ไม่เกิน 4 ชม. ➔ คิด ${billableDays} วัน)`;
-    } else {
-      desc = isEn ? `${baseDays} Days (Exact)` : `${baseDays} วัน (พอดี)`;
-    }
-    if (billableDays < 1) billableDays = 1;
-
-    return { days: billableDays, text: desc };
-  }
-
-  recalcWalkinPrice(fromDateChange = false) {
-    const isEn = (this.currentLang === "EN");
-    const thNow = this.getThaiDateTime(0);
-    const sDateInput = document.getElementById("walkin-start-date");
-    const eDateInput = document.getElementById("walkin-end-date");
-    if (sDateInput) {
-      if (!sDateInput.min) sDateInput.min = thNow.dateStr;
-      if (sDateInput.value && sDateInput.value < thNow.dateStr) {
-        sDateInput.value = thNow.dateStr;
-      }
-    }
-    if (eDateInput && sDateInput) {
-      eDateInput.min = sDateInput.value || thNow.dateStr;
-      if (eDateInput.value && eDateInput.value < sDateInput.value) {
-        eDateInput.value = sDateInput.value;
-      }
-    }
-
-    const carSel = document.getElementById("walkin-car-select");
-    const carPlate = carSel?.value;
-    const car = this.cars.find(c => c.plate === carPlate) || {};
-    const discInput = document.getElementById("walkin-discount");
-    const summaryBox = document.getElementById("walkin-price-summary");
-    const discount = discInput ? parseFloat(discInput.value || 0) : 0;
-
-    const dur = this.calcWalkinDuration();
-    const cTypeEl = document.getElementById("walkin-contract-type");
-
-    if (fromDateChange && cTypeEl) {
-      if (dur.days >= 30) cTypeEl.value = isEn ? "Monthly" : "รายเดือน";
-      else if (dur.days >= 7) cTypeEl.value = isEn ? "Weekly" : "รายสัปดาห์";
-      else cTypeEl.value = isEn ? "Daily" : "รายวัน";
-    }
-
-    const cType = cTypeEl?.value || (isEn ? "Daily" : "รายวัน");
-    const { basePrice, breakdownText } = this.calculateCarRentalPrice(car, dur.days, cType);
-    const netPrice = Math.max(0, basePrice - discount);
-
-    if (summaryBox) {
-      summaryBox.innerHTML = `
-        <div style="line-height:1.7;">
-          ⏱️ <b>${isEn ? 'Calculated Duration:' : 'ระยะเวลาคำนวณ:'}</b> <span style="color:#D97706; font-weight:700;">${dur.text}</span> (${dur.days} ${isEn ? 'Days' : 'วัน'})<br/>
-          💡 <b>${isEn ? 'Price Rate' : 'เรทราคา'} (${cType}):</b> <span style="color:#2563EB;">${breakdownText}</span><br/>
-          💰 <b>${isEn ? 'Gross Rental:' : 'ค่าเช่าก่อนลด:'}</b> ฿${basePrice.toLocaleString('th-TH', {minimumFractionDigits: 2})} 
-          | 🏷️ <b>${isEn ? 'Discount:' : 'ส่วนลด:'}</b> ฿${discount.toLocaleString('th-TH', {minimumFractionDigits: 2})}<br/>
-          💵 <b>${isEn ? 'Net Rental Fee:' : 'ยอดค่าเช่าสุทธิ:'}</b> <b style="color:#B45309; font-size:16px;">฿${netPrice.toLocaleString('th-TH', {minimumFractionDigits: 2})}</b> 
-          | 🛡️ <b>${isEn ? 'Security Deposit:' : 'มัดจำประกันสัญญา:'}</b> <b style="color:#059669;">฿5,000.00</b>
-        </div>
-      `;
-    }
-
-    return { basePrice, discount, netPrice, durationDays: dur.days };
-  }
-
-  async submitWalkinContract() {
-    const thNow = this.getThaiDateTime(0);
-    const carId = document.getElementById("walkin-car-select")?.value;
-    const cust = document.getElementById("walkin-cust-select")?.value;
-    const sDate = document.getElementById("walkin-start-date")?.value;
-    const sTime = document.getElementById("walkin-start-time")?.value || thNow.timeStr;
-    const eDate = document.getElementById("walkin-end-date")?.value;
-    const eTime = document.getElementById("walkin-end-time")?.value || thNow.timeStr;
-    const cType = document.getElementById("walkin-contract-type")?.value || "รายวัน";
-    const worker = document.getElementById("walkin-worker-select")?.value || "admin";
-    const loc = document.getElementById("walkin-loc")?.value || "หน้าร้านสาขา";
-    const discount = parseFloat(document.getElementById("walkin-discount")?.value || 0);
-
-    if (!carId) {
-      this.showToast("⚠️ กรุณาเลือกรถยนต์สำหรับทำสัญญา", "warning");
-      return;
-    }
-    if (!cust) {
-      this.showToast("⚠️ กรุณาเลือกลูกค้าผู้เช่า", "warning");
-      return;
-    }
-    if (!sDate || !eDate) {
-      this.showToast("⚠️ กรุณาระบุวันรับรถและวันคืนรถ", "warning");
-      return;
-    }
-
-    // Validation: prevent backdated contract
-    if (sDate < thNow.dateStr) {
-      alert(`⚠️ ไม่อนุญาตให้ทำสัญญาหรือจองรถย้อนหลัง!\nวันที่เริ่มต้น (${sDate}) ต้องไม่น้อยกว่าวันนี้ (${thNow.dateStr})`);
-      this.showToast(`⚠️ ไม่อนุญาตให้ทำสัญญาย้อนหลัง: วันที่เริ่มต้นต้องเป็น ${thNow.dateStr} ขึ้นไป`, "danger");
-      return;
-    }
-    if (eDate < sDate) {
-      alert(`⚠️ วันที่สิ้นสุดสัญญา (${eDate}) ต้องไม่น้อยกว่าวันที่เริ่มต้น (${sDate})`);
-      this.showToast(`⚠️ วันที่สิ้นสุดสัญญาต้องไม่น้อยกว่าวันที่เริ่มต้น`, "danger");
-      return;
-    }
-
-    const { basePrice } = this.recalcWalkinPrice();
-
-    const payload = {
-      car_id: carId,
-      customer: cust,
-      contract_type: cType,
-      start_date: sDate,
-      end_date: eDate,
-      start_time: sTime,
-      end_time: eTime,
-      base_price: basePrice,
-      discount: discount,
-      deposit_amount: 5000.0,
-      worker_delivery: worker,
-      loc_delivery: loc,
-      created_by: this.user ? this.user.username : "admin"
-    };
-
-    try {
-      this.showToast("⏳ กำลังสร้างสัญญาเช่า Walk-in และเตรียมเอกสาร PDF...", "info");
-      const res = await fetch("/api/bookings", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.detail || data.error || "เกิดข้อผิดพลาดในการสร้างสัญญา");
-      }
-      if (data.success) {
-        this.showToast(`🎉 ออกสัญญาเช่า Walk-in ${data.booking_id} เรียบร้อย!`, "success");
-        await this.loadBookings();
-        await this.loadCars();
-
-        // Select the newly created booking in Tab 4 dropdown
-        const contractSel = document.getElementById("contract-sel-bk");
-        if (contractSel) {
-          contractSel.value = data.booking_id;
-          this.onSelectContractBooking();
-        }
-
-        // Open official Rental Agreement PDF immediately in new tab
-        window.open(`/api/pdf/contract/${data.booking_id}`, "_blank");
-      } else {
-        this.showToast("❌ สร้างสัญญาไม่สำเร็จ: " + (data.error || "เกิดข้อผิดพลาด"), "danger");
-      }
-    } catch (e) {
-      alert(`❌ สร้างสัญญาไม่สำเร็จ:\n${e.message}`);
-      this.showToast("❌ เกิดข้อผิดพลาด: " + e.message, "danger");
-    }
   }
 
   // --- Tab 5: Bookings Table ---

@@ -479,6 +479,8 @@ class DataStore:
                                     b_copy["deposit_method"] = item["deposit_method"]
                                 if item.get("deposit_date") and not b_copy.get("deposit_date"):
                                     b_copy["deposit_date"] = item["deposit_date"]
+                                if item.get("contract_issued") and not b_copy.get("contract_issued"):
+                                    b_copy["contract_issued"] = True
                         fresh_b.append(b_copy)
                     with self.lock:
                         self.bookings = fresh_b
@@ -677,7 +679,8 @@ class DataStore:
                     "rental_ref": row.get("rental_ref", ""),
                     "rental_slip": row.get("rental_slip", ""),
                     "deposit_method": row.get("deposit_method", ""),
-                    "deposit_date": row.get("deposit_date", "")
+                    "deposit_date": row.get("deposit_date", ""),
+                    "contract_issued": bool(row.get("contract_issued", False))
                 }
                 ext_list = [x for x in ext_list if not (isinstance(x, dict) and x.get("type") == "payment_meta")]
                 ext_list.append(meta_item)
