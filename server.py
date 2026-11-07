@@ -60,6 +60,61 @@ TH_TZ = timezone(timedelta(hours=7))
 def now_th():
     return datetime.now(TH_TZ)
 
+# -------------------------------------------------------------------------
+# BUSINESS FLOW GUARDS (state machine / overlap protection)
+# -------------------------------------------------------------------------
+INACTIVE_BOOKING_STATUSES = ("เสร็จสิ้น", "ยกเลิก")
+
+def find_booking_overlap(car_id, start_d, end_d, exclude_booking_id=None):
+    """Return the first active booking of car_id whose date range overlaps [start_d, end_d], else None."""
+    if not car_id or not start_d or not end_d:
+        return None
+    for b in store.bookings:
+        if b.get("car_id") != car_id:
+            continue
+        if exclude_booking_id and b.get("booking_id") == exclude_booking_id:
+            continue
+        if b.get("status") in INACTIVE_BOOKING_STATUSES:
+            continue
+        b_s = to_date(b.get("start_date"))
+        b_e = to_date(b.get("end_date"))
+        if b_s and b_e and not (b_e < start_d or b_s > end_d):
+            return b
+    return None
+
+def raise_overlap_error(conflict, action="จองรถ"):
+    raise HTTPException(
+        status_code=409,
+        detail=(
+            f"⚠️ ไม่สามารถ{action}ได้: วันที่ทับซ้อนกับคิวเดิมของรถคันนี้ "
+            f"(รหัส {conflict.get('booking_id')} / ลูกค้า {conflict.get('customer')} / "
+            f"{format_date_dmy(conflict.get('start_date'))} - {format_date_dmy(conflict.get('end_date'))})"
+        )
+    )
+
+def release_car_after_booking(car_id, finished_booking_id=None):
+    """Return car to Available, or back to Reserved if another active queue still exists."""
+    if car_id not in store.cars:
+        return
+    has_queue = any(
+        b.get("car_id") == car_id
+        and b.get("booking_id") != finished_booking_id
+        and b.get("status") not in INACTIVE_BOOKING_STATUSES
+        for b in store.bookings
+    )
+    store.cars[car_id]["status"] = "ติดจอง" if has_queue else "ว่างพร้อมใช้งาน"
+    store.async_sync_car(car_id, store.cars[car_id])
+
+def require_contract_before_rent(booking):
+    """On-Rent status may only be reached after the rental contract has been issued."""
+    if not booking.get("contract_issued"):
+        raise HTTPException(
+            status_code=400,
+            detail="⚠️ ไม่สามารถเปลี่ยนสถานะเป็น \"กำลังเช่า\" ได้: ต้องออกสัญญาเช่าให้เรียบร้อยก่อน (จอง ➔ มัดจำ ➔ ใบงาน ➔ ชำระค่าเช่า ➔ สัญญา)"
+        )
+    if not booking.get("deposit_paid"):
+        raise HTTPException(status_code=400, detail="⚠️ ยังไม่ได้ชำระเงินมัดจำ ไม่สามารถส่งมอบรถได้")
+
 app = FastAPI(title="SawasdeeRental Web App", version="2.0.0")
 
 app.add_middleware(
@@ -423,6 +478,24 @@ async def list_cars(start_date: Optional[str] = None, end_date: Optional[str] = 
         )
         c_copy = dict(car)
         c_copy["fleet_status_key"] = status_key
+        _fs, _fe = to_date(start_date), to_date(end_date)
+        if _fs and not _fe: _fe = _fs
+        if _fe and not _fs: _fs = _fe
+        _on_rent = False
+        if _fs and _fe:
+            for _b in store.bookings:
+                if _b.get("car_id") != plate or _b.get("status") not in ("กำลังเช่า", "เตรียมรับคืน"):
+                    continue
+                _bs, _be = to_date(_b.get("start_date")), to_date(_b.get("end_date"))
+                if _bs and _be and not (_be < _fs or _bs > _fe):
+                    _on_rent = True
+                    break
+        else:
+            _on_rent = str(car.get("status") or "").strip() in ("กำลังเช่า", "เตรียมรับคืน") or any(
+                _b.get("car_id") == plate and _b.get("status") in ("กำลังเช่า", "เตรียมรับคืน")
+                for _b in store.bookings
+            )
+        c_copy["is_on_rent"] = _on_rent
         c_copy["fleet_status_desc"] = status_desc
         c_copy["status_color"] = color
         c_copy["status_bg"] = bg
@@ -946,6 +1019,11 @@ async def create_booking(payload: Dict[str, Any]):
             detail=f"วันที่สิ้นสุดสัญญา ({end_d.strftime('%d/%m/%Y')}) ต้องไม่น้อยกว่าวันที่เริ่มต้น ({start_d.strftime('%d/%m/%Y')})"
         )
 
+    # Prevent double booking: block immediately when dates overlap an existing active queue
+    _conflict = find_booking_overlap(payload.get("car_id"), start_d, end_d)
+    if _conflict:
+        raise_overlap_error(_conflict, "จองรถ")
+
     default_t = now.strftime("%H:%M")
     start_t = payload.get("start_time") or default_t
     end_t = payload.get("end_time") or default_t
@@ -1022,7 +1100,9 @@ async def create_booking(payload: Dict[str, Any]):
     
     with store.lock:
         store.bookings.insert(0, booking)
-        if car_id in store.cars:
+        # Flow step 4: after booking the car becomes "Reserved" (never jumps to On Rent).
+        # A car that is currently On Rent / in workshop keeps its status while accepting future queues.
+        if car_id in store.cars and store.cars[car_id].get("status") not in ("กำลังเช่า", "ซ่อมบำรุง"):
             store.cars[car_id]["status"] = "ติดจอง"
             store.async_sync_car(car_id, store.cars[car_id])
             
@@ -1058,6 +1138,27 @@ async def update_booking(bk_id: str, payload: Dict[str, Any]):
                 detail=f"ไม่อนุญาตให้แก้ไขวันที่สัญญาย้อนหลัง: วันที่เริ่มต้น ({new_sd.strftime('%d/%m/%Y')}) ต้องไม่น้อยกว่าวันที่ปัจจุบัน ({th_today.strftime('%d/%m/%Y')})"
             )
 
+    # ---- Validate everything BEFORE mutating the booking ----
+    new_status = payload.get("status")
+    prev_status = target.get("status")
+    chk_s = to_date(payload["start_date"]) if "start_date" in payload else to_date(target.get("start_date"))
+    chk_e = to_date(payload["end_date"]) if "end_date" in payload else to_date(target.get("end_date"))
+    if chk_s and chk_e and chk_e < chk_s:
+        raise HTTPException(status_code=400, detail="วันที่สิ้นสุดสัญญาต้องไม่น้อยกว่าวันที่เริ่มต้น")
+    if ("start_date" in payload or "end_date" in payload) and prev_status not in INACTIVE_BOOKING_STATUSES:
+        _conflict = find_booking_overlap(target.get("car_id"), chk_s, chk_e, exclude_booking_id=bk_id)
+        if _conflict:
+            raise_overlap_error(_conflict, "บันทึกวันที่")
+    if payload.get("contract_issued") and not target.get("contract_issued"):
+        if not target.get("deposit_paid"):
+            raise HTTPException(status_code=400, detail="⚠️ ไม่สามารถออกสัญญาได้: ยังไม่ได้ชำระเงินมัดจำ")
+        if not target.get("rental_paid"):
+            raise HTTPException(status_code=400, detail="⚠️ ไม่สามารถออกสัญญาได้: ยังไม่ได้ชำระค่าเช่า (ชำระด้วยเงินสด / QR / บัตรเครดิต / PayPal ก่อนออกสัญญา)")
+    if new_status == "กำลังเช่า" and prev_status != "กำลังเช่า":
+        require_contract_before_rent(target)
+    if new_status == "เสร็จสิ้น" and prev_status not in ("กำลังเช่า", "เตรียมรับคืน", "เสร็จสิ้น"):
+        raise HTTPException(status_code=400, detail="⚠️ ไม่สามารถรับคืนรถได้: รถยังไม่ได้ส่งมอบ (สถานะต้องเป็น \"กำลังเช่า\" ก่อน)")
+
     for k, v in payload.items():
         if k in ["start_date", "end_date"]:
             target[k] = to_date(v)
@@ -1074,21 +1175,134 @@ async def update_booking(bk_id: str, payload: Dict[str, Any]):
     elif target.get("status") == "เสร็จสิ้น":
         target["dispatch_closed"] = True
         target["return_closed"] = True
-        car_id = target.get("car_id")
-        if car_id in store.cars:
-            store.cars[car_id]["status"] = "ว่างพร้อมใช้งาน"
-            store.async_sync_car(car_id, store.cars[car_id])
+        release_car_after_booking(target.get("car_id"), bk_id)
 
     store.async_sync_booking(target)
     return {"success": True, "booking": target}
+
+@app.post("/api/bookings/{bk_id}/extend")
+async def extend_booking(bk_id: str, payload: Dict[str, Any]):
+    """Flow 6.2: customer extends the contract -> overlap check -> new contract (PDF) -> payment."""
+    target = next((b for b in store.bookings if b.get("booking_id") == bk_id), None)
+    if not target:
+        raise HTTPException(status_code=404, detail="ไม่พบรายการจอง")
+    if target.get("status") not in ("กำลังเช่า", "เตรียมรับคืน"):
+        raise HTTPException(status_code=400, detail="⚠️ ต่อสัญญาได้เฉพาะรายการที่อยู่ในสถานะ \"กำลังเช่า\" เท่านั้น")
+
+    old_end = to_date(target.get("end_date"))
+    old_end_t = target.get("end_time") or "10:00"
+    new_end = to_date(payload.get("new_end_date"))
+    new_end_t = payload.get("new_end_time") or old_end_t
+    if not new_end or not old_end:
+        raise HTTPException(status_code=400, detail="กรุณาระบุวันที่ต่อสัญญาใหม่")
+    if new_end <= old_end:
+        raise HTTPException(
+            status_code=400,
+            detail=f"วันที่ต่อสัญญาใหม่ ({new_end.strftime('%d/%m/%Y')}) ต้องมากกว่าวันสิ้นสุดสัญญาเดิม ({old_end.strftime('%d/%m/%Y')})"
+        )
+
+    # Block immediately if another queue is booked inside the extension window
+    _conflict = find_booking_overlap(target.get("car_id"), old_end, new_end, exclude_booking_id=bk_id)
+    if _conflict:
+        raise_overlap_error(_conflict, "ต่อสัญญา")
+
+    extra_days, _eh, _rm, _ov, _expl = calculate_rental_duration_and_days(old_end, old_end_t, new_end, new_end_t)
+    car_obj = store.cars.get(target.get("car_id"), {})
+    price_day = float(car_obj.get("price_day") or car_obj.get("daily_rate") or 1000)
+    extra_price = payload.get("extra_price")
+    extra_price = float(extra_price) if extra_price not in (None, "") else price_day * extra_days
+
+    also_pay_rental = bool(payload.get("also_pay_rental", False))
+    pay_method = str(payload.get("payment_method") or target.get("rental_payment_method") or "โอนเงิน / สแกน QR")
+    pay_ref = str(payload.get("payment_ref") or "").strip()
+
+    ext_list = list(target.get("extension_history") or [])
+    ext_no = len([x for x in ext_list if isinstance(x, dict) and x.get("type") == "extension"]) + 1
+    ext_list.append({
+        "type": "extension",
+        "no": ext_no,
+        "old_end_date": str(old_end),
+        "old_end_time": old_end_t,
+        "new_end_date": str(new_end),
+        "new_end_time": new_end_t,
+        "extra_days": extra_days,
+        "extra_price": extra_price,
+        "paid_at_extend": also_pay_rental,
+        "created_at": now_th().isoformat()
+    })
+
+    prev_outstanding = 0.0 if target.get("rental_paid") else float(target.get("remaining_rental") or 0.0)
+    total_due = prev_outstanding + extra_price
+    th_today = now_th().date().isoformat()
+    target["extension_history"] = ext_list
+    target["end_date"] = new_end
+    target["end_time"] = new_end_t
+    target["base_price"] = float(target.get("base_price") or 0.0) + extra_price
+    target["net_price"] = float(target.get("net_price") or 0.0) + extra_price
+    if also_pay_rental:
+        target["remaining_rental"] = 0.0
+        target["rental_paid"] = True
+        target["is_fully_paid"] = True
+        target["rental_payment_date"] = th_today
+        target["rental_payment_method"] = pay_method
+        if pay_ref:
+            target["rental_ref"] = pay_ref
+        car_comp = car_obj.get("company", "Sawasdee Rent A Car")
+        rent_detail = f"ชำระค่าเช่าต่อสัญญา #{ext_no} รถ {target.get('car_id')} ({pay_method})"
+        if pay_ref:
+            rent_detail += f" [Ref/สลิป: {pay_ref}]"
+        store.async_sync_financial({
+            "company": car_comp,
+            "type": "รายรับ",
+            "category": "ค่าเช่ารถ",
+            "amount": total_due,
+            "ref": bk_id,
+            "date": th_today,
+            "detail": rent_detail
+        })
+    else:
+        target["remaining_rental"] = total_due
+        target["rental_paid"] = False
+        target["is_fully_paid"] = False
+    target["contract_issued"] = True
+    store.async_sync_booking(target)
+
+    return {
+        "success": True,
+        "booking": target,
+        "extension_no": ext_no,
+        "extra_days": extra_days,
+        "extra_price": extra_price,
+        "paid_now": also_pay_rental,
+        "pdf_url": f"/api/pdf/contract/{bk_id}?download=1"
+    }
+
+@app.get("/api/bookings/{bk_id}/extend-check")
+async def extend_check(bk_id: str, new_end_date: str):
+    """Pre-check for the Extend Contract dialog (overlap + price preview)."""
+    target = next((b for b in store.bookings if b.get("booking_id") == bk_id), None)
+    if not target:
+        raise HTTPException(status_code=404, detail="ไม่พบรายการจอง")
+    old_end = to_date(target.get("end_date"))
+    new_end = to_date(new_end_date)
+    if not new_end or not old_end or new_end <= old_end:
+        return {"ok": False, "message": "วันที่ต่อสัญญาใหม่ต้องมากกว่าวันสิ้นสุดสัญญาเดิม"}
+    conflict = find_booking_overlap(target.get("car_id"), old_end, new_end, exclude_booking_id=bk_id)
+    if conflict:
+        return {
+            "ok": False,
+            "message": f"ติดจองคิวอื่น: {conflict.get('customer')} ({format_date_dmy(conflict.get('start_date'))} - {format_date_dmy(conflict.get('end_date'))})"
+        }
+    days, _a, _b, _c, _d = calculate_rental_duration_and_days(old_end, target.get("end_time") or "10:00", new_end, target.get("end_time") or "10:00")
+    car_obj = store.cars.get(target.get("car_id"), {})
+    price_day = float(car_obj.get("price_day") or car_obj.get("daily_rate") or 1000)
+    return {"ok": True, "extra_days": days, "extra_price": price_day * days}
 
 @app.delete("/api/bookings/{bk_id}")
 async def delete_booking(bk_id: str):
     target = next((b for b in store.bookings if b.get("booking_id") == bk_id), None)
     if target and target.get("car_id") in store.cars:
-        car_id = target["car_id"]
-        store.cars[car_id]["status"] = "ว่างพร้อมใช้งาน"
-        store.async_sync_car(car_id, store.cars[car_id])
+        release_car_after_booking(target["car_id"], bk_id)
         
     store.async_delete_booking(bk_id)
     return {"success": True}
@@ -1106,7 +1320,7 @@ async def record_deposit(bk_id: str, payload: Dict[str, Any]):
     dep_method = str(payload.get("payment_method", "โอนเงิน / สแกน QR"))
     dep_ref = str(payload.get("payment_ref") or payload.get("deposit_ref") or "").strip()
     dep_slip = convert_gdrive_url(str(payload.get("slip_url") or payload.get("deposit_slip") or "").strip())
-    pay_type = str(payload.get("payment_type") or "").strip()
+    pay_type = str(payload.get("payment_type") or "").strip() or ("มัดจำและค่าเช่า" if bool(payload.get("also_pay_rental", False)) else "มัดจำประกันสัญญา")
     gdrive_link = str(payload.get("google_drive_link") or "").strip()
     also_pay_rental = bool(payload.get("also_pay_rental", False))
     net_p = float(target.get("net_price", 0.0))
@@ -1136,7 +1350,7 @@ async def record_deposit(bk_id: str, payload: Dict[str, Any]):
         target["status"] = "รอส่งมอบ"
 
     car_id = target.get("car_id")
-    if car_id in store.cars:
+    if car_id in store.cars and store.cars[car_id].get("status") not in ("กำลังเช่า", "ซ่อมบำรุง"):
         store.cars[car_id]["status"] = "ติดจอง"
         store.async_sync_car(car_id, store.cars[car_id])
 
@@ -1190,7 +1404,8 @@ async def settle_rental(bk_id: str, payload: Dict[str, Any]):
     settle_method = str(payload.get("payment_method", "โอนเงิน / สแกน QR"))
     settle_ref = str(payload.get("payment_ref") or payload.get("rental_ref") or "").strip()
     settle_slip = convert_gdrive_url(str(payload.get("slip_url") or payload.get("rental_slip") or "").strip())
-    net_p = float(target.get("net_price", 0.0))
+    # Amount due = outstanding balance (covers extension top-ups); falls back to full rental price
+    net_p = float(target.get("remaining_rental") or target.get("net_price", 0.0))
 
     th_today = now_th().date().isoformat()
     target["rental_paid"] = True
@@ -1221,10 +1436,11 @@ async def settle_rental(bk_id: str, payload: Dict[str, Any]):
     }
     store.async_sync_financial(f_rent)
 
-    try:
-        notify_line_deposit(target, net_p, settle_method, settle_ref, settle_slip, also_rent=True, is_settle_only=True)
-    except Exception as line_err:
-        print(f"Error sending LINE settle notification: {line_err}")
+    # LINE notification disabled for deposit/rental payments (kept only for work orders)
+    # try:
+    #     notify_line_deposit(target, net_p, settle_method, settle_ref, settle_slip, also_rent=True, is_settle_only=True)
+    # except Exception as line_err:
+    #     print(f"Error sending LINE settle notification: {line_err}")
 
     return {"success": True, "booking": target}
 
@@ -1268,12 +1484,27 @@ async def assign_worker(bk_id: str, payload: Dict[str, Any]):
     s_date_val = payload.get("start_date")
     e_date_val = payload.get("end_date")
 
+    action_type = payload.get("action_type", "assign")
+
+    # ---- Validate before mutating (state machine + overlap protection) ----
+    new_sd = to_date(s_date_val) if s_date_val else to_date(target.get("start_date"))
+    new_ed = to_date(e_date_val) if e_date_val else to_date(target.get("end_date"))
+    if new_sd and new_ed and new_ed < new_sd:
+        raise HTTPException(status_code=400, detail="วันที่คืนรถต้องไม่น้อยกว่าวันที่เริ่มเช่า")
+    dates_changed = (new_sd != to_date(target.get("start_date"))) or (new_ed != to_date(target.get("end_date")))
+    if dates_changed and target.get("status") not in INACTIVE_BOOKING_STATUSES:
+        _conflict = find_booking_overlap(target.get("car_id"), new_sd, new_ed, exclude_booking_id=bk_id)
+        if _conflict:
+            raise_overlap_error(_conflict, "บันทึกวันที่")
+    if job_type == "Dispatch" and action_type == "handover_now":
+        require_contract_before_rent(target)
+    if job_type != "Dispatch" and action_type == "complete_now" and target.get("status") not in ("กำลังเช่า", "เตรียมรับคืน"):
+        raise HTTPException(status_code=400, detail="⚠️ ไม่สามารถรับคืนรถได้: รถยังไม่ได้ส่งมอบ (สถานะต้องเป็น \"กำลังเช่า\" ก่อน)")
+
     if s_date_val:
         target["start_date"] = to_date(s_date_val)
     if e_date_val:
         target["end_date"] = to_date(e_date_val)
-
-    action_type = payload.get("action_type", "assign")
 
     if job_type == "Dispatch":
         target["worker_delivery"] = worker
@@ -1295,10 +1526,7 @@ async def assign_worker(bk_id: str, payload: Dict[str, Any]):
         if action_type == "complete_now":
             target["status"] = "เสร็จสิ้น"
             target["return_closed"] = True
-            car_id = target.get("car_id")
-            if car_id in store.cars:
-                store.cars[car_id]["status"] = "ว่างพร้อมใช้งาน"
-                store.async_sync_car(car_id, store.cars[car_id])
+            release_car_after_booking(target.get("car_id"), bk_id)
         elif target.get("status") == "กำลังเช่า":
             target["status"] = "เตรียมรับคืน"
 
@@ -1432,6 +1660,8 @@ async def close_dispatch(bk_id: str, payload: Dict[str, Any]):
     target = next((b for b in store.bookings if b.get("booking_id") == bk_id), None)
     if not target:
         raise HTTPException(status_code=404, detail="ไม่พบรายการจอง")
+
+    require_contract_before_rent(target)
 
     fuel = payload.get("fuel_level", "⛽ เต็มถัง (Full - 8/8) [100%]")
     mileage = payload.get("mileage", "")
@@ -1881,7 +2111,7 @@ def _resolve_cust_and_car(target):
 # PDF DOCUMENT STREAMING ENDPOINTS
 # -------------------------------------------------------------------------
 @app.get("/api/pdf/contract/{bk_id}")
-async def get_contract_pdf(bk_id: str):
+async def get_contract_pdf(bk_id: str, download: int = 0):
     target = next((b for b in store.bookings if b.get("booking_id") == bk_id), None)
     if not target:
         target = next((cj for cj in store.completed_jobs if cj.get("booking_id") == bk_id), None)
@@ -1891,13 +2121,17 @@ async def get_contract_pdf(bk_id: str):
     cust, car = _resolve_cust_and_car(target)
     pdf_bytes = pdf_engine.generate_filled_pdf("rental_template_blank_v2.pdf", target, cust, car)
 
-    target["contract_issued"] = True
-    store.async_sync_booking(target)
+    if not target.get("contract_issued") and target.get("deposit_paid") and target.get("rental_paid"):
+        target["contract_issued"] = True
+        store.async_sync_booking(target)
 
+    ext_count = len([x for x in (target.get("extension_history") or []) if isinstance(x, dict) and x.get("type") == "extension"])
+    fname = f"Agreement_{bk_id}" + (f"_ext{ext_count}" if ext_count else "") + ".pdf"
+    disp = "attachment" if download else "inline"
     return StreamingResponse(
         io.BytesIO(pdf_bytes),
         media_type="application/pdf",
-        headers={"Content-Disposition": f"inline; filename=Agreement_{bk_id}.pdf"}
+        headers={"Content-Disposition": f"{disp}; filename={fname}"}
     )
 
 @app.get("/api/pdf/receipt/{bk_id}")

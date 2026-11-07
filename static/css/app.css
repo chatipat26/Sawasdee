@@ -1847,3 +1847,48 @@ section,
   border-bottom: none;
 }
 
+
+/* Unified Work Order Card & Radio Toggle */
+.workorder-unified-card {
+  max-width: 900px;
+}
+.workorder-unified-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding-bottom: 12px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+.workorder-mode-toggle {
+  display: inline-flex;
+  gap: 8px;
+  background: #FAF5EE;
+  padding: 4px;
+  border-radius: 10px;
+  border: 1px solid #E7E0D6;
+}
+.workorder-mode-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #57534E;
+  cursor: pointer;
+  margin: 0;
+  transition: all 0.15s ease;
+}
+.workorder-mode-option input[type="radio"] {
+  accent-color: #C2410C;
+  cursor: pointer;
+}
+.workorder-mode-option:has(input:checked) {
+  background: #FFFFFF;
+  color: #C2410C;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+}

@@ -406,17 +406,9 @@
             <!-- Deposit Action Form -->
             <div id="deposit-action-section" class="deposit-right" style="display:none;">
               <div class="deposit-form-grid">
-                <div class="form-group deposit-amount-group">
+                <div class="form-group">
                   <label id="lbl-deposit-amount">💵 ยอดเงินมัดจำประกันสัญญา (บาท):</label>
-                  <div class="deposit-amount-row">
-                    <input type="number" id="deposit-amount-input" class="form-control" value="5000" min="0" step="500">
-                    <div class="deposit-pills" role="radiogroup">
-                      <label class="deposit-pill"><input type="radio" name="deposit-type" value="มัดจำประกันสัญญา" checked><span id="opt-dep-type-deposit">เงินมัดจำ</span></label>
-                      <label class="deposit-pill"><input type="radio" name="deposit-type" value="ค่าเช่า"><span id="opt-dep-type-rental">ค่าเช่า</span></label>
-                      <label class="deposit-pill"><input type="radio" name="deposit-type" value="มัดจำและค่าเช่า"><span id="opt-dep-type-both">ทั้งสอง</span></label>
-                    </div>
-                  </div>
-                  <span id="lbl-deposit-type" style="display:none;">ประเภทการชำระ</span>
+                  <input type="number" id="deposit-amount-input" class="form-control" value="5000" min="0" step="500">
                 </div>
                 <div class="form-group">
                   <label id="lbl-deposit-method">💳 ช่องทางการชำระเงิน:</label>
@@ -466,9 +458,9 @@
               </div>
 
               <div class="form-group" style="margin-bottom:16px;">
-                <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
-                  <input type="checkbox" id="deposit-also-rent" style="width:16px; height:16px;">
-                  <b id="lbl-deposit-also-rent" style="font-size:12.5px; color:#1E3A8A;">รับชำระค่าเช่าเต็มจำนวนพร้อมกันทันที</b>
+                <label class="deposit-checkbox-label" style="display:inline-flex; align-items:center; gap:9px; cursor:pointer; user-select:none; padding:4px 0;">
+                  <input type="checkbox" id="deposit-also-rent" style="width:18px; height:18px; accent-color:#1E3A8A; cursor:pointer;">
+                  <b id="lbl-deposit-also-rent" style="font-size:13.5px; color:#1E3A8A;">รับชำระค่าเช่าเต็มจำนวนพร้อมกัน</b>
                 </label>
               </div>
 
@@ -505,22 +497,38 @@
           </div>
         </div>
 
-        <!-- TAB 3: DISPATCH & RETURN ASSIGN -->
+        <!-- TAB 3: UNIFIED DISPATCH & RETURN WORK ORDER PANEL -->
         <div id="subtab-assign" class="tab-pane" style="display:none;">
-          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
-            <!-- Column 1: Dispatch Assignment -->
-            <div class="card">
-              <div class="card-title" id="title-tab3-disp">
+          <div class="card workorder-unified-card">
+            <div class="workorder-unified-header">
+              <div class="card-title" id="title-tab3-unified" style="margin:0;">
+                <span>📋</span> ออกใบงานส่งมอบรถ / รับรถคืน (Work Order Assignment)
+              </div>
+              <div class="workorder-mode-toggle" role="radiogroup" aria-label="เลือกประเภทใบงาน">
+                <label class="workorder-mode-option">
+                  <input type="radio" name="assign-mode" value="Dispatch" checked onchange="app.setAssignMode('Dispatch')">
+                  <span id="lbl-assign-mode-disp">🔘 ออกใบงานส่งรถ</span>
+                </label>
+                <label class="workorder-mode-option">
+                  <input type="radio" name="assign-mode" value="Return" onchange="app.setAssignMode('Return')">
+                  <span id="lbl-assign-mode-ret">🔘 ออกใบงานรับรถคืน</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Conditional Panel 1: Dispatch Assignment -->
+            <div id="assign-card-disp">
+              <div class="card-title" id="title-tab3-disp" style="font-size:14.5px; margin-bottom:10px;">
                 <span>🚚</span> ออกใบงานส่งรถ (Dispatch Work Order)
               </div>
-              <div class="form-group" style="margin-bottom:14px;">
+              <div class="form-group" style="margin-bottom:12px;">
                 <label id="lbl-assign-disp-bk">เลือกรหัสการจองสำหรับส่งมอบรถ:</label>
                 <select id="assign-disp-bk" class="form-control" onchange="app.onSelectAssignDispBooking()">
                   <option id="opt-assign-disp-default" value="">-- เลือกรหัสการจอง --</option>
                 </select>
               </div>
               <div id="assign-disp-form" style="display:none;">
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:12px;">
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:10px;">
                   <div class="form-group">
                     <label id="lbl-assign-disp-start">📅 วันที่เริ่มเช่า (วันส่งมอบ):</label>
                     <input type="date" id="assign-disp-start-date" class="form-control" onchange="document.getElementById('assign-disp-date').value = this.value">
@@ -530,22 +538,18 @@
                     <input type="date" id="assign-disp-end-date" class="form-control">
                   </div>
                 </div>
-                <div id="assign-disp-status-banner" style="margin-bottom:12px;"></div>
-                <div class="form-group" style="margin-bottom:12px;">
-                  <label id="lbl-assign-disp-worker">👤 เลือกพนักงานจัดส่ง / คนขับรถ:</label>
-                  <select id="assign-disp-worker" class="form-control">
-                    <option value="admin">admin (ผู้ดูแลระบบ (Admin)) [Admin]</option>
-                    <option value="chaiwat.u">chaiwat.u [Staff]</option>
-                    <option value="sam">sam [Staff]</option>
-                    <option value="sucheeda">sucheeda (uswachoke) [Staff]</option>
-                    <option value="Chatipat">Chatipat (ชาติพัฒน์ ตั้งรุ่งเรืองอยู่) [Staff]</option>
-                  </select>
-                </div>
-                <div class="form-group" style="margin-bottom:12px;">
-                  <label id="lbl-assign-disp-loc">📍 สถานที่นัดหมายส่งมอบรถ:</label>
-                  <textarea id="assign-disp-loc" class="form-control" rows="2" placeholder="เช่น สนามบินสุวรรณภูมิ หรือใส่ Google Maps link"></textarea>
-                </div>
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:16px;">
+                <div id="assign-disp-status-banner" style="margin-bottom:10px;"></div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:12px; margin-bottom:10px;">
+                  <div class="form-group">
+                    <label id="lbl-assign-disp-worker">👤 พนักงานส่งรถ:</label>
+                    <select id="assign-disp-worker" class="form-control">
+                      <option value="admin">admin (ผู้ดูแลระบบ (Admin)) [Admin]</option>
+                      <option value="chaiwat.u">chaiwat.u [Staff]</option>
+                      <option value="sam">sam [Staff]</option>
+                      <option value="sucheeda">sucheeda (uswachoke) [Staff]</option>
+                      <option value="Chatipat">Chatipat (ชาติพัฒน์ ตั้งรุ่งเรืองอยู่) [Staff]</option>
+                    </select>
+                  </div>
                   <div class="form-group">
                     <label id="lbl-assign-disp-date">📅 วันที่นัดส่งมอบรถ:</label>
                     <input type="date" id="assign-disp-date" class="form-control" onchange="document.getElementById('assign-disp-start-date').value = this.value">
@@ -555,15 +559,17 @@
                     <input type="time" id="assign-disp-time" class="form-control">
                   </div>
                 </div>
-                <div style="display:flex; flex-direction:column; gap:8px;">
-                  <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-                    <button type="button" id="btn-assign-disp-sched" onclick="app.submitAssign('Dispatch', 'prepare')" class="btn btn-secondary" style="width:100%; font-weight:700;" title="บันทึกข้อมูลเตรียมนัดหมาย (สถานะ: เตรียมส่งมอบ)">
-                      📋 นัดหมาย (เตรียมส่งมอบ)
-                    </button>
-                    <button type="button" id="btn-assign-disp-handover" onclick="app.submitAssign('Dispatch', 'handover')" class="btn btn-primary" style="width:100%; background:#16a34a; border-color:#16a34a; font-weight:700;" title="ส่งมอบรถให้ลูกค้าจริงแล้ว (สถานะ: กำลังเช่า)">
-                      🚚 ส่งมอบรถแล้ว (กำลังเช่า) ➔
-                    </button>
-                  </div>
+                <div class="form-group" style="margin-bottom:14px;">
+                  <label id="lbl-assign-disp-loc">📍 สถานที่นัดหมายส่งมอบรถ:</label>
+                  <textarea id="assign-disp-loc" class="form-control" rows="2" placeholder="เช่น สนามบินสุวรรณภูมิ หรือใส่ Google Maps link"></textarea>
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px;">
+                  <button type="button" id="btn-assign-disp-sched" onclick="app.submitAssign('Dispatch', 'prepare')" class="btn btn-secondary" style="width:100%; font-weight:700;" title="บันทึกข้อมูลเตรียมนัดหมาย (สถานะ: เตรียมส่งมอบ)">
+                    📋 นัดหมาย (เตรียมส่งมอบ)
+                  </button>
+                  <button type="button" id="btn-assign-disp-handover" onclick="app.submitAssign('Dispatch', 'handover')" class="btn btn-primary" style="width:100%; background:#16a34a; border-color:#16a34a; font-weight:700;" title="ส่งมอบรถให้ลูกค้าจริงแล้ว (สถานะ: กำลังเช่า)">
+                    🚚 ส่งมอบรถแล้ว (กำลังเช่า) ➔
+                  </button>
                   <button type="button" id="btn-assign-disp-goto-contract" onclick="app.goToTabWithBooking('contract', document.getElementById('assign-disp-bk').value)" class="btn btn-secondary" style="width:100%; background:#FAF7F2; border:1px solid #CBD5E1; color:#374151; font-weight:700;">
                     📝 ไปหน้าทำสัญญา ➔
                   </button>
@@ -571,19 +577,19 @@
               </div>
             </div>
 
-            <!-- Column 2: Return Assignment -->
-            <div class="card">
-              <div class="card-title" id="title-tab3-ret">
+            <!-- Conditional Panel 2: Return Assignment -->
+            <div id="assign-card-ret" style="display:none;">
+              <div class="card-title" id="title-tab3-ret" style="font-size:14.5px; margin-bottom:10px;">
                 <span>🔙</span> ออกใบงานรับรถคืน (Return Work Order)
               </div>
-              <div class="form-group" style="margin-bottom:14px;">
+              <div class="form-group" style="margin-bottom:12px;">
                 <label id="lbl-assign-ret-bk">เลือกรหัสการจองสำหรับรับรถคืน:</label>
                 <select id="assign-ret-bk" class="form-control" onchange="app.onSelectAssignRetBooking()">
                   <option id="opt-assign-ret-default" value="">-- เลือกรหัสการจอง --</option>
                 </select>
               </div>
               <div id="assign-ret-form" style="display:none;">
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:12px;">
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:10px;">
                   <div class="form-group">
                     <label id="lbl-assign-ret-start">📅 วันที่เริ่มเช่า:</label>
                     <input type="date" id="assign-ret-start-date" class="form-control">
@@ -593,22 +599,18 @@
                     <input type="date" id="assign-ret-end-date" class="form-control" onchange="document.getElementById('assign-ret-date').value = this.value">
                   </div>
                 </div>
-                <div id="assign-ret-status-banner" style="margin-bottom:12px;"></div>
-                <div class="form-group" style="margin-bottom:12px;">
-                  <label id="lbl-assign-ret-worker">👤 เลือกพนักงานรับรถคืน / คนขับรถ:</label>
-                  <select id="assign-ret-worker" class="form-control">
-                    <option value="admin">admin (ผู้ดูแลระบบ (Admin)) [Admin]</option>
-                    <option value="chaiwat.u">chaiwat.u [Staff]</option>
-                    <option value="sam">sam [Staff]</option>
-                    <option value="sucheeda">sucheeda (uswachoke) [Staff]</option>
-                    <option value="Chatipat">Chatipat (ชาติพัฒน์ ตั้งรุ่งเรืองอยู่) [Staff]</option>
-                  </select>
-                </div>
-                <div class="form-group" style="margin-bottom:12px;">
-                  <label id="lbl-assign-ret-loc">📍 สถานที่นัดหมายรับรถคืน:</label>
-                  <textarea id="assign-ret-loc" class="form-control" rows="2" placeholder="เช่น สถานที่เดิม หรือ โรงแรม..."></textarea>
-                </div>
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:16px;">
+                <div id="assign-ret-status-banner" style="margin-bottom:10px;"></div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:12px; margin-bottom:10px;">
+                  <div class="form-group">
+                    <label id="lbl-assign-ret-worker">👤 พนักงานรับรถคืน:</label>
+                    <select id="assign-ret-worker" class="form-control">
+                      <option value="admin">admin (ผู้ดูแลระบบ (Admin)) [Admin]</option>
+                      <option value="chaiwat.u">chaiwat.u [Staff]</option>
+                      <option value="sam">sam [Staff]</option>
+                      <option value="sucheeda">sucheeda (uswachoke) [Staff]</option>
+                      <option value="Chatipat">Chatipat (ชาติพัฒน์ ตั้งรุ่งเรืองอยู่) [Staff]</option>
+                    </select>
+                  </div>
                   <div class="form-group">
                     <label id="lbl-assign-ret-date">📅 วันที่นัดรับรถคืน:</label>
                     <input type="date" id="assign-ret-date" class="form-control" onchange="document.getElementById('assign-ret-end-date').value = this.value">
@@ -617,6 +619,10 @@
                     <label id="lbl-assign-ret-time">⏰ เวลานัดรับรถคืน:</label>
                     <input type="time" id="assign-ret-time" class="form-control">
                   </div>
+                </div>
+                <div class="form-group" style="margin-bottom:14px;">
+                  <label id="lbl-assign-ret-loc">📍 สถานที่นัดหมายรับรถคืน:</label>
+                  <textarea id="assign-ret-loc" class="form-control" rows="2" placeholder="เช่น สถานที่เดิม หรือ โรงแรม..."></textarea>
                 </div>
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
                   <button type="button" id="btn-assign-ret-sched" onclick="app.submitAssign('Return', 'prepare')" class="btn btn-secondary" style="width:100%; font-weight:700;" title="บันทึกเตรียมนัดหมายรับรถคืน (สถานะ: เตรียมรับคืน)">
@@ -718,96 +724,39 @@
                   <button id="btn-goto-deposit-from-contract" onclick="app.goToDepositFromContract()" class="btn btn-primary" style="background:#0284C7; border-color:#0284C7;">
                     💳 ไปหน้าชำระเงิน / ปิดยอดคงเหลือ ➔
                   </button>
+                  <button type="button" id="btn-extend-contract" onclick="app.openExtendContract()" class="btn btn-warning" style="display:none; font-weight:700; background:#f59e0b; border-color:#d97706; color:#1F2937;">
+                    🔁 ต่อสัญญา
+                  </button>
                 </div>
-              </div>
-            </div>
-          </div>
 
-          <!-- 2. Walk-in Direct Contract Formulation Form -->
-          <div class="expander-card" id="expander-walkin-contract">
-            <div class="expander-header open" onclick="app.toggleExpander('expander-walkin-contract')">
-              <div class="expander-title" id="title-walkin-contract">
-                <span>➕</span> สร้างสัญญาเช่าใหม่โดยตรง (Walk-in Direct Contract Formulation)
-              </div>
-              <div class="expander-indicator">
-                <span id="indicator-expander-walkin-contract">▲ คลิกเพื่อพับเก็บ</span>
-              </div>
-            </div>
-            <div class="expander-body" id="body-expander-walkin-contract" style="display:block;">
-              <div id="subtitle-walkin-contract" style="font-size:12.5px; color:var(--text-muted); margin-bottom:16px;">
-                สำหรับกรณีลูกค้า Walk-in เข้ามาที่หน้าร้านโดยตรง สามารถกรอกรายละเอียด ออกสัญญาเช่า และดาวน์โหลด PDF ได้ทันที
-              </div>
-
-              <!-- Form Fields -->
-              <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:14px; margin-bottom:14px;">
-                <div class="form-group">
-                  <label id="lbl-walkin-car">🚘 เลือกรถยนต์:</label>
-                  <select id="walkin-car-select" class="form-control" onchange="app.recalcWalkinPrice()">
-                    <option id="opt-walkin-car-default" value="">-- เลือกรถยนต์จากฝูงรถ --</option>
-                  </select>
-                </div>
-                <div class="form-group">
-                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-                    <label id="lbl-walkin-cust" style="margin:0;">👤 เลือกลูกค้าผู้เช่า:</label>
-                    <div style="display:flex; gap:6px;">
-                      <button type="button" id="btn-walkin-cust-edit" onclick="app.openEditSelectedCustomerModal('walkin')" class="btn btn-sm btn-secondary" style="padding:2px 8px; font-size:11.5px; background:#FAF7F2; border:1px solid #CBD5E1; color:#374151;" title="ดูและแก้ไขข้อมูลลูกค้าที่เลือก">✏️ ดู/แก้ไข</button>
-                      <button type="button" id="btn-walkin-cust-del" onclick="app.deleteSelectedCustomer('walkin')" class="btn btn-sm btn-danger" style="padding:2px 8px; font-size:11.5px;" title="ลบข้อมูลลูกค้านี้ (กรณีบันทึกผิด)">🗑️ ลบ</button>
-                      <button type="button" id="btn-walkin-cust-add" onclick="app.openAddCustomerModal()" class="btn btn-sm btn-primary" style="padding:2px 8px; font-size:11.5px;">➕ เพิ่มใหม่</button>
-                    </div>
+                <!-- Extend Contract panel (Flow 6.2) -->
+                <div id="contract-extend-panel" style="display:none; margin-top:14px; border:1.5px solid #FDBA74; background:#FFF7ED; border-radius:10px; padding:14px;">
+                  <div style="font-weight:800; color:#9A3412; margin-bottom:6px;">🔁 ต่อสัญญาเช่า (ระบุวันที่สิ้นสุดใหม่ ➔ ออกสัญญาใหม่ ➔ บันทึกเป็น PDF)</div>
+                  <div id="contract-extend-current" style="font-size:12.5px; color:#475569; margin-bottom:8px;"></div>
+                  <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+                    <label style="margin:0; font-weight:700; font-size:12.5px;">วันที่ต่อสัญญาใหม่ (สิ้นสุด):</label>
+                    <input type="date" id="contract-extend-end-date" class="form-control" style="max-width:170px;" onchange="app.onExtendDateChange()">
+                    <input type="time" id="contract-extend-end-time" class="form-control" style="max-width:120px;">
+                    <select id="contract-extend-method" class="form-control" style="max-width:190px;">
+                      <option value="โอนเงิน / สแกน QR">โอนเงิน / สแกน QR</option>
+                      <option value="บัตรเครดิต">บัตรเครดิต</option>
+                      <option value="เงินสด">เงินสด</option>
+                      <option value="PayPal">PayPal</option>
+                    </select>
                   </div>
-                  <select id="walkin-cust-select" class="form-control" onchange="app.onSelectWalkinCustomer()"></select>
-                  <div id="walkin-cust-info-badge" style="margin-top:6px; font-size:11.5px; color:#475569; background:#F8FAFC; border:1px solid #E2E8F0; border-radius:6px; padding:6px 10px; display:none;"></div>
-                </div>
-              </div>
-
-              <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:14px; margin-bottom:14px;">
-                <div class="form-group">
-                  <label id="lbl-walkin-start">📅 วันที่ส่งมอบรถ (Pick-up เวลาไทย):</label>
-                  <div style="display:flex; gap:6px;">
-                    <input type="date" id="walkin-start-date" class="form-control" onchange="app.recalcWalkinPrice()">
-                    <input type="time" id="walkin-start-time" class="form-control" style="width:110px;" onchange="app.recalcWalkinPrice()">
+                  <div id="contract-extend-preview" style="font-size:12.5px; margin:8px 0;"></div>
+                  <div style="margin:8px 0 12px 0;">
+                    <label class="deposit-checkbox-label" style="display:inline-flex; align-items:center; gap:9px; cursor:pointer; user-select:none;">
+                      <input type="checkbox" id="contract-extend-also-rent" checked style="width:18px; height:18px; accent-color:#1E3A8A; cursor:pointer;">
+                      <b id="lbl-extend-also-rent" style="font-size:13.5px; color:#1E3A8A;">รับชำระค่าเช่าเต็มจำนวนพร้อมกัน</b>
+                    </label>
                   </div>
-                </div>
-                <div class="form-group">
-                  <label id="lbl-walkin-end">📅 วันที่คืนรถ (Return เวลาไทย):</label>
-                  <div style="display:flex; gap:6px;">
-                    <input type="date" id="walkin-end-date" class="form-control" onchange="app.recalcWalkinPrice()">
-                    <input type="time" id="walkin-end-time" class="form-control" style="width:110px;" onchange="app.recalcWalkinPrice()">
+                  <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                    <button type="button" id="btn-submit-extend" onclick="app.submitExtendContract()" class="btn btn-primary" style="font-weight:700;">📄 ยืนยันต่อสัญญา &amp; ออกสัญญาใหม่ (PDF)</button>
+                    <button type="button" onclick="app.closeExtendContract()" class="btn btn-secondary">ยกเลิก</button>
                   </div>
                 </div>
               </div>
-
-              <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:14px; margin-bottom:14px;">
-                <div class="form-group">
-                  <label id="lbl-walkin-type">📋 ประเภทสัญญา:</label>
-                  <select id="walkin-contract-type" class="form-control" onchange="app.recalcWalkinPrice()">
-                    <option id="opt-walkin-type-daily" value="รายวัน">รายวัน (Daily)</option>
-                    <option id="opt-walkin-type-weekly" value="รายสัปดาห์">รายสัปดาห์ (Weekly)</option>
-                    <option id="opt-walkin-type-monthly" value="รายเดือน">รายเดือน (Monthly)</option>
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label id="lbl-walkin-discount">🏷️ ส่วนลดพิเศษ (บาท):</label>
-                  <input type="number" id="walkin-discount" class="form-control" value="0" min="0" step="100" oninput="app.recalcWalkinPrice()">
-                </div>
-                <div class="form-group">
-                  <label id="lbl-walkin-worker">👤 พนักงานจัดส่งมอบรถ:</label>
-                  <select id="walkin-worker-select" class="form-control"></select>
-                </div>
-                <div class="form-group">
-                  <label id="lbl-walkin-loc">📍 สถานที่ส่งมอบรถ:</label>
-                  <input type="text" id="walkin-loc" class="form-control" placeholder="เช่น หน้าร้านสาขา หรือ โรงแรม...">
-                </div>
-              </div>
-
-              <!-- Price calculation summary banner -->
-              <div id="walkin-price-summary" style="background:#FFFBEB; border:1px solid #FDE68A; border-radius:8px; padding:12px 16px; margin-bottom:16px; font-size:13px; color:#475569;">
-                ⏱️ คำนวณระยะเวลาเช่า: <b style="color:#D97706;">1 วัน</b>
-              </div>
-
-              <button type="button" id="btn-submit-walkin" onclick="app.submitWalkinContract()" class="btn btn-primary" style="width:100%; height:44px; font-weight:700; font-size:14px;">
-                💾 บันทึกสร้างสัญญาเช่า Walk-in & เปิดเอกสาร PDF ทันที ➔
-              </button>
             </div>
           </div>
         </div>

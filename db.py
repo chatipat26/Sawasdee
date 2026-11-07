@@ -459,6 +459,8 @@ class DataStore:
                                     b_copy["payment_type"] = item["payment_type"]
                                 if item.get("google_drive_link") and not b_copy.get("google_drive_link"):
                                     b_copy["google_drive_link"] = item["google_drive_link"]
+                                if item.get("contract_issued") and not b_copy.get("contract_issued"):
+                                    b_copy["contract_issued"] = True
                         fresh_b.append(b_copy)
                     with self.lock:
                         self.bookings = fresh_b
@@ -659,7 +661,8 @@ class DataStore:
                     "deposit_method": row.get("deposit_method", ""),
                     "deposit_date": row.get("deposit_date", ""),
                     "payment_type": row.get("payment_type", ""),
-                    "google_drive_link": row.get("google_drive_link", "")
+                    "google_drive_link": row.get("google_drive_link", ""),
+                    "contract_issued": bool(row.get("contract_issued", False))
                 }
                 ext_list = [x for x in ext_list if not (isinstance(x, dict) and x.get("type") == "payment_meta")]
                 ext_list.append(meta_item)
