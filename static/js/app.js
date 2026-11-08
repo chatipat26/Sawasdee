@@ -5412,16 +5412,18 @@ class App {
       headerToolbar: {
         left: 'prev,next today',
         center: 'title',
-        right: 'dayGridMonth,listMonth'
+        right: 'dayGridMonth,timeGridWeek,listMonth'
       },
       locale: isEn ? 'en' : 'th',
       buttonText: isEn ? {
         today: 'Today',
         month: 'Month',
+        week: 'Week',
         list: 'List'
       } : {
         today: 'วันนี้',
         month: 'ปฏิทิน',
+        week: 'สัปดาห์',
         list: 'รายการ'
       },
       events: events,
@@ -5433,23 +5435,33 @@ class App {
       displayEventTime: true,
       dayMaxEvents: 3,
       navLinkDayClick: (date, jsEvent) => {
+        if (jsEvent && jsEvent.preventDefault) jsEvent.preventDefault();
         const dStr = typeof date === "string" ? date : (date.toISOString ? date.toISOString().split("T")[0] : String(date));
-        if (this.boCalendar && dStr) {
+        if (this.boCalendar) {
           try {
-            this.boCalendar.changeView('listMonth', dStr);
+            this.boCalendar.changeView('timeGridWeek', date);
           } catch(e) {
-            this.boCalendar.gotoDate(dStr);
+            try {
+              this.boCalendar.changeView('listWeek', date);
+            } catch(e2) {
+              this.boCalendar.gotoDate(date);
+            }
           }
         }
         this.onCalendarDateClick(dStr);
       },
       dateClick: (info) => {
         const dStr = info.dateStr || (info.date && info.date.toISOString ? info.date.toISOString().split("T")[0] : "");
-        if (this.boCalendar && dStr) {
+        const targetDate = info.date || dStr;
+        if (this.boCalendar && this.boCalendar.view && this.boCalendar.view.type === 'dayGridMonth') {
           try {
-            this.boCalendar.changeView('listMonth', dStr);
+            this.boCalendar.changeView('timeGridWeek', targetDate);
           } catch(e) {
-            this.boCalendar.gotoDate(dStr);
+            try {
+              this.boCalendar.changeView('listWeek', targetDate);
+            } catch(e2) {
+              this.boCalendar.gotoDate(targetDate);
+            }
           }
         }
         this.onCalendarDateClick(dStr);
@@ -6958,7 +6970,20 @@ class App {
         tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:32px; color:#64748B;">🎉 ${isEn ? 'No documents expiring in this cycle.' : `ไม่มีเอกสารหรือค่าใช้จ่ายครบกำหนดใน ${cycle.roundName}`}</td></tr>`;
       } else {
         tbody.innerHTML = matched.map((it, idx) => {
-          const badgeClass = it.status_key === "overdue" ? "badge badge-danger" : (it.status_key === "pending" ? "badge badge-warning" : "badge badge-success");
+          let badgeClass = "badge badge-success";
+          let itStatus = it.status;
+          if (it.status_key === "overdue" || it.days_left < 0) {
+            badgeClass = "badge badge-danger";
+            itStatus = isEn ? "Overdue" : "เกินกำหนด";
+          } else if (it.status_key === "pending_near" || (it.status_key !== "paid" && it.days_left <= 15)) {
+            badgeClass = "badge badge-warning";
+            itStatus = isEn ? "Pending (Due Soon)" : "รอชำระ (ใกล้ครบกำหนด)";
+          } else if (it.status_key === "pending" || (it.status_key !== "paid" && it.days_left <= 30)) {
+            badgeClass = "badge badge-warning";
+            itStatus = isEn ? "Pending" : "รอชำระ";
+          } else {
+            itStatus = isEn ? "Paid" : "ชำระแล้ว";
+          }
           return `
             <tr style="background:#ffffff !important;">
               <td style="text-align:center; font-weight:700; color:#64748B; background:#ffffff !important;">${idx + 1}</td>
@@ -6966,7 +6991,7 @@ class App {
               <td style="background:#ffffff !important;"><b>${it.expense_type}</b></td>
               <td style="text-align:center; font-weight:600; background:#ffffff !important;">${it.due_date || '-'}<br/><small style="color:${it.days_left < 0 ? '#DC2626' : '#64748B'};">${it.notes || ''}</small></td>
               <td style="text-align:right; font-weight:800; color:#0F172A; background:#ffffff !important;">฿${Number(it.amount || 0).toLocaleString('th-TH', {minimumFractionDigits: 2})}</td>
-              <td style="text-align:center; background:#ffffff !important;"><span class="${badgeClass}">${it.status}</span></td>
+              <td style="text-align:center; background:#ffffff !important;"><span class="${badgeClass}">${itStatus}</span></td>
             </tr>
           `;
         }).join("");
@@ -7189,18 +7214,34 @@ class App {
     }
 
     tbody.innerHTML = filtered.map((item, idx) => {
-      let badgeStyle = "background:#ECFDF5; color:#065F46; border:1px solid #A7F3D0;";
+      let badgeStyle = "background:#ECFDF5; color:#065F46; border:1px solid #A7F3D0; font-weight:700;";
       let badgeIcon = "✅";
-      if (item.status_key === "overdue") {
+      let displayStatus = item.status;
+
+      if (item.status_key === "overdue" || item.days_left < 0) {
+        // 4. เกินกำหนด (Overdue): พื้นสีแดง (ยังไม่จ่าย และเลย Due Date แล้ว)
         badgeStyle = "background:#FEF2F2; color:#991B1B; border:1px solid #FECACA; font-weight:800;";
         badgeIcon = "⚠️";
-      } else if (item.status_key === "pending") {
+        displayStatus = isEn ? "Overdue" : "เกินกำหนด";
+      } else if (item.status_key === "pending_near" || (item.status_key !== "paid" && item.days_left <= 15)) {
+        // 3. รอชำระ (ใกล้ครบกำหนด): พื้นสีเหลืองเข้ม/ส้ม (ยังไม่จ่าย และเหลือเวลาน้อยกว่าหรือเท่ากับ 15 วัน)
+        badgeStyle = "background:#FFF7ED; color:#C2410C; border:1.5px solid #FDBA74; font-weight:800;";
+        badgeIcon = "⏳";
+        displayStatus = isEn ? "Pending (Due Soon)" : "รอชำระ (ใกล้ครบกำหนด)";
+      } else if (item.status_key === "pending" || (item.status_key !== "paid" && item.days_left <= 30)) {
+        // 2. รอชำระ (Pending): พื้นสีเหลือง/ส้มอ่อน (ยังไม่จ่าย และเหลือเวลามากกว่า 15-30 วัน)
         badgeStyle = "background:#FFFBEB; color:#92400E; border:1px solid #FDE68A; font-weight:700;";
         badgeIcon = "⏳";
+        displayStatus = isEn ? "Pending" : "รอชำระ";
+      } else {
+        // 1. ชำระแล้ว (Paid): พื้นสีเขียว (ถ้าข้อมูลบันทึกว่าจ่ายแล้ว หรือเหลือเวลา > 30 วัน)
+        badgeStyle = "background:#ECFDF5; color:#065F46; border:1px solid #A7F3D0; font-weight:700;";
+        badgeIcon = "✅";
+        displayStatus = isEn ? "Paid" : "ชำระแล้ว";
       }
 
       const safePlate = String(item.plate || "").replace(/'/g, "\'");
-      const isPaid = item.status_key === "paid";
+      const isPaid = (item.status_key === "paid" || item.days_left > 30);
 
       return `
         <tr>
@@ -7214,7 +7255,7 @@ class App {
           </td>
           <td style="text-align:center;">
             <div style="font-weight:700; color:#1E293B;">📅 ${item.due_date}</div>
-            <div style="font-size:11px; color:${item.days_left < 0 ? '#DC2626' : (item.days_left <= 30 ? '#D97706' : '#16A34A')}; font-weight:600;">
+            <div style="font-size:11px; color:${item.days_left < 0 ? '#DC2626' : (item.days_left <= 15 ? '#C2410C' : (item.days_left <= 30 ? '#D97706' : '#16A34A'))}; font-weight:600;">
               ${item.notes}
             </div>
           </td>
@@ -7223,7 +7264,7 @@ class App {
           </td>
           <td style="text-align:center;">
             <span style="font-size:11.5px; padding:3px 10px; border-radius:12px; display:inline-block; ${badgeStyle}">
-              ${badgeIcon} ${item.status}
+              ${badgeIcon} ${displayStatus}
             </span>
           </td>
           <td style="text-align:center;">

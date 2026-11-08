@@ -914,25 +914,31 @@ async def get_monthly_expenses():
         car_name = f"{brand} {model}".strip() or "-"
         company = car.get("owner_company") or car.get("company") or "-"
 
+        def classify_expense(days_left: int, is_explicit_paid: bool = False):
+            # 1. ชำระแล้ว (Paid): บันทึกว่าจ่ายแล้ว หรือรอบนี้ต่ออายุแล้ว (> 30 วัน)
+            if is_explicit_paid or days_left > 30:
+                return "ชำระแล้ว", "paid", False
+            # 4. เกินกำหนด (Overdue): ยังไม่จ่าย และเลยกำหนดแล้ว
+            elif days_left < 0:
+                return "เกินกำหนด", "overdue", True
+            # 3. รอชำระ (ใกล้ครบกำหนด): ยังไม่จ่าย และเหลือเวลาน้อยกว่าหรือเท่ากับ 15 วัน
+            elif days_left <= 15:
+                return "รอชำระ (ใกล้ครบกำหนด)", "pending_near", True
+            # 2. รอชำระ (Pending): ยังไม่จ่าย และเหลือเวลามากกว่า 15 วันขึ้นไป (15 < days_left <= 30)
+            else:
+                return "รอชำระ", "pending", True
+
         # 1. ภาษี (Tax)
         tax_d_raw = car.get("tax_expire_date") or car.get("tax_expiry")
         tax_d = to_date(tax_d_raw)
         if tax_d:
             days_left = (tax_d - today).days
             amount = float(car.get("tax_price") or car.get("tax_amount") or 1500.0)
-            if days_left < 0:
-                status = "รอชำระ (เกินกำหนด)"
-                status_key = "overdue"
+            is_tax_paid = bool(car.get("tax_paid") or car.get("tax_status") in ("paid", "ชำระแล้ว"))
+            status, status_key, is_pending = classify_expense(days_left, is_tax_paid)
+            if is_pending:
                 total_tax_pending += 1
                 total_pending_amount += amount
-            elif days_left <= 45:
-                status = "รอชำระ (ใกล้ครบกำหนด)"
-                status_key = "pending"
-                total_tax_pending += 1
-                total_pending_amount += amount
-            else:
-                status = "ชำระแล้ว"
-                status_key = "paid"
 
             items.append({
                 "plate": plate,
@@ -955,19 +961,11 @@ async def get_monthly_expenses():
         if act_d:
             days_left = (act_d - today).days
             amount = float(car.get("prb_price") or car.get("act_price") or 645.21)
-            if days_left < 0:
-                status = "รอชำระ (เกินกำหนด)"
-                status_key = "overdue"
+            is_act_paid = bool(car.get("act_paid") or car.get("prb_paid") or car.get("act_status") in ("paid", "ชำระแล้ว") or car.get("prb_status") in ("paid", "ชำระแล้ว"))
+            status, status_key, is_pending = classify_expense(days_left, is_act_paid)
+            if is_pending:
                 total_act_pending += 1
                 total_pending_amount += amount
-            elif days_left <= 45:
-                status = "รอชำระ (ใกล้ครบกำหนด)"
-                status_key = "pending"
-                total_act_pending += 1
-                total_pending_amount += amount
-            else:
-                status = "ชำระแล้ว"
-                status_key = "paid"
 
             items.append({
                 "plate": plate,
@@ -991,19 +989,11 @@ async def get_monthly_expenses():
             days_left = (ins_d - today).days
             amount = float(car.get("insurance_premium") or car.get("ins_premium") or 12000.0)
             ins_comp = car.get("insurance_company") or car.get("ins_company") or "-"
-            if days_left < 0:
-                status = "รอชำระ (เกินกำหนด)"
-                status_key = "overdue"
+            is_ins_paid = bool(car.get("insurance_paid") or car.get("ins_paid") or car.get("insurance_status") in ("paid", "ชำระแล้ว") or car.get("ins_status") in ("paid", "ชำระแล้ว"))
+            status, status_key, is_pending = classify_expense(days_left, is_ins_paid)
+            if is_pending:
                 total_ins_pending += 1
                 total_pending_amount += amount
-            elif days_left <= 45:
-                status = "รอชำระ (ใกล้ครบกำหนด)"
-                status_key = "pending"
-                total_ins_pending += 1
-                total_pending_amount += amount
-            else:
-                status = "ชำระแล้ว"
-                status_key = "paid"
 
             items.append({
                 "plate": plate,
@@ -1031,20 +1021,11 @@ async def get_monthly_expenses():
                 cur_term = car.get("current_installment", 0) or 0
                 tot_term = car.get("total_installments", 0) or 0
                 term_desc = f" (งวดที่ {cur_term}/{tot_term})" if tot_term else ""
-
-                if days_left < 0:
-                    status = "รอชำระ (เกินกำหนด)"
-                    status_key = "overdue"
+                is_inst_paid = bool(car.get("installment_paid") or car.get("payment_status") in ("paid", "ชำระแล้ว") or car.get("installment_status") in ("paid", "ชำระแล้ว"))
+                status, status_key, is_pending = classify_expense(days_left, is_inst_paid)
+                if is_pending:
                     total_inst_pending += 1
                     total_pending_amount += amount
-                elif days_left <= 30:
-                    status = "รอชำระ (ใกล้ครบกำหนด)"
-                    status_key = "pending"
-                    total_inst_pending += 1
-                    total_pending_amount += amount
-                else:
-                    status = "ชำระแล้ว"
-                    status_key = "paid"
 
                 items.append({
                     "plate": plate,
@@ -1061,8 +1042,9 @@ async def get_monthly_expenses():
                     "notes": f"เหลืออีก {days_left} วัน" if days_left >= 0 else f"เกินกำหนด {abs(days_left)} วัน"
                 })
 
-    # Sort items: Overdue first, then pending upcoming, then paid
-    items.sort(key=lambda x: (0 if x["status_key"] == "overdue" else (1 if x["status_key"] == "pending" else 2), x["days_left"]))
+    # Sort items: Overdue first (0), near-due (1), pending (2), paid (3)
+    order_map = {"overdue": 0, "pending_near": 1, "pending": 2, "paid": 3}
+    items.sort(key=lambda x: (order_map.get(x["status_key"], 9), x["days_left"]))
 
     return {
         "success": True,
