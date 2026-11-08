@@ -230,66 +230,9 @@ def _fmt_dmy(d_val) -> str:
 
 def notify_line_work_order(booking_obj, job_type="Dispatch", worker_name="", location="", appointment_time=""):
     """
-    แจ้งเตือนใบงานรับรถ-ส่งรถ: ยิงตรงหา 'เจ้าของงาน (ผู้รับผิดชอบ)' เท่านั้น!
+    Disabled per system rule: Work order LINE notifications have been retired.
     """
-    if not booking_obj:
-        return
-    try:
-        bk_id = booking_obj.get("booking_id", "-")
-        car_plate = booking_obj.get("car_id", "-")
-        car_brand = str(booking_obj.get("car_brand", "")).strip()
-        car_model = str(booking_obj.get("car_model", "")).strip()
-        car_desc = f"{car_brand} {car_model}".strip()
-        car_display = f"{car_desc} (ทะเบียน {car_plate})" if car_desc else f"ทะเบียน {car_plate}"
-
-        cust_name = booking_obj.get("customer", "-")
-        cust_phone = (
-            booking_obj.get("customer_phone")
-            or booking_obj.get("contact_no")
-            or booking_obj.get("phone")
-            or "-"
-        )
-        if not cust_phone or str(cust_phone).strip() in ["", "-", "None"]:
-            cust_phone = "ไม่ระบุเบอร์โทร"
-
-        is_dispatch = str(job_type).lower() in ["dispatch", "delivery", "ส่งรถ", "ส่งมอบรถ"]
-        if is_dispatch:
-            title = "🚚 แจ้งเตือน: ออกใบงานส่งมอบรถ (Dispatch)"
-            action_label = "วันที่ส่งมอบ"
-            date_val = _fmt_dmy(booking_obj.get("start_date"))
-            time_val = appointment_time or booking_obj.get("start_time", "10:00")
-            loc_val = location or booking_obj.get("loc_delivery") or "-"
-            worker_val = worker_name or booking_obj.get("worker_delivery") or "-"
-        else:
-            title = "🔙 แจ้งเตือน: ออกใบงานรับรถคืน (Return)"
-            action_label = "วันที่รับคืน"
-            date_val = _fmt_dmy(booking_obj.get("end_date"))
-            time_val = appointment_time or booking_obj.get("end_time", "10:00")
-            loc_val = location or booking_obj.get("loc_return") or "-"
-            worker_val = worker_name or booking_obj.get("worker_return") or "-"
-
-        if not loc_val or str(loc_val).strip() in ["", "-"]:
-            loc_val = "ไม่ได้ระบุสถานที่"
-        if not worker_val or str(worker_val).strip() in ["", "-", "Wait"]:
-            worker_val = "รอมอบหมายพนักงาน"
-
-        lines = [
-            f"🔔 {title}",
-            "────────────────────",
-            f"📋 เลขที่การจอง: {bk_id}",
-            f"👤 ผู้รับผิดชอบ: {worker_val}",
-            f"🚗 ทะเบียนรถ: {car_display}",
-            f"📅 {action_label}: {date_val} (เวลา {time_val} น.)",
-            f"📍 สถานที่: {loc_val}",
-            f"🙋‍♂️ ลูกค้า: {cust_name}",
-            f"📞 เบอร์โทรศัพท์: {cust_phone}",
-            "────────────────────",
-            "ระบบบริหารจัดการ SawasdeeRental"
-        ]
-        # ยิงตรงหาเจ้าของงานเท่านั้น!
-        send_line_to_worker_async("\n".join(lines), worker_val)
-    except Exception as e:
-        print(f"Error notifying line work order: {e}")
+    return False
 
 
 def notify_line_maintenance(record: dict):
@@ -598,7 +541,7 @@ def init_expiry_scheduler_thread():
             try:
                 now_bkk = datetime.utcnow() + timedelta(hours=7)
                 today_tag = now_bkk.strftime("%Y-%m-%d")
-                if now_bkk.hour == 20 and not _has_sent_expiry_today(today_tag):
+                if now_bkk.hour == 20 and now_bkk.day in (1, 16) and not _has_sent_expiry_today(today_tag):
                     _mark_sent_expiry_today(today_tag)
                     print(f"⏰ [{now_bkk.strftime('%H:%M')} ICT] Running daily expiry check {today_tag}...")
                     check_and_send_expiry_alerts(target_days=(30, 31, 7, 0))

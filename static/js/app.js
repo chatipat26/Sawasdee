@@ -949,16 +949,19 @@ class App {
     const dKpiInst = document.getElementById("dash-kpi-inst-lbl");
     if (dKpiInst) dKpiInst.textContent = isEn ? "Total Monthly Fleet Installments" : "รายจ่ายค่างวดรถรวมต่อเดือน";
 
+    const cycle = this.getExpiryCycleInfo();
     const dAlertTitle = document.getElementById("dash-alert-title");
     if (dAlertTitle) dAlertTitle.textContent = isEn 
-      ? "Automated Renewal Alerts (LINE Broadcast 20:00)" 
-      : "ระบบแจ้งเตือนต่ออายุเอกสารอัตโนมัติ (LINE 20:00 น.)";
+      ? "Document Expiry Alerts (1st & 16th Cycle)" 
+      : "ระบบแจ้งเตือนต่ออายุเอกสาร (รอบวันที่ 1 และ 16)";
+    const dAlertBadge = document.getElementById("dash-alert-cycle-badge");
+    if (dAlertBadge) dAlertBadge.textContent = isEn ? cycle.badgeTextEn : cycle.badgeText;
     const dAlertDesc = document.getElementById("dash-alert-desc");
-    if (dAlertDesc) dAlertDesc.textContent = isEn 
-      ? "Daily broadcast at 20:00 (30 days, 7 days prior, and expiry date). Alerts stop immediately upon renewal." 
-      : "ส่งแจ้งเตือนอัตโนมัติทุกวันเวลา 20:00 น. (ล่วงหน้า 30 วัน, 7 วัน และวันหมดอายุ) • เมื่อบันทึกต่ออายุเรียบร้อย ระบบจะหยุดแจ้งเตือนทันที";
+    if (dAlertDesc) dAlertDesc.innerHTML = isEn 
+      ? `1st of month: current month • 16th of month: next month • <b>Active: ${cycle.roundNameEn}</b> (Click to view)` 
+      : `ทุกวันที่ 1 แจ้งเตือนหมดอายุเดือนนี้ • ทุกวันที่ 16 แจ้งเตือนหมดอายุเดือนหน้า • <b>รอบปัจจุบัน: ${cycle.roundName}</b> (คลิกแถบนี้เพื่อดูรายการ)`;
     const btnLineCheck = document.getElementById("btn-dash-line-check");
-    if (btnLineCheck) btnLineCheck.textContent = isEn ? "Send LINE Alert Now" : "ส่งการแจ้งเตือน LINE ทันที";
+    if (btnLineCheck) btnLineCheck.textContent = isEn ? "Send LINE Alert" : "ส่งแจ้งเตือน LINE";
 
     const dDonutTitle = document.getElementById("dash-donut-title");
     if (dDonutTitle) dDonutTitle.textContent = isEn ? "Current Fleet Status" : "สถานะรถปัจจุบัน (Current Fleet Status)";
@@ -6646,6 +6649,144 @@ class App {
     this.renderMonthlyExpensesTable();
   }
 
+
+  getExpiryCycleInfo(dateObj = null) {
+    const d = dateObj || new Date();
+    const day = d.getDate();
+    const curYear = d.getFullYear();
+    const curMonth = d.getMonth() + 1; // 1..12
+
+    let roundDay, targetYear, targetMonth, roundName, roundNameEn, badgeText, badgeTextEn;
+    if (day < 16) {
+      roundDay = 1;
+      targetYear = curYear;
+      targetMonth = curMonth;
+      const mm = String(targetMonth).padStart(2, '0');
+      badgeText = `รอบวันที่ 1 (เดือนนี้ ${mm}/${targetYear})`;
+      badgeTextEn = `Round 1st (This Month ${mm}/${targetYear})`;
+      roundName = `รอบวันที่ 1 (หมดอายุเดือนนี้ ${mm}/${targetYear})`;
+      roundNameEn = `Round 1st (Expiring this month ${mm}/${targetYear})`;
+    } else {
+      roundDay = 16;
+      // Year-end safe transition: December (12) -> January (1) of next year
+      if (curMonth === 12) {
+        targetYear = curYear + 1;
+        targetMonth = 1;
+      } else {
+        targetYear = curYear;
+        targetMonth = curMonth + 1;
+      }
+      const mm = String(targetMonth).padStart(2, '0');
+      badgeText = `รอบวันที่ 16 (เดือนหน้า ${mm}/${targetYear})`;
+      badgeTextEn = `Round 16th (Next Month ${mm}/${targetYear})`;
+      roundName = `รอบวันที่ 16 (หมดอายุเดือนหน้า ${mm}/${targetYear})`;
+      roundNameEn = `Round 16th (Expiring next month ${mm}/${targetYear})`;
+    }
+
+    const targetYM = `${targetYear}-${String(targetMonth).padStart(2, '0')}`;
+    return {
+      roundDay,
+      targetYear,
+      targetMonth,
+      targetYM,
+      roundName,
+      roundNameEn,
+      badgeText,
+      badgeTextEn
+    };
+  }
+
+  onAlertBannerClick() {
+    const cycle = this.getExpiryCycleInfo();
+    const body = document.getElementById("body-expander-monthly-expenses");
+    const header = document.querySelector("#expander-monthly-expenses .expander-header");
+    if (body) body.style.display = "block";
+    if (header) header.classList.add("open");
+
+    this.currentCycleFilterYM = cycle.targetYM;
+    this.renderMonthlyExpensesTable();
+
+    const el = document.getElementById("expander-monthly-expenses");
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+    this.showToast(`🔍 เลื่อนไปที่ตารางสรุปค่าใช้จ่าย: ${cycle.roundName}`, "info");
+  }
+
+  jumpToFilteredExpensesTable() {
+    this.closeModal("modal-cycle-expiries");
+    this.onAlertBannerClick();
+  }
+
+  clearCycleFilter() {
+    this.currentCycleFilterYM = null;
+    this.renderMonthlyExpensesTable();
+    this.showToast("ล้างตัวกรองรอบแจ้งเตือนแล้ว (แสดงทุกรายการ)", "info");
+  }
+
+  showExpiryCycleDetails() {
+    const cycle = this.getExpiryCycleInfo();
+    const data = this.monthlyExpensesData || {};
+    const allExpenses = data.expenses || [];
+    const isEn = (this.currentLang === "EN");
+
+    const matched = allExpenses.filter(item => {
+      const iso = String(item.due_date_iso || "");
+      const isMatchYM = iso.startsWith(cycle.targetYM);
+      const isOverdueInRound1 = (cycle.roundDay === 1 && item.status_key === "overdue");
+      return isMatchYM || isOverdueInRound1;
+    });
+
+    const titleEl = document.getElementById("modal-cycle-title");
+    if (titleEl) titleEl.textContent = isEn ? `Expiring Documents & Expenses (${cycle.roundNameEn})` : `รายการเอกสารที่ต้องต่ออายุ — ${cycle.roundName}`;
+
+    const subEl = document.getElementById("modal-cycle-subtitle");
+    if (subEl) subEl.textContent = isEn 
+      ? `Cycle Round: ${cycle.roundDay}th of month | Target month: ${cycle.targetYM}`
+      : `รอบการแจ้งเตือนวันที่ ${cycle.roundDay} ของเดือน | เดือนเป้าหมาย: ${cycle.targetYM}`;
+
+    const summaryEl = document.getElementById("modal-cycle-summary-bar");
+    const totalAmt = matched.reduce((sum, it) => sum + parseFloat(it.amount || 0), 0);
+    if (summaryEl) {
+      summaryEl.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+          <div>
+            <b>${isEn ? 'Cycle Round:' : 'รอบแจ้งเตือน:'}</b> <span style="font-weight:800; color:#EA580C;">${isEn ? cycle.roundNameEn : cycle.roundName}</span>
+          </div>
+          <div>
+            <b>${isEn ? 'Total Items:' : 'รวมทั้งหมด:'}</b> <span style="font-weight:800;">${matched.length} ${isEn ? 'items' : 'รายการ'}</span>
+          </div>
+          <div>
+            <b>${isEn ? 'Total Amount:' : 'ยอดเงินรวม:'}</b> <span style="font-weight:800; color:#15803D;">฿${totalAmt.toLocaleString('th-TH', {minimumFractionDigits: 2})}</span>
+          </div>
+        </div>
+      `;
+    }
+
+    const tbody = document.getElementById("modal-cycle-tbody");
+    if (tbody) {
+      if (matched.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:32px; color:#64748B;">🎉 ${isEn ? 'No documents expiring in this cycle.' : `ไม่มีเอกสารหรือค่าใช้จ่ายครบกำหนดใน ${cycle.roundName}`}</td></tr>`;
+      } else {
+        tbody.innerHTML = matched.map((it, idx) => {
+          const badgeClass = it.status_key === "overdue" ? "badge badge-danger" : (it.status_key === "pending" ? "badge badge-warning" : "badge badge-success");
+          return `
+            <tr>
+              <td style="text-align:center; font-weight:700; color:#64748B;">${idx + 1}</td>
+              <td><b>${it.plate}</b><br/><small style="color:#64748B;">${it.model}</small></td>
+              <td><b>${it.expense_type}</b></td>
+              <td style="text-align:center; font-weight:600;">${it.due_date || '-'}<br/><small style="color:${it.days_left < 0 ? '#DC2626' : '#64748B'};">${it.notes || ''}</small></td>
+              <td style="text-align:right; font-weight:800; color:#0F172A;">฿${Number(it.amount || 0).toLocaleString('th-TH', {minimumFractionDigits: 2})}</td>
+              <td style="text-align:center;"><span class="${badgeClass}">${it.status}</span></td>
+            </tr>
+          `;
+        }).join("");
+      }
+    }
+
+    this.openModal("modal-cycle-expiries");
+  }
+
   // --- Unified Monthly Expenses Tracker (ภาษี / พ.ร.บ. / ประกัน / ค่างวด) ---
   async loadMonthlyExpenses() {
     try {
@@ -6692,12 +6833,52 @@ class App {
       `;
     }
 
+    // Update alert count badge on dashboard
+    const cycle = this.getExpiryCycleInfo();
+    const cycleMatched = allExpenses.filter(item => {
+      const iso = String(item.due_date_iso || "");
+      const isMatchYM = iso.startsWith(cycle.targetYM);
+      const isOverdueInRound1 = (cycle.roundDay === 1 && item.status_key === "overdue");
+      return isMatchYM || isOverdueInRound1;
+    });
+    const alertCountEl = document.getElementById("dash-alert-count");
+    if (alertCountEl) alertCountEl.textContent = cycleMatched.length;
+
+    // Optional active cycle notice banner above table
+    let cycleNoticeEl = document.getElementById("monthly-expenses-cycle-notice");
+    if (!cycleNoticeEl && cardsEl) {
+      cycleNoticeEl = document.createElement("div");
+      cycleNoticeEl.id = "monthly-expenses-cycle-notice";
+      cardsEl.parentNode.insertBefore(cycleNoticeEl, cardsEl.nextSibling);
+    }
+    if (this.currentCycleFilterYM && cycleNoticeEl) {
+      cycleNoticeEl.style.display = "block";
+      cycleNoticeEl.innerHTML = `
+        <div style="background:#FFF7ED; border:1px solid #FDBA74; border-radius:8px; padding:8px 14px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+          <div style="font-size:12.5px; color:#C2410C; font-weight:700;">
+            🔍 ${isEn ? 'Showing only items for:' : 'กำลังแสดงรายการเฉพาะ:'} <span>${cycle.roundName}</span> (${cycleMatched.length} ${isEn ? 'items' : 'รายการ'})
+          </div>
+          <button type="button" class="btn btn-sm btn-secondary" onclick="app.clearCycleFilter()" style="padding:3px 10px; font-size:11.5px; font-weight:700;">
+            ✕ ${isEn ? 'Clear Filter (Show All)' : 'ล้างตัวกรองรอบนี้ (แสดงทั้งหมด)'}
+          </button>
+        </div>
+      `;
+    } else if (cycleNoticeEl) {
+      cycleNoticeEl.style.display = "none";
+    }
+
     // 2. Filter Table Items
     const kw = (document.getElementById("expense-search-kw")?.value || "").toLowerCase().trim();
     const typeFilter = document.getElementById("expense-type-filter")?.value || "ทั้งหมด";
     const statusFilter = document.getElementById("expense-status-filter")?.value || "ทั้งหมด";
 
     const filtered = allExpenses.filter(item => {
+      if (this.currentCycleFilterYM) {
+        const iso = String(item.due_date_iso || "");
+        const isMatchYM = iso.startsWith(this.currentCycleFilterYM);
+        const isOverdueInRound1 = (cycle.roundDay === 1 && item.status_key === "overdue");
+        if (!isMatchYM && !isOverdueInRound1) return false;
+      }
       if (kw) {
         const fullTxt = `${item.plate} ${item.model} ${item.company} ${item.expense_type}`.toLowerCase();
         if (!fullTxt.includes(kw)) return false;

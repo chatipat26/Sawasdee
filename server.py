@@ -867,6 +867,30 @@ async def get_hp_leasing_data():
         "property_insurance": DEFAULT_PROPERTY_INSURANCE
     }
 
+@app.get("/api/expenses/cycle-expiries")
+async def get_cycle_expiries():
+    """Returns expiring documents and expenses for the active notification cycle (1st or 16th of month)."""
+    from check_expiry_alert import get_target_cycle_info
+    cycle = get_target_cycle_info(now_th().date())
+    all_expenses_resp = await get_monthly_expenses()
+    items = all_expenses_resp.get("items", [])
+
+    target_ym = cycle["target_ym"]
+    matched = []
+    for it in items:
+        iso_d = str(it.get("due_date_iso") or "")
+        if iso_d and iso_d.startswith(target_ym):
+            matched.append(it)
+        elif cycle["round_day"] == 1 and it.get("status_key") == "overdue":
+            matched.append(it)
+
+    return {
+        "success": True,
+        "cycle": cycle,
+        "count": len(matched),
+        "items": matched
+    }
+
 @app.get("/api/expenses/monthly")
 async def get_monthly_expenses():
     if not store.initial_sync_done:
@@ -1429,20 +1453,7 @@ async def create_booking(payload: Dict[str, Any]):
                 store.async_sync_car(c_key, store.cars[c_key])
             
     store.async_sync_booking(booking)
-    w_del = str(booking.get("worker_delivery", "")).strip()
-    if w_del and w_del not in ["Wait", "-"]:
-        cust_obj = store.customers.get(booking.get("customer"), {})
-        b_with_cust = dict(booking)
-        b_with_cust["customer_phone"] = cust_obj.get("contact_no", "-")
-        b_with_cust["car_brand"] = car_obj.get("brand", "")
-        b_with_cust["car_model"] = car_obj.get("model", "")
-        notify_line_work_order(
-            booking_obj=b_with_cust,
-            job_type="Dispatch",
-            worker_name=w_del,
-            location=booking.get("loc_delivery", ""),
-            appointment_time=start_t
-        )
+    # Work order LINE notification retired per system rule
     return {"success": True, "booking_id": bk_id, "booking": booking}
 
 @app.put("/api/bookings/{bk_id}")
@@ -1890,20 +1901,7 @@ async def assign_worker(bk_id: str, payload: Dict[str, Any]):
 
     store.async_sync_booking(target)
 
-    # Trigger LINE alert (Broadcast to all staff on LINE OA)
-    cust_obj = store.customers.get(target.get("customer"), {})
-    car_obj = store.cars.get(target.get("car_id"), {})
-    b_with_cust = dict(target)
-    b_with_cust["customer_phone"] = cust_obj.get("contact_no", "-")
-    b_with_cust["car_brand"] = car_obj.get("brand", "")
-    b_with_cust["car_model"] = car_obj.get("model", "")
-    notify_line_work_order(
-        booking_obj=b_with_cust,
-        job_type=job_type,
-        worker_name=worker,
-        location=location,
-        appointment_time=time_val
-    )
+    # Work order LINE notification retired per system rule
 
     return {"success": True, "booking": target}
 
@@ -2849,7 +2847,7 @@ async def trigger_line_broadcast(payload: Dict[str, Any]):
 @app.post("/api/line/check-expiry")
 async def trigger_expiry_alert_check(payload: Optional[Dict[str, Any]] = None):
     mode = (payload or {}).get("recipient_mode")
-    res = check_and_send_expiry_alerts(store.cars, target_days=(30, 31, 7, 0), recipient_mode=mode)
+    res = check_and_send_expiry_alerts(store.cars, recipient_mode=mode)
     return res
 
 @app.post("/api/line/webhook")

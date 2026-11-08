@@ -1242,23 +1242,42 @@ section,
 .badge-info { background: #EFF6FF; color: #1E40AF; border: 1px solid #BFDBFE; }
 .badge-gray { background: #F1F5F9; color: #475569; border: 1px solid #CBD5E1; }
 
-/* KPI Grid */
+/* KPI Grid (Refactored Clean 5-Column Responsive Layout) */
 .kpi-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 18px;
-  margin-bottom: 24px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+@media (max-width: 1280px) {
+  .kpi-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 480px) {
+  .kpi-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .kpi-card {
   background: white;
   border: 1px solid var(--border-card);
-  border-radius: var(--radius-lg);
-  padding: 20px 22px;
+  border-radius: 12px;
+  padding: 14px 16px;
   display: flex;
   align-items: center;
-  gap: 16px;
-  box-shadow: var(--shadow-soft);
+  gap: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  min-width: 0;
 }
 
 .kpi-card.interactive {
@@ -1891,4 +1910,29 @@ section,
   background: #FFFFFF;
   color: #C2410C;
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+}
+
+/* Interactive Expiry Alert Card & Dashboard Proportions */
+.interactive-alert-card {
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.interactive-alert-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(234, 88, 12, 0.14) !important;
+  border-color: #FB923C !important;
+}
+
+.dashboard-charts-grid {
+  display: grid;
+  grid-template-columns: minmax(320px, 1fr) minmax(380px, 1.4fr);
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+@media (max-width: 992px) {
+  .dashboard-charts-grid {
+    grid-template-columns: 1fr !important;
+  }
 }
