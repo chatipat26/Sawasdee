@@ -2833,30 +2833,185 @@ async def get_car_profitability():
 
     return profitability
 
-@app.get("/api/reports/kpis")
-async def get_dashboard_kpis():
-    total_cars = len(store.cars)
-    active_rentals = sum(1 for b in store.bookings if b.get("status") in ["กำลังเช่า", "เตรียมรับคืน"])
+def compute_dashboard_statistics():
+    sb = get_db_client()
+    live_cars = []
+    live_bookings = []
+    
+    if sb:
+        try:
+            c_res = sb.table("cars").select("*").execute()
+            if c_res and c_res.data:
+                live_cars = c_res.data
+        except Exception:
+            pass
+        try:
+            b_res = sb.table("bookings").select("*").execute()
+            if b_res and b_res.data:
+                live_bookings = b_res.data
+        except Exception:
+            pass
+
+    if not live_cars:
+        live_cars = list(store.cars.values())
+    if not live_bookings:
+        live_bookings = list(store.bookings)
+
+    today = now_th().date()
+    total_cars = len(live_cars)
+    avail_count = 0
+    rent_count = 0
+    book_count = 0
+    maint_count = 0
+
+    car_status_map = {}
+
+    for c in live_cars:
+        pl = str(c.get("plate", "")).strip()
+        norm_p = normalize_plate_str(pl)
+        c_st = str(c.get("status") or c.get("car_status") or "").strip()
+
+        # Check maintenance / renewal
+        if c_st in ["ซ่อมบำรุง", "สถานะซ่อมบำรุง", "ไม่พร้อมใช้งาน", "ระงับการใช้งาน", "ส่งซ่อม", "ต่อทะเบียน/ประกัน", "ต่อภาษี/ประกัน", "รอต่อทะเบียน"]:
+            maint_count += 1
+            car_status_map[pl] = "ซ่อมบำรุง"
+            continue
+
+        # Check active bookings for this car
+        car_bks = [
+            b for b in live_bookings
+            if normalize_plate_str(b.get("car_id")) == norm_p
+            and str(b.get("status") or "").strip() not in ["เสร็จสิ้น", "ยกเลิก", "Completed", "Canceled", "completed", "canceled"]
+        ]
+
+        # Is on rent now?
+        is_rented = False
+        if c_st in ["กำลังเช่า", "เช่าอยู่", "รอรับคืน"]:
+            is_rented = True
+        else:
+            for b in car_bks:
+                b_st = str(b.get("status") or "").strip()
+                if b_st in ["กำลังเช่า", "รอรับคืน"]:
+                    is_rented = True
+                    break
+                b_s = to_date(b.get("start_date"))
+                b_e = to_date(b.get("end_date"))
+                if b_s and b_e and (b_s <= today <= b_e):
+                    is_rented = True
+                    break
+
+        if is_rented:
+            rent_count += 1
+            car_status_map[pl] = "กำลังเช่า"
+            continue
+
+        # Is reserved / booked?
+        is_booked = False
+        if c_st in ["ติดจอง", "จอง", "เตรียมส่งมอบ", "รอส่งมอบ"]:
+            is_booked = True
+        elif car_bks:
+            is_booked = True
+
+        if is_booked:
+            book_count += 1
+            car_status_map[pl] = "ติดจอง"
+            continue
+
+        # Otherwise available
+        avail_count += 1
+        car_status_map[pl] = "ว่างพร้อมใช้งาน"
+
+    # Synchronize store.cars in memory so operational state matches
+    for pl, op_status in car_status_map.items():
+        if pl in store.cars:
+            store.cars[pl]["operational_status"] = op_status
+            if op_status == "กำลังเช่า":
+                store.cars[pl]["is_on_rent"] = True
+            elif op_status == "ว่างพร้อมใช้งาน" and store.cars[pl].get("status") in ["กำลังเช่า", "ติดจอง"]:
+                store.cars[pl]["status"] = "ว่างพร้อมใช้งาน"
+                store.cars[pl]["is_on_rent"] = False
+
+    active_rentals = rent_count + book_count
     utilization_rate = round((active_rentals / max(1, total_cars)) * 100, 1)
 
-    total_revenue = sum(float(f.get("amount", 0)) for f in store.financial_records if f.get("type") == "รายรับ")
+    # Real-time revenue calculation
+    total_rev = 0.0
+    seen_bids = set()
+    for cj in store.completed_jobs:
+        bid = cj.get("booking_id")
+        if bid: seen_bids.add(bid)
+        total_rev += float(cj.get("net_price") or 0.0) + float(cj.get("late_fee") or 0.0)
 
-    # Fleet share by company
+    for b in live_bookings:
+        bid = b.get("booking_id")
+        if bid and bid not in seen_bids:
+            if b.get("rental_paid") or b.get("is_fully_paid") or str(b.get("status")) in ["กำลังเช่า", "รอรับคืน", "เสร็จสิ้น"]:
+                total_rev += float(b.get("net_price") or b.get("rental_rate") or 0.0)
+                seen_bids.add(bid)
+
+    # Monthly revenue trend (past 6 months)
+    th_months = ["", "ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."]
+    monthly_trend = []
+    curr_m = today.month
+    curr_y = today.year
+    for i in range(5, -1, -1):
+        m = curr_m - i
+        y = curr_y
+        while m <= 0:
+            m += 12
+            y -= 1
+        m_str = f"{y}-{m:02d}"
+        m_label = f"{m}. {th_months[m]}"
+        rev_m = 0.0
+        for cj in store.completed_jobs:
+            c_d = to_date(cj.get("completed_date") or cj.get("end_date"))
+            if c_d and c_d.year == y and c_d.month == m:
+                rev_m += float(cj.get("net_price") or 0.0)
+        for b in live_bookings:
+            b_d = to_date(b.get("start_date") or b.get("created_at"))
+            if b_d and b_d.year == y and b_d.month == m:
+                if b.get("rental_paid") or b.get("is_fully_paid") or str(b.get("status")) in ["กำลังเช่า", "รอรับคืน"]:
+                    rev_m += float(b.get("net_price") or b.get("rental_rate") or 0.0)
+        monthly_trend.append({
+            "label": m_label,
+            "month": m,
+            "year": y,
+            "month_key": m_str,
+            "revenue": round(rev_m, 2)
+        })
+
     company_counts = {}
-    for c in store.cars.values():
+    for c in live_cars:
         comp = c.get("company", "อื่นๆ")
         company_counts[comp] = company_counts.get(comp, 0) + 1
 
     return {
+        "success": True,
         "total_cars": total_cars,
+        "available_cars": avail_count,
+        "rented_cars": rent_count,
+        "booked_cars": book_count,
+        "maintenance_cars": maint_count,
         "active_rentals": active_rentals,
+        "utilization_rate": utilization_rate,
+        "total_revenue": round(total_rev, 2),
+        "fleet_status_breakdown": {
+            "available": avail_count,
+            "rented": rent_count,
+            "booked": book_count,
+            "maintenance": maint_count
+        },
+        "monthly_trend": monthly_trend,
+        "company_distribution": company_counts,
         "total_bookings": len(store.bookings),
         "total_completed": len(store.completed_jobs),
-        "utilization_rate": utilization_rate,
-        "total_revenue": total_revenue,
-        "company_distribution": company_counts,
         "financial_records": store.financial_records
     }
+
+@app.get("/api/dashboard/stats")
+@app.get("/api/reports/kpis")
+async def get_dashboard_stats():
+    return compute_dashboard_statistics()
 
 @app.get("/api/reports/monthly")
 async def get_monthly_reports(month: Optional[str] = None):

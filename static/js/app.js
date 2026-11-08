@@ -1590,16 +1590,19 @@ class App {
 
   async loadDashboardKPIs() {
     try {
-      const res = await fetch("/api/reports/kpis");
+      const res = await fetch("/api/dashboard/stats");
       if (res.ok) {
-        this.rawKpiData = await res.json();
+        this.dashboardStats = await res.json();
+        this.rawKpiData = this.dashboardStats;
       }
       await this.loadMonthlyReports();
       await this.loadFinanceSummary();
       this.updateDashboardKPIsFromScope();
       this.renderDashboardCharts();
       this.renderFleetOverviewTable();
-    } catch (e) {}
+    } catch (e) {
+      console.error("loadDashboardKPIs error:", e);
+    }
   }
 
   onDashboardScopeChange() {
@@ -1619,16 +1622,19 @@ class App {
 
   updateDashboardKPIsFromScope() {
     const isEn = (this.currentLang === "EN");
+    const stats = this.dashboardStats || {};
     const scopedCars = this.cars || [];
 
-    const totalCars = scopedCars.length;
-    const availCars = scopedCars.filter(c => c.fleet_status_key === "available" || c.status === "ว่างพร้อมใช้งาน").length;
-    const maintCars = scopedCars.filter(c => c.fleet_status_key === "maintenance" || c.status === "ซ่อมบำรุง").length;
-    const activeRentals = scopedCars.filter(c => c.fleet_status_key === "unavailable" || ["กำลังเช่า", "ติดจอง", "เตรียมส่งมอบ", "เตรียมรับคืน", "รอส่งมอบ"].includes(c.status)).length;
-    const utilRate = totalCars > 0 ? ((activeRentals / totalCars) * 100).toFixed(1) : "0.0";
+    const totalCars = stats.total_cars !== undefined ? stats.total_cars : scopedCars.length;
+    const availCars = stats.available_cars !== undefined ? stats.available_cars : scopedCars.filter(c => (c.operational_status === "ว่างพร้อมใช้งาน") || (c.fleet_status_key === "available" && c.status !== "กำลังเช่า")).length;
+    const maintCars = stats.maintenance_cars !== undefined ? stats.maintenance_cars : scopedCars.filter(c => (c.operational_status === "ซ่อมบำรุง") || c.fleet_status_key === "maintenance" || ["ซ่อมบำรุง", "ส่งซ่อม", "ไม่พร้อมใช้งาน", "ต่อทะเบียน/ประกัน"].includes(c.status)).length;
+    const activeRentals = stats.active_rentals !== undefined ? stats.active_rentals : scopedCars.filter(c => (c.operational_status && c.operational_status !== "ว่างพร้อมใช้งาน" && c.operational_status !== "ซ่อมบำรุง") || c.is_on_rent || c.fleet_status_key === "unavailable" || ["กำลังเช่า", "ติดจอง"].includes(c.status)).length;
+    const utilRate = stats.utilization_rate !== undefined ? stats.utilization_rate : (totalCars > 0 ? ((activeRentals / totalCars) * 100).toFixed(1) : "0.0");
 
     let totalRev = 0;
-    if (this.rawKpiData && this.rawKpiData.total_revenue !== undefined) {
+    if (stats.total_revenue !== undefined) {
+      totalRev = parseFloat(stats.total_revenue || 0);
+    } else if (this.rawKpiData && this.rawKpiData.total_revenue !== undefined) {
       totalRev = parseFloat(this.rawKpiData.total_revenue || 0);
     } else {
       totalRev = (this.completedJobs || []).reduce((sum, j) => sum + parseFloat(j.net_price || 0), 0);
@@ -1657,7 +1663,7 @@ class App {
     if (elActive) elActive.textContent = activeRentals;
     if (elMaint) elMaint.textContent = isEn ? `Maintenance ${maintCars} cars` : `ซ่อมบำรุง ${maintCars} คัน`;
     if (elUtil) elUtil.textContent = `${utilRate}%`;
-    if (elRev) elRev.textContent = `฿${totalRev.toLocaleString('th-TH', { minimumFractionDigits: 2 })}`;
+    if (elRev) elRev.textContent = `฿${Number(totalRev).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     if (elInst) elInst.textContent = `฿${totalFleetInstallments.toLocaleString('th-TH', { minimumFractionDigits: 2 })}`;
     if (elUpd) {
       const now = new Date();
@@ -7676,25 +7682,36 @@ ${e.message}`);
     if (!canvas || typeof Chart === "undefined") return;
 
     const isEn = (this.currentLang === "EN");
-    const totalCars = (this.cars || []).length;
+    const stats = this.dashboardStats || {};
+    let totalCars = 0;
     let availCount = 0;
     let rentCount = 0;
     let bookCount = 0;
     let maintCount = 0;
 
-    (this.cars || []).forEach(c => {
-      const st = String(c.status || "").trim();
-      const fst = String(c.fleet_status_key || "").trim();
-      if (fst === "maintenance" || ["ซ่อมบำรุง", "ส่งซ่อม", "ไม่พร้อมใช้งาน"].includes(st)) {
-        maintCount++;
-      } else if (["กำลังเช่า", "เช่าอยู่"].includes(st)) {
-        rentCount++;
-      } else if (["ติดจอง", "จอง", "เตรียมส่งมอบ", "เตรียมรับคืน", "รอส่งมอบ"].includes(st)) {
-        bookCount++;
-      } else {
-        availCount++;
-      }
-    });
+    if (stats.fleet_status_breakdown) {
+      availCount = Number(stats.fleet_status_breakdown.available || 0);
+      rentCount = Number(stats.fleet_status_breakdown.rented || 0);
+      bookCount = Number(stats.fleet_status_breakdown.booked || 0);
+      maintCount = Number(stats.fleet_status_breakdown.maintenance || 0);
+      totalCars = stats.total_cars !== undefined ? Number(stats.total_cars) : (availCount + rentCount + bookCount + maintCount);
+    } else {
+      totalCars = (this.cars || []).length;
+      (this.cars || []).forEach(c => {
+        const opSt = String(c.operational_status || "").trim();
+        const st = String(c.status || "").trim();
+        const fst = String(c.fleet_status_key || "").trim();
+        if (opSt === "ซ่อมบำรุง" || fst === "maintenance" || ["ซ่อมบำรุง", "ส่งซ่อม", "ไม่พร้อมใช้งาน", "ต่อทะเบียน/ประกัน"].includes(st)) {
+          maintCount++;
+        } else if (opSt === "กำลังเช่า" || c.is_on_rent || ["กำลังเช่า", "เช่าอยู่", "รอรับคืน"].includes(st)) {
+          rentCount++;
+        } else if (opSt === "ติดจอง" || fst === "unavailable" || fst === "booked" || ["ติดจอง", "จอง", "เตรียมส่งมอบ", "รอส่งมอบ"].includes(st)) {
+          bookCount++;
+        } else {
+          availCount++;
+        }
+      });
+    }
 
     if (badge) {
       badge.textContent = isEn ? `${totalCars} cars` : `${totalCars} คัน`;
@@ -7765,48 +7782,56 @@ ${e.message}`);
     const enMonthNames = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     const monthNames = isEn ? enMonthNames : thMonthNames;
 
-    const now = new Date();
-    const monthBins = [];
-    for (let i = 5; i >= 0; i--) {
-      let m = now.getMonth() + 1 - i;
-      let y = now.getFullYear();
-      while (m <= 0) {
-        m += 12;
-        y -= 1;
-      }
-      monthBins.push({
-        label: isEn ? `${monthNames[m]} ${y}` : `${m}. ${monthNames[m]}`,
-        month: m,
-        year: y,
-        rev: 0,
-        jobs: 0
-      });
-    }
+    let labels = [];
+    let dataRev = [];
 
-    (this.completedJobs || []).forEach(item => {
-      const dStr = String(item.completed_date || item.end_date || "");
-      let dObj = null;
-      if (dStr.includes("-")) {
-        const p = dStr.split("-");
-        if (p.length >= 3) dObj = new Date(parseInt(p[0]), parseInt(p[1]) - 1, parseInt(p[2]));
-      } else if (dStr.includes("/")) {
-        const p = dStr.split("/");
-        if (p.length >= 3) dObj = new Date(parseInt(p[2]), parseInt(p[1]) - 1, parseInt(p[0]));
-      }
-      if (dObj && !isNaN(dObj.getTime())) {
-        const m = dObj.getMonth() + 1;
-        const y = dObj.getFullYear();
-        const mb = monthBins.find(b => b.month === m && b.year === y);
-        if (mb) {
-          mb.rev += parseFloat(item.net_price || 0);
-          mb.jobs += 1;
+    if (this.dashboardStats && this.dashboardStats.monthly_trend && this.dashboardStats.monthly_trend.length > 0) {
+      const mt = this.dashboardStats.monthly_trend;
+      labels = mt.map(b => isEn ? `${enMonthNames[b.month]} ${b.year}` : `${b.month}. ${thMonthNames[b.month]}`);
+      dataRev = mt.map(b => Number(b.revenue || 0));
+    } else {
+      const now = new Date();
+      const monthBins = [];
+      for (let i = 5; i >= 0; i--) {
+        let m = now.getMonth() + 1 - i;
+        let y = now.getFullYear();
+        while (m <= 0) {
+          m += 12;
+          y -= 1;
         }
+        monthBins.push({
+          label: isEn ? `${monthNames[m]} ${y}` : `${m}. ${monthNames[m]}`,
+          month: m,
+          year: y,
+          rev: 0,
+          jobs: 0
+        });
       }
-    });
 
-    const labels = monthBins.map(b => b.label);
-    const dataRev = monthBins.map(b => b.rev);
-    const dataJobs = monthBins.map(b => b.jobs);
+      (this.completedJobs || []).forEach(item => {
+        const dStr = String(item.completed_date || item.end_date || "");
+        let dObj = null;
+        if (dStr.includes("-")) {
+          const p = dStr.split("-");
+          if (p.length >= 3) dObj = new Date(parseInt(p[0]), parseInt(p[1]) - 1, parseInt(p[2]));
+        } else if (dStr.includes("/")) {
+          const p = dStr.split("/");
+          if (p.length >= 3) dObj = new Date(parseInt(p[2]), parseInt(p[1]) - 1, parseInt(p[0]));
+        }
+        if (dObj && !isNaN(dObj.getTime())) {
+          const m = dObj.getMonth() + 1;
+          const y = dObj.getFullYear();
+          const mb = monthBins.find(b => b.month === m && b.year === y);
+          if (mb) {
+            mb.rev += parseFloat(item.net_price || 0);
+            mb.jobs += 1;
+          }
+        }
+      });
+
+      labels = monthBins.map(b => b.label);
+      dataRev = monthBins.map(b => b.rev);
+    }
 
     if (this.trendChart) {
       this.trendChart.destroy();
