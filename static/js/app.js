@@ -2345,7 +2345,7 @@ class App {
           <div class="car-specs-subtitle">${carSpecsSub}</div>
 
           <div class="car-pills-row">
-            <span class="car-pill" style="background:${statusBg}; border:1px solid ${statusBorder}; color:${statusColor};">
+            <span class="car-pill" style="background:${statusBg}; border:1px solid ${statusBorder}; color:${statusColor}; cursor:pointer;" onclick="app.openCarScheduleModal('${safePlate}')" title="${isEn ? 'Click to view vehicle schedule & queue' : 'คลิกเพื่อดูปฏิทินคิวงานของรถคันนี้'}">
               <span class="car-pill-dot" style="background:${statusDot};"></span> ${statusText}
             </span>
             ${alertPillHtml}
@@ -2384,7 +2384,7 @@ class App {
           <div class="car-model-title">${(c && c.brand) || ''} ${(c && c.model) || ''}</div>
           <div class="car-specs-subtitle">${(c && c.year) || '2024'} · ${String((c && c.color) || 'WHITE').toUpperCase()} · ${(c && c.fuel_type) || 'เบนซิน'}</div>
           <div class="car-pills-row">
-            <span class="car-pill" style="background:#ECFDF5; border:1px solid #A7F3D0; color:#065F46;">
+            <span class="car-pill" style="background:#ECFDF5; border:1px solid #A7F3D0; color:#065F46; cursor:pointer;" onclick="app.openCarScheduleModal('${sp}')" title="คลิกเพื่อดูปฏิทินคิวงาน">
               <span class="car-pill-dot" style="background:#10B981;"></span> ${cStat}
             </span>
             <span class="car-rate-chip">
@@ -4620,15 +4620,7 @@ class App {
     // Status pill
     const pill = document.getElementById("contract-issued-status-pill");
     if (pill) {
-      if (b.contract_issued || b.status === "กำลังเช่า") {
-        pill.innerHTML = `
-          <span class="badge badge-success" style="font-size:13px; padding:6px 14px; background:#16a34a; color:#fff; border-radius:6px; font-weight:700;">
-            ✅ ${isEn ? 'Contract Issued & Handed Over' : 'ออกสัญญา & ส่งมอบรถเรียบร้อย'}
-          </span>
-        `;
-      } else {
-        pill.innerHTML = "";
-      }
+      pill.innerHTML = "";
     }
   }
 
@@ -5280,15 +5272,11 @@ class App {
       dayMaxEvents: 3,
       navLinkDayClick: (date, jsEvent) => {
         const dStr = typeof date === "string" ? date : (date.toISOString ? date.toISOString().split("T")[0] : String(date));
-        if (this.boCalendar) {
+        if (this.boCalendar && dStr) {
           try {
-            this.boCalendar.changeView('timeGridDay', dStr);
+            this.boCalendar.changeView('timeGridWeek', dStr);
           } catch(e) {
-            try {
-              this.boCalendar.changeView('listDay', dStr);
-            } catch(e2) {
-              this.boCalendar.gotoDate(dStr);
-            }
+            this.boCalendar.gotoDate(dStr);
           }
         }
         this.onCalendarDateClick(dStr);
@@ -5297,13 +5285,9 @@ class App {
         const dStr = info.dateStr || (info.date && info.date.toISOString ? info.date.toISOString().split("T")[0] : "");
         if (this.boCalendar && dStr) {
           try {
-            this.boCalendar.changeView('timeGridDay', dStr);
+            this.boCalendar.changeView('timeGridWeek', dStr);
           } catch(e) {
-            try {
-              this.boCalendar.changeView('listDay', dStr);
-            } catch(e2) {
-              this.boCalendar.gotoDate(dStr);
-            }
+            this.boCalendar.gotoDate(dStr);
           }
         }
         this.onCalendarDateClick(dStr);
@@ -8131,9 +8115,228 @@ class App {
     }
   }
 
+  openCarScheduleModal(plate, monthOffset = 0) {
+    if (!plate) return;
+    const cleanPlate = String(plate).trim();
+    const car = (this.cars || []).find(c => c.plate === cleanPlate) || { plate: cleanPlate };
+    const normPlate = this.normalizePlate ? this.normalizePlate(cleanPlate) : cleanPlate.replace(/\s+/g, "").toUpperCase();
+    const isEn = this.currentLang === "EN";
+
+    // Active bookings for this car
+    const carBookings = (this.bookings || []).filter(b => {
+      const bPlate = this.normalizePlate ? this.normalizePlate(b.car_id || b.car_plate || "") : String(b.car_id || b.car_plate || "").replace(/\s+/g, "").toUpperCase();
+      if (bPlate !== normPlate) return false;
+      const st = String(b.status || "").trim();
+      return !["ยกเลิก", "Canceled", "canceled"].includes(st);
+    });
+
+    // Month offset tracking
+    if (this._carSchedMonthOffset === undefined || monthOffset === 0) {
+      this._carSchedMonthOffset = (monthOffset === 0 && this._currentSchedPlate === cleanPlate) ? (this._carSchedMonthOffset || 0) : 0;
+      this._currentSchedPlate = cleanPlate;
+    } else {
+      this._carSchedMonthOffset += monthOffset;
+    }
+
+    const today = new Date();
+    const viewDate = new Date(today.getFullYear(), today.getMonth() + this._carSchedMonthOffset, 1);
+    const year = viewDate.getFullYear();
+    const month = viewDate.getMonth(); // 0-indexed
+
+    const monthNamesTh = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
+    const monthNamesEn = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    const monthTitle = isEn ? `${monthNamesEn[month]} ${year}` : `${monthNamesTh[month]} ${year + 543}`;
+
+    // Map each date YYYY-MM-DD
+    // Color logic:
+    // Yellow: Dates in "ติดจอง (Reserved)"
+    // Red: Dates in "กำลังเช่า (On Rent)"
+    const dateMap = {};
+    carBookings.forEach(b => {
+      const sStr = b.start_date ? b.start_date.split("T")[0] : null;
+      const eStr = b.end_date ? b.end_date.split("T")[0] : null;
+      if (!sStr || !eStr) return;
+
+      const isRenting = (b.status === "กำลังเช่า" || b.status === "รอรับคืน" || b.status === "On rent");
+
+      let curr = new Date(sStr + "T00:00:00");
+      const endD = new Date(eStr + "T00:00:00");
+      while (curr <= endD) {
+        const dKey = curr.toISOString().split("T")[0];
+        if (!dateMap[dKey]) dateMap[dKey] = [];
+        dateMap[dKey].push({
+          booking: b,
+          type: isRenting ? "rent" : "reserved"
+        });
+        curr.setDate(curr.getDate() + 1);
+      }
+    });
+
+    const firstDayIndex = new Date(year, month, 1).getDay();
+    const totalDays = new Date(year, month + 1, 0).getDate();
+    const todayStr = this.getThaiDateTime ? this.getThaiDateTime(0).date : new Date().toISOString().split("T")[0];
+
+    const dayHeaders = isEn ? ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] : ["อา", "จ", "อ", "พ", "พฤ", "ศ", "ส"];
+
+    let calendarCells = "";
+    for (let i = 0; i < firstDayIndex; i++) {
+      calendarCells += `<div style="background:#F8FAFC; border:1px solid #E2E8F0; min-height:60px; border-radius:6px; opacity:0.35;"></div>`;
+    }
+
+    for (let day = 1; day <= totalDays; day++) {
+      const dStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      const isToday = dStr === todayStr;
+      const entries = dateMap[dStr] || [];
+
+      let cellBg = "#FFFFFF";
+      let cellBorder = isToday ? "#3B82F6" : "#E2E8F0";
+      let cellTextColor = "#1E293B";
+      let badgeHtml = "";
+
+      const hasRent = entries.some(e => e.type === "rent");
+      const hasReserved = entries.some(e => e.type === "reserved");
+
+      if (hasRent) {
+        // Red: Dates in "กำลังเช่า (On Rent)"
+        cellBg = "#FEE2E2";
+        cellBorder = "#F87171";
+        cellTextColor = "#991B1B";
+        badgeHtml = `<span style="font-size:10px; font-weight:700; background:#DC2626; color:#FFF; padding:1px 5px; border-radius:4px; display:inline-block; margin-top:2px;">${isEn ? 'On Rent' : 'กำลังเช่า'}</span>`;
+      } else if (hasReserved) {
+        // Yellow: Dates in "ติดจอง (Reserved)"
+        cellBg = "#FEF08A";
+        cellBorder = "#FACC15";
+        cellTextColor = "#854D0E";
+        badgeHtml = `<span style="font-size:10px; font-weight:700; background:#CA8A04; color:#FFF; padding:1px 5px; border-radius:4px; display:inline-block; margin-top:2px;">${isEn ? 'Booked' : 'ติดจอง'}</span>`;
+      }
+
+      calendarCells += `
+        <div style="background:${cellBg}; border:1px solid ${cellBorder}; border-radius:6px; min-height:60px; padding:4px 6px; display:flex; flex-direction:column; justify-content:space-between; ${isToday ? 'box-shadow:0 0 0 2px #93C5FD;' : ''}">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <b style="font-size:12px; color:${cellTextColor};">${day}</b>
+            ${isToday ? `<span style="font-size:9px; background:#3B82F6; color:#FFF; padding:0 4px; border-radius:3px;">${isEn ? 'Today' : 'วันนี้'}</span>` : ''}
+          </div>
+          <div>${badgeHtml}</div>
+        </div>
+      `;
+    }
+
+    const modalTitleEl = document.getElementById("modal-car-schedule-title");
+    if (modalTitleEl) {
+      modalTitleEl.innerHTML = `
+        ${isEn ? 'Vehicle Schedule & Queue' : 'ปฏิทินคิวงานของรถ'}: 
+        <b>${car.brand || ''} ${car.model || ''}</b> 
+        <span style="background:#1E293B; color:#FFF; padding:2px 8px; border-radius:5px; font-size:12px; margin-left:6px;">${car.plate || cleanPlate}</span>
+      `;
+    }
+
+    const bodyEl = document.getElementById("modal-car-schedule-body");
+    if (bodyEl) {
+      bodyEl.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; background:#FAF7F2; padding:10px 14px; border-radius:8px; margin-bottom:12px;">
+          <div style="display:flex; gap:16px; align-items:center; flex-wrap:wrap;">
+            <div style="display:flex; align-items:center; gap:6px; font-size:12px; font-weight:700; color:#991B1B;">
+              <span style="width:12px; height:12px; border-radius:3px; background:#F87171; display:inline-block;"></span>
+              🔴 ${isEn ? 'On Rent' : 'กำลังเช่า'} (${carBookings.filter(b => b.status === "กำลังเช่า" || b.status === "รอรับคืน").length})
+            </div>
+            <div style="display:flex; align-items:center; gap:6px; font-size:12px; font-weight:700; color:#854D0E;">
+              <span style="width:12px; height:12px; border-radius:3px; background:#FACC15; display:inline-block;"></span>
+              🟡 ${isEn ? 'Reserved / Booked' : 'ติดจอง / เตรียมส่งมอบ'} (${carBookings.filter(b => b.status !== "กำลังเช่า" && b.status !== "รอรับคืน").length})
+            </div>
+            <div style="display:flex; align-items:center; gap:6px; font-size:12px; font-weight:600; color:#166534;">
+              <span style="width:12px; height:12px; border-radius:3px; background:#86EFAC; display:inline-block;"></span>
+              🟢 ${isEn ? 'Available' : 'ว่างพร้อมใช้งาน'}
+            </div>
+          </div>
+          <div style="display:flex; gap:6px; align-items:center;">
+            <button type="button" class="btn btn-sm btn-secondary" onclick="app.openCarScheduleModal('${cleanPlate}', -1)" style="padding:3px 10px; font-size:12px;">◀ ${isEn ? 'Prev Month' : 'เดือนก่อนหน้า'}</button>
+            <span style="font-weight:700; font-size:13px; color:#1E293B; min-width:130px; text-align:center;">${monthTitle}</span>
+            <button type="button" class="btn btn-sm btn-secondary" onclick="app.openCarScheduleModal('${cleanPlate}', 1)" style="padding:3px 10px; font-size:12px;">${isEn ? 'Next Month' : 'เดือนถัดไป'} ▶</button>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns: repeat(7, 1fr); gap:6px; margin-bottom:16px;">
+          ${dayHeaders.map(h => `<div style="text-align:center; font-weight:700; font-size:11.5px; color:#64748B; padding:4px 0;">${h}</div>`).join("")}
+          ${calendarCells}
+        </div>
+
+        <div style="background:#FFF; border:1px solid #E2E8F0; border-radius:8px; padding:12px; margin-top:12px;">
+          <div style="font-size:13px; font-weight:700; color:#1E293B; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
+            <span>📋 ${isEn ? 'Bookings & Queue for this Car' : 'รายการจองและคิวงานทั้งหมดของรถคันนี้'} (${carBookings.length})</span>
+            <button type="button" class="btn btn-sm btn-primary" onclick="app.closeModal('modal-car-schedule'); app.openBookModal('${cleanPlate}');" style="padding:4px 10px; font-size:11.5px;">
+              ➕ ${isEn ? 'New Booking for this Car' : 'จองรถคันนี้'}
+            </button>
+          </div>
+          ${carBookings.length === 0 ? `
+            <div style="text-align:center; padding:18px; color:#94A3B8; font-size:12.5px;">
+              ${isEn ? 'No active bookings or reservations found for this vehicle.' : 'ไม่มีประวัติหรือคิวงานจองที่ค้างอยู่ รถพร้อมให้บริการ'}
+            </div>
+          ` : `
+            <div class="table-responsive" style="max-height:220px; overflow-y:auto;">
+              <table class="table" style="font-size:11.5px; margin:0;">
+                <thead>
+                  <tr style="background:#F8FAFC;">
+                    <th>${isEn ? 'Booking ID' : 'รหัสจอง'}</th>
+                    <th>${isEn ? 'Customer' : 'ผู้เช่า'}</th>
+                    <th>${isEn ? 'Rental Period' : 'ช่วงเวลาเช่า'}</th>
+                    <th style="text-align:center;">${isEn ? 'Status' : 'สถานะ'}</th>
+                    <th style="text-align:right;">${isEn ? 'Net Price' : 'ยอดสุทธิ'}</th>
+                    <th style="text-align:center;">${isEn ? 'Action' : 'จัดการ'}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${carBookings.map(b => {
+                    const isRent = b.status === "กำลังเช่า" || b.status === "รอรับคืน";
+                    const bgBadge = isRent ? "#FEE2E2" : "#FEF08A";
+                    const colBadge = isRent ? "#991B1B" : "#854D0E";
+                    const sDt = `${b.start_date ? b.start_date.split('T')[0] : ''} ${b.start_time || ''}`;
+                    const eDt = `${b.end_date ? b.end_date.split('T')[0] : ''} ${b.end_time || ''}`;
+                    return `
+                      <tr>
+                        <td><b>${b.booking_id}</b></td>
+                        <td>${b.customer_name || '-'}</td>
+                        <td>${sDt} ➔ ${eDt}</td>
+                        <td style="text-align:center;">
+                          <span style="background:${bgBadge}; color:${colBadge}; padding:2px 8px; border-radius:4px; font-weight:700;">
+                            ${b.status}
+                          </span>
+                        </td>
+                        <td style="text-align:right; font-weight:700;">฿${Number(b.net_price || 0).toLocaleString()}</td>
+                        <td style="text-align:center;">
+                          <button type="button" class="btn btn-sm btn-secondary" onclick="app.closeModal('modal-car-schedule'); app.goToTabWithBooking('assign', '${b.booking_id}');" style="padding:2px 6px; font-size:10.5px;">
+                            ${isEn ? 'View' : 'ดูใบงาน'}
+                          </button>
+                        </td>
+                      </tr>
+                    `;
+                  }).join("")}
+                </tbody>
+              </table>
+            </div>
+          `}
+        </div>
+
+        <div style="display:flex; justify-content:flex-end; margin-top:14px;">
+          <button type="button" class="btn btn-secondary" onclick="app.closeModal('modal-car-schedule')" style="padding:6px 16px; font-size:12px;">
+            ${isEn ? 'Close' : 'ปิดหน้าต่าง'} (✕)
+          </button>
+        </div>
+      `;
+    }
+
+    const m = document.getElementById("modal-car-schedule");
+    if (m) {
+      m.style.display = "flex";
+    }
+    this.openModal("modal-car-schedule");
+  }
+
   closeModal(modalId) {
     const m = document.getElementById(modalId);
-    if (m) m.classList.remove("open");
+    if (m) {
+      m.classList.remove("open");
+      m.style.display = "none";
+    }
     if (modalId === "modal-car-details") {
       this.isModalOpen = false;
       this.selectedVehicle = null;

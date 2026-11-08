@@ -282,37 +282,43 @@ def generate_filled_pdf(template_path="rental_template_blank_v2.pdf", booking_in
         can.save()
         packet.seek(0)
 
-        # Merge overlay with template PDF safely across library versions
+        # Merge overlay with template PDF safely across library versions using PdfWriter(clone_from=...)
         overlay_pdf = PdfReader(packet)
-        with open(resolved_path, "rb") as f_tpl:
-            template_pdf = PdfReader(f_tpl)
-            output = PdfWriter()
+        ovl_page = overlay_pdf.pages[0] if hasattr(overlay_pdf, "pages") else overlay_pdf.getPage(0)
 
-            tpl_pages = list(template_pdf.pages) if hasattr(template_pdf, "pages") else [template_pdf.getPage(i) for i in range(template_pdf.getNumPages())]
-            ovl_pages = list(overlay_pdf.pages) if hasattr(overlay_pdf, "pages") else [overlay_pdf.getPage(i) for i in range(overlay_pdf.getNumPages())]
+        output = None
+        try:
+            output = PdfWriter(clone_from=resolved_path)
+            output.pages[0].merge_page(ovl_page)
+        except Exception as clone_err:
+            print(f"Notice: clone_from fallback: {clone_err}")
+            with open(resolved_path, "rb") as f_tpl:
+                template_pdf = PdfReader(f_tpl)
+                output = PdfWriter()
 
-            base_page = tpl_pages[0]
-            overlay_page = ovl_pages[0]
-            if hasattr(base_page, "merge_page"):
-                base_page.merge_page(overlay_page)
-            elif hasattr(base_page, "mergePage"):
-                base_page.mergePage(overlay_page)
+                tpl_pages = list(template_pdf.pages) if hasattr(template_pdf, "pages") else [template_pdf.getPage(i) for i in range(template_pdf.getNumPages())]
 
-            if hasattr(output, "add_page"):
-                output.add_page(base_page)
-            elif hasattr(output, "addPage"):
-                output.addPage(base_page)
-
-            for i in range(1, len(tpl_pages)):
-                p = tpl_pages[i]
+                # Attach page to writer FIRST so it is assigned to a writer!
                 if hasattr(output, "add_page"):
-                    output.add_page(p)
-                elif hasattr(output, "addPage"):
-                    output.addPage(p)
+                    base_page = output.add_page(tpl_pages[0])
+                else:
+                    output.addPage(tpl_pages[0])
+                    base_page = output.pages[0] if hasattr(output, "pages") else tpl_pages[0]
 
-            out_stream = io.BytesIO()
-            output.write(out_stream)
-            return out_stream.getvalue()
+                if hasattr(base_page, "merge_page"):
+                    base_page.merge_page(ovl_page)
+                elif hasattr(base_page, "mergePage"):
+                    base_page.mergePage(ovl_page)
+
+                for i in range(1, len(tpl_pages)):
+                    if hasattr(output, "add_page"):
+                        output.add_page(tpl_pages[i])
+                    else:
+                        output.addPage(tpl_pages[i])
+
+        out_stream = io.BytesIO()
+        output.write(out_stream)
+        return out_stream.getvalue()
     except Exception as e:
         print(f"PDF Error: {str(e)}")
         import traceback
