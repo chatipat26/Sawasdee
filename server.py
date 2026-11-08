@@ -1950,9 +1950,72 @@ async def assign_worker(bk_id: str, payload: Dict[str, Any]):
 
     store.async_sync_booking(target)
 
+    # Decoupled Work Order Log for Dispatch / Return Assignment
+    try:
+        appt_date = s_date_val if job_type == "Dispatch" else e_date_val
+        appt_dt = f"{appt_date} {time_val}:00" if appt_date and time_val else (str(appt_date) if appt_date else None)
+        j_status = "Completed" if action_type == "complete_now" else ("In Progress" if action_type == "handover_now" else "Pending")
+        store.log_work_order(
+            car_id=target.get("car_id"),
+            booking_id=bk_id,
+            work_type=job_type,
+            description=f"ใบงาน{'ส่งมอบรถ (Dispatch)' if job_type == 'Dispatch' else 'รับรถคืน (Return)'} พนักงาน: {worker} สถานที่: {location or '-'}",
+            cost=0.0,
+            staff_id=worker,
+            appointment_datetime=appt_dt,
+            location=location,
+            job_status=j_status
+        )
+    except Exception as wo_err:
+        print(f"Work order log note: {wo_err}")
+
     # Work order LINE notification retired per system rule
 
     return {"success": True, "booking": target}
+
+# -------------------------------------------------------------------------
+# WORK ORDERS API (DECOUPLED LOGS & ASSIGNMENT)
+# -------------------------------------------------------------------------
+@app.post("/api/work-orders")
+@app.post("/api/work-order-logs")
+async def create_work_order(payload: Dict[str, Any]):
+    """Insert a new record into work_order_logs decoupled from booking logic."""
+    bk_id = str(payload.get("booking_id") or "").strip() or None
+    car_id = str(payload.get("car_id") or "").strip() or None
+    if not car_id and bk_id:
+        target = next((b for b in store.bookings if b.get("booking_id") == bk_id), None)
+        if target:
+            car_id = target.get("car_id")
+
+    work_type = str(payload.get("work_type") or "Dispatch").strip()
+    staff_id = str(payload.get("staff_id") or payload.get("worker") or "admin").strip()
+    location = str(payload.get("location") or "").strip() or None
+    appt_dt = payload.get("appointment_datetime")
+    if not appt_dt:
+        d = payload.get("date") or payload.get("start_date") or payload.get("end_date")
+        t = payload.get("time") or "10:00"
+        if d:
+            appt_dt = f"{d} {t}:00" if len(str(t)) <= 5 else f"{d} {t}"
+
+    desc = str(payload.get("description") or "").strip()
+    if not desc:
+        desc = f"ใบงาน{'ส่งมอบรถยนต์ (Dispatch)' if work_type == 'Dispatch' else 'รับรถคืน (Return)'} พนักงาน: {staff_id} สถานที่: {location or '-'}"
+
+    cost = float(payload.get("cost") or 0.0)
+    job_status = str(payload.get("job_status") or "Pending").strip()
+
+    log_entry = store.log_work_order(
+        car_id=car_id,
+        booking_id=bk_id,
+        work_type=work_type,
+        description=desc,
+        cost=cost,
+        staff_id=staff_id,
+        appointment_datetime=appt_dt,
+        location=location,
+        job_status=job_status
+    )
+    return {"success": True, "message": "สร้างใบงานสำเร็จ", "work_order": log_entry}
 
 # -------------------------------------------------------------------------
 # BACK OFFICE WORK ORDERS & INSPECTIONS

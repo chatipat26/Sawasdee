@@ -4650,6 +4650,29 @@ class App {
       }
     }
 
+    // Construct appointment_datetime from date + time
+    const apptDate = isDisp ? sDate : eDate;
+    const apptDatetime = (apptDate && tVal) ? `${apptDate} ${tVal}:00` : (apptDate || null);
+
+    // TARGET MISSION 2 & 3: Decoupled API call to insert into work_order_logs
+    try {
+      await fetch("/api/work-orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          work_type: jobType,
+          booking_id: bkId,
+          staff_id: worker,
+          appointment_datetime: apptDatetime,
+          location: loc,
+          job_status: actionType === "complete" ? "Completed" : "Pending",
+          description: `ใบงาน${isDisp ? "ส่งมอบรถ (Dispatch)" : "รับรถคืน (Return)"} นัดหมาย: ${apptDatetime || '-'} สถานที่: ${loc || '-'}`
+        })
+      });
+    } catch (woErr) {
+      console.warn("[WorkOrder] Decoupled work order log creation notice:", woErr);
+    }
+
     try {
       const res = await fetch(`/api/bookings/${bkId}/assign`, {
         method: "POST",
@@ -4658,10 +4681,12 @@ class App {
           job_type: jobType,
           action_type: actionType === "handover" ? "handover_now" : (actionType === "complete" ? "complete_now" : "assign"),
           worker: worker,
+          staff_id: worker,
           location: loc,
           time: tVal,
           start_date: sDate,
           end_date: eDate,
+          appointment_datetime: apptDatetime,
           odometer: document.getElementById(isDisp ? "assign-disp-odometer" : "assign-ret-odometer")?.value || "",
           fuel_level: document.getElementById(isDisp ? "assign-disp-fuel" : "assign-ret-fuel")?.value || "",
           inspection_notes: document.getElementById(isDisp ? "assign-disp-notes" : "assign-ret-notes")?.value || "",
@@ -4671,7 +4696,17 @@ class App {
         })
       });
       const data = await res.json();
-      if (data.success) {
+      if (res.ok && data.success) {
+        this.showToast("สร้างใบงานสำเร็จ", "success");
+        if (typeof Swal !== "undefined") {
+          Swal.fire({
+            icon: 'success',
+            title: 'สร้างใบงานสำเร็จ',
+            text: `บันทึกใบงาน ${isDisp ? 'ส่งมอบรถ (Dispatch)' : 'รับรถคืน (Return)'} ลงระบบเรียบร้อยแล้ว`,
+            timer: 2000,
+            showConfirmButton: false
+          });
+        }
         this.confirmedAssignSides = this.confirmedAssignSides || {};
         if (!this.confirmedAssignSides[bkId]) {
           this.confirmedAssignSides[bkId] = { Dispatch: false, Return: false };

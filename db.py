@@ -1220,16 +1220,19 @@ class DataStore:
         except Exception as e:
             print(f"Error saving work order logs: {e}")
 
-    def log_work_order(self, car_id, booking_id=None, work_type="Maintenance", description="", cost=0.0, staff_id="admin"):
+    def log_work_order(self, car_id=None, booking_id=None, work_type="Dispatch", description="", cost=0.0, staff_id="admin", appointment_datetime=None, location=None, job_status="Pending"):
         log_id = f"WOL{datetime.now().strftime('%y%m%d%H%M%S%f')[:15]}"
         log_entry = {
             "id": log_id,
-            "car_id": str(car_id or "").strip(),
+            "car_id": str(car_id or "").strip() or None,
             "booking_id": str(booking_id or "").strip() or None,
-            "work_type": str(work_type or "Maintenance").strip(),
+            "work_type": str(work_type or "Dispatch").strip(),
             "description": str(description or "").strip(),
             "cost": float(cost or 0.0),
             "staff_id": str(staff_id or "admin").strip(),
+            "appointment_datetime": str(appointment_datetime) if appointment_datetime else None,
+            "location": str(location or "").strip() if location else None,
+            "job_status": str(job_status or "Pending").strip(),
             "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         }
         with self.lock:
@@ -1240,7 +1243,13 @@ class DataStore:
             try:
                 sb = get_db_client()
                 if sb:
-                    sb.table("work_order_logs").insert(dict(log_entry)).execute()
+                    row = dict(log_entry)
+                    if hasattr(sb, "table_columns"):
+                        cols = sb.table_columns("work_order_logs")
+                        if cols:
+                            row = {k: v for k, v in row.items() if k in cols}
+                    sb.table("work_order_logs").insert(row).execute()
+                    print(f"[WorkOrder] Successfully logged work order to DB: {log_id}")
             except Exception as e:
                 print(f"Error logging work order to DB: {e}")
 

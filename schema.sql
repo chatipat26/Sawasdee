@@ -246,3 +246,28 @@ ALTER TABLE customers ADD COLUMN IF NOT EXISTS current_address TEXT;
 ALTER TABLE customers ADD COLUMN IF NOT EXISTS email VARCHAR(150);
 ALTER TABLE customers ADD COLUMN IF NOT EXISTS line_user_id TEXT;
 ALTER TABLE customers ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+
+
+-- 8. ตารางใบงาน (work_order_logs) สำหรับงานส่งมอบรถและรับรถคืน
+CREATE TABLE IF NOT EXISTS public.work_order_logs (
+    id VARCHAR(100) PRIMARY KEY,
+    car_id VARCHAR(100),
+    booking_id VARCHAR(100),
+    work_type VARCHAR(100),
+    description TEXT,
+    cost NUMERIC DEFAULT 0,
+    staff_id VARCHAR(150),
+    appointment_datetime TIMESTAMP WITH TIME ZONE,
+    location TEXT,
+    job_status VARCHAR(50) DEFAULT 'Pending',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+ALTER TABLE public.work_order_logs ADD COLUMN IF NOT EXISTS staff_id VARCHAR(150);
+ALTER TABLE public.work_order_logs ADD COLUMN IF NOT EXISTS appointment_datetime TIMESTAMP WITH TIME ZONE;
+ALTER TABLE public.work_order_logs ADD COLUMN IF NOT EXISTS location TEXT;
+ALTER TABLE public.work_order_logs ADD COLUMN IF NOT EXISTS job_status VARCHAR(50) DEFAULT 'Pending';
+ALTER TABLE public.work_order_logs ADD COLUMN IF NOT EXISTS cost NUMERIC DEFAULT 0;
+ALTER TABLE public.work_order_logs ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;
+CREATE INDEX IF NOT EXISTS idx_work_order_logs_booking_id ON public.work_order_logs(booking_id);
+CREATE INDEX IF NOT EXISTS idx_work_order_logs_car_id ON public.work_order_logs(car_id);

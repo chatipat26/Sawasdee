@@ -299,11 +299,20 @@ class PgClient:
                         work_type VARCHAR(100),
                         description TEXT,
                         cost NUMERIC DEFAULT 0,
-                        staff_id VARCHAR(100),
+                        staff_id VARCHAR(150),
+                        appointment_datetime TIMESTAMP WITH TIME ZONE,
+                        location TEXT,
+                        job_status VARCHAR(50) DEFAULT 'Pending',
                         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
                     );
+                    ALTER TABLE public.work_order_logs ADD COLUMN IF NOT EXISTS staff_id VARCHAR(150);
+                    ALTER TABLE public.work_order_logs ADD COLUMN IF NOT EXISTS appointment_datetime TIMESTAMP WITH TIME ZONE;
+                    ALTER TABLE public.work_order_logs ADD COLUMN IF NOT EXISTS location TEXT;
+                    ALTER TABLE public.work_order_logs ADD COLUMN IF NOT EXISTS job_status VARCHAR(50) DEFAULT 'Pending';
+                    ALTER TABLE public.work_order_logs ADD COLUMN IF NOT EXISTS cost NUMERIC DEFAULT 0;
+                    ALTER TABLE public.work_order_logs ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;
                 """)
-            print("PostgreSQL work_order_logs table ensured.")
+            print("PostgreSQL work_order_logs table ensured with expanded columns.")
         except Exception as e:
             print(f"Work order logs migration note: {e}")
 

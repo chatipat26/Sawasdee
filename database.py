@@ -123,9 +123,27 @@ def init_db():
         "ALTER TABLE public.financial_records ADD COLUMN IF NOT EXISTS detail TEXT;",
         "ALTER TABLE public.financial_records ADD COLUMN IF NOT EXISTS company VARCHAR(150);"
     ]
+    work_order_logs_migrations = [
+        """CREATE TABLE IF NOT EXISTS public.work_order_logs (
+            id VARCHAR(100) PRIMARY KEY,
+            car_id VARCHAR(100),
+            booking_id VARCHAR(100),
+            work_type VARCHAR(100),
+            description TEXT,
+            cost NUMERIC DEFAULT 0,
+            staff_id VARCHAR(150),
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );""",
+        "ALTER TABLE public.work_order_logs ADD COLUMN IF NOT EXISTS staff_id VARCHAR(150);",
+        "ALTER TABLE public.work_order_logs ADD COLUMN IF NOT EXISTS appointment_datetime TIMESTAMP WITH TIME ZONE;",
+        "ALTER TABLE public.work_order_logs ADD COLUMN IF NOT EXISTS location TEXT;",
+        "ALTER TABLE public.work_order_logs ADD COLUMN IF NOT EXISTS job_status VARCHAR(50) DEFAULT 'Pending';",
+        "ALTER TABLE public.work_order_logs ADD COLUMN IF NOT EXISTS cost NUMERIC DEFAULT 0;",
+        "ALTER TABLE public.work_order_logs ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;"
+    ]
     try:
         with engine.begin() as conn:
-            for sql_stmt in customer_migrations + car_migrations + booking_migrations + maintenance_migrations + financial_migrations:
+            for sql_stmt in customer_migrations + car_migrations + booking_migrations + maintenance_migrations + financial_migrations + work_order_logs_migrations:
                 try:
                     conn.execute(text(sql_stmt))
                 except Exception:

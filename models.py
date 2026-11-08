@@ -90,3 +90,18 @@ class VehicleMaintenance(Base):
     cost = Column(Numeric, default=0.0)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
+class WorkOrderLog(Base):
+    __tablename__ = "work_order_logs"
+
+    id = Column(String(100), primary_key=True, index=True)
+    car_id = Column(String(100), nullable=True, index=True)
+    booking_id = Column(String(100), nullable=True, index=True)
+    work_type = Column(String(100), nullable=True) # 'Dispatch', 'Return', 'Renew Tax', etc.
+    description = Column(Text, nullable=True)
+    cost = Column(Numeric, default=0.0)
+    staff_id = Column(String(150), nullable=True)
+    appointment_datetime = Column(DateTime(timezone=True), nullable=True)
+    location = Column(Text, nullable=True)
+    job_status = Column(String(50), default="Pending")
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+

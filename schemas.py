@@ -1,3 +1,5 @@
+from datetime import datetime
+from typing import Union
 from typing import Optional, Any
 from pydantic import BaseModel, Field, ConfigDict
 
@@ -141,3 +143,29 @@ class CustomerUpdate(CustomerBase):
 
 class CustomerResponse(CustomerBase):
     pass
+
+
+class WorkOrderCreate(BaseModel):
+    booking_id: Optional[str] = None
+    car_id: Optional[str] = None
+    work_type: Optional[str] = "Dispatch"  # 'Dispatch' or 'Return'
+    staff_id: Optional[str] = None
+    appointment_datetime: Optional[Union[datetime, str]] = None
+    location: Optional[str] = None
+    job_status: Optional[str] = "Pending"
+    description: Optional[str] = None
+    cost: Optional[float] = 0.0
+
+
+class WorkOrderResponse(BaseModel):
+    id: str
+    booking_id: Optional[str] = None
+    car_id: Optional[str] = None
+    work_type: Optional[str] = None
+    staff_id: Optional[str] = None
+    appointment_datetime: Optional[Union[datetime, str]] = None
+    location: Optional[str] = None
+    job_status: Optional[str] = "Pending"
+    description: Optional[str] = None
+    cost: Optional[float] = 0.0
+    created_at: Optional[Union[datetime, str]] = None
