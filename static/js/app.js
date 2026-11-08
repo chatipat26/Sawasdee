@@ -1566,13 +1566,36 @@ class App {
   }
 
   async loadBookings() {
-    const res = await fetch("/api/bookings");
-    if (res.ok) {
-      this.bookings = await res.json();
-      const badge = document.getElementById("badge-frontoffice-bks");
-      if (badge) badge.textContent = this.bookings.length;
-      this.renderBookingsTable();
-      this.populateBookingDropdowns();
+    try {
+      const res = await fetch("/api/bookings");
+      if (res.ok) {
+        const raw = await res.json();
+        this.bookings = (Array.isArray(raw) ? raw : []).map(b => {
+          if (!b) return {};
+          let ext = b.extension_history;
+          if (typeof ext === "string") {
+            try { ext = JSON.parse(ext); } catch (e) { ext = []; }
+          }
+          if (!Array.isArray(ext)) ext = [];
+          return {
+            ...b,
+            booking_id: b.booking_id || "",
+            car_id: b.car_id || "",
+            customer: b.customer || "",
+            status: b.status || "รอชำระมัดจำ",
+            extension_history: ext,
+            is_fully_paid: Boolean(b.is_fully_paid || b.rental_paid),
+            contract_pdf_url: b.contract_pdf_url || ""
+          };
+        });
+        const badge = document.getElementById("badge-frontoffice-bks");
+        if (badge) badge.textContent = this.bookings.length;
+        try { this.renderBookingsTable(); } catch (e) { console.error("renderBookingsTable error:", e); }
+        try { this.populateBookingDropdowns(); } catch (e) { console.error("populateBookingDropdowns error:", e); }
+      }
+    } catch (err) {
+      console.error("loadBookings fetch error:", err);
+      this.bookings = this.bookings || [];
     }
   }
 
@@ -5239,8 +5262,9 @@ class App {
     if (selBk && id === selBk && document.getElementById("contract-edit-start-time")) {
       await this.saveContractSchedule(true);
     }
+    const pdfUrl = `/api/pdf/contract/${encodeURIComponent(id)}`;
     this.showToast(`📝 กำลังดาวน์โหลดสัญญาเช่า PDF สำหรับ ${id}...`, "info");
-    window.open(`/api/pdf/contract/${encodeURIComponent(id)}?t=${Date.now()}`, "_blank");
+    window.open(`${pdfUrl}?t=${Date.now()}`, "_blank");
 
     try {
       const res = await fetch(`/api/bookings/${encodeURIComponent(id)}`, {
@@ -5248,6 +5272,7 @@ class App {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           contract_issued: true,
+          contract_pdf_url: pdfUrl,
           status: "กำลังเช่า",
           dispatch_closed: true
         })
@@ -5386,7 +5411,7 @@ class App {
             ${(b.deposit_slip || b.rental_slip) ? `
               <a href="${b.deposit_slip || b.rental_slip}" target="_blank" class="btn btn-sm btn-secondary" style="background:#EFF6FF; border-color:#93C5FD; color:#1D4ED8; font-weight:700;" title="${isEn ? 'View Payment Slip' : 'ดูสลิปหลักฐานการชำระเงิน'} (Ref: ${b.deposit_ref || b.rental_ref || '-'})">📎 ${isEn ? 'Slip' : 'สลิป'}</a>
             ` : ''}
-            <a href="/api/pdf/contract/${b.booking_id}" target="_blank" class="btn btn-sm btn-secondary" title="${isEn ? 'Rental Agreement PDF' : 'สัญญาเช่า (Rental Agreement PDF)'}">📝</a>
+            <a href="${b.contract_pdf_url || `/api/pdf/contract/${b.booking_id}`}" target="_blank" class="btn btn-sm btn-secondary" title="${isEn ? 'Rental Agreement PDF' : 'สัญญาเช่า (Rental Agreement PDF)'}">📝</a>
             <a href="/api/pdf/deposit-receipt/${b.booking_id}" target="_blank" class="btn btn-sm btn-secondary" title="${isEn ? 'Deposit Receipt PDF' : 'ใบเสร็จมัดจำ (Deposit Receipt PDF)'}">🛡️</a>
             <a href="/api/pdf/receipt/${b.booking_id}" target="_blank" class="btn btn-sm btn-secondary" title="${isEn ? 'Rental Receipt PDF' : 'ใบเสร็จค่าเช่า (Rental Receipt PDF)'}">🧾</a>
             <a href="/api/pdf/job/${b.booking_id}" target="_blank" class="btn btn-sm btn-secondary" title="${isEn ? 'Vehicle Checklist PDF' : 'ใบตรวจสภาพรถ (Checklist PDF)'}">📋</a>

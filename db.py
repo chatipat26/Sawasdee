@@ -468,6 +468,19 @@ class DataStore:
                         b_copy["deposit_amount"] = 5000.0 # STRICT: Fixed 5,000 THB
                         if b_copy.get("start_date"): b_copy["start_date"] = to_date(b_copy["start_date"])
                         if b_copy.get("end_date"): b_copy["end_date"] = to_date(b_copy["end_date"])
+                        # Safe data mapping: JSON deserialization & Boolean fallback
+                        ext_raw = b_copy.get("extension_history")
+                        if isinstance(ext_raw, str):
+                            try:
+                                import json
+                                parsed_ext = json.loads(ext_raw)
+                                b_copy["extension_history"] = parsed_ext if isinstance(parsed_ext, list) else [parsed_ext]
+                            except Exception:
+                                b_copy["extension_history"] = []
+                        elif not isinstance(ext_raw, list):
+                            b_copy["extension_history"] = []
+                        b_copy["is_fully_paid"] = bool(b_copy.get("is_fully_paid", False) or b_copy.get("rental_paid", False))
+                        b_copy["contract_pdf_url"] = b_copy.get("contract_pdf_url") or ""
                         # Reconstruct payment slip and ref metadata from extension_history if stored
                         for item in b_copy.get("extension_history", []) or []:
                             if isinstance(item, dict) and item.get("type") == "payment_meta":
@@ -738,7 +751,18 @@ class DataStore:
                 if "end_date" in row and row["end_date"]: row["end_date"] = str(row["end_date"])
 
                 # Persist payment metadata inside extension_history JSONB column
-                ext_list = list(row.get("extension_history") or [])
+                ext_raw = row.get("extension_history")
+                if isinstance(ext_raw, str):
+                    try:
+                        import json
+                        parsed_ext = json.loads(ext_raw)
+                        ext_list = parsed_ext if isinstance(parsed_ext, list) else [parsed_ext]
+                    except Exception:
+                        ext_list = []
+                elif isinstance(ext_raw, list):
+                    ext_list = list(ext_raw)
+                else:
+                    ext_list = []
                 meta_item = {
                     "type": "payment_meta",
                     "deposit_ref": row.get("deposit_ref", ""),
@@ -772,8 +796,11 @@ class DataStore:
                     'remaining_rental', 'created_by', 'status', 'dispatch_closed',
                     'return_closed', 'worker_delivery', 'worker_return', 'loc_delivery',
                     'loc_return', 'extension_history', 'is_fully_paid', 'rental_payment_method',
-                    'payment_type', 'google_drive_link'
+                    'payment_type', 'google_drive_link', 'contract_pdf_url'
                 }
+                row["is_fully_paid"] = bool(row.get("is_fully_paid", False) or row.get("rental_paid", False))
+                if "contract_pdf_url" in row:
+                    row["contract_pdf_url"] = str(row["contract_pdf_url"]) if row["contract_pdf_url"] else None
                 filtered_row = {k: v for k, v in row.items() if k in VALID_COLS}
                 db_cols = None
                 if hasattr(sb, "run"):

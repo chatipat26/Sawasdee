@@ -88,7 +88,10 @@ def init_db():
     ]
     booking_migrations = [
         "ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS payment_type VARCHAR(50);",
-        "ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS google_drive_link TEXT;"
+        "ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS google_drive_link TEXT;",
+        "ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS contract_pdf_url TEXT;",
+        "ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS extension_history JSONB DEFAULT '[]'::jsonb;",
+        "ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS is_fully_paid BOOLEAN DEFAULT FALSE;"
     ]
     maintenance_migrations = [
         """CREATE TABLE IF NOT EXISTS public.vehicle_maintenances (

@@ -1339,8 +1339,49 @@ async def list_bookings():
         b_copy["car_image"] = c_obj.get("image", "")
         cust_obj = store.customers.get(b.get("customer"), {})
         b_copy["customer_phone"] = cust_obj.get("contact_no", "-")
+        # Robust data mapping for complex fields (JSON list, Boolean, PDF url)
+        ext_val = b_copy.get("extension_history")
+        if isinstance(ext_val, str):
+            try:
+                import json
+                parsed_ext = json.loads(ext_val)
+                b_copy["extension_history"] = parsed_ext if isinstance(parsed_ext, list) else [parsed_ext]
+            except Exception:
+                b_copy["extension_history"] = []
+        elif not isinstance(ext_val, list):
+            b_copy["extension_history"] = []
+        b_copy["is_fully_paid"] = bool(b_copy.get("is_fully_paid", False) or b_copy.get("rental_paid", False))
+        b_copy["contract_pdf_url"] = b_copy.get("contract_pdf_url") or ""
         res.append(b_copy)
     return res
+
+@app.get("/api/bookings/{bk_id}")
+async def get_booking(bk_id: str):
+    target = next((b for b in store.bookings if b.get("booking_id") == bk_id), None)
+    if not target:
+        raise HTTPException(status_code=404, detail="ไม่พบรายการจอง")
+    b_copy = dict(target)
+    b_copy["start_date_formatted"] = format_date_dmy(target.get("start_date"))
+    b_copy["end_date_formatted"] = format_date_dmy(target.get("end_date"))
+    c_obj = store.cars.get(target.get("car_id"), {})
+    b_copy["car_brand"] = c_obj.get("brand", "")
+    b_copy["car_model"] = c_obj.get("model", "")
+    b_copy["car_image"] = c_obj.get("image", "")
+    cust_obj = store.customers.get(target.get("customer"), {})
+    b_copy["customer_phone"] = cust_obj.get("contact_no", "-")
+    ext_val = b_copy.get("extension_history")
+    if isinstance(ext_val, str):
+        try:
+            import json
+            parsed_ext = json.loads(ext_val)
+            b_copy["extension_history"] = parsed_ext if isinstance(parsed_ext, list) else [parsed_ext]
+        except Exception:
+            b_copy["extension_history"] = []
+    elif not isinstance(ext_val, list):
+        b_copy["extension_history"] = []
+    b_copy["is_fully_paid"] = bool(b_copy.get("is_fully_paid", False) or b_copy.get("rental_paid", False))
+    b_copy["contract_pdf_url"] = b_copy.get("contract_pdf_url") or ""
+    return b_copy
 
 @app.post("/api/bookings")
 async def create_booking(payload: Dict[str, Any]):
@@ -1520,20 +1561,37 @@ async def update_booking(bk_id: str, payload: Dict[str, Any]):
 
     store.async_sync_booking(target)
 
-    # Log to universal work_order_logs
-    try:
-        store.log_work_order(
-            car_id=car_id or target.get("car_id", ""),
-            booking_id=bk_id,
-            work_type="Dispatch",
-            description=f"ส่งมอบรถยนต์เรียบร้อย เลขไมล์: {mileage or '-'}, น้ำมัน: {fuel}, หมายเหตุ: {notes}",
-            cost=0.0,
-            staff_id=target.get("worker_delivery", "admin")
-        )
-    except Exception as e:
-        print(f"Error logging dispatch work order: {e}")
+    # Log to universal work_order_logs only if transitioning to "กำลังเช่า"
+    if new_status == "กำลังเช่า" and prev_status != "กำลังเช่า":
+        try:
+            cid = target.get("car_id", "")
+            d_mileage = payload.get("dispatch_mileage") or target.get("dispatch_mileage", "-")
+            d_fuel = payload.get("dispatch_fuel") or target.get("dispatch_fuel", "-")
+            d_notes = payload.get("dispatch_notes") or target.get("dispatch_notes", "")
+            store.log_work_order(
+                car_id=cid,
+                booking_id=bk_id,
+                work_type="Dispatch",
+                description=f"ส่งมอบรถยนต์เรียบร้อย เลขไมล์: {d_mileage}, น้ำมัน: {d_fuel}, หมายเหตุ: {d_notes}",
+                cost=0.0,
+                staff_id=target.get("worker_delivery", "admin")
+            )
+        except Exception as e:
+            print(f"Error logging dispatch work order: {e}")
 
     return {"success": True, "booking": target}
+
+@app.patch("/api/bookings/{bk_id}/contract-pdf")
+@app.put("/api/bookings/{bk_id}/contract-pdf")
+async def update_booking_contract_pdf(bk_id: str, payload: Dict[str, Any]):
+    """Decoupled update for contract_pdf_url without altering core booking logic."""
+    target = next((b for b in store.bookings if b.get("booking_id") == bk_id), None)
+    if not target:
+        raise HTTPException(status_code=404, detail="ไม่พบรายการจอง")
+    pdf_url = payload.get("contract_pdf_url") or payload.get("pdf_url") or f"/api/pdf/contract/{bk_id}"
+    target["contract_pdf_url"] = str(pdf_url)
+    store.async_sync_booking(target)
+    return {"success": True, "booking_id": bk_id, "contract_pdf_url": target["contract_pdf_url"]}
 
 @app.post("/api/bookings/{bk_id}/extend")
 async def extend_booking(bk_id: str, payload: Dict[str, Any]):
@@ -3248,9 +3306,11 @@ async def get_contract_pdf(bk_id: str, download: int = 0):
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"PDF Error: {str(e)}")
 
+    if not target.get("contract_pdf_url"):
+        target["contract_pdf_url"] = f"/api/pdf/contract/{bk_id}"
     if not target.get("contract_issued") and target.get("deposit_paid") and target.get("rental_paid"):
         target["contract_issued"] = True
-        store.async_sync_booking(target)
+    store.async_sync_booking(target)
 
     ext_count = len([x for x in (target.get("extension_history") or []) if isinstance(x, dict) and x.get("type") == "extension"])
     fname = f"Agreement_{bk_id}" + (f"_ext{ext_count}" if ext_count else "") + ".pdf"

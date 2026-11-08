@@ -1,7 +1,8 @@
-from datetime import datetime
+import json
+from datetime import datetime, date
 from typing import Union
 from typing import Optional, Any
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, field_validator
 
 
 class VehicleBase(BaseModel):
@@ -169,3 +170,93 @@ class WorkOrderResponse(BaseModel):
     description: Optional[str] = None
     cost: Optional[float] = 0.0
     created_at: Optional[Union[datetime, str]] = None
+
+
+class BookingBase(BaseModel):
+    booking_id: Optional[str] = None
+    car_id: Optional[str] = None
+    customer: Optional[str] = None
+    start_date: Optional[Union[date, str]] = None
+    start_time: Optional[str] = "09:00"
+    end_date: Optional[Union[date, str]] = None
+    end_time: Optional[str] = "09:00"
+    total_days: Optional[float] = 1.0
+    daily_rate: Optional[float] = 0.0
+    total_price: Optional[float] = 0.0
+    base_price: Optional[float] = 0.0
+    discount: Optional[float] = 0.0
+    net_price: Optional[float] = 0.0
+    deposit_paid: Optional[bool] = False
+    deposit_amount: Optional[float] = 5000.0
+    deposit_payment_method: Optional[str] = "เงินสด"
+    rental_paid: Optional[bool] = False
+    rental_amount_paid: Optional[float] = 0.0
+    remaining_rental: Optional[float] = 0.0
+    rental_payment_method: Optional[str] = "เงินสด"
+    status: Optional[str] = "รอชำระมัดจำ"
+    loc_delivery: Optional[str] = "Sukhumvit"
+    loc_return: Optional[str] = "Sukhumvit"
+    worker_delivery: Optional[str] = None
+    worker_return: Optional[str] = None
+    dispatch_closed: Optional[bool] = False
+    return_closed: Optional[bool] = False
+    dispatch_date: Optional[Union[datetime, str]] = None
+    return_date: Optional[Union[datetime, str]] = None
+    dispatch_mileage: Optional[str] = None
+    return_mileage: Optional[str] = None
+    dispatch_fuel: Optional[str] = None
+    return_fuel: Optional[str] = None
+    dispatch_notes: Optional[str] = None
+    return_notes: Optional[str] = None
+    dispatch_photos: Optional[Union[list, dict, str]] = Field(default_factory=list)
+    return_photos: Optional[Union[list, dict, str]] = Field(default_factory=list)
+    payment_slip_url: Optional[str] = None
+    payment_type: Optional[str] = None
+    google_drive_link: Optional[str] = None
+    contract_issued: Optional[bool] = False
+    contract_type: Optional[str] = "รายวัน"
+    extension_history: Optional[Union[list, dict, str]] = Field(default_factory=list)
+    is_fully_paid: Optional[bool] = False
+    contract_pdf_url: Optional[str] = None
+    created_by: Optional[str] = "admin"
+    created_at: Optional[Union[datetime, str]] = None
+
+    @field_validator("extension_history", "dispatch_photos", "return_photos", mode="before")
+    @classmethod
+    def parse_json_list(cls, v):
+        if v is None:
+            return []
+        if isinstance(v, str):
+            try:
+                parsed = json.loads(v)
+                return parsed if isinstance(parsed, list) else [parsed]
+            except Exception:
+                return []
+        if isinstance(v, list):
+            return v
+        return [v]
+
+    @field_validator("is_fully_paid", mode="before")
+    @classmethod
+    def parse_bool_paid(cls, v):
+        if v is None:
+            return False
+        if isinstance(v, bool):
+            return v
+        if isinstance(v, str):
+            return v.strip().lower() in ("true", "1", "yes", "t", "y")
+        return bool(v)
+
+    model_config = ConfigDict(extra="allow", populate_by_name=True)
+
+
+class BookingCreate(BookingBase):
+    pass
+
+
+class BookingUpdate(BookingBase):
+    pass
+
+
+class BookingResponse(BookingBase):
+    pass

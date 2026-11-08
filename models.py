@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Numeric, Integer, Boolean, Text, DateTime, func
+from sqlalchemy import Column, String, Numeric, Integer, Boolean, Text, DateTime, Date, JSON, func
 from sqlalchemy.orm import declarative_base
 
 Base = declarative_base()
@@ -104,4 +104,57 @@ class WorkOrderLog(Base):
     location = Column(Text, nullable=True)
     job_status = Column(String(50), default="Pending")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class Booking(Base):
+    __tablename__ = "bookings"
+
+    booking_id = Column(String(50), primary_key=True, index=True)
+    car_id = Column(String(50), nullable=True, index=True)
+    customer = Column(String(200), nullable=True)
+    start_date = Column(Date, nullable=True)
+    start_time = Column(String(20), default="09:00")
+    end_date = Column(Date, nullable=True)
+    end_time = Column(String(20), default="09:00")
+    total_days = Column(Numeric, default=1)
+    daily_rate = Column(Numeric, default=0.0)
+    total_price = Column(Numeric, default=0.0)
+    base_price = Column(Numeric, default=0.0)
+    discount = Column(Numeric, default=0.0)
+    net_price = Column(Numeric, default=0.0)
+    deposit_paid = Column(Boolean, default=False)
+    deposit_amount = Column(Numeric, default=5000.0)
+    deposit_payment_method = Column(String(100), default="เงินสด")
+    rental_paid = Column(Boolean, default=False)
+    rental_amount_paid = Column(Numeric, default=0.0)
+    remaining_rental = Column(Numeric, default=0.0)
+    rental_payment_method = Column(String(100), default="เงินสด")
+    status = Column(String(50), default="รอชำระมัดจำ")
+    loc_delivery = Column(Text, default="Sukhumvit")
+    loc_return = Column(Text, default="Sukhumvit")
+    worker_delivery = Column(String(100), nullable=True)
+    worker_return = Column(String(100), nullable=True)
+    dispatch_closed = Column(Boolean, default=False)
+    return_closed = Column(Boolean, default=False)
+    dispatch_date = Column(DateTime(timezone=True), nullable=True)
+    return_date = Column(DateTime(timezone=True), nullable=True)
+    dispatch_mileage = Column(String(50), nullable=True)
+    return_mileage = Column(String(50), nullable=True)
+    dispatch_fuel = Column(String(50), nullable=True)
+    return_fuel = Column(String(50), nullable=True)
+    dispatch_notes = Column(Text, nullable=True)
+    return_notes = Column(Text, nullable=True)
+    dispatch_photos = Column(JSON, default=list)
+    return_photos = Column(JSON, default=list)
+    payment_slip_url = Column(Text, nullable=True)
+    payment_type = Column(String(50), nullable=True)
+    google_drive_link = Column(Text, nullable=True)
+    contract_issued = Column(Boolean, default=False)
+    contract_type = Column(String(50), default="รายวัน")
+    extension_history = Column(JSON, default=list)
+    is_fully_paid = Column(Boolean, default=False)
+    contract_pdf_url = Column(Text, nullable=True)
+    created_by = Column(String(100), default="admin")
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
 

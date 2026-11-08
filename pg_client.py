@@ -280,14 +280,30 @@ class PgClient:
                             cur.execute(m_sql)
                         cur.execute("ALTER TABLE IF EXISTS public.bookings ADD COLUMN IF NOT EXISTS payment_type VARCHAR(50);")
                         cur.execute("ALTER TABLE IF EXISTS public.bookings ADD COLUMN IF NOT EXISTS google_drive_link TEXT;")
+                        cur.execute("ALTER TABLE IF EXISTS public.bookings ADD COLUMN IF NOT EXISTS contract_pdf_url TEXT;")
+                        cur.execute("ALTER TABLE IF EXISTS public.bookings ADD COLUMN IF NOT EXISTS extension_history JSONB DEFAULT '[]'::jsonb;")
+                        cur.execute("ALTER TABLE IF EXISTS public.bookings ADD COLUMN IF NOT EXISTS is_fully_paid BOOLEAN DEFAULT FALSE;")
 
                     print("✅ PostgreSQL cars (34 cols) schema ensured via ALTER TABLE.")
                 except Exception as e:
                     print(f"PostgreSQL Schema check note: {e}")
                 self._migrate_customers()
+                self._migrate_bookings()
                 self._migrate_work_order_logs()
                 self._migrate_maintenance_logs()
         return self._conn
+    def _migrate_bookings(self):
+        try:
+            with self._conn.cursor() as cur:
+                cur.execute("ALTER TABLE IF EXISTS public.bookings ADD COLUMN IF NOT EXISTS payment_type VARCHAR(50);")
+                cur.execute("ALTER TABLE IF EXISTS public.bookings ADD COLUMN IF NOT EXISTS google_drive_link TEXT;")
+                cur.execute("ALTER TABLE IF EXISTS public.bookings ADD COLUMN IF NOT EXISTS contract_pdf_url TEXT;")
+                cur.execute("ALTER TABLE IF EXISTS public.bookings ADD COLUMN IF NOT EXISTS extension_history JSONB DEFAULT '[]'::jsonb;")
+                cur.execute("ALTER TABLE IF EXISTS public.bookings ADD COLUMN IF NOT EXISTS is_fully_paid BOOLEAN DEFAULT FALSE;")
+            print("✅ PostgreSQL bookings schema ensured (contract_pdf_url, extension_history, is_fully_paid).")
+        except Exception as e:
+            print(f"PostgreSQL bookings migration note: {e}")
+
     def _migrate_work_order_logs(self):
         try:
             with self._conn.cursor() as cur:
