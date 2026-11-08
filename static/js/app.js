@@ -2269,14 +2269,22 @@ class App {
 
       const { plateNo, province, isRed } = this.formatPlateDisplay(c.plate);
 
+      // Active Bookings for this specific car
+      const normCarPlate = this.normalizePlate(c.plate);
+      const cardActiveBookings = (this.bookings || []).filter(b => {
+        if (this.normalizePlate(b.car_id) !== normCarPlate) return false;
+        const bStat = String(b.status || "").trim();
+        return !["เสร็จสิ้น", "ยกเลิก", "Completed", "Canceled", "completed", "canceled"].includes(bStat);
+      });
+      const hasAnyActiveBooking = cardActiveBookings.length > 0;
+      const hasBookingOnRent = cardActiveBookings.some(b => b.status === "กำลังเช่า" || b.status === "รอรับคืน");
+      const isTrulyOnRent = hasBookingOnRent || (c.is_on_rent && c.status === "กำลังเช่า");
+
       // 3. Status Pill
       const l = isEn ? "EN" : "TH";
       const dict = (window.translations && window.translations[l]) ? window.translations[l] : null;
       let statusText = (dict && dict.available) || (isEn ? "Available" : "ว่างพร้อมใช้งาน");
       let statusBg = "#ECFDF5", statusBorder = "#A7F3D0", statusColor = "#065F46", statusDot = "#10B981";
-
-      const hasBookingOnRent = activeBookings.some(b => b.status === "กำลังเช่า" || b.status === "รอรับคืน");
-      const isTrulyOnRent = hasBookingOnRent || (c.is_on_rent && c.status === "กำลังเช่า");
 
       if (c.fleet_status_key === "maintenance" || c.status === "ซ่อมบำรุง" || c.status === "สถานะซ่อมบำรุง") {
         statusText = (dict && dict.workshop) || (isEn ? "Workshop" : "ซ่อมบำรุง");
@@ -2354,13 +2362,34 @@ class App {
       } catch (err) {
         console.error("renderFleetCards: card build failed", c && c.plate, err);
         const sp = String((c && c.plate) || "").replace(/'/g, "\\'");
+        const cCode = (c && (c.car_code || c.code)) || `SW${String(idx + 1).padStart(3, '0')}`;
+        const cCat = String((c && c.car_group) || 'SEDAN').toUpperCase().replace(/\(.*?\)/g, '').trim() || 'FLEET';
+        const pDay = Number(c && (c.daily_rate || c.price_per_day || c.rental_rate || 1000)) || 1000;
+        const cStat = String((c && c.status) || 'ว่างพร้อมใช้งาน');
         return `
         <div class="car-card-modern">
           <div class="car-top-row">
-            <button type="button" class="car-code-book" title="${isEn ? 'Book Now' : 'จองรถ'}" onclick="app.openBookModal('${sp}')"><span class="car-code-title">${(c && (c.car_code || c.code)) || 'SW'}</span></button>
-            <div class="thai-plate-badge" role="button" title="${isEn ? 'Details' : 'ดูรายละเอียด'}" onclick="app.openCarDetailsModal('${sp}')"><div class="thai-plate-num">${(c && c.plate) || ''}</div></div>
+            <div class="car-code-group">
+              <button type="button" class="car-code-book" title="${isEn ? 'Book Now' : 'จองรถ'}" onclick="app.openBookModal('${sp}')">
+                <span class="car-code-title">${cCode}</span>
+                <svg class="car-code-book-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+              </button>
+              <div class="car-cat-subtag">${cCat}</div>
+            </div>
+            <div class="thai-plate-badge" role="button" title="${isEn ? 'Details' : 'ดูรายละเอียด'}" onclick="app.openCarDetailsModal('${sp}')">
+              <div class="thai-plate-text"><div class="thai-plate-num">${(c && c.plate) || ''}</div><div class="thai-plate-prov">${(c && c.province) || 'กรุงเทพมหานคร'}</div></div>
+            </div>
           </div>
           <div class="car-model-title">${(c && c.brand) || ''} ${(c && c.model) || ''}</div>
+          <div class="car-specs-subtitle">${(c && c.year) || '2024'} · ${String((c && c.color) || 'WHITE').toUpperCase()} · ${(c && c.fuel_type) || 'เบนซิน'}</div>
+          <div class="car-pills-row">
+            <span class="car-pill" style="background:#ECFDF5; border:1px solid #A7F3D0; color:#065F46;">
+              <span class="car-pill-dot" style="background:#10B981;"></span> ${cStat}
+            </span>
+            <span class="car-rate-chip">
+              <b>฿${pDay.toLocaleString()}</b>
+            </span>
+          </div>
         </div>`;
       }
     }).join("");
