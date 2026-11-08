@@ -492,16 +492,8 @@ class App {
     if (hdrContractDocs) hdrContractDocs.textContent = isEn ? "PDF Document Center (Official Formats)" : "ศูนย์ดาวน์โหลดเอกสาร PDF (แบบมาตรฐานทางการ)";
     const btnDlContractPdf = document.getElementById("btn-dl-contract-pdf");
     if (btnDlContractPdf) btnDlContractPdf.textContent = isEn ? "Download Contract PDF" : "ดาวน์โหลดสัญญาเช่า (PDF)";
-    const btnDlContractDepRec = document.getElementById("btn-dl-contract-dep-receipt");
-    if (btnDlContractDepRec) btnDlContractDepRec.textContent = isEn ? "Deposit Receipt (PDF)" : "ใบเสร็จมัดจำ (PDF)";
-    const btnDlContractRentRec = document.getElementById("btn-dl-contract-rent-receipt");
-    if (btnDlContractRentRec) btnDlContractRentRec.textContent = isEn ? "Rental Receipt (PDF)" : "ใบเสร็จรับเงินค่าเช่า (PDF)";
-    const btnDlContractJob = document.getElementById("btn-dl-contract-job");
-    if (btnDlContractJob) btnDlContractJob.textContent = isEn ? "Inspection Checklist (PDF)" : "ใบเช็ครถ/ส่งมอบ (PDF)";
     const btnMarkIssued = document.getElementById("btn-mark-contract-issued");
     if (btnMarkIssued) btnMarkIssued.textContent = isEn ? "Confirm Contract Issued" : "ยืนยันออกสัญญาเรียบร้อย";
-    const btnGotoDepContract = document.getElementById("btn-goto-deposit-from-contract");
-    if (btnGotoDepContract) btnGotoDepContract.textContent = isEn ? "Go to Payment / Deposit ➔" : "ไปหน้าการเงิน & รับมัดจำ ➔";
 
     // Tab 4 Walk-in Direct Formulation
     const tWalkin = document.getElementById("title-walkin-contract");
