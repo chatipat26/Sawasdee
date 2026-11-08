@@ -1652,17 +1652,34 @@ class App {
       const sc = data.status_counts || data.status_breakdown || data.fleet_status_breakdown || {};
 
       // Robust fallback extraction: never NaN or undefined
-      const totalFleet = Number(data.total_fleet ?? data.total_cars ?? (this.cars || []).length ?? 0);
-      const availCars = Number(sc.available ?? data.available ?? data.available_cars ?? 0);
-      const onRentCars = Number(sc.on_rent ?? sc.rented ?? sc.onRent ?? data.on_rent ?? data.rented_cars ?? 0);
-      const bookedCars = Number(sc.booked ?? sc.reserved ?? data.booked ?? data.booked_cars ?? 0);
-      const maintCars = Number(sc.maintenance ?? sc.maint ?? data.maintenance ?? data.maintenance_cars ?? 0);
+      let totalFleet = Number(data.total_fleet ?? data.total_cars ?? (this.cars || []).length ?? 0);
+      let availCars = Number(sc.available ?? data.available ?? data.available_cars ?? 0);
+      let onRentCars = Number(sc.on_rent ?? sc.rented ?? sc.onRent ?? data.on_rent ?? data.rented_cars ?? 0);
+      let bookedCars = Number(sc.booked ?? sc.reserved ?? data.booked ?? data.booked_cars ?? 0);
+      let maintCars = Number(sc.maintenance ?? sc.maint ?? data.maintenance ?? data.maintenance_cars ?? 0);
+
+      // FOOLPROOF FALLBACK: If status counts from API are all 0 but this.cars exists in memory
+      if (availCars === 0 && onRentCars === 0 && bookedCars === 0 && maintCars === 0 && (this.cars || []).length > 0) {
+        totalFleet = this.cars.length;
+        this.cars.forEach(c => {
+          const st = String(c.status || c.car_status || "").trim().toLowerCase();
+          const fKey = String(c.fleet_status_key || "").trim().toLowerCase();
+          const isOnRent = Boolean(c.is_on_rent);
+          if (isOnRent || fKey === "on_rent" || fKey === "rented" || st.includes("เช่า") || st.includes("rent") || st.includes("รอรับคืน")) {
+            onRentCars++;
+          } else if (fKey === "maintenance" || fKey === "repair" || st.includes("ซ่อม") || st.includes("ไม่พร้อม") || st.includes("ระงับ") || st.includes("maint") || st.includes("ต่อทะเบียน") || st.includes("ต่อภาษี") || st.includes("workshop") || st.includes("renewal")) {
+            maintCars++;
+          } else if (fKey === "booked" || fKey === "reserved" || st.includes("จอง") || st.includes("book") || st.includes("reserv") || st.includes("ติดจอง") || st.includes("ส่งมอบ")) {
+            bookedCars++;
+          } else {
+            availCars++;
+          }
+        });
+      }
 
       // Card 2: on_rent + booked (strictly never including available)
-      const activeRentals = Number(data.active_rentals ?? (onRentCars + bookedCars));
-      const utilRate = data.utilization_rate !== undefined 
-        ? Number(data.utilization_rate).toFixed(1) 
-        : (totalFleet > 0 ? ((activeRentals / totalFleet) * 100).toFixed(1) : "0.0");
+      const activeRentals = (onRentCars + bookedCars);
+      const utilRate = (totalFleet > 0 ? ((activeRentals / totalFleet) * 100).toFixed(1) : "0.0");
       const totalRev = Number(data.total_revenue ?? 0);
 
       const elTotal = document.getElementById("kpi-total-cars");
@@ -7730,11 +7747,31 @@ ${e.message}`);
       console.log("[Dashboard Donut] Parsed status_counts:", sc);
 
       // Robust fallback extraction: never NaN or undefined
-      const totalCars = Number(data.total_fleet ?? data.total_cars ?? (this.cars || []).length ?? 0);
-      const availCount = Number(sc.available ?? data.available ?? data.available_cars ?? 0);
-      const rentCount = Number(sc.on_rent ?? sc.rented ?? sc.onRent ?? data.on_rent ?? data.rented_cars ?? 0);
-      const bookCount = Number(sc.booked ?? sc.reserved ?? data.booked ?? data.booked_cars ?? 0);
-      const maintCount = Number(sc.maintenance ?? sc.maint ?? data.maintenance ?? data.maintenance_cars ?? 0);
+      let totalCars = Number(data.total_fleet ?? data.total_cars ?? (this.cars || []).length ?? 0);
+      let availCount = Number(sc.available ?? data.available ?? data.available_cars ?? 0);
+      let rentCount = Number(sc.on_rent ?? sc.rented ?? sc.onRent ?? data.on_rent ?? data.rented_cars ?? 0);
+      let bookCount = Number(sc.booked ?? sc.reserved ?? data.booked ?? data.booked_cars ?? 0);
+      let maintCount = Number(sc.maintenance ?? sc.maint ?? data.maintenance ?? data.maintenance_cars ?? 0);
+
+      // FOOLPROOF FALLBACK: If status counts from API are all 0 but this.cars exists in memory
+      if (availCount === 0 && rentCount === 0 && bookCount === 0 && maintCount === 0 && (this.cars || []).length > 0) {
+        console.log("[Dashboard Donut] API returned all 0s, computing counts directly from this.cars:", this.cars.length);
+        totalCars = this.cars.length;
+        this.cars.forEach(c => {
+          const st = String(c.status || c.car_status || "").trim().toLowerCase();
+          const fKey = String(c.fleet_status_key || "").trim().toLowerCase();
+          const isOnRent = Boolean(c.is_on_rent);
+          if (isOnRent || fKey === "on_rent" || fKey === "rented" || st.includes("เช่า") || st.includes("rent") || st.includes("รอรับคืน")) {
+            rentCount++;
+          } else if (fKey === "maintenance" || fKey === "repair" || st.includes("ซ่อม") || st.includes("ไม่พร้อม") || st.includes("ระงับ") || st.includes("maint") || st.includes("ต่อทะเบียน") || st.includes("ต่อภาษี") || st.includes("workshop") || st.includes("renewal")) {
+            maintCount++;
+          } else if (fKey === "booked" || fKey === "reserved" || st.includes("จอง") || st.includes("book") || st.includes("reserv") || st.includes("ติดจอง") || st.includes("ส่งมอบ")) {
+            bookCount++;
+          } else {
+            availCount++;
+          }
+        });
+      }
 
       console.log(`[Dashboard Donut] Final counts => Available: ${availCount}, On Rent: ${rentCount}, Booked: ${bookCount}, Maintenance: ${maintCount}, Total: ${totalCars}`);
 
