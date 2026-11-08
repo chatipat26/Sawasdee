@@ -318,19 +318,11 @@ class App {
     const optFStatAll = document.getElementById("opt-filter-status-all");
     if (optFStatAll) optFStatAll.textContent = isEn ? "All" : "ทั้งหมด";
     const optFStatAvail = document.getElementById("opt-filter-status-avail");
-    if (optFStatAvail) optFStatAvail.textContent = isEn ? "Available (🟢)" : "ว่างไม่มีการจอง (🟢)";
-    const optFStatRes = document.getElementById("opt-filter-status-res") || document.getElementById("opt-filter-status-reserved");
-    if (optFStatRes) optFStatRes.textContent = isEn ? "Reserved ahead (🟡)" : "มีการจองล่วงหน้าไว้ (🟡)";
-    const optFStatUnavail = document.getElementById("opt-filter-status-unavail");
-    if (optFStatUnavail) optFStatUnavail.textContent = isEn ? "Unavailable for selected dates (🔴)" : "ไม่ว่างในวันที่เลือก (🔴)";
-    const optFStatMaint = document.getElementById("opt-filter-status-maint");
-    if (optFStatMaint) optFStatMaint.textContent = isEn ? "Maintenance (🟠)" : "สถานะซ่อมบำรุง (🟠)";
-    const optFStatReady = document.getElementById("opt-filter-status-ready");
-    if (optFStatReady) optFStatReady.textContent = isEn ? "Ready for Service (🟢+🟡)" : "ว่างพร้อมใช้งาน (🟢+🟡)";
-    const optFStatRenting = document.getElementById("opt-filter-status-renting");
-    if (optFStatRenting) optFStatRenting.textContent = isEn ? "Currently Renting" : "กำลังเช่า";
+    if (optFStatAvail) optFStatAvail.textContent = isEn ? "Available" : "ว่าง";
     const optFStatBooked = document.getElementById("opt-filter-status-booked");
     if (optFStatBooked) optFStatBooked.textContent = isEn ? "Reserved" : "ติดจอง";
+    const optFStatRenting = document.getElementById("opt-filter-status-renting");
+    if (optFStatRenting) optFStatRenting.textContent = isEn ? "On Rent" : "กำลังเช่า";
 
     const lblFiltStart = document.getElementById("lbl-filter-start");
     if (lblFiltStart) lblFiltStart.textContent = isEn ? "Pick-up Date" : "วันรับรถ (Pick-up)";
@@ -2145,78 +2137,80 @@ class App {
         if ((c.company || c.owner_company || "").trim() !== companyFilter.trim()) return false;
       }
 
-      // 3b. Date Filter & Overlap Check (Mission 4: Strictly hide reserved/rented cars)
+      // 3b. Active Bookings and Date Overlap Calculations
+      const normCarPlate = this.normalizePlate(c.plate);
+      const activeBookings = (this.bookings || []).filter(b => {
+        if (this.normalizePlate(b.car_id) !== normCarPlate) return false;
+        const bStat = String(b.status || "").trim();
+        return !["เสร็จสิ้น", "ยกเลิก", "Completed", "Canceled", "completed", "canceled"].includes(bStat);
+      });
+      const hasAnyActiveBooking = activeBookings.length > 0;
+
       const lockS = document.getElementById("filter-start-date")?.value;
       const lockE = document.getElementById("filter-end-date")?.value;
-      const wantsBusy = statusFilter.startsWith("ไม่ว่างในวันที่เลือก") || statusFilter.startsWith("Unavailable on Dates") || statusFilter === "กำลังเช่า" || statusFilter === "Currently Renting";
+      let searchS = this.parseIsoDate(lockS);
+      let searchE = this.parseIsoDate(lockE);
+      if (searchS && !searchE) searchE = new Date(searchS.getTime());
+      if (searchE && !searchS) searchS = new Date(searchE.getTime());
+      if (searchS && searchE && searchE < searchS) searchE = new Date(searchS.getTime());
 
-      if ((lockS || lockE) && !wantsBusy) {
-        // If status is maintenance, hide it from available fleet
-        if (c.fleet_status_key === "maintenance" || c.status === "ซ่อมบำรุง" || c.status === "สถานะซ่อมบำรุง") {
-          return false;
-        }
-
-        // If backend already marked car as unavailable
-        if (c.fleet_status_key === "unavailable") {
-          return false;
-        }
-
-        let searchS = this.parseIsoDate(lockS);
-        let searchE = this.parseIsoDate(lockE);
-        if (searchS && !searchE) searchE = new Date(searchS.getTime());
-        if (searchE && !searchS) searchS = new Date(searchE.getTime());
-        if (searchS && searchE && searchE < searchS) searchE = new Date(searchS.getTime());
-
-        if (searchS && searchE) {
-          const normCarPlate = this.normalizePlate(c.plate);
-          // Check overlap with all bookings in system
-          const hasOverlap = (this.bookings || []).some(b => {
-            if (this.normalizePlate(b.car_id) !== normCarPlate) return false;
-            const bStat = String(b.status || "").trim();
-            if (["เสร็จสิ้น", "ยกเลิก", "Completed", "Canceled", "completed", "canceled"].includes(bStat)) {
-              return false;
-            }
-            const bStart = this.parseIsoDate(b.start_date);
-            const bEnd = this.parseIsoDate(b.end_date);
-            if (!bStart || !bEnd) return false;
-
-            // Strict Overlap formula: (Search_StartDate < Booking_EndDate) AND (Search_EndDate > Booking_StartDate)
-            if (bStart.getTime() === bEnd.getTime() || searchS.getTime() === searchE.getTime()) {
-              return (searchS <= bEnd) && (searchEnd >= bStart);
-            }
-            return (searchS < bEnd) && (searchEnd > bStart);
-          });
-
-          if (hasOverlap) {
-            return false; // CUT OUT AND HIDE CAR COMPLETELY FROM ARRAY
+      let hasOverlapOnSelectedDates = false;
+      if (searchS && searchE) {
+        hasOverlapOnSelectedDates = activeBookings.some(b => {
+          const bStart = this.parseIsoDate(b.start_date);
+          const bEnd = this.parseIsoDate(b.end_date);
+          if (!bStart || !bEnd) return false;
+          if (bStart.getTime() === bEnd.getTime() || searchS.getTime() === searchE.getTime()) {
+            return (searchS <= bEnd) && (searchE >= bStart);
           }
+          return (searchS < bEnd) && (searchE > bStart);
+        });
+      }
 
-          // If car status is currently on rent or marked on rent and search range covers today
+      // 4. Status Filter (4 exact options: ทั้งหมด, ว่าง, ติดจอง, กำลังเช่า)
+      const cleanStat = String(statusFilter || "").trim();
+      const isStatusAll = isAllVal(cleanStat) || cleanStat === "ทั้งหมด" || cleanStat === "All";
+      const isStatusAvail = cleanStat === "ว่าง" || cleanStat === "Available";
+      const isStatusBooked = cleanStat === "ติดจอง" || cleanStat === "Reserved";
+      const isStatusRenting = cleanStat === "กำลังเช่า" || cleanStat === "On Rent" || cleanStat === "Currently Renting";
+
+      if (isStatusRenting) {
+        // เลือก "กำลังเช่า": แสดงรถที่สถานะปัจจุบันคือ On Rent (ลูกค้ากำลังใช้งาน)
+        if (c.status !== "กำลังเช่า" && !c.is_on_rent) return false;
+      } else if (isStatusBooked) {
+        // เลือก "ติดจอง": แสดงรถที่มีการสร้าง Booking ไว้แล้ว (มีคิวในระบบ)
+        if (!hasAnyActiveBooking && c.status !== "ติดจอง" && c.fleet_status_key !== "reserved") {
+          return false;
+        }
+      } else if (isStatusAvail) {
+        // เลือก "ว่าง": แสดงเฉพาะรถที่ ไม่มี คิวจองทับซ้อน (Overlap) ในช่วงวันที่เลือก และสถานะรถปัจจุบันไม่ใช่ "กำลังเช่า"
+        if (c.status === "กำลังเช่า" || c.is_on_rent) return false;
+        if (c.fleet_status_key === "maintenance" || c.status === "ซ่อมบำรุง" || c.status === "สถานะซ่อมบำรุง") return false;
+        if (c.fleet_status_key === "unavailable") return false;
+        if (searchS && searchE) {
+          if (hasOverlapOnSelectedDates) return false;
+        } else {
+          // If no specific dates selected, car must not be occupied currently
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const overlapsToday = activeBookings.some(b => {
+            const bs = this.parseIsoDate(b.start_date);
+            const be = this.parseIsoDate(b.end_date);
+            return bs && be && today >= bs && today <= be;
+          });
+          if (overlapsToday) return false;
+        }
+      } else if (isStatusAll) {
+        // เลือก "ทั้งหมด": แสดงรถทุกคัน (ที่ผ่านเงื่อนไขตัวกรองวันที่ และหมวดหมู่อื่นๆ)
+        if (searchS && searchE) {
+          if (c.fleet_status_key === "maintenance" || c.status === "ซ่อมบำรุง" || c.status === "สถานะซ่อมบำรุง") return false;
+          if (c.fleet_status_key === "unavailable" || hasOverlapOnSelectedDates) return false;
           if (c.is_on_rent || c.status === "กำลังเช่า") {
             const today = new Date();
             today.setHours(0, 0, 0, 0);
-            if (searchS <= today && searchE >= today) {
-              return false;
-            }
+            if (searchS <= today && searchE >= today) return false;
           }
         }
-      }
-
-      // 4. Status filter (matching app.py exactly)
-      if (statusFilter.startsWith("ว่างไม่มีการจอง") || statusFilter.startsWith("Vacant without Bookings")) {
-        if (c.fleet_status_key !== "available") return false;
-      } else if (statusFilter.startsWith("มีการจองล่วงหน้าไว้") || statusFilter.startsWith("Booked in Advance")) {
-        if (c.fleet_status_key !== "reserved") return false;
-      } else if (statusFilter.startsWith("ไม่ว่างในวันที่เลือก") || statusFilter.startsWith("Unavailable on Dates")) {
-        if (c.fleet_status_key !== "unavailable") return false;
-      } else if (statusFilter.startsWith("สถานะซ่อมบำรุง") || statusFilter === "ซ่อมบำรุง" || statusFilter.startsWith("Maintenance")) {
-        if (c.fleet_status_key !== "maintenance") return false;
-      } else if (statusFilter.startsWith("ว่างพร้อมใช้งาน") || statusFilter.startsWith("Available for Service")) {
-        if (c.fleet_status_key !== "available" && c.fleet_status_key !== "reserved") return false;
-      } else if (statusFilter === "กำลังเช่า" || statusFilter === "Currently Renting") {
-        if (c.status !== "กำลังเช่า" && c.fleet_status_key !== "unavailable") return false;
-      } else if (statusFilter === "ติดจอง" || statusFilter === "Reserved") {
-        if (c.status !== "ติดจอง" && c.fleet_status_key !== "reserved") return false;
       }
 
       // 5. Sidebar Search keyword (supports plate, brand, model, VIN/chassis, owner, beneficiary, insurance, notes)
@@ -2232,7 +2226,11 @@ class App {
 
     const countTxt = document.getElementById("calc-cars-count");
     if (countTxt) {
-      const availCount = filtered.filter(c => c.fleet_status_key === "available" || c.fleet_status_key === "reserved").length;
+      const availCount = filtered.filter(c => {
+        if (c.status === "กำลังเช่า" || c.is_on_rent) return false;
+        if (c.fleet_status_key === "maintenance" || c.status === "ซ่อมบำรุง" || c.status === "สถานะซ่อมบำรุง") return false;
+        return c.fleet_status_key === "available" || c.fleet_status_key === "reserved" || c.status === "ว่างพร้อมใช้งาน";
+      }).length;
       countTxt.textContent = isEn
         ? `Available: ${availCount} / ${filtered.length} cars`
         : `ว่างพร้อมใช้งาน: ${availCount} / ${filtered.length} คัน`;
