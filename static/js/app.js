@@ -1588,20 +1588,45 @@ class App {
     }
   }
 
-  async loadDashboardKPIs() {
+    async loadDashboardKPIs() {
     try {
       const res = await fetch("/api/dashboard/stats");
       if (res.ok) {
         this.dashboardStats = await res.json();
         this.rawKpiData = this.dashboardStats;
       }
-      await this.loadMonthlyReports();
-      await this.loadFinanceSummary();
+    } catch (e) {
+      console.error("[Dashboard] Error fetching /api/dashboard/stats:", e);
+    }
+
+    try {
       this.updateDashboardKPIsFromScope();
+    } catch (e) {
+      console.error("[Dashboard] Error in updateDashboardKPIsFromScope:", e);
+    }
+
+    try {
       this.renderDashboardCharts();
+    } catch (e) {
+      console.error("[Dashboard] Error in renderDashboardCharts:", e);
+    }
+
+    try {
+      await this.loadMonthlyReports();
+    } catch (e) {
+      console.error("[Dashboard] Error in loadMonthlyReports:", e);
+    }
+
+    try {
+      await this.loadFinanceSummary();
+    } catch (e) {
+      console.error("[Dashboard] Error in loadFinanceSummary:", e);
+    }
+
+    try {
       this.renderFleetOverviewTable();
     } catch (e) {
-      console.error("loadDashboardKPIs error:", e);
+      console.error("[Dashboard] Error in renderFleetOverviewTable:", e);
     }
   }
 
@@ -1620,63 +1645,69 @@ class App {
     return false;
   }
 
-  updateDashboardKPIsFromScope() {
-    const isEn = (this.currentLang === "EN");
-    const stats = this.dashboardStats || {};
-    const sc = stats.status_counts || stats.status_breakdown || stats.fleet_status_breakdown || {};
+    updateDashboardKPIsFromScope() {
+    try {
+      const isEn = (this.currentLang === "EN");
+      const data = this.dashboardStats || {};
+      const sc = data.status_counts || data.status_breakdown || data.fleet_status_breakdown || {};
 
-    // STRICT SINGLE SOURCE OF TRUTH: Direct binding from Backend API status_counts (with robust alias resolution)
-    const totalFleet = (stats.total_fleet !== undefined) ? Number(stats.total_fleet) : (stats.total_cars !== undefined ? Number(stats.total_cars) : 0);
-    const availCars = Number(sc.available !== undefined ? sc.available : (stats.available !== undefined ? stats.available : (stats.available_cars || 0)));
-    const onRentCars = Number(sc.on_rent !== undefined ? sc.on_rent : (sc.rented !== undefined ? sc.rented : (sc.onRent !== undefined ? sc.onRent : (stats.on_rent !== undefined ? stats.on_rent : (stats.rented_cars || 0)))));
-    const bookedCars = Number(sc.booked !== undefined ? sc.booked : (sc.reserved !== undefined ? sc.reserved : (stats.booked !== undefined ? stats.booked : (stats.booked_cars || 0))));
-    const maintCars = Number(sc.maintenance !== undefined ? sc.maintenance : (sc.maint !== undefined ? sc.maint : (stats.maintenance !== undefined ? stats.maintenance : (stats.maintenance_cars || 0))));
-    
-    // Card 2: on_rent + booked (strictly never including available)
-    const activeRentals = (stats.active_rentals !== undefined) ? Number(stats.active_rentals) : (onRentCars + bookedCars);
-    const utilRate = (stats.utilization_rate !== undefined) ? Number(stats.utilization_rate).toFixed(1) : (totalFleet > 0 ? ((activeRentals / totalFleet) * 100).toFixed(1) : "0.0");
-    const totalRev = stats.total_revenue !== undefined ? parseFloat(stats.total_revenue || 0) : 0;
+      // Robust fallback extraction: never NaN or undefined
+      const totalFleet = Number(data.total_fleet ?? data.total_cars ?? (this.cars || []).length ?? 0);
+      const availCars = Number(sc.available ?? data.available ?? data.available_cars ?? 0);
+      const onRentCars = Number(sc.on_rent ?? sc.rented ?? sc.onRent ?? data.on_rent ?? data.rented_cars ?? 0);
+      const bookedCars = Number(sc.booked ?? sc.reserved ?? data.booked ?? data.booked_cars ?? 0);
+      const maintCars = Number(sc.maintenance ?? sc.maint ?? data.maintenance ?? data.maintenance_cars ?? 0);
 
-    const elTotal = document.getElementById("kpi-total-cars");
-    const elAvail = document.getElementById("kpi-avail-pill");
-    const elActive = document.getElementById("kpi-active-rentals");
-    const elMaint = document.getElementById("kpi-maint-pill");
-    const elUtil = document.getElementById("kpi-utilization");
-    const elRev = document.getElementById("kpi-total-revenue");
-    const elInst = document.getElementById("kpi-monthly-installments");
-    const elUpd = document.getElementById("dash-last-updated-txt");
+      // Card 2: on_rent + booked (strictly never including available)
+      const activeRentals = Number(data.active_rentals ?? (onRentCars + bookedCars));
+      const utilRate = data.utilization_rate !== undefined 
+        ? Number(data.utilization_rate).toFixed(1) 
+        : (totalFleet > 0 ? ((activeRentals / totalFleet) * 100).toFixed(1) : "0.0");
+      const totalRev = Number(data.total_revenue ?? 0);
 
-    const totalFleetInstallments = (this.cars || []).reduce((sum, c) => {
-      const isDebtFree = Boolean(c.is_debt_free);
-      const instAmt = parseFloat(c.installment_amount || 0);
-      if (!isDebtFree && instAmt > 0) return sum + instAmt;
-      return sum;
-    }, 0);
+      const elTotal = document.getElementById("kpi-total-cars");
+      const elAvail = document.getElementById("kpi-avail-pill");
+      const elActive = document.getElementById("kpi-active-rentals");
+      const elMaint = document.getElementById("kpi-maint-pill");
+      const elUtil = document.getElementById("kpi-utilization");
+      const elRev = document.getElementById("kpi-total-revenue");
+      const elInst = document.getElementById("kpi-monthly-installments");
+      const elUpd = document.getElementById("dash-last-updated-txt");
 
-    // Card 1: total_fleet and available
-    if (elTotal) elTotal.textContent = totalFleet;
-    if (elAvail) elAvail.textContent = isEn ? `Available ${availCars} cars` : `พร้อมให้บริการ ${availCars} คัน`;
-    
-    // Card 2: on_rent + booked and maintenance
-    if (elActive) elActive.textContent = activeRentals;
-    if (elMaint) elMaint.textContent = isEn ? `Maintenance ${maintCars} cars` : `ซ่อมบำรุง ${maintCars} คัน`;
-    
-    // Card 3: utilization rate
-    if (elUtil) elUtil.textContent = `${utilRate}%`;
-    
-    // Card 4: revenue
-    if (elRev) elRev.textContent = `฿${Number(totalRev).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    if (elInst) elInst.textContent = `฿${totalFleetInstallments.toLocaleString('th-TH', { minimumFractionDigits: 2 })}`;
-    if (elUpd) {
-      const now = new Date();
-      const dd = String(now.getDate()).padStart(2, "0");
-      const mm = String(now.getMonth() + 1).padStart(2, "0");
-      const yyyy = now.getFullYear();
-      const hh = String(now.getHours()).padStart(2, "0");
-      const min = String(now.getMinutes()).padStart(2, "0");
-      elUpd.textContent = isEn 
-        ? `🕒 Real-time updated at ${dd}/${mm}/${yyyy} ${hh}:${min}` 
-        : `🕒 ข้อมูลอัปเดตล่าสุด ณ ${dd}/${mm}/${yyyy} ${hh}:${min}`;
+      const totalFleetInstallments = (this.cars || []).reduce((sum, c) => {
+        const isDebtFree = Boolean(c.is_debt_free);
+        const instAmt = parseFloat(c.installment_amount || 0);
+        if (!isDebtFree && instAmt > 0) return sum + instAmt;
+        return sum;
+      }, 0);
+
+      // Card 1: total_fleet and available
+      if (elTotal) elTotal.textContent = totalFleet;
+      if (elAvail) elAvail.textContent = isEn ? `Available ${availCars} cars` : `พร้อมให้บริการ ${availCars} คัน`;
+      
+      // Card 2: on_rent + booked and maintenance
+      if (elActive) elActive.textContent = activeRentals;
+      if (elMaint) elMaint.textContent = isEn ? `Maintenance ${maintCars} cars` : `ซ่อมบำรุง ${maintCars} คัน`;
+      
+      // Card 3: utilization rate
+      if (elUtil) elUtil.textContent = `${utilRate}%`;
+      
+      // Card 4: revenue
+      if (elRev) elRev.textContent = `฿${Number(totalRev).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      if (elInst) elInst.textContent = `฿${totalFleetInstallments.toLocaleString('th-TH', { minimumFractionDigits: 2 })}`;
+      if (elUpd) {
+        const now = new Date();
+        const dd = String(now.getDate()).padStart(2, "0");
+        const mm = String(now.getMonth() + 1).padStart(2, "0");
+        const yyyy = now.getFullYear();
+        const hh = String(now.getHours()).padStart(2, "0");
+        const min = String(now.getMinutes()).padStart(2, "0");
+        elUpd.textContent = isEn 
+          ? `🕒 Real-time updated at ${dd}/${mm}/${yyyy} ${hh}:${min}` 
+          : `🕒 ข้อมูลอัปเดตล่าสุด ณ ${dd}/${mm}/${yyyy} ${hh}:${min}`;
+      }
+    } catch (err) {
+      console.error("[Dashboard] Error in updateDashboardKPIsFromScope:", err);
     }
   }
 
@@ -7677,95 +7708,118 @@ ${e.message}`);
     this.renderTrendChart();
   }
 
-  renderDonutCharts() {
-    const canvas = document.getElementById("chart-fleet-status-donut");
-    const badge = document.getElementById("donut-total-badge");
-    const legend = document.getElementById("fleet-status-legend");
-    if (!canvas || typeof Chart === "undefined") return;
+    renderDonutCharts() {
+    try {
+      const canvas = document.getElementById("chart-fleet-status-donut");
+      const badge = document.getElementById("donut-total-badge");
+      const legend = document.getElementById("fleet-status-legend");
+      if (!canvas) {
+        console.warn("[Dashboard Donut] Canvas element #chart-fleet-status-donut not found");
+        return;
+      }
+      if (typeof Chart === "undefined") {
+        console.warn("[Dashboard Donut] Chart.js library is not loaded");
+        return;
+      }
 
-    const isEn = (this.currentLang === "EN");
-    const stats = this.dashboardStats || {};
-    const sc = stats.status_counts || stats.status_breakdown || stats.fleet_status_breakdown || stats || {};
+      const isEn = (this.currentLang === "EN");
+      const data = this.dashboardStats || {};
+      const sc = data.status_counts || data.status_breakdown || data.fleet_status_breakdown || {};
 
-    console.log("[Dashboard Donut] Raw API stats received:", stats);
-    console.log("[Dashboard Donut] Parsed status_counts:", sc);
+      console.log("[Dashboard Donut] Raw API stats received:", data);
+      console.log("[Dashboard Donut] Parsed status_counts:", sc);
 
-    // STRICT SINGLE SOURCE OF TRUTH: Direct binding from Backend API status_counts (with robust alias resolution)
-    const totalCars = (stats.total_fleet !== undefined) ? Number(stats.total_fleet) : (stats.total_cars !== undefined ? Number(stats.total_cars) : 0);
-    const availCount = Number(sc.available !== undefined ? sc.available : (stats.available !== undefined ? stats.available : (stats.available_cars || 0)));
-    const rentCount = Number(sc.on_rent !== undefined ? sc.on_rent : (sc.rented !== undefined ? sc.rented : (sc.onRent !== undefined ? sc.onRent : (stats.on_rent !== undefined ? stats.on_rent : (stats.rented_cars || 0)))));
-    const bookCount = Number(sc.booked !== undefined ? sc.booked : (sc.reserved !== undefined ? sc.reserved : (stats.booked !== undefined ? stats.booked : (stats.booked_cars || 0))));
-    const maintCount = Number(sc.maintenance !== undefined ? sc.maintenance : (sc.maint !== undefined ? sc.maint : (stats.maintenance !== undefined ? stats.maintenance : (stats.maintenance_cars || 0))));
+      // Robust fallback extraction: never NaN or undefined
+      const totalCars = Number(data.total_fleet ?? data.total_cars ?? (this.cars || []).length ?? 0);
+      const availCount = Number(sc.available ?? data.available ?? data.available_cars ?? 0);
+      const rentCount = Number(sc.on_rent ?? sc.rented ?? sc.onRent ?? data.on_rent ?? data.rented_cars ?? 0);
+      const bookCount = Number(sc.booked ?? sc.reserved ?? data.booked ?? data.booked_cars ?? 0);
+      const maintCount = Number(sc.maintenance ?? sc.maint ?? data.maintenance ?? data.maintenance_cars ?? 0);
 
-    console.log(`[Dashboard Donut] Final counts => Available: ${availCount}, On Rent: ${rentCount}, Booked: ${bookCount}, Maintenance: ${maintCount}, Total: ${totalCars}`);
+      console.log(`[Dashboard Donut] Final counts => Available: ${availCount}, On Rent: ${rentCount}, Booked: ${bookCount}, Maintenance: ${maintCount}, Total: ${totalCars}`);
 
-    if (badge) {
-      badge.textContent = isEn ? `${totalCars} cars` : `${totalCars} คัน`;
-    }
+      if (badge) {
+        badge.textContent = isEn ? `${totalCars} cars` : `${totalCars} คัน`;
+      }
 
-    // Sequence: 1. Available (ว่าง), 2. On Rent (กำลังเช่า), 3. Booked (ติดจอง), 4. Maintenance (ซ่อมบำรุง)
-    const dataArr = [availCount, rentCount, bookCount, maintCount];
-    const labels = isEn 
-      ? ["Available", "Rented", "Reserved", "Maintenance"]
-      : ["ว่างพร้อมให้บริการ", "กำลังเช่า", "ติดจอง", "ซ่อมบำรุง"];
-    const colors = ["#10B981", "#3B82F6", "#F59E0B", "#F97316"]; // เขียว, น้ำเงิน, เหลือง, ส้ม
+      // Safely destroy previous chart instance before re-creating
+      if (this.donutChart) {
+        try {
+          this.donutChart.destroy();
+        } catch (e) {
+          console.warn("[Dashboard Donut] Error destroying existing chart:", e);
+        }
+        this.donutChart = null;
+      }
 
-    if (this.donutChart) {
-      this.donutChart.destroy();
-    }
+      const labels = isEn 
+        ? ["Available", "Rented", "Reserved", "Maintenance"]
+        : ["ว่างพร้อมให้บริการ", "กำลังเช่า", "ติดจอง", "ซ่อมบำรุง"];
+      const colors = ["#10B981", "#3B82F6", "#F59E0B", "#F97316"]; // เขียว, น้ำเงิน, เหลือง, ส้ม
 
-    this.donutChart = new Chart(canvas, {
-      type: 'doughnut',
-      data: {
-        labels: labels,
-        datasets: [{
-          data: dataArr,
-          backgroundColor: colors,
-          borderColor: '#FFFFFF',
-          borderWidth: 2,
-          hoverOffset: 4
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        cutout: '80%', // Minimalist thin donut ring
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            callbacks: {
-              label: function(ctx) {
-                const val = ctx.raw || 0;
-                const pct = totalCars > 0 ? ((val / totalCars) * 100).toFixed(1) : "0.0";
-                return isEn ? ` ${ctx.label}: ${val} cars (${pct}%)` : ` ${ctx.label}: ${val} คัน (${pct}%)`;
+      // If all counts are zero, display a friendly placeholder ring rather than a broken blank canvas
+      const isAllZero = (availCount === 0 && rentCount === 0 && bookCount === 0 && maintCount === 0);
+      const chartDataArr = isAllZero ? [1] : [availCount, rentCount, bookCount, maintCount];
+      const chartColors = isAllZero ? ["#E2E8F0"] : colors;
+      const chartLabels = isAllZero ? (isEn ? ["No data"] : ["ไม่มีข้อมูลรถ"]) : labels;
+
+      this.donutChart = new Chart(canvas, {
+        type: 'doughnut',
+        data: {
+          labels: chartLabels,
+          datasets: [{
+            data: chartDataArr,
+            backgroundColor: chartColors,
+            borderColor: '#FFFFFF',
+            borderWidth: 2,
+            hoverOffset: 4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: '80%', // Minimalist thin donut ring
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              enabled: !isAllZero,
+              callbacks: {
+                label: function(ctx) {
+                  const val = ctx.raw || 0;
+                  const pct = totalCars > 0 ? ((val / totalCars) * 100).toFixed(1) : "0.0";
+                  return isEn ? ` ${ctx.label}: ${val} cars (${pct}%)` : ` ${ctx.label}: ${val} คัน (${pct}%)`;
+                }
               }
             }
           }
         }
-      }
-    });
+      });
 
-    if (legend) {
-      legend.className = "grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-slate-100";
-      legend.style.display = "grid";
-      legend.style.gridTemplateColumns = "repeat(2, 1fr)";
-      legend.style.gap = "6px 12px";
-      legend.innerHTML = labels.map((lbl, idx) => {
-        const val = dataArr[idx];
-        const pct = totalCars > 0 ? ((val / totalCars) * 100).toFixed(1) : "0.0";
-        const cDot = colors[idx];
-        return `
-          <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px; padding:4px 8px; background:#F8FAFC; border-radius:6px; border:1px solid #F1F5F9;">
-            <span style="display:inline-flex; align-items:center; gap:5px; color:#475569;">
-              <span style="color:${cDot}; font-size:13px; line-height:1;">●</span>
-              <span style="font-weight:600;">${lbl}</span>
-            </span>
-            <span style="font-weight:700; color:#1E293B;">
-              ${val} ${isEn ? 'cars' : 'คัน'} <span style="font-weight:400; color:#94A3B8; font-size:11px;">(${pct}%)</span>
-            </span>
-          </div>
-        `;
-      }).join("");
+      if (legend) {
+        const dataArr = [availCount, rentCount, bookCount, maintCount];
+        legend.className = "grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-slate-100";
+        legend.style.display = "grid";
+        legend.style.gridTemplateColumns = "repeat(2, 1fr)";
+        legend.style.gap = "6px 12px";
+        legend.innerHTML = labels.map((lbl, idx) => {
+          const val = dataArr[idx];
+          const pct = totalCars > 0 ? ((val / totalCars) * 100).toFixed(1) : "0.0";
+          const cDot = colors[idx];
+          return `
+            <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px; padding:4px 8px; background:#F8FAFC; border-radius:6px; border:1px solid #F1F5F9;">
+              <span style="display:inline-flex; align-items:center; gap:5px; color:#475569;">
+                <span style="color:${cDot}; font-size:13px; line-height:1;">●</span>
+                <span style="font-weight:600;">${lbl}</span>
+              </span>
+              <span style="font-weight:700; color:#1E293B;">
+                ${val} ${isEn ? 'cars' : 'คัน'} <span style="font-weight:400; color:#94A3B8; font-size:11px;">(${pct}%)</span>
+              </span>
+            </div>
+          `;
+        }).join("");
+      }
+    } catch (err) {
+      console.error("[Dashboard Donut] Error in renderDonutCharts:", err);
     }
   }
 

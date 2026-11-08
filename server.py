@@ -2834,13 +2834,19 @@ async def get_car_profitability():
     return profitability
 
 def compute_dashboard_statistics():
+    # 1. Ensure database sync has run
+    if not getattr(store, "initial_sync_done", False) or not getattr(store, "cars", {}):
+        try:
+            store.sync_from_database(force=True)
+        except Exception as e:
+            print(f"Dashboard sync_from_database note: {e}")
+
     sb = get_db_client()
     cars_data = []
     bookings_data = []
     
     if sb:
         try:
-            # Query cars table directly (SINGLE SOURCE OF TRUTH)
             c_res = sb.table("cars").select("*").execute()
             if c_res and c_res.data:
                 cars_data = c_res.data
