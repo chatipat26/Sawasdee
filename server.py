@@ -872,7 +872,7 @@ async def get_cycle_expiries():
     """Returns expiring documents and expenses for the active notification cycle (1st or 16th of month)."""
     from check_expiry_alert import get_target_cycle_info
     cycle = get_target_cycle_info(now_th().date())
-    all_expenses_resp = await get_monthly_expenses()
+    all_expenses_resp = compute_monthly_expenses()
     items = all_expenses_resp.get("items", [])
 
     target_ym = cycle["target_ym"]
@@ -891,13 +891,7 @@ async def get_cycle_expiries():
         "items": matched
     }
 
-@app.get("/api/expenses/monthly")
-async def get_monthly_expenses(response: Optional[Response] = None):
-    if response:
-        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0"
-        response.headers["Pragma"] = "no-cache"
-        response.headers["Expires"] = "0"
-
+def compute_monthly_expenses():
     if not store.initial_sync_done:
         try:
             store.sync_from_database(force=False)
@@ -1060,6 +1054,13 @@ async def get_monthly_expenses(response: Optional[Response] = None):
         "expenses": items,
         "items": items
     }
+
+@app.get("/api/expenses/monthly")
+async def get_monthly_expenses(response: Response):
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return compute_monthly_expenses()
 
 @app.post("/api/expenses/pay")
 async def pay_monthly_expense(payload: Dict[str, Any]):
