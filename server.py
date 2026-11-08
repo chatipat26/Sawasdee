@@ -1200,11 +1200,12 @@ async def update_booking(bk_id: str, payload: Dict[str, Any]):
         _conflict = find_booking_overlap(target.get("car_id"), chk_s, chk_e, exclude_booking_id=bk_id)
         if _conflict:
             raise_overlap_error(_conflict, "บันทึกวันที่")
-    if payload.get("contract_issued") and not target.get("contract_issued"):
+    if payload.get("contract_issued"):
         if not target.get("deposit_paid"):
             raise HTTPException(status_code=400, detail="⚠️ ไม่สามารถออกสัญญาได้: ยังไม่ได้ชำระเงินมัดจำ")
         if not target.get("rental_paid"):
             raise HTTPException(status_code=400, detail="⚠️ ไม่สามารถออกสัญญาได้: ยังไม่ได้ชำระค่าเช่า (ชำระด้วยเงินสด / QR / บัตรเครดิต / PayPal ก่อนออกสัญญา)")
+        target["contract_issued"] = True
     if new_status == "กำลังเช่า" and prev_status != "กำลังเช่า":
         require_contract_before_rent(target)
     if new_status == "เสร็จสิ้น" and prev_status not in ("กำลังเช่า", "เตรียมรับคืน", "เสร็จสิ้น"):

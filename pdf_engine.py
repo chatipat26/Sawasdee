@@ -70,8 +70,155 @@ def format_date_dmy(date_val):
     return str(date_val)
 
 def generate_filled_pdf(template_path, booking_info, customer_info, car_info):
-    """Generate official vehicle rental agreement PDF using formal document template"""
-    return generate_pdf_bytes(booking_info, customer_info, car_info)
+    """Generate filled rental agreement PDF overlaying on blank template (rental_template_blank_v2.pdf)"""
+    try:
+        candidate_paths = [
+            template_path,
+            os.path.join(BASE_DIR, template_path or ""),
+            os.path.join(os.getcwd(), template_path or ""),
+            os.path.join(BASE_DIR, "rental_template_blank_v2.pdf"),
+            os.path.join(os.getcwd(), "rental_template_blank_v2.pdf"),
+        ]
+        resolved_path = None
+        for p in candidate_paths:
+            if p and os.path.exists(p):
+                resolved_path = p
+                break
+
+        if not resolved_path:
+            return generate_pdf_bytes(booking_info, customer_info, car_info)
+
+        booking_info = booking_info or {}
+        customer_info = customer_info or {}
+        car_info = car_info or {}
+
+        packet = io.BytesIO()
+        can = canvas.Canvas(packet, pagesize=A4)
+
+        car_brand_model = f"{car_info.get('brand', '')} {car_info.get('model', '')}".strip() or "-"
+        car_plate = str(car_info.get("plate", "-"))
+        car_color = str(car_info.get("color", "-"))
+        th_now = now_th()
+        s_time_pdf = booking_info.get('start_time') or th_now.strftime('%H:%M')
+        e_time_pdf = booking_info.get('end_time') or th_now.strftime('%H:%M')
+        s_date = f"{format_date_dmy(booking_info.get('start_date'))} ({s_time_pdf} น.)"
+        e_date = f"{format_date_dmy(booking_info.get('end_date'))} ({e_time_pdf} น.)"
+        net_price = booking_info.get('net_price', 0)
+        price_val = f"{net_price:,}" if isinstance(net_price, (int, float)) else str(net_price)
+        b_id = str(booking_info.get("booking_id", "-"))
+
+        c_name = str(customer_info.get("full_name") or customer_info.get("name") or "-")
+        c_nat = str(customer_info.get("nationality", "-"))
+        c_dob = format_date_dmy(customer_info.get("dob", "-"))
+        c_pass = str(customer_info.get("passport_id") or customer_info.get("id_card") or "-")
+        c_lic = str(customer_info.get("licence_no", "-"))
+        c_lic_issue = str(customer_info.get("issue_place", "-"))
+        c_lic_exp = format_date_dmy(customer_info.get("licence_expiry", "-"))
+        c_home = str(customer_info.get("home_address", "-"))
+        c_thai = str(customer_info.get("thai_address", "-"))
+        c_email = str(customer_info.get("email", "-"))
+        c_phone = str(customer_info.get("contact_no") or customer_info.get("phone") or "-")
+        c_wa = str(customer_info.get("whatsapp", "-"))
+
+        loc_del = str(booking_info.get("loc_delivery") or "Sukhumvit")
+        loc_ret = str(booking_info.get("loc_return") or loc_del)
+
+        # --- 0. Header (Reference No. & Date) ---
+        can.setFont(FONT_BOLD, 12)
+        can.setFillColorRGB(0.1, 0.1, 0.1)
+        can.drawString(485, 782, b_id)
+        can.setFont(FONT_REGULAR, 7.5)
+        can.drawString(485, 768, f"Issued: {format_date_dmy(th_now.date())} {th_now.strftime('%H:%M')} น.")
+
+        # --- 1. Section 01: VEHICLE ---
+        can.setFillColorRGB(1, 1, 1)
+        can.setFont(FONT_BOLD, 9.5)
+        can.drawString(44, 701, car_brand_model)
+
+        can.setFillColorRGB(0.15, 0.15, 0.15)
+        can.setFont(FONT_REGULAR, 9)
+        can.drawString(250, 701, car_plate)
+        can.drawString(355, 701, car_color)
+
+        # --- 2. Section 02: RENTER ---
+        can.setFont(FONT_REGULAR, 8.5)
+        can.drawString(37, 601, c_name)
+        can.drawString(215, 601, c_nat)
+        can.drawString(393, 601, c_dob)
+
+        can.drawString(37, 573, c_lic)
+        can.drawString(170, 573, c_lic_issue)
+        can.drawString(304, 573, c_lic_exp)
+        can.drawString(437, 573, c_pass)
+
+        # ที่อยู่
+        can.setFont(FONT_REGULAR, 8)
+        can.drawString(37, 544, c_home[:55] if len(c_home) > 55 else c_home)
+
+        # ลบขีดแดชเดิมในแม่แบบออกก่อนพิมพ์ที่อยู่ในไทย
+        if c_thai and c_thai != "-":
+            can.setFillColorRGB(1, 1, 1)
+            can.rect(304, 541, 14, 10, fill=1, stroke=0)
+            can.setFillColorRGB(0.15, 0.15, 0.15)
+            can.drawString(304, 544, c_thai[:55] if len(c_thai) > 55 else c_thai)
+
+        # ข้อมูลติดต่อ
+        can.setFont(FONT_REGULAR, 8.5)
+        can.drawString(37, 516, c_email)
+        can.drawString(215, 516, c_phone)
+        can.drawString(393, 516, c_wa)
+
+        # --- 3. Section 03: RENTAL PERIOD & DELIVERY ---
+        can.setFont(FONT_REGULAR, 8.5)
+        can.drawString(37, 474, s_date)
+
+        if loc_del and loc_del != "-":
+            can.setFillColorRGB(1, 1, 1)
+            can.rect(170, 471, 14, 10, fill=1, stroke=0)
+            can.setFillColorRGB(0.15, 0.15, 0.15)
+            can.drawString(170, 474, loc_del[:30])
+
+        can.drawString(304, 474, e_date)
+
+        if loc_ret and loc_ret != "-":
+            can.setFillColorRGB(1, 1, 1)
+            can.rect(437, 471, 14, 10, fill=1, stroke=0)
+            can.setFillColorRGB(0.15, 0.15, 0.15)
+            can.drawString(437, 474, loc_ret[:30])
+
+        # --- 4. Section 04: CHARGES (กล่องขาวในแถบสีส้ม TO BE INVOICED) ---
+        can.setFont(FONT_BOLD, 10)
+        can.setFillColorRGB(0.9, 0.35, 0.15)
+        can.drawString(498, 303, f"฿ {price_val}")
+
+        # --- 5. Section 05: PAYMENT CONFIRMATION ---
+        can.setFillColorRGB(0.15, 0.15, 0.15)
+        can.setFont(FONT_REGULAR, 8)
+        can.drawString(37, 259, b_id)
+        can.setFont(FONT_BOLD, 8.5)
+        can.drawString(231, 259, f"THB {price_val}")
+
+        can.save()
+        packet.seek(0)
+
+        new_pdf = PdfReader(packet)
+        with open(resolved_path, "rb") as f_tpl:
+            existing_pdf = PdfReader(f_tpl)
+            output = PdfWriter()
+
+            page = existing_pdf.pages[0]
+            page.merge_page(new_pdf.pages[0])
+            output.add_page(page)
+
+            for i in range(1, len(existing_pdf.pages)):
+                output.add_page(existing_pdf.pages[i])
+
+            out_stream = io.BytesIO()
+            output.write(out_stream)
+            return out_stream.getvalue()
+    except Exception as e:
+        print(f"Error filling PDF overlay: {e}")
+        return generate_pdf_bytes(booking_info, customer_info, car_info)
 
 def generate_pdf_bytes(booking_info=None, customer_info=None, car_info=None):
     """Generate official formal vehicle rental agreement PDF (A4 Full Formal Agreement)"""

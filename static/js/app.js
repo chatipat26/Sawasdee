@@ -4414,8 +4414,17 @@ class App {
         } else if (actionType === "complete") {
           this.showToast(`🏁 รับรถคืน ${bkId} เรียบร้อย! เปลี่ยนสถานะเป็น "เสร็จสิ้น" และปล่อยรถว่างแล้ว 🎉`, "success");
         } else {
-          const nextSideLabel = isDisp ? "ออกใบงานรับรถคืน" : "ออกใบงานส่งรถ";
-          this.showToast(`✅ บันทึกเตรียมนัดหมาย ${isDisp ? 'ส่งรถ' : 'รับรถคืน'} (${data.booking?.status || 'เตรียมส่งมอบ'}) เรียบร้อย! (สลับปุ่มด้านบนเพื่อทำ ${nextSideLabel} ต่อได้)`, "success");
+          if (isDisp) {
+            this.showToast(`✅ บันทึกนัดหมายส่งมอบรถ (${data.booking?.status || 'เตรียมส่งมอบ'}) เรียบร้อย! กำลังไปหน้าจัดทำสัญญา...`, "success");
+            this.switchTab("contract");
+            const selContractBk = document.getElementById("contract-sel-bk");
+            if (selContractBk) {
+              selContractBk.value = bkId;
+              this.onSelectContractBooking();
+            }
+          } else {
+            this.showToast(`✅ บันทึกเตรียมนัดหมายรับรถคืน (${data.booking?.status || 'เสร็จสิ้น'}) เรียบร้อย!`, "success");
+          }
         }
       } else {
         throw new Error(data.detail || data.error || "บันทึกใบงานไม่สำเร็จ");
@@ -4609,18 +4618,14 @@ class App {
     // Status pill
     const pill = document.getElementById("contract-issued-status-pill");
     if (pill) {
-      if (b.contract_issued) {
+      if (b.contract_issued || b.status === "กำลังเช่า") {
         pill.innerHTML = `
-          <span class="badge badge-success" style="font-size:13px; padding:6px 14px;">
-            ✅ ${isEn ? 'Contract Issued' : 'ออกสัญญาเรียบร้อยแล้ว'}
+          <span class="badge badge-success" style="font-size:13px; padding:6px 14px; background:#16a34a; color:#fff; border-radius:6px; font-weight:700;">
+            ✅ ${isEn ? 'Contract Issued & Handed Over' : 'ออกสัญญา & ส่งมอบรถเรียบร้อย'}
           </span>
         `;
       } else {
-        pill.innerHTML = `
-          <button onclick="app.markContractIssued()" class="btn btn-success">
-            ✅ ${isEn ? 'Confirm Contract Issued' : 'ยืนยันออกสัญญาเรียบร้อย'}
-          </button>
-        `;
+        pill.innerHTML = "";
       }
     }
   }
@@ -4936,6 +4941,30 @@ class App {
     }
     this.showToast(`📝 กำลังดาวน์โหลดสัญญาเช่า PDF สำหรับ ${id}...`, "info");
     window.open(`/api/pdf/contract/${encodeURIComponent(id)}?t=${Date.now()}`, "_blank");
+
+    try {
+      const res = await fetch(`/api/bookings/${encodeURIComponent(id)}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contract_issued: true,
+          status: "กำลังเช่า",
+          dispatch_closed: true
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        this.showToast(`🎉 ออกสัญญาและส่งมอบรถ ${id} เรียบร้อย! เปลี่ยนสถานะเป็น "กำลังเช่า" 🚗💨`, "success");
+        await this.loadBookings();
+        await this.loadCars();
+        await this.loadBackOfficeJobs();
+        this.onSelectContractBooking();
+      } else if (data.detail) {
+        console.warn("Handover on contract download:", data.detail);
+      }
+    } catch (e) {
+      console.error("Contract handover auto-trigger error:", e);
+    }
   }
 
   downloadDepositReceipt(bkId) {
