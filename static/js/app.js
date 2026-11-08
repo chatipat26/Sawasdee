@@ -1705,6 +1705,7 @@ class App {
     if (modName === "customers") this.renderCustomersTable();
     if (modName === "dashboard") {
       this.loadDashboardKPIs();
+      this.loadMonthlyExpenses();
       setTimeout(() => this.renderDashboardCharts(), 150);
     }
     if (modName === "users") this.loadUsers();
@@ -3476,46 +3477,61 @@ class App {
 
   // --- Modal: Book Car ---
   openBookModal(plate) {
-    const car = this.cars.find(c => c.plate === plate);
-    if (!car) return;
+    try {
+      const cleanPlate = String(plate || "").trim();
+      const car = (this.cars || []).find(c => c.plate === cleanPlate || (this.normalizePlate && this.normalizePlate(c.plate) === this.normalizePlate(cleanPlate))) || { plate: cleanPlate, brand: "", model: "", price_day: 1000 };
 
-    document.getElementById("book-car-plate").value = plate;
-    const thNow = this.getThaiDateTime(0);
-    const thNext3 = this.getThaiDateTime(3);
-    let fSDate = document.getElementById("filter-start-date")?.value || thNow.date;
-    const fSTime = document.getElementById("filter-start-time")?.value || thNow.time;
-    let fEDate = document.getElementById("filter-end-date")?.value || thNext3.date;
-    const fETime = document.getElementById("filter-end-time")?.value || thNow.time;
+      const plateInp = document.getElementById("book-car-plate");
+      if (plateInp) plateInp.value = car.plate || cleanPlate;
 
-    // Prevent backdated contracts: start date must not be before today
-    if (fSDate < thNow.date) {
-      fSDate = thNow.date;
+      const thNow = this.getThaiDateTime ? this.getThaiDateTime(0) : { date: new Date().toISOString().split("T")[0], time: "10:00" };
+      const thNext3 = this.getThaiDateTime ? this.getThaiDateTime(3) : { date: new Date(Date.now() + 3*86400000).toISOString().split("T")[0], time: "10:00" };
+
+      // Read directly from DOM Instant Booking Bar inputs to prevent lost references
+      const rawSDate = document.getElementById("filter-start-date")?.value;
+      const rawSTime = document.getElementById("filter-start-time")?.value;
+      const rawEDate = document.getElementById("filter-end-date")?.value;
+      const rawETime = document.getElementById("filter-end-time")?.value;
+
+      let fSDate = rawSDate && rawSDate.trim() ? rawSDate.trim() : thNow.date;
+      let fSTime = rawSTime && rawSTime.trim() ? rawSTime.trim() : thNow.time;
+      let fEDate = rawEDate && rawEDate.trim() ? rawEDate.trim() : (fSDate || thNext3.date);
+      let fETime = rawETime && rawETime.trim() ? rawETime.trim() : fSTime;
+
+      // Prevent backdated booking
+      if (fSDate < thNow.date) {
+        fSDate = thNow.date;
+      }
+      if (fEDate < fSDate) {
+        fEDate = fSDate;
+      }
+
+      const mSDate = document.getElementById("book-modal-start-date");
+      const mSTime = document.getElementById("book-modal-start-time");
+      const mEDate = document.getElementById("book-modal-end-date");
+      const mETime = document.getElementById("book-modal-end-time");
+
+      if (mSDate) {
+        mSDate.value = fSDate;
+        mSDate.min = thNow.date;
+      }
+      if (mSTime) mSTime.value = fSTime;
+      if (mEDate) {
+        mEDate.value = fEDate;
+        mEDate.min = fSDate;
+      }
+      if (mETime) mETime.value = fETime;
+
+      const discInp = document.getElementById("book-discount-input");
+      if (discInp) discInp.value = 0;
+
+      this.recalcBookingModalFromDates(true);
+      this.populateCustomerDropdowns(this.lastAddedCustomerName || null);
+      this.openModal("modal-book-car");
+    } catch (err) {
+      console.error("openBookModal error:", err);
+      this.showToast("เกิดข้อผิดพลาดในการเปิดหน้าต่างจอง: " + err.message, "danger");
     }
-    if (fEDate < fSDate) {
-      fEDate = fSDate;
-    }
-
-    const mSDate = document.getElementById("book-modal-start-date");
-    const mSTime = document.getElementById("book-modal-start-time");
-    const mEDate = document.getElementById("book-modal-end-date");
-    const mETime = document.getElementById("book-modal-end-time");
-
-    if (mSDate) {
-      mSDate.value = fSDate;
-      mSDate.min = thNow.date;
-    }
-    if (mSTime) mSTime.value = fSTime;
-    if (mEDate) {
-      mEDate.value = fEDate;
-      mEDate.min = fSDate;
-    }
-    if (mETime) mETime.value = fETime;
-
-    document.getElementById("book-discount-input").value = 0;
-    this.recalcBookingModalFromDates(true);
-
-    this.populateCustomerDropdowns(this.lastAddedCustomerName || null);
-    this.openModal("modal-book-car");
   }
 
   setBookingModalDurationDays(targetDays) {
@@ -6491,108 +6507,164 @@ class App {
   }
 
   async loadHpLeasingData() {
-    try {
-      const res = await fetch("/api/hp-leasing");
-      if (res.ok) {
-        this.hpLeasingData = await res.json();
-        this.renderHpLeasingTable();
-      }
-    } catch (e) {
-      console.error("loadHpLeasingData error:", e);
-    }
+    await this.loadMonthlyExpenses();
   }
 
   renderHpLeasingTable() {
-    const data = this.hpLeasingData || {};
-    const contracts = data.contracts || [];
-    const summary = data.summary || {};
-    const propIns = data.property_insurance || [];
+    this.renderMonthlyExpensesTable();
+  }
 
+  // --- Unified Monthly Expenses Tracker (ภาษี / พ.ร.บ. / ประกัน / ค่างวด) ---
+  async loadMonthlyExpenses() {
+    try {
+      const res = await fetch("/api/expenses/monthly");
+      if (res.ok) {
+        this.monthlyExpensesData = await res.json();
+        this.renderMonthlyExpensesTable();
+      }
+    } catch (e) {
+      console.error("loadMonthlyExpenses error:", e);
+    }
+  }
+
+  renderMonthlyExpensesTable() {
+    const data = this.monthlyExpensesData || {};
+    const summary = data.summary || {};
+    const allExpenses = data.expenses || [];
     const isEn = (this.currentLang === "EN");
-    const cardsEl = document.getElementById("hp-leasing-summary-cards");
-    if (cardsEl && summary.total_contracts) {
+
+    // 1. Render Top Summary Badges Strip
+    const cardsEl = document.getElementById("monthly-expenses-summary-cards");
+    if (cardsEl) {
       cardsEl.innerHTML = `
-        <div style="background:#FFFFFF; border:1px solid #E2E8F0; border-radius:10px; padding:10px 12px;">
-          <div style="font-size:11.5px; color:#64748B; font-weight:600;">${isEn ? '📋 Total HP Contracts' : '📋 จำนวนสัญญาเช่าซื้อ'}</div>
-          <div style="font-size:18px; font-weight:800; color:#1E293B; margin-top:2px;">${summary.total_contracts} ${isEn ? 'Contracts' : 'สัญญา'}</div>
+        <div style="background:#FEF2F2; border:1px solid #FECACA; border-radius:10px; padding:10px 12px;">
+          <div style="font-size:11.5px; color:#991B1B; font-weight:700;">📑 ${isEn ? 'Tax Pending' : 'ภาษีประจำปีรอชำระ'}</div>
+          <div style="font-size:18px; font-weight:800; color:#DC2626; margin-top:2px;">${summary.tax_pending || 0} ${isEn ? 'items' : 'คัน'}</div>
         </div>
-        <div style="background:#FFFFFF; border:1px solid #E2E8F0; border-radius:10px; padding:10px 12px;">
-          <div style="font-size:11.5px; color:#64748B; font-weight:600;">${isEn ? '💳 Total Monthly Installments' : '💳 ค่างวดต่อเดือนรวม'}</div>
-          <div style="font-size:18px; font-weight:800; color:#EA580C; margin-top:2px;">฿${Number(summary.total_monthly_installment || 0).toLocaleString('th-TH', {minimumFractionDigits: 2})}</div>
+        <div style="background:#FFFBEB; border:1px solid #FDE68A; border-radius:10px; padding:10px 12px;">
+          <div style="font-size:11.5px; color:#92400E; font-weight:700;">🛡️ ${isEn ? 'ACT / PRB Pending' : 'พ.ร.บ. รอชำระ'}</div>
+          <div style="font-size:18px; font-weight:800; color:#D97706; margin-top:2px;">${summary.act_pending || 0} ${isEn ? 'items' : 'คัน'}</div>
         </div>
-        <div style="background:#FFFFFF; border:1px solid #E2E8F0; border-radius:10px; padding:10px 12px;">
-          <div style="font-size:11.5px; color:#64748B; font-weight:600;">${isEn ? '✅ Total Paid Installments' : '✅ ชำระค่างวดแล้วรวม'}</div>
-          <div style="font-size:18px; font-weight:800; color:#10B981; margin-top:2px;">฿${Number(summary.total_paid_amount || 0).toLocaleString('th-TH', {minimumFractionDigits: 2})}</div>
+        <div style="background:#EFF6FF; border:1px solid #BFDBFE; border-radius:10px; padding:10px 12px;">
+          <div style="font-size:11.5px; color:#1E40AF; font-weight:700;">🚗 ${isEn ? 'Insurance Pending' : 'ประกันภัยรอชำระ'}</div>
+          <div style="font-size:18px; font-weight:800; color:#2563EB; margin-top:2px;">${summary.insurance_pending || 0} ${isEn ? 'items' : 'คัน'}</div>
         </div>
-        <div style="background:#FFFFFF; border:1px solid #E2E8F0; border-radius:10px; padding:10px 12px;">
-          <div style="font-size:11.5px; color:#64748B; font-weight:600;">${isEn ? '⏳ Total Remaining Balance' : '⏳ ยอดคงเหลือผ่อนชำระ'}</div>
-          <div style="font-size:18px; font-weight:800; color:#DC2626; margin-top:2px;">฿${Number(summary.total_remaining_amount || 0).toLocaleString('th-TH', {minimumFractionDigits: 2})}</div>
+        <div style="background:#FFF7ED; border:1px solid #FED7AA; border-radius:10px; padding:10px 12px;">
+          <div style="font-size:11.5px; color:#C2410C; font-weight:700;">💳 ${isEn ? 'Installments Pending' : 'ค่างวดผ่อนรถรอชำระ'}</div>
+          <div style="font-size:18px; font-weight:800; color:#EA580C; margin-top:2px;">${summary.installment_pending || 0} ${isEn ? 'items' : 'คัน'}</div>
         </div>
-        <div style="background:#FFFFFF; border:1px solid #E2E8F0; border-radius:10px; padding:10px 12px;">
-          <div style="font-size:11.5px; color:#64748B; font-weight:600;">${isEn ? '🏦 Total Vehicle Price (Inc. Down)' : '🏦 ราคารถรวมเงินดาวน์'}</div>
-          <div style="font-size:18px; font-weight:800; color:#3B82F6; margin-top:2px;">฿${Number(summary.total_car_price || 0).toLocaleString('th-TH', {minimumFractionDigits: 2})}</div>
+        <div style="background:#F0FDF4; border:1px solid #BBF7D0; border-radius:10px; padding:10px 12px;">
+          <div style="font-size:11.5px; color:#166534; font-weight:700;">💰 ${isEn ? 'Total Pending Amount' : 'ยอดรวมที่ต้องชำระรอบนี้'}</div>
+          <div style="font-size:18px; font-weight:800; color:#15803D; margin-top:2px;">฿${Number(summary.total_pending_amount || 0).toLocaleString('th-TH', {minimumFractionDigits: 2})}</div>
         </div>
       `;
     }
 
-    const titleEl = document.getElementById("title-expander-hp");
-    if (titleEl) {
-      titleEl.textContent = isEn
-        ? `Vehicle Installment Plan (HP / Leasing — ${contracts.length} Contracts) & Property Insurance Policies (${propIns.length} Policies)`
-        : `ตารางผ่อนชำระค่างวดรถยนต์ (HP / Leasing — ${contracts.length} สัญญา) & กรมธรรม์ประกันภัยทรัพย์สิน (${propIns.length} รายการ)`;
+    // 2. Filter Table Items
+    const kw = (document.getElementById("expense-search-kw")?.value || "").toLowerCase().trim();
+    const typeFilter = document.getElementById("expense-type-filter")?.value || "ทั้งหมด";
+    const statusFilter = document.getElementById("expense-status-filter")?.value || "ทั้งหมด";
+
+    const filtered = allExpenses.filter(item => {
+      if (kw) {
+        const fullTxt = `${item.plate} ${item.model} ${item.company} ${item.expense_type}`.toLowerCase();
+        if (!fullTxt.includes(kw)) return false;
+      }
+      if (typeFilter !== "ทั้งหมด") {
+        if (!item.expense_type.includes(typeFilter) && item.expense_key !== typeFilter) return false;
+      }
+      if (statusFilter !== "ทั้งหมด") {
+        if (statusFilter === "รอชำระ" && item.status_key === "paid") return false;
+        if (statusFilter === "ชำระแล้ว" && item.status_key !== "paid") return false;
+      }
+      return true;
+    });
+
+    // 3. Render Table Body
+    const tbody = document.getElementById("monthly-expenses-tbody");
+    if (!tbody) return;
+
+    if (filtered.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:36px; color:#64748B;">${isEn ? 'No expense items found matching the selected filters.' : '🎉 ไม่มีรายการค่าใช้จ่ายค้างชำระตามตัวกรองที่เลือก'}</td></tr>`;
+      return;
     }
 
-    const hpTbody = document.getElementById("hp-leasing-tbody");
-    if (hpTbody) {
-      if (contracts.length === 0) {
-        hpTbody.innerHTML = `<tr><td colspan="11" style="text-align:center; padding:30px; color:#64748B;">${isEn ? '💡 No HP/Leasing contract data available in the system... You can add new data to get started.' : '💡 ยังไม่มีข้อมูลสัญญาเช่าซื้อ (HP / Leasing) ในระบบ... คุณสามารถเพิ่มข้อมูลใหม่เพื่อเริ่มต้นใช้งานได้ครับ'}</td></tr>`;
-      } else {
-        hpTbody.innerHTML = contracts.map(item => `
+    tbody.innerHTML = filtered.map((item, idx) => {
+      let badgeStyle = "background:#ECFDF5; color:#065F46; border:1px solid #A7F3D0;";
+      let badgeIcon = "✅";
+      if (item.status_key === "overdue") {
+        badgeStyle = "background:#FEF2F2; color:#991B1B; border:1px solid #FECACA; font-weight:800;";
+        badgeIcon = "⚠️";
+      } else if (item.status_key === "pending") {
+        badgeStyle = "background:#FFFBEB; color:#92400E; border:1px solid #FDE68A; font-weight:700;";
+        badgeIcon = "⏳";
+      }
+
+      const safePlate = String(item.plate || "").replace(/'/g, "\'");
+      const isPaid = item.status_key === "paid";
+
+      return `
         <tr>
-          <td style="text-align:center; font-weight:700;">${item.no}</td>
-          <td><b>${item.model}</b></td>
+          <td style="text-align:center; font-weight:700; color:#64748B;">${idx + 1}</td>
           <td>
-            <div><b>🚘 ${item.plate}</b></div>
-            <div style="font-family:monospace; font-size:11px; color:#64748B;">${item.chassis_no || '-'}</div>
-          </td>
-          <td><span class="badge badge-info">${item.contract_no}</span></td>
-          <td>
-            <div style="font-size:11.5px; color:#64748B;">📅 ${item.down_payment_date}</div>
-            <div style="font-weight:700;">฿${Number(item.down_payment || 0).toLocaleString('th-TH', {minimumFractionDigits: 2})}</div>
+            <div style="font-weight:800; color:#1E293B;">🚘 ${item.plate}</div>
+            <div style="font-size:12px; color:#475569;">${item.model} <span style="font-size:11px; color:#94A3B8;">(${item.company})</span></div>
           </td>
           <td>
-            <div style="font-size:11.5px;">${isEn ? 'Start:' : 'เริ่ม:'} ${item.first_payment_date}</div>
-            <div style="font-size:11px; color:#B45309; font-weight:700;">${item.due_day}</div>
+            <span style="font-weight:700; color:#334155; font-size:12px;">${item.expense_type}</span>
           </td>
-          <td style="text-align:right; font-weight:700; color:#EA580C;">฿${Number(item.installment || 0).toLocaleString('th-TH', {minimumFractionDigits: 2})}</td>
           <td style="text-align:center;">
-            <span style="font-weight:700; color:#047857;">${item.paid_months}</span> / ${item.total_months} ${isEn ? 'terms' : 'งวด'}
-            <div style="font-size:10.5px; color:#64748B;">(${isEn ? 'left' : 'เหลือ'} ${item.remaining_months} ${isEn ? 'terms' : 'งวด'})</div>
+            <div style="font-weight:700; color:#1E293B;">📅 ${item.due_date}</div>
+            <div style="font-size:11px; color:${item.days_left < 0 ? '#DC2626' : (item.days_left <= 30 ? '#D97706' : '#16A34A')}; font-weight:600;">
+              ${item.notes}
+            </div>
           </td>
-          <td style="text-align:right; font-weight:700; color:#059669;">฿${Number(item.paid_amount || 0).toLocaleString('th-TH', {minimumFractionDigits: 2})}</td>
-          <td style="text-align:right; font-weight:700; color:#DC2626;">฿${Number(item.remaining_amount || 0).toLocaleString('th-TH', {minimumFractionDigits: 2})}</td>
-          <td style="text-align:right; font-weight:700; color:#1E293B;">฿${Number(item.total_car_price || 0).toLocaleString('th-TH', {minimumFractionDigits: 2})}</td>
+          <td style="text-align:right; font-weight:800; color:#1E293B; font-size:13px;">
+            ฿${Number(item.amount || 0).toLocaleString('th-TH', {minimumFractionDigits: 2})}
+          </td>
+          <td style="text-align:center;">
+            <span style="font-size:11.5px; padding:3px 10px; border-radius:12px; display:inline-block; ${badgeStyle}">
+              ${badgeIcon} ${item.status}
+            </span>
+          </td>
+          <td style="text-align:center;">
+            <button type="button" class="btn btn-sm ${isPaid ? 'btn-secondary' : 'btn-primary'}" onclick="app.payMonthlyExpense('${safePlate}', '${item.expense_key}')" style="padding:4px 12px; font-size:11.5px; font-weight:700; border-radius:6px; cursor:pointer;" title="${isEn ? 'Mark as Paid & Extend Expiry Date' : 'บันทึกชำระเงินและต่ออายุวันหมดอายุอัตโนมัติ'}">
+              💳 ${isEn ? 'Update Paid' : 'อัปเดตชำระเงิน'}
+            </button>
+          </td>
         </tr>
-      `).join("");
-      }
-    }
+      `;
+    }).join("");
+  }
 
-    const propTbody = document.getElementById("property-insurance-tbody");
-    if (propTbody) {
-      if (propIns.length === 0) {
-        propTbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:30px; color:#64748B;">${isEn ? '💡 No property insurance policy data available in the system.' : '💡 ยังไม่มีข้อมูลกรมธรรม์ประกันภัยทรัพย์สินในระบบ'}</td></tr>`;
-      } else {
-        propTbody.innerHTML = propIns.map(p => `
-        <tr>
-          <td><span class="badge badge-gray">${p.id}</span></td>
-          <td><b>${p.title}</b></td>
-          <td>${p.owner}</td>
-          <td><span style="color:#0369A1; font-weight:700;">🛡️ ${p.ins_company}</span></td>
-          <td><b>📅 ${p.expiry_date}</b></td>
-          <td style="font-size:12px; color:#475569;">${p.notes || '-'}</td>
-        </tr>
-      `).join("");
+  async payMonthlyExpense(plate, expenseKey) {
+    if (!plate || !expenseKey) return;
+    const isEn = (this.currentLang === "EN");
+    const typeLabel = expenseKey === "tax" ? "ภาษีประจำปี" : (expenseKey === "act" ? "พ.ร.บ." : (expenseKey === "insurance" ? "ประกันภัย" : "ค่างวดผ่อนรถ"));
+    const conf = confirm(`ยืนยันการบันทึกชำระเงิน "${typeLabel}" สำหรับรถทะเบียน ${plate} หรือไม่?
+
+💡 ระบบจะทำการบวกเพิ่มเวลาวันหมดอายุ (Extend Expiry) ให้โดยอัตโนมัติ:
+- ภาษี/พ.ร.บ./ประกัน: ต่ออายุเพิ่ม 1 ปี
+- ค่างวด: ขยายกำหนดชำระเพิ่ม 1 เดือน`);
+    if (!conf) return;
+
+    try {
+      const res = await fetch("/api/expenses/pay", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plate, expense_type: expenseKey })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.detail || data.error || "เกิดข้อผิดพลาดในการอัปเดต");
       }
+      this.showToast(`🎉 ${data.message} (กำหนดใหม่: ${data.new_due_date})`, "success");
+      await this.loadMonthlyExpenses();
+      await this.loadCars();
+    } catch (e) {
+      alert(`❌ อัปเดตชำระเงินไม่สำเร็จ:
+${e.message}`);
+      this.showToast("เกิดข้อผิดพลาด: " + e.message, "danger");
     }
   }
 
@@ -8097,6 +8169,7 @@ class App {
     if (m) {
       this.modalZIndex = (this.modalZIndex || 2000) + 10;
       m.style.zIndex = String(this.modalZIndex);
+      m.style.display = "flex";
       m.classList.add("open");
 
       if (modalId === "modal-car-details") {

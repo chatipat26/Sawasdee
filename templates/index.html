@@ -1326,60 +1326,57 @@
           </div>
         </div>
 
-        <!-- Collapsible Table 1.5: HP / Leasing Schedule & Property Insurance -->
-        <div class="expander-card" id="expander-hp-leasing">
-          <div class="expander-header open" onclick="app.toggleExpander('expander-hp-leasing')">
+        <!-- Collapsible Table: Unified Monthly Expenses Tracker (ภาษี / พ.ร.บ. / ประกัน / ค่างวด) -->
+        <div class="expander-card" id="expander-monthly-expenses">
+          <div class="expander-header open" onclick="app.toggleExpander('expander-monthly-expenses')">
             <div class="expander-title">
-              <span id="title-expander-hp">Vehicle Installment Plan (HP / Leasing) & Insurance</span>
+              <span id="title-expander-expenses">📋 สรุปค่าใช้จ่ายประจำเดือน (ภาษี / พ.ร.บ. / ประกัน / ค่างวด)</span>
             </div>
             <div class="expander-indicator">
-              <span id="indicator-expander-hp-leasing">Click to collapse</span>
+              <span id="indicator-expander-monthly-expenses">คลิกเพื่อย่อ/ขยาย</span>
             </div>
           </div>
-          <div class="expander-body" id="body-expander-hp-leasing" style="display:block;">
-            <div id="hp-leasing-summary-cards" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(185px, 1fr)); gap:10px; margin-bottom:14px;">
+          <div class="expander-body" id="body-expander-monthly-expenses" style="display:block;">
+            <!-- Top Summary Badges Strip -->
+            <div id="monthly-expenses-summary-cards" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:10px; margin-bottom:14px;">
               <!-- Rendered by JS -->
             </div>
-            <div class="table-responsive" style="max-height: 250px; overflow-y: auto; margin-bottom:18px;">
-              <table class="custom-table">
+            <!-- Filter toolbar -->
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; background:#FAF7F2; padding:10px 14px; border-radius:8px; margin-bottom:12px;">
+              <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                <input type="text" id="expense-search-kw" class="form-control" style="width:230px; font-size:12px;" placeholder="🔍 ค้นหาทะเบียน / รุ่นรถ..." oninput="app.renderMonthlyExpensesTable()">
+                <select id="expense-type-filter" class="form-control" style="width:auto; font-size:12px; font-weight:600;" onchange="app.renderMonthlyExpensesTable()">
+                  <option value="ทั้งหมด">📌 ทุกรายการ (ภาษี/พ.ร.บ./ประกัน/ค่างวด)</option>
+                  <option value="ภาษี">ภาษีประจำปี (Tax)</option>
+                  <option value="พ.ร.บ.">พ.ร.บ. คุ้มครอง (ACT)</option>
+                  <option value="ประกันภัย">ประกันภัย (Insurance)</option>
+                  <option value="ค่างวด">ค่างวดผ่อนรถ (Installment)</option>
+                </select>
+                <select id="expense-status-filter" class="form-control" style="width:auto; font-size:12px; font-weight:600;" onchange="app.renderMonthlyExpensesTable()">
+                  <option value="ทั้งหมด">🚦 ทุกสถานะ</option>
+                  <option value="รอชำระ">รอชำระ (Pending / Overdue)</option>
+                  <option value="ชำระแล้ว">ชำระแล้ว (Paid / OK)</option>
+                </select>
+              </div>
+              <button type="button" class="btn btn-sm btn-secondary" onclick="app.loadMonthlyExpenses()" style="font-size:12px; display:inline-flex; align-items:center; gap:5px;">
+                🔄 รีเฟรชข้อมูล
+              </button>
+            </div>
+            <div class="table-responsive" style="max-height: 420px; overflow-y: auto;">
+              <table class="custom-table" style="font-size:12.5px;">
                 <thead>
-                  <tr>
-                    <th id="th-hp-no" style="text-align:center;">No.</th>
-                    <th id="th-hp-model">Vehicle Model</th>
-                    <th id="th-hp-plate">Plate / VIN</th>
-                    <th id="th-hp-contract">Contract No.</th>
-                    <th id="th-hp-down">Down Date / Payment</th>
-                    <th id="th-hp-due">First Due / Due Date</th>
-                    <th id="th-hp-inst" style="text-align:right;">Monthly Installment</th>
-                    <th id="th-hp-terms" style="text-align:center;">Total Terms</th>
-                    <th id="th-hp-paid" style="text-align:right;">Paid (THB)</th>
-                    <th id="th-hp-rem" style="text-align:right;">Remaining (THB)</th>
-                    <th id="th-hp-total" style="text-align:right;">Total Price incl. Down</th>
+                  <tr style="background:#F8FAFC;">
+                    <th style="text-align:center; width:50px;">ลำดับ</th>
+                    <th>ทะเบียนรถ / รุ่นรถ</th>
+                    <th>รายการ (Expense Type)</th>
+                    <th style="text-align:center;">วันที่ครบกำหนด (Due Date)</th>
+                    <th style="text-align:right;">ยอดเงิน (บาท)</th>
+                    <th style="text-align:center;">สถานะ (Status)</th>
+                    <th style="text-align:center; width:150px;">จัดการ (Action)</th>
                   </tr>
                 </thead>
-                <tbody id="hp-leasing-tbody">
-                  <!-- Rendered by JS -->
-                </tbody>
-              </table>
-            </div>
-
-            <div style="font-size:13.5px; font-weight:800; color:#1E293B; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
-              <span id="title-property-insurance">Property & Personal Accident Insurance Policies</span>
-            </div>
-            <div class="table-responsive" style="max-height: 250px; overflow-y: auto;">
-              <table class="custom-table">
-                <thead>
-                  <tr>
-                    <th id="th-prop-code">Code</th>
-                    <th id="th-prop-item">Policy / Property Item</th>
-                    <th id="th-prop-owner">Insured / Owner</th>
-                    <th id="th-prop-comp">Insurance Company</th>
-                    <th id="th-prop-exp">Expiry Date</th>
-                    <th id="th-prop-notes">Remarks</th>
-                  </tr>
-                </thead>
-                <tbody id="property-insurance-tbody">
-                  <!-- Rendered by JS -->
+                <tbody id="monthly-expenses-tbody">
+                  <!-- Rendered by app.renderMonthlyExpensesTable() -->
                 </tbody>
               </table>
             </div>
@@ -2436,7 +2433,7 @@
   <div class="toast-container" id="toast-container"></div>
 
   <!-- Scripts with cache busting -->
-  <script src="/static/js/app.js?v=11.1"></script>
+  <script src="/static/js/app.js?v=11.2"></script>
 
   <!-- ===================================================================== -->
   <!-- MODAL: ACTIVE RENTALS / CARS WITH CUSTOMERS (POPUP FOR CARD 1) -->

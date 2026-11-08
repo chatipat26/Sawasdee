@@ -867,6 +867,277 @@ async def get_hp_leasing_data():
         "property_insurance": DEFAULT_PROPERTY_INSURANCE
     }
 
+@app.get("/api/expenses/monthly")
+async def get_monthly_expenses():
+    if not store.initial_sync_done:
+        try:
+            store.sync_from_database(force=False)
+        except Exception:
+            pass
+
+    today = now_th().date()
+    items = []
+    
+    total_tax_pending = 0
+    total_act_pending = 0
+    total_ins_pending = 0
+    total_inst_pending = 0
+    total_pending_amount = 0.0
+
+    for plate, car in store.cars.items():
+        brand = car.get("brand") or ""
+        model = car.get("model") or ""
+        car_name = f"{brand} {model}".strip() or "-"
+        company = car.get("owner_company") or car.get("company") or "-"
+
+        # 1. ภาษี (Tax)
+        tax_d_raw = car.get("tax_expire_date") or car.get("tax_expiry")
+        tax_d = to_date(tax_d_raw)
+        if tax_d:
+            days_left = (tax_d - today).days
+            amount = float(car.get("tax_price") or car.get("tax_amount") or 1500.0)
+            if days_left < 0:
+                status = "รอชำระ (เกินกำหนด)"
+                status_key = "overdue"
+                total_tax_pending += 1
+                total_pending_amount += amount
+            elif days_left <= 45:
+                status = "รอชำระ (ใกล้ครบกำหนด)"
+                status_key = "pending"
+                total_tax_pending += 1
+                total_pending_amount += amount
+            else:
+                status = "ชำระแล้ว"
+                status_key = "paid"
+
+            items.append({
+                "plate": plate,
+                "model": car_name,
+                "company": company,
+                "expense_type": "ภาษีประจำปี (Tax)",
+                "expense_key": "tax",
+                "due_date": tax_d.strftime("%d/%m/%Y"),
+                "due_date_iso": tax_d.isoformat(),
+                "days_left": days_left,
+                "amount": amount,
+                "status": status,
+                "status_key": status_key,
+                "notes": f"เหลืออีก {days_left} วัน" if days_left >= 0 else f"เกินกำหนด {abs(days_left)} วัน"
+            })
+
+        # 2. พ.ร.บ. (ACT / PRB)
+        act_d_raw = car.get("prb_expire_date") or car.get("act_expiry")
+        act_d = to_date(act_d_raw)
+        if act_d:
+            days_left = (act_d - today).days
+            amount = float(car.get("prb_price") or car.get("act_price") or 645.21)
+            if days_left < 0:
+                status = "รอชำระ (เกินกำหนด)"
+                status_key = "overdue"
+                total_act_pending += 1
+                total_pending_amount += amount
+            elif days_left <= 45:
+                status = "รอชำระ (ใกล้ครบกำหนด)"
+                status_key = "pending"
+                total_act_pending += 1
+                total_pending_amount += amount
+            else:
+                status = "ชำระแล้ว"
+                status_key = "paid"
+
+            items.append({
+                "plate": plate,
+                "model": car_name,
+                "company": company,
+                "expense_type": "พ.ร.บ. คุ้มครอง (ACT)",
+                "expense_key": "act",
+                "due_date": act_d.strftime("%d/%m/%Y"),
+                "due_date_iso": act_d.isoformat(),
+                "days_left": days_left,
+                "amount": amount,
+                "status": status,
+                "status_key": status_key,
+                "notes": f"เหลืออีก {days_left} วัน" if days_left >= 0 else f"เกินกำหนด {abs(days_left)} วัน"
+            })
+
+        # 3. ประกันภัย (Insurance)
+        ins_d_raw = car.get("insurance_expire_date") or car.get("ins_expiry")
+        ins_d = to_date(ins_d_raw)
+        if ins_d:
+            days_left = (ins_d - today).days
+            amount = float(car.get("insurance_premium") or car.get("ins_premium") or 12000.0)
+            ins_comp = car.get("insurance_company") or car.get("ins_company") or "-"
+            if days_left < 0:
+                status = "รอชำระ (เกินกำหนด)"
+                status_key = "overdue"
+                total_ins_pending += 1
+                total_pending_amount += amount
+            elif days_left <= 45:
+                status = "รอชำระ (ใกล้ครบกำหนด)"
+                status_key = "pending"
+                total_ins_pending += 1
+                total_pending_amount += amount
+            else:
+                status = "ชำระแล้ว"
+                status_key = "paid"
+
+            items.append({
+                "plate": plate,
+                "model": car_name,
+                "company": company,
+                "expense_type": f"ประกันภัย ({ins_comp})",
+                "expense_key": "insurance",
+                "due_date": ins_d.strftime("%d/%m/%Y"),
+                "due_date_iso": ins_d.isoformat(),
+                "days_left": days_left,
+                "amount": amount,
+                "status": status,
+                "status_key": status_key,
+                "notes": f"เหลืออีก {days_left} วัน" if days_left >= 0 else f"เกินกำหนด {abs(days_left)} วัน"
+            })
+
+        # 4. ผ่อนรถ (Installment)
+        is_debt_free = car.get("is_debt_free")
+        if not is_debt_free:
+            inst_d_raw = car.get("payment_due_date") or car.get("installment_due_date")
+            inst_d = to_date(inst_d_raw)
+            if inst_d:
+                days_left = (inst_d - today).days
+                amount = float(car.get("installment_amount") or car.get("hp_installment") or 8500.0)
+                cur_term = car.get("current_installment", 0) or 0
+                tot_term = car.get("total_installments", 0) or 0
+                term_desc = f" (งวดที่ {cur_term}/{tot_term})" if tot_term else ""
+
+                if days_left < 0:
+                    status = "รอชำระ (เกินกำหนด)"
+                    status_key = "overdue"
+                    total_inst_pending += 1
+                    total_pending_amount += amount
+                elif days_left <= 30:
+                    status = "รอชำระ (ใกล้ครบกำหนด)"
+                    status_key = "pending"
+                    total_inst_pending += 1
+                    total_pending_amount += amount
+                else:
+                    status = "ชำระแล้ว"
+                    status_key = "paid"
+
+                items.append({
+                    "plate": plate,
+                    "model": car_name,
+                    "company": company,
+                    "expense_type": f"ค่างวดผ่อนรถ{term_desc}",
+                    "expense_key": "installment",
+                    "due_date": inst_d.strftime("%d/%m/%Y"),
+                    "due_date_iso": inst_d.isoformat(),
+                    "days_left": days_left,
+                    "amount": amount,
+                    "status": status,
+                    "status_key": status_key,
+                    "notes": f"เหลืออีก {days_left} วัน" if days_left >= 0 else f"เกินกำหนด {abs(days_left)} วัน"
+                })
+
+    # Sort items: Overdue first, then pending upcoming, then paid
+    items.sort(key=lambda x: (0 if x["status_key"] == "overdue" else (1 if x["status_key"] == "pending" else 2), x["days_left"]))
+
+    return {
+        "success": True,
+        "summary": {
+            "total_items": len(items),
+            "tax_pending": total_tax_pending,
+            "act_pending": total_act_pending,
+            "insurance_pending": total_ins_pending,
+            "installment_pending": total_inst_pending,
+            "total_pending_count": total_tax_pending + total_act_pending + total_ins_pending + total_inst_pending,
+            "total_pending_amount": total_pending_amount
+        },
+        "expenses": items
+    }
+
+@app.post("/api/expenses/pay")
+async def pay_monthly_expense(payload: Dict[str, Any]):
+    import calendar
+    plate = str(payload.get("plate") or "").strip()
+    expense_type = str(payload.get("expense_type") or "").strip().lower()
+
+    if not plate or not expense_type:
+        raise HTTPException(status_code=400, detail="กรุณาระบุเลขทะเบียนรถและประเภทค่าใช้จ่าย")
+
+    # Find car
+    norm_p = normalize_plate(plate)
+    car_key = next((k for k in store.cars.keys() if normalize_plate(k) == norm_p), None)
+    if not car_key:
+        raise HTTPException(status_code=404, detail=f"ไม่พบรถยนต์ทะเบียน {plate}")
+
+    car = store.cars[car_key]
+    today = now_th().date()
+    new_date = None
+    item_title = ""
+
+    if expense_type in ("tax", "ภาษี"):
+        item_title = "ภาษีประจำปี"
+        curr_d = to_date(car.get("tax_expire_date") or car.get("tax_expiry")) or today
+        base_d = max(curr_d, today)
+        try:
+            new_date = base_d.replace(year=base_d.year + 1)
+        except Exception:
+            new_date = base_d + timedelta(days=365)
+        car["tax_expire_date"] = new_date.isoformat()
+        car["tax_expiry"] = new_date.strftime("%d/%m/%Y")
+
+    elif expense_type in ("act", "prb", "พ.ร.บ.", "พรบ"):
+        item_title = "พ.ร.บ. คุ้มครอง"
+        curr_d = to_date(car.get("prb_expire_date") or car.get("act_expiry")) or today
+        base_d = max(curr_d, today)
+        try:
+            new_date = base_d.replace(year=base_d.year + 1)
+        except Exception:
+            new_date = base_d + timedelta(days=365)
+        car["prb_expire_date"] = new_date.isoformat()
+        car["act_expiry"] = new_date.strftime("%d/%m/%Y")
+
+    elif expense_type in ("insurance", "ins", "ประกัน", "ประกันภัย"):
+        item_title = "ประกันภัย"
+        curr_d = to_date(car.get("insurance_expire_date") or car.get("ins_expiry")) or today
+        base_d = max(curr_d, today)
+        try:
+            new_date = base_d.replace(year=base_d.year + 1)
+        except Exception:
+            new_date = base_d + timedelta(days=365)
+        car["insurance_expire_date"] = new_date.isoformat()
+        car["ins_expiry"] = new_date.strftime("%d/%m/%Y")
+
+    elif expense_type in ("installment", "finance", "hp", "ผ่อนรถ", "ค่างวด"):
+        item_title = "ค่างวดผ่อนรถ"
+        curr_d = to_date(car.get("payment_due_date") or car.get("installment_due_date")) or today
+        base_d = max(curr_d, today)
+        m = base_d.month + 1
+        y = base_d.year
+        if m > 12:
+            m = 1
+            y += 1
+        max_d = calendar.monthrange(y, m)[1]
+        new_d_num = min(base_d.day, max_d)
+        new_date = date(y, m, new_d_num)
+
+        car["payment_due_date"] = new_date.strftime("%d/%m/%Y")
+        car["installment_due_date"] = new_date.isoformat()
+        cur_t = int(car.get("current_installment", 0) or 0) + 1
+        car["current_installment"] = cur_t
+
+    else:
+        raise HTTPException(status_code=400, detail=f"ประเภทค่าใช้จ่ายไม่ถูกต้อง: {expense_type}")
+
+    store.async_sync_car(car_key, car)
+
+    return {
+        "success": True,
+        "message": f"อัปเดตชำระเงิน {item_title} ทะเบียน {car_key} เรียบร้อยแล้ว",
+        "plate": car_key,
+        "new_due_date": new_date.strftime("%d/%m/%Y") if new_date else "-",
+        "new_due_date_iso": new_date.isoformat() if new_date else "-"
+    }
+
 @app.get("/api/cars/check-duplicates")
 async def check_car_duplicates():
     seen_plates = {}
