@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sawasdee Rental - ระบบบริหารจัดการรถเช่าระดับพรีเมียม</title>
-  <link rel="stylesheet" href="/static/css/app.css?v=4.9">
+  <link rel="stylesheet" href="/static/css/app.css?v=5.0">
   <link rel="icon" type="image/png" href="/static/sawasdee-logo.png">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
@@ -1127,9 +1127,9 @@
       <!-- =================================================================== -->
       <!-- 4. MODULE: EXECUTIVE DASHBOARD & REPORTS -->
       <!-- =================================================================== -->
-      <section id="module-dashboard" style="display:none;">
+      <section id="module-dashboard" style="display:none; width:100%; max-width:100%; min-width:0; box-sizing:border-box;">
         <!-- Unified Dashboard Header (Total Fleet across all companies) -->
-        <div class="card" style="margin-bottom:16px; padding:14px 20px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; border-left:4px solid #E85826;">
+        <div class="card" style="margin-bottom:16px; padding:14px 20px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; border-left:4px solid #E85826; min-width:0;">
           <div>
             <div id="dash-main-title" style="font-size:16px; font-weight:700; color:#1E293B; display:flex; align-items:center; gap:8px;">
               Executive Dashboard & Total Fleet
@@ -1197,9 +1197,9 @@
         </div>
 
         <!-- Expiry Alert Warning Box (Cycle 1 & 16 Interactive Card) -->
-        <div class="card interactive-alert-card" id="dash-expiry-alert-box" onclick="app.onAlertBannerClick()" title="คลิกเพื่อดูรายการเอกสารที่ครบกำหนดรอบนี้" style="background:linear-gradient(135deg, #FFF7ED 0%, #FFFBEB 100%); border:1.5px solid #FDBA74; border-radius:12px; padding:14px 18px; margin-bottom:16px;">
+        <div class="card interactive-alert-card" id="dash-expiry-alert-box" onclick="app.onAlertBannerClick()" title="คลิกเพื่อดูรายการเอกสารที่ครบกำหนดรอบนี้" style="background:linear-gradient(135deg, #FFF7ED 0%, #FFFBEB 100%); border:1.5px solid #FDBA74; border-radius:12px; padding:14px 18px; margin-bottom:16px; min-width:0; box-sizing:border-box;">
           <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
-            <div style="display:flex; align-items:center; gap:12px; flex:1; min-width:280px;">
+            <div style="display:flex; align-items:center; gap:12px; flex:1; min-width:0;">
               <div style="font-size:26px; line-height:1; background:#FFEDD5; width:44px; height:44px; border-radius:10px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
                 🔔
               </div>
@@ -1227,7 +1227,7 @@
         <!-- Unified Interactive Charts Grid (Total Fleet Status & Total Revenue Trend) -->
         <div class="dashboard-charts-grid">
           <!-- 1. Total Fleet Status Donut Chart -->
-          <div class="card" style="margin-bottom:0;">
+          <div class="card" style="margin-bottom:0; min-width:0; overflow:hidden;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:8px;">
               <div>
                 <div class="card-title" style="margin:0;">
@@ -1248,7 +1248,7 @@
           </div>
 
           <!-- 2. Total Revenue Trend Chart -->
-          <div class="card" style="margin-bottom:0;">
+          <div class="card" style="margin-bottom:0; min-width:0; overflow:hidden;">
             <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:14px;">
               <div>
                 <div class="card-title" style="margin:0;">
@@ -1337,7 +1337,7 @@
             </div>
 
             <!-- Shift Closing Table -->
-            <div class="table-responsive" style="max-height:380px; overflow-y:auto; border:1px solid #E2E8F0; border-radius:8px;">
+            <div class="table-responsive" style="max-height:380px; overflow-x:auto; overflow-y:auto; border:1px solid #E2E8F0; border-radius:8px;">
               <table class="custom-table" style="margin:0;">
                 <thead style="position:sticky; top:0; background:#F8FAFC; z-index:2;">
                   <tr>
@@ -1458,7 +1458,7 @@
                 🔄 รีเฟรชข้อมูล
               </button>
             </div>
-            <div class="table-responsive" style="max-height: 420px; overflow-y: auto;">
+            <div class="table-responsive" style="max-height: 420px; overflow-x: auto; overflow-y: auto;">
               <table class="custom-table" style="font-size:12.5px;">
                 <thead>
                   <tr style="background:#F8FAFC;">
@@ -1537,7 +1537,7 @@
               </div>
             </div>
 
-            <div class="table-responsive" style="max-height: 250px; overflow-y: auto;">
+            <div class="table-responsive" style="max-height: 250px; overflow-x: auto; overflow-y: auto;">
               <table class="custom-table">
                 <thead>
                   <tr>
@@ -2709,7 +2709,7 @@
   <div class="toast-container" id="toast-container"></div>
 
   <!-- Scripts with cache busting -->
-  <script src="/static/js/app.js?v=11.8"></script>
+  <script src="/static/js/app.js?v=11.9"></script>
 
   <!-- ===================================================================== -->
   <!-- MODAL: ACTIVE RENTALS / CARS WITH CUSTOMERS (POPUP FOR CARD 1) -->
