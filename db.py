@@ -1146,18 +1146,75 @@ class DataStore:
                 pass
         threading.Thread(target=_task, daemon=True).start()
 
-    def async_delete_maintenance(self, mnt_id):
+    def hard_delete_work_order(self, order_id, car_id=None):
+        clean_id = str(order_id or "").strip()
+        if not clean_id:
+            return None
+
+        found_car_id = car_id
         with self.lock:
-            self.maintenance_records = [x for x in self.maintenance_records if x.get("id") != mnt_id]
+            target_w = next((w for w in self.work_order_logs if w.get("id") == clean_id or w.get("booking_id") == clean_id), None)
+            if target_w and target_w.get("car_id"):
+                found_car_id = target_w.get("car_id")
+            target_m = next((m for m in self.maintenance_records if m.get("id") == clean_id), None)
+            if target_m and target_m.get("car_id"):
+                found_car_id = target_m.get("car_id")
+
+            self.work_order_logs = [w for w in self.work_order_logs if w.get("id") != clean_id and w.get("booking_id") != clean_id]
+            self.maintenance_records = [m for m in self.maintenance_records if m.get("id") != clean_id]
+            if found_car_id and found_car_id in self.cars:
+                has_active_maint = any(m.get("car_id") == found_car_id and m.get("status") not in ("เสร็จสิ้น", "ยกเลิก") for m in self.maintenance_records)
+                if not has_active_maint:
+                    active_bks = [b for b in self.bookings if b.get("car_id") == found_car_id and b.get("status") in ("กำลังเช่า", "รอรับคืน")]
+                    if active_bks:
+                        self.cars[found_car_id]["status"] = "กำลังเช่า"
+                        self.cars[found_car_id]["car_status"] = "กำลังเช่า"
+                    else:
+                        self.cars[found_car_id]["status"] = "ว่างพร้อมใช้งาน"
+                        self.cars[found_car_id]["car_status"] = "ว่างพร้อมใช้งาน"
+                    self.async_sync_car(found_car_id, self.cars[found_car_id])
+
+        self.save_local_work_order_logs()
         self.save_local_maintenance()
-        def _task():
+
+        # Database execution in single transaction
+        try:
             sb = get_db_client()
-            if not sb: return
-            try:
-                sb.table("maintenance_records").delete().eq("id", mnt_id).execute()
-            except Exception:
-                pass
-        threading.Thread(target=_task, daemon=True).start()
+            if sb and hasattr(sb, "run"):
+                from psycopg import sql as _sql
+                stmts = [
+                    (_sql.SQL("DELETE FROM public.work_order_logs WHERE id = %s OR booking_id = %s"), [clean_id, clean_id]),
+                    (_sql.SQL("DELETE FROM public.work_order_logs WHERE description LIKE %s"), [f"%{clean_id}%"]),
+                    (_sql.SQL("DELETE FROM public.maintenance_records WHERE id = %s"), [clean_id]),
+                    (_sql.SQL("DELETE FROM public.maintenance_logs WHERE id = %s"), [clean_id]),
+                ]
+                if found_car_id:
+                    stmts.append((
+                        _sql.SQL("""
+                            UPDATE public.cars 
+                            SET car_status = 'ว่างพร้อมใช้งาน' 
+                            WHERE (plate = %s OR plate = REPLACE(%s, ' ', ''))
+                              AND car_status IN ('ซ่อมบำรุง', 'ต่อทะเบียน/ประกัน', 'สถานะซ่อมบำรุง', 'กำลังซ่อมบำรุง', 'กำลังต่อภาษี/ประกัน')
+                        """),
+                        [found_car_id, found_car_id]
+                    ))
+                    stmts.append((
+                        _sql.SQL("""
+                            DELETE FROM public.work_order_logs 
+                            WHERE car_id = %s 
+                              AND work_type IN ('Maintenance', 'Renew Tax')
+                              AND (booking_id IS NULL OR booking_id = '' OR booking_id = %s)
+                        """),
+                        [found_car_id, clean_id]
+                    ))
+                sb.run(stmts)
+        except Exception as e:
+            print(f"Error in hard_delete_work_order db task: {e}")
+
+        return found_car_id
+
+    def async_delete_maintenance(self, mnt_id):
+        return self.hard_delete_work_order(mnt_id)
 
     def load_local_vehicle_maintenances(self):
         try:

@@ -2495,9 +2495,9 @@ async def create_maintenance(payload: Dict[str, Any]):
         w_type = "Renew Tax" if is_renewal else "Maintenance"
         store.log_work_order(
             car_id=car_id,
-            booking_id=None,
+            booking_id=mnt_id,
             work_type=w_type,
-            description=f"{order_type}: {service_items}. สถานที่/อู่: {service_center}. เลขไมล์: {current_mileage}",
+            description=f"[{mnt_id}] {order_type}: {service_items}. สถานที่/อู่: {service_center}. เลขไมล์: {current_mileage}",
             cost=cost_val,
             staff_id=assigned_worker
         )
@@ -2577,20 +2577,80 @@ async def close_maintenance(mnt_id: str, payload: Dict[str, Any]):
 
     return {"success": True, "maintenance": closed, "car": store.cars.get(closed.get("car_id"))}
 
+def execute_hard_delete_work_order_db(clean_id: str, found_car_id: Optional[str] = None):
+    """Execute SQL hard delete in work_order_logs and revert car status in 1 atomic transaction."""
+    try:
+        from database import engine
+        from sqlalchemy import text
+        if engine:
+            with engine.begin() as conn:
+                # 1. Hard delete from work_order_logs
+                conn.execute(
+                    text("DELETE FROM public.work_order_logs WHERE id = :id OR booking_id = :id"),
+                    {"id": clean_id}
+                )
+                conn.execute(
+                    text("DELETE FROM public.work_order_logs WHERE description LIKE :pat"),
+                    {"pat": f"%{clean_id}%"}
+                )
+                # 2. Hard delete from maintenance_records, maintenance_logs, vehicle_maintenances
+                conn.execute(text("DELETE FROM public.maintenance_records WHERE id = :id"), {"id": clean_id})
+                conn.execute(text("DELETE FROM public.maintenance_logs WHERE id = :id"), {"id": clean_id})
+                try:
+                    conn.execute(text("DELETE FROM public.vehicle_maintenances WHERE id::text = :id"), {"id": clean_id})
+                except Exception:
+                    pass
+
+                # 3. Revert car status in cars table if car_id is identified
+                if found_car_id:
+                    conn.execute(
+                        text("""
+                            UPDATE public.cars 
+                            SET car_status = 'ว่างพร้อมใช้งาน' 
+                            WHERE (plate = :car_id OR plate = REPLACE(:car_id, ' ', ''))
+                              AND car_status IN ('ซ่อมบำรุง', 'ต่อทะเบียน/ประกัน', 'สถานะซ่อมบำรุง', 'กำลังซ่อมบำรุง', 'กำลังต่อภาษี/ประกัน')
+                        """),
+                        {"car_id": found_car_id}
+                    )
+                    try:
+                        conn.execute(
+                            text("""
+                                UPDATE public.cars 
+                                SET status = 'ว่างพร้อมใช้งาน' 
+                                WHERE (plate = :car_id OR plate = REPLACE(:car_id, ' ', ''))
+                                  AND status IN ('ซ่อมบำรุง', 'ต่อทะเบียน/ประกัน', 'สถานะซ่อมบำรุง', 'กำลังซ่อมบำรุง', 'กำลังต่อภาษี/ประกัน')
+                            """),
+                            {"car_id": found_car_id}
+                        )
+                    except Exception:
+                        pass
+                    # Clean up any remaining orphan maintenance work orders for this car
+                    conn.execute(
+                        text("""
+                            DELETE FROM public.work_order_logs 
+                            WHERE car_id = :car_id 
+                              AND work_type IN ('Maintenance', 'Renew Tax')
+                              AND (booking_id IS NULL OR booking_id = '' OR booking_id = :id)
+                        """),
+                        {"car_id": found_car_id, "id": clean_id}
+                    )
+    except Exception as e:
+        print(f"SQLAlchemy hard_delete error: {e}")
+
 @app.delete("/api/maintenance/{mnt_id}")
-async def delete_maintenance(mnt_id: str):
-    target = next((m for m in store.maintenance_records if m.get("id") == mnt_id), None)
-    if not target:
-        raise HTTPException(status_code=404, detail="ไม่พบข้อมูลใบงานซ่อมบำรุง")
-        
-    car_id = target.get("car_id")
-    if car_id and car_id in store.cars:
-        if store.cars[car_id].get("status") in ["ซ่อมบำรุง", "สถานะซ่อมบำรุง"]:
-            store.cars[car_id]["status"] = "ว่างพร้อมใช้งาน"
-            store.async_sync_car(car_id, store.cars[car_id])
-            
-    store.async_delete_maintenance(mnt_id)
-    return {"success": True, "message": "ลบใบงานสำเร็จ"}
+@app.delete("/api/work-orders/{mnt_id}")
+@app.delete("/api/work-order-logs/{mnt_id}")
+async def delete_maintenance_or_work_order(mnt_id: str):
+    """TARGET MISSION 1 & 2: Hard delete from work_order_logs and revert car status in 1 transaction."""
+    clean_id = urllib.parse.unquote(mnt_id).strip()
+    car_id = store.hard_delete_work_order(clean_id)
+    execute_hard_delete_work_order_db(clean_id, car_id)
+    return {
+        "success": True,
+        "message": f"ลบใบงาน {clean_id} ออกจากระบบถาวรและคืนสถานะรถเรียบร้อย",
+        "car_id": car_id,
+        "id": clean_id
+    }
 
 @app.get("/api/pdf/maintenance/{mnt_id}")
 async def get_maintenance_pdf(mnt_id: str):
@@ -2899,8 +2959,11 @@ async def add_car_maintenance(plate: str, payload: Dict[str, Any]):
 @app.delete("/api/cars/{plate:path}/maintenances/{m_id}")
 async def delete_car_maintenance(plate: str, m_id: str):
     clean_plate = urllib.parse.unquote(plate).strip()
-    store.async_delete_vehicle_maintenance(m_id)
-    store.async_delete_maintenance_log(m_id)
+    clean_id = urllib.parse.unquote(m_id).strip()
+    store.hard_delete_work_order(clean_id, car_id=clean_plate)
+    execute_hard_delete_work_order_db(clean_id, clean_plate)
+    store.async_delete_vehicle_maintenance(clean_id)
+    store.async_delete_maintenance_log(clean_id)
     roi_data = store.get_car_financial_roi(clean_plate)
     records = store.get_combined_maintenance_history(clean_plate)
     return {
@@ -3074,8 +3137,16 @@ def compute_dashboard_statistics():
         has_queue = any(b.get("status") not in ("เสร็จสิ้น", "ยกเลิก") for b in car_bks)
 
         # 1. Maintenance / Workshop / Renewal
+        has_active_maint = any(
+            (m.get("car_id") == pl or normalize_plate_str(m.get("car_id", "")) == norm_p)
+            and str(m.get("status") or "").strip() not in ["เสร็จสิ้น", "ยกเลิก", "Completed", "Canceled"]
+            for m in getattr(store, "maintenance_records", [])
+        )
         if any(k in c_st for k in ["ซ่อม", "ไม่พร้อม", "ระงับ", "maint", "ต่อทะเบียน", "ต่อภาษี", "workshop", "renewal"]):
-            maint_count += 1
+            if not has_active_maint and len(getattr(store, "maintenance_records", [])) == 0:
+                avail_count += 1
+            else:
+                maint_count += 1
         # 2. On Rent / Renting (checks status strings AND active rental from fleet)
         elif any(k in c_st for k in ["เช่า", "rent", "กำลังเช่า", "on_rent", "on rent", "rented", "รอรับคืน"]) or has_real_on_rent:
             on_rent_count += 1

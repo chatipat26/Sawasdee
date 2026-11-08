@@ -9224,15 +9224,49 @@ ${e.message}`);
   }
 
   async deleteMaintenanceRecord(mntId) {
-    if (!confirm(`ยืนยันการลบใบงานซ่อมบำรุง ${mntId} ใช่หรือไม่?`)) return;
+    if (!confirm(`ยืนยันการลบใบงานซ่อมบำรุง ${mntId} ออกจากระบบถาวรใช่หรือไม่?`)) return;
     try {
-      const res = await fetch(`/api/maintenance/${mntId}`, { method: "DELETE" });
+      const res = await fetch(`/api/maintenance/${encodeURIComponent(mntId)}`, { method: "DELETE" });
       const data = await res.json();
-      if (data.success) {
-        this.showToast(`ลบใบงาน ${mntId} เรียบร้อย`, "info");
+      if (res.ok && data.success) {
+        this.showToast(`✅ ลบใบงาน ${mntId} และคืนสถานะรถเรียบร้อย`, "success");
         await this.loadMaintenanceRecords();
         await this.loadCars();
         await this.loadBackOfficeJobs();
+        try {
+          if (this.loadDashboardKPIs) await this.loadDashboardKPIs();
+          if (this.loadDashboardData) await this.loadDashboardData();
+          if (this.renderDashboardCharts) this.renderDashboardCharts();
+        } catch (dbErr) {
+          console.warn("Dashboard refetch warning:", dbErr);
+        }
+      } else {
+        alert(data.detail || data.message || "ลบใบงานไม่สำเร็จ");
+      }
+    } catch (e) {
+      alert("เกิดข้อผิดพลาดในการลบใบงาน: " + e.message);
+    }
+  }
+
+  async deleteWorkOrder(orderId) {
+    if (!confirm(`ยืนยันการลบใบงาน ${orderId} ออกจากระบบถาวรใช่หรือไม่?`)) return;
+    try {
+      const res = await fetch(`/api/work-orders/${encodeURIComponent(orderId)}`, { method: "DELETE" });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        this.showToast(`✅ ลบใบงาน ${orderId} เรียบร้อย`, "success");
+        await this.loadBackOfficeJobs();
+        await this.loadMaintenanceRecords();
+        await this.loadCars();
+        try {
+          if (this.loadDashboardKPIs) await this.loadDashboardKPIs();
+          if (this.loadDashboardData) await this.loadDashboardData();
+          if (this.renderDashboardCharts) this.renderDashboardCharts();
+        } catch (dbErr) {
+          console.warn("Dashboard refetch warning:", dbErr);
+        }
+      } else {
+        alert(data.detail || data.message || "ลบใบงานไม่สำเร็จ");
       }
     } catch (e) {
       alert("เกิดข้อผิดพลาด: " + e.message);
@@ -10052,6 +10086,14 @@ ${e.message}`);
       if (!res.ok) throw new Error("Failed to delete");
       this.showToast(isEn ? "Maintenance record deleted" : "ลบรายการซ่อมบำรุงเรียบร้อยแล้ว", "success");
       await this.loadCarMaintenances(plate);
+      await this.loadCars();
+      try {
+        if (this.loadDashboardKPIs) await this.loadDashboardKPIs();
+        if (this.loadDashboardData) await this.loadDashboardData();
+        if (this.renderDashboardCharts) this.renderDashboardCharts();
+      } catch (dbErr) {
+        console.warn("Dashboard refetch warning:", dbErr);
+      }
     } catch (err) {
       console.error("deleteCarMaintenance error:", err);
       this.showToast(isEn ? "Error deleting maintenance" : "เกิดข้อผิดพลาดในการลบ", "danger");
