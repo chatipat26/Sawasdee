@@ -481,18 +481,27 @@ async def list_cars(start_date: Optional[str] = None, end_date: Optional[str] = 
         _fs, _fe = to_date(start_date), to_date(end_date)
         if _fs and not _fe: _fe = _fs
         if _fe and not _fs: _fs = _fe
+        norm_p = re.sub(r"[\s\-_]", "", str(plate)).strip().lower()
         _on_rent = False
         if _fs and _fe:
             for _b in store.bookings:
-                if _b.get("car_id") != plate or _b.get("status") not in ("กำลังเช่า", "เตรียมรับคืน"):
+                b_pid = re.sub(r"[\s\-_]", "", str(_b.get("car_id", ""))).strip().lower()
+                if b_pid != norm_p or _b.get("status") in ("เสร็จสิ้น", "ยกเลิก", "Completed", "Canceled"):
                     continue
                 _bs, _be = to_date(_b.get("start_date")), to_date(_b.get("end_date"))
-                if _bs and _be and not (_be < _fs or _bs > _fe):
-                    _on_rent = True
-                    break
+                if _bs and _be:
+                    if _bs == _be or _fs == _fe:
+                        _overlaps = (_fs <= _be) and (_fe >= _bs)
+                    else:
+                        _overlaps = (_fs < _be) and (_fe > _bs)
+                    if _overlaps:
+                        c_copy["fleet_status_key"] = "unavailable"
+                        if _b.get("status") in ("กำลังเช่า", "รอรับคืน"):
+                            _on_rent = True
+                        break
         else:
-            _on_rent = str(car.get("status") or "").strip() in ("กำลังเช่า", "เตรียมรับคืน") or any(
-                _b.get("car_id") == plate and _b.get("status") in ("กำลังเช่า", "เตรียมรับคืน")
+            _on_rent = str(car.get("status") or "").strip() in ("กำลังเช่า", "รอรับคืน") or any(
+                re.sub(r"[\s\-_]", "", str(_b.get("car_id", ""))).strip().lower() == norm_p and _b.get("status") in ("กำลังเช่า", "รอรับคืน")
                 for _b in store.bookings
             )
         c_copy["is_on_rent"] = _on_rent

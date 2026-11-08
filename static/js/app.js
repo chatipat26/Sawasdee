@@ -1784,6 +1784,34 @@ class App {
   }
 
   // --- Duration & Filter Engine ---
+  parseIsoDate(dStr) {
+    if (!dStr) return null;
+    if (dStr instanceof Date) {
+      const d = new Date(dStr.getTime());
+      d.setHours(0, 0, 0, 0);
+      return d;
+    }
+    const s = String(dStr).trim().split("T")[0];
+    if (s.includes("-")) {
+      const parts = s.split("-");
+      if (parts.length === 3) {
+        return new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10), 0, 0, 0, 0);
+      }
+    }
+    if (s.includes("/")) {
+      const parts = s.split("/");
+      if (parts.length === 3) {
+        return new Date(parseInt(parts[2], 10), parseInt(parts[1], 10) - 1, parseInt(parts[0], 10), 0, 0, 0, 0);
+      }
+    }
+    const d = new Date(s);
+    if (!isNaN(d.getTime())) {
+      d.setHours(0, 0, 0, 0);
+      return d;
+    }
+    return null;
+  }
+
   calcDuration() {
     const isEn = (this.currentLang === "EN");
     const sDate = document.getElementById("filter-start-date")?.value;
@@ -2117,11 +2145,62 @@ class App {
         if ((c.company || c.owner_company || "").trim() !== companyFilter.trim()) return false;
       }
 
-      // 3b. Date lock: cars that are reserved / on rent during the locked period must not be shown
+      // 3b. Date Filter & Overlap Check (Mission 4: Strictly hide reserved/rented cars)
       const lockS = document.getElementById("filter-start-date")?.value;
       const lockE = document.getElementById("filter-end-date")?.value;
       const wantsBusy = statusFilter.startsWith("ไม่ว่างในวันที่เลือก") || statusFilter.startsWith("Unavailable on Dates") || statusFilter === "กำลังเช่า" || statusFilter === "Currently Renting";
-      if ((lockS || lockE) && c.fleet_status_key === "unavailable" && !wantsBusy) return false;
+
+      if ((lockS || lockE) && !wantsBusy) {
+        // If status is maintenance, hide it from available fleet
+        if (c.fleet_status_key === "maintenance" || c.status === "ซ่อมบำรุง" || c.status === "สถานะซ่อมบำรุง") {
+          return false;
+        }
+
+        // If backend already marked car as unavailable
+        if (c.fleet_status_key === "unavailable") {
+          return false;
+        }
+
+        let searchS = this.parseIsoDate(lockS);
+        let searchE = this.parseIsoDate(lockE);
+        if (searchS && !searchE) searchE = new Date(searchS.getTime());
+        if (searchE && !searchS) searchS = new Date(searchE.getTime());
+        if (searchS && searchE && searchE < searchS) searchE = new Date(searchS.getTime());
+
+        if (searchS && searchE) {
+          const normCarPlate = this.normalizePlate(c.plate);
+          // Check overlap with all bookings in system
+          const hasOverlap = (this.bookings || []).some(b => {
+            if (this.normalizePlate(b.car_id) !== normCarPlate) return false;
+            const bStat = String(b.status || "").trim();
+            if (["เสร็จสิ้น", "ยกเลิก", "Completed", "Canceled", "completed", "canceled"].includes(bStat)) {
+              return false;
+            }
+            const bStart = this.parseIsoDate(b.start_date);
+            const bEnd = this.parseIsoDate(b.end_date);
+            if (!bStart || !bEnd) return false;
+
+            // Strict Overlap formula: (Search_StartDate < Booking_EndDate) AND (Search_EndDate > Booking_StartDate)
+            if (bStart.getTime() === bEnd.getTime() || searchS.getTime() === searchE.getTime()) {
+              return (searchS <= bEnd) && (searchEnd >= bStart);
+            }
+            return (searchS < bEnd) && (searchEnd > bStart);
+          });
+
+          if (hasOverlap) {
+            return false; // CUT OUT AND HIDE CAR COMPLETELY FROM ARRAY
+          }
+
+          // If car status is currently on rent or marked on rent and search range covers today
+          if (c.is_on_rent || c.status === "กำลังเช่า") {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            if (searchS <= today && searchE >= today) {
+              return false;
+            }
+          }
+        }
+      }
 
       // 4. Status filter (matching app.py exactly)
       if (statusFilter.startsWith("ว่างไม่มีการจอง") || statusFilter.startsWith("Vacant without Bookings")) {
@@ -3814,7 +3893,7 @@ class App {
     `;
 
     if (btnSaveSlip) btnSaveSlip.style.display = isDep ? "inline-flex" : "none";
-    if (btnSettle) btnSettle.style.display = (!isRent && isDep) ? "inline-flex" : "none";
+    if (btnSettle) { const remVal = parseFloat(b.remaining_rental !== undefined ? b.remaining_rental : (b.rental_paid ? 0 : netP)); btnSettle.style.display = ((!isRent && isDep) || remVal > 0) ? "inline-flex" : "none"; }
     if (btnDlDep) btnDlDep.style.display = isDep ? "inline-flex" : "none";
     if (btnDlRent) btnDlRent.style.display = isRent ? "inline-flex" : "none";
     if (btnDlContract) btnDlContract.style.display = "inline-flex";
@@ -4408,6 +4487,9 @@ class App {
             <button type="button" onclick="app.quickConfirmReturn('${b.booking_id}')" class="btn btn-warning btn-sm" style="font-size:11.5px; padding:4px 10px; font-weight:600; color:#1E293B;" title="${isEn ? 'Customer returned vehicle ➔ Update status to Completed' : 'ลูกค้านำรถมาคืนแล้ว ➔ ปรับสถานะเป็น เสร็จสิ้น'}">
               🏁 ${isEn ? 'Returned (Completed) ➔' : 'รับคืนแล้ว (เสร็จสิ้น) ➔'}
             </button>` : ''}
+            <button type="button" onclick="app.openExtendContract()" class="btn btn-warning btn-sm" style="font-size:11.5px; padding:4px 10px; font-weight:700; background:#f59e0b; border-color:#d97706; color:#1F2937;" title="${isEn ? 'Extend Contract Period' : 'ต่อสัญญา (Extend Contract)'}">
+              📝 ${isEn ? 'Extend Contract' : 'ต่อสัญญา (Extend Contract)'}
+            </button>
           </div>
         </div>
       `;

@@ -464,33 +464,13 @@
                 </label>
               </div>
 
-              <div class="deposit-actions">
-                <button id="btn-submit-deposit" onclick="app.submitDeposit()" class="btn btn-primary deposit-btn-primary">
-                  ยืนยันรับเงินมัดจำ
+              <div class="deposit-actions" style="display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-top:8px;">
+                <button id="btn-submit-deposit" onclick="app.submitDeposit()" class="btn btn-primary deposit-btn-primary" style="margin:0;">
+                  ยืนยันรับเงินมัดจำ ➔
                 </button>
-                <div class="deposit-actions-secondary">
-                  <button id="btn-save-slip-only" onclick="app.submitUpdateSlipOnly()" class="btn btn-secondary deposit-btn-ghost" style="display:none;" title="อัปเดตสลิปและเลข Ref เพิ่มเติม">
-                    อัปเดตสลิป & เลข Ref
-                  </button>
-                  <button id="btn-settle-rental" onclick="app.submitSettle()" class="btn btn-success" style="display:none;">
-                    บันทึกชำระค่าเช่าคงเหลือ
-                  </button>
-                  <button id="btn-dl-dep-receipt" onclick="app.downloadDepositReceipt()" class="btn btn-secondary deposit-btn-ghost" style="display:none;">
-                    ใบเสร็จรับเงินมัดจำ (PDF)
-                  </button>
-                  <button id="btn-dl-rent-receipt" onclick="app.downloadRentalReceipt()" class="btn btn-secondary deposit-btn-ghost" style="display:none;">
-                    ใบเสร็จค่าเช่า (PDF)
-                  </button>
-                  <button id="btn-dl-contract-from-dep" onclick="app.downloadContractPdf()" class="btn btn-secondary deposit-btn-ghost" style="display:none;">
-                    สัญญาเช่า (PDF)
-                  </button>
-                  <button id="btn-goto-assign-from-dep" onclick="app.goToTabWithBooking('assign', document.getElementById('deposit-sel-booking').value)" class="btn btn-secondary deposit-btn-ghost">
-                    ไปหน้าออกใบงาน
-                  </button>
-                  <button id="btn-goto-contract-from-dep" onclick="app.goToTabWithBooking('contract', document.getElementById('deposit-sel-booking').value)" class="btn btn-secondary deposit-btn-ghost">
-                    ไปหน้าทำสัญญา
-                  </button>
-                </div>
+                <button id="btn-settle-rental" onclick="app.submitSettle()" class="btn btn-success" style="display:none; margin:0; padding:10px 20px; font-weight:700; background:#10B981; border-color:#059669;">
+                  รับชำระค่าเช่าคงเหลือ
+                </button>
               </div>
             </div>
             </div>
@@ -563,15 +543,12 @@
                   <label id="lbl-assign-disp-loc">📍 สถานที่นัดหมายส่งมอบรถ:</label>
                   <textarea id="assign-disp-loc" class="form-control" rows="2" placeholder="เช่น สนามบินสุวรรณภูมิ หรือใส่ Google Maps link"></textarea>
                 </div>
-                <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px;">
-                  <button type="button" id="btn-assign-disp-sched" onclick="app.submitAssign('Dispatch', 'prepare')" class="btn btn-secondary" style="width:100%; font-weight:700;" title="บันทึกข้อมูลเตรียมนัดหมาย (สถานะ: เตรียมส่งมอบ)">
-                    📋 นัดหมาย (เตรียมส่งมอบ)
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                  <button type="button" id="btn-assign-disp-sched" onclick="app.submitAssign('Dispatch', 'prepare')" class="btn btn-secondary" style="width:100%; font-weight:700;" title="นัดหมายส่งมอบรถยนต์ล่วงหน้า">
+                    📅 นัดหมาย (เตรียมส่งมอบ)
                   </button>
-                  <button type="button" id="btn-assign-disp-handover" onclick="app.submitAssign('Dispatch', 'handover')" class="btn btn-primary" style="width:100%; background:#16a34a; border-color:#16a34a; font-weight:700;" title="ส่งมอบรถให้ลูกค้าจริงแล้ว (สถานะ: กำลังเช่า)">
+                  <button type="button" id="btn-assign-disp-handover" onclick="app.submitAssign('Dispatch', 'handover')" class="btn btn-primary" style="width:100%; background:#16a34a; border-color:#16a34a; font-weight:700;" title="ส่งมอบรถยนต์ให้ลูกค้าแล้ว">
                     🚚 ส่งมอบรถแล้ว (กำลังเช่า) ➔
-                  </button>
-                  <button type="button" id="btn-assign-disp-goto-contract" onclick="app.goToTabWithBooking('contract', document.getElementById('assign-disp-bk').value)" class="btn btn-secondary" style="width:100%; background:#FAF7F2; border:1px solid #CBD5E1; color:#374151; font-weight:700;">
-                    📝 ไปหน้าทำสัญญา ➔
                   </button>
                 </div>
               </div>

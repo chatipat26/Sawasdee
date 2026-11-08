@@ -108,9 +108,14 @@ def calculate_rental_duration_and_days(start_date, start_time, end_date, end_tim
             
     return billable_days, extra_hours, rem_minutes, is_over_4hr, explanation
 
+def normalize_plate_str(plate):
+    if not plate:
+        return ""
+    return re.sub(r"[\s\-_]", "", str(plate)).strip().lower()
+
 def get_car_fleet_status(car_plate, car_obj, bookings, filter_start_date=None, filter_end_date=None):
     c_status = str((car_obj or {}).get("status") or "").strip()
-    if c_status in ["ซ่อมบำรุง", "ไม่พร้อมใช้งาน", "ระงับการใช้งาน"]:
+    if c_status in ["สถานะซ่อมบำรุง", "ซ่อมบำรุง", "ไม่พร้อมใช้งาน", "ระงับการใช้งาน"]:
         return "maintenance", "สถานะซ่อมบำรุง", "#F97316", "#FFF7ED", "#FDBA74"
     if c_status in ["ต่อทะเบียน/ประกัน", "ต่อภาษี/ประกัน", "รอต่อทะเบียน"]:
         return "renewal", "กำลังต่อภาษี/ประกัน", "#D97706", "#FEF3C7", "#FCD34D"
@@ -122,11 +127,13 @@ def get_car_fleet_status(car_plate, car_obj, bookings, filter_start_date=None, f
     elif chk_e and not chk_s: chk_s = chk_e
     if chk_s and chk_e and chk_e < chk_s: chk_e = chk_s
     
+    norm_car_plate = normalize_plate_str(car_plate)
     active_bks = []
     if bookings:
         for b in bookings:
-            if b.get("car_id") != car_plate: continue
-            if b.get("status") in ["เสร็จสิ้น", "ยกเลิก"]: continue
+            if normalize_plate_str(b.get("car_id")) != norm_car_plate: continue
+            b_st = str(b.get("status") or "").strip()
+            if b_st in ["เสร็จสิ้น", "ยกเลิก", "Completed", "Canceled", "completed", "canceled"]: continue
             active_bks.append(b)
             
     is_booked_on_selected_date = False
@@ -135,17 +142,27 @@ def get_car_fleet_status(car_plate, car_obj, bookings, filter_start_date=None, f
         for b in active_bks:
             b_s = to_date(b.get("start_date"))
             b_e = to_date(b.get("end_date"))
-            if b_s and b_e and not (b_e < chk_s or b_s > chk_e):
-                is_booked_on_selected_date = True
-                booked_b = b
-                break
-                
+            if b_s and b_e:
+                # Time Overlap formula: (Search_StartDate < Booking_EndDate) AND (Search_EndDate > Booking_StartDate)
+                if b_s == b_e or chk_s == chk_e:
+                    overlaps = (chk_s <= b_e) and (chk_e >= b_s)
+                else:
+                    overlaps = (chk_s < b_e) and (chk_e > b_s)
+                if overlaps:
+                    is_booked_on_selected_date = True
+                    booked_b = b
+                    break
+                    
     is_currently_rented = False
-    if not has_date_filter:
+    today_d = date.today()
+    if has_date_filter:
+        if c_status in ["กำลังเช่า", "รอส่งมอบ", "เตรียมส่งมอบ", "เตรียมรับคืน"]:
+            if chk_s <= today_d <= chk_e:
+                is_currently_rented = True
+    else:
         if c_status in ["กำลังเช่า", "รอส่งมอบ", "เตรียมส่งมอบ", "เตรียมรับคืน"]:
             is_currently_rented = True
         else:
-            today_d = date.today()
             for b in active_bks:
                 b_s = to_date(b.get("start_date"))
                 b_e = to_date(b.get("end_date"))
@@ -163,7 +180,6 @@ def get_car_fleet_status(car_plate, car_obj, bookings, filter_start_date=None, f
     # Check for advance bookings in the future
     has_advance_booking = False
     adv_b = None
-    today_d = date.today()
     if c_status == "ติดจอง":
         has_advance_booking = True
     elif active_bks:
@@ -181,7 +197,7 @@ def get_car_fleet_status(car_plate, car_obj, bookings, filter_start_date=None, f
             info_txt = f"มีการจองล่วงหน้าไว้ ({adv_b.get('customer')}) {format_date_dmy(adv_b.get('start_date'))} - {format_date_dmy(adv_b.get('end_date'))}"
         return "reserved", info_txt, "#F59E0B", "#FFFBEB", "#FDE68A"
         
-    return "available", "ว่างไม่มีการจอง", "#10B981", "#ECFDF5", "#A7F3D0"
+    return "available", "ว่างพร้อมใช้งาน", "#10B981", "#ECFDF5", "#A7F3D0"
 
 # -------------------------------------------------------------------------
 # INITIAL CARS, CUSTOMERS, BOOKINGS, USERS
