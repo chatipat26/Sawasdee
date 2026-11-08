@@ -2835,105 +2835,64 @@ async def get_car_profitability():
 
 def compute_dashboard_statistics():
     sb = get_db_client()
-    live_cars = []
-    live_bookings = []
+    cars_data = []
     
     if sb:
         try:
-            c_res = sb.table("cars").select("*").execute()
+            # Query status from cars table directly (SINGLE SOURCE OF TRUTH)
+            c_res = sb.table("cars").select("plate, status, car_status, company").execute()
             if c_res and c_res.data:
-                live_cars = c_res.data
+                cars_data = c_res.data
         except Exception as e:
             print(f"Dashboard cars DB fetch note: {e}")
-        try:
-            b_res = sb.table("bookings").select("*").execute()
-            if b_res and b_res.data:
-                live_bookings = b_res.data
-        except Exception as e:
-            print(f"Dashboard bookings DB fetch note: {e}")
 
-    if not live_cars and hasattr(store, "cars"):
-        live_cars = list(store.cars.values())
-    if not live_bookings and hasattr(store, "bookings"):
-        live_bookings = list(store.bookings)
-
-    # Merge cars: ensure store.cars in-memory state is merged
-    cars_dict = {}
-    for c in live_cars:
-        pl = c.get("plate")
-        if pl:
-            cars_dict[pl] = dict(c)
-    for pl, c in getattr(store, "cars", {}).items():
-        if pl not in cars_dict:
-            cars_dict[pl] = dict(c)
-        else:
-            cars_dict[pl].update({k: v for k, v in c.items() if v is not None})
-    fleet_cars = list(cars_dict.values()) if cars_dict else list(getattr(store, "cars", {}).values())
-
-    # Merge bookings
-    bookings_dict = {}
-    for b in live_bookings:
-        bid = b.get("booking_id") or b.get("id")
-        if bid:
-            bookings_dict[bid] = dict(b)
-    for b in getattr(store, "bookings", []):
-        bid = b.get("booking_id") or b.get("id")
-        if bid:
-            bookings_dict[bid] = {**bookings_dict.get(bid, {}), **b}
-    all_bookings = list(bookings_dict.values()) if bookings_dict else list(getattr(store, "bookings", []))
+    if not cars_data and hasattr(store, "cars") and store.cars:
+        cars_data = list(store.cars.values())
 
     today = now_th().date()
-    total_fleet = len(fleet_cars)
+    total_fleet = len(cars_data)
     avail_count = 0
     on_rent_count = 0
     booked_count = 0
     maint_count = 0
 
-    for c in fleet_cars:
-        pl = str(c.get("plate") or "").strip()
-        norm_p = normalize_plate_str(pl)
-        c_st = str(c.get("status") or c.get("car_status") or "").strip()
-
-        # 1. Maintenance
-        if c_st in ["ซ่อมบำรุง", "สถานะซ่อมบำรุง", "ส่งซ่อม", "ไม่พร้อมใช้งาน", "ระงับการใช้งาน"]:
+    # Group cars strictly by column status from cars table
+    for c in cars_data:
+        st = str(c.get("status") or c.get("car_status") or "").strip().lower()
+        
+        # 1. Maintenance / Workshop / Renewal
+        if any(k in st for k in ["ซ่อม", "ไม่พร้อม", "ระงับ", "maint", "ต่อทะเบียน", "ต่อภาษี", "workshop", "renewal"]):
             maint_count += 1
-            continue
-
-        # Check active bookings for this car (CLONE FLEET LOGIC)
-        car_bks = [
-            b for b in all_bookings
-            if normalize_plate_str(b.get("car_id", "")) == norm_p
-            and str(b.get("status") or "").strip() not in ["เสร็จสิ้น", "ยกเลิก", "Completed", "Canceled", "completed", "canceled"]
-        ]
-
-        # 2. Currently Rented
-        has_real_on_rent = any(b.get("status") in ("กำลังเช่า", "รอรับคืน") for b in car_bks)
-        if c_st in ["กำลังเช่า", "เช่าอยู่", "รอรับคืน"] or has_real_on_rent:
+        # 2. On Rent / Renting
+        elif any(k in st for k in ["เช่า", "rent"]):
             on_rent_count += 1
-            continue
-
-        # 3. Booked / Reserved (Booking queue awaiting delivery or deposit)
-        has_queue = any(b.get("status") not in ("เสร็จสิ้น", "ยกเลิก") for b in car_bks)
-        if c_st in ["ติดจอง", "จอง", "เตรียมส่งมอบ", "รอส่งมอบ"] or has_queue:
+        # 3. Booked / Reserved / Queue
+        elif any(k in st for k in ["จอง", "book", "reserv", "ส่งมอบ", "queue"]):
             booked_count += 1
-            continue
-
-        # 4. Otherwise Available
-        avail_count += 1
+        # 4. Available (ว่างพร้อมใช้งาน)
+        else:
+            avail_count += 1
 
     # Active rentals: on_rent + booked (strictly never including available)
     active_rentals = on_rent_count + booked_count
     utilization_rate = round((active_rentals / max(1, total_fleet)) * 100, 1) if total_fleet > 0 else 0.0
 
-    # Real-time revenue calculation
+    status_counts = {
+        "available": avail_count,
+        "on_rent": on_rent_count,
+        "booked": booked_count,
+        "maintenance": maint_count
+    }
+
+    # Real-time revenue calculation from jobs and bookings
     total_rev = 0.0
     seen_bids = set()
-    for cj in store.completed_jobs:
+    for cj in getattr(store, "completed_jobs", []):
         bid = cj.get("booking_id")
         if bid: seen_bids.add(bid)
         total_rev += float(cj.get("net_price") or 0.0) + float(cj.get("late_fee") or 0.0)
 
-    for b in all_bookings:
+    for b in getattr(store, "bookings", []):
         bid = b.get("booking_id")
         if bid and bid not in seen_bids:
             if b.get("rental_paid") or b.get("is_fully_paid") or str(b.get("status")) in ["กำลังเช่า", "รอรับคืน", "เสร็จสิ้น"]:
@@ -2941,7 +2900,7 @@ def compute_dashboard_statistics():
                 seen_bids.add(bid)
 
     if total_rev == 0.0:
-        for f in store.financial_records:
+        for f in getattr(store, "financial_records", []):
             if f.get("type") in ["รายรับ", "income"] or str(f.get("type", "")).strip() == "รายรับ":
                 total_rev += float(f.get("amount", 0) or 0)
 
@@ -2959,16 +2918,16 @@ def compute_dashboard_statistics():
         m_str = f"{y}-{m:02d}"
         m_label = f"{m}. {th_months[m]}"
         rev_m = 0.0
-        for cj in store.completed_jobs:
+        for cj in getattr(store, "completed_jobs", []):
             c_d = to_date(cj.get("completed_date") or cj.get("end_date"))
             if c_d and c_d.year == y and c_d.month == m:
                 rev_m += float(cj.get("net_price") or 0.0)
-        for b in all_bookings:
+        for b in getattr(store, "bookings", []):
             b_d = to_date(b.get("start_date") or b.get("created_at"))
             if b_d and b_d.year == y and b_d.month == m:
                 if b.get("rental_paid") or b.get("is_fully_paid") or str(b.get("status")) in ["กำลังเช่า", "รอรับคืน"]:
                     rev_m += float(b.get("net_price") or b.get("rental_rate") or 0.0)
-        for f in store.financial_records:
+        for f in getattr(store, "financial_records", []):
             if f.get("type") == "รายรับ":
                 f_d = to_date(f.get("date") or f.get("created_at"))
                 if f_d and f_d.year == y and f_d.month == m:
@@ -2984,21 +2943,16 @@ def compute_dashboard_statistics():
         })
 
     company_counts = {}
-    for c in fleet_cars:
+    for c in cars_data:
         comp = c.get("company", "อื่นๆ")
         company_counts[comp] = company_counts.get(comp, 0) + 1
-
-    status_breakdown = {
-        "available": avail_count,
-        "on_rent": on_rent_count,
-        "booked": booked_count,
-        "maintenance": maint_count
-    }
 
     return {
         "success": True,
         "total_fleet": total_fleet,
-        "status_breakdown": status_breakdown,
+        "status_counts": status_counts,
+        "status_breakdown": status_counts,
+        "fleet_status_breakdown": status_counts,
         "active_rentals": active_rentals,
         "utilization_rate": utilization_rate,
         "total_revenue": round(total_rev, 2),
@@ -3007,12 +2961,11 @@ def compute_dashboard_statistics():
         "rented_cars": on_rent_count,
         "booked_cars": booked_count,
         "maintenance_cars": maint_count,
-        "fleet_status_breakdown": status_breakdown,
         "monthly_trend": monthly_trend,
         "company_distribution": company_counts,
-        "total_bookings": len(all_bookings),
-        "total_completed": len(store.completed_jobs),
-        "financial_records": store.financial_records
+        "total_bookings": len(getattr(store, "bookings", [])),
+        "total_completed": len(getattr(store, "completed_jobs", [])),
+        "financial_records": getattr(store, "financial_records", [])
     }
 
 @app.get("/api/dashboard/stats")

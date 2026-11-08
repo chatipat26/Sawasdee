@@ -1623,19 +1623,19 @@ class App {
   updateDashboardKPIsFromScope() {
     const isEn = (this.currentLang === "EN");
     const stats = this.dashboardStats || {};
-    const sb = stats.status_breakdown || stats.fleet_status_breakdown || {};
+    const sc = stats.status_counts || stats.status_breakdown || stats.fleet_status_breakdown || {};
 
-    // SINGLE SOURCE OF TRUTH: Direct binding from Backend API response
-    const totalFleet = (stats.total_fleet !== undefined) ? Number(stats.total_fleet) : ((stats.total_cars !== undefined) ? Number(stats.total_cars) : (this.cars || []).length);
-    const availCars = (sb.available !== undefined) ? Number(sb.available) : ((stats.available_cars !== undefined) ? Number(stats.available_cars) : (this.cars || []).filter(c => c.status === "ว่างพร้อมใช้งาน").length);
-    const onRentCars = (sb.on_rent !== undefined) ? Number(sb.on_rent) : ((stats.rented_cars !== undefined) ? Number(stats.rented_cars) : 0);
-    const bookedCars = (sb.booked !== undefined) ? Number(sb.booked) : ((stats.booked_cars !== undefined) ? Number(stats.booked_cars) : 0);
-    const maintCars = (sb.maintenance !== undefined) ? Number(sb.maintenance) : ((stats.maintenance_cars !== undefined) ? Number(stats.maintenance_cars) : 0);
+    // STRICT SINGLE SOURCE OF TRUTH: Direct binding from Backend API status_counts
+    const totalFleet = (stats.total_fleet !== undefined) ? Number(stats.total_fleet) : 0;
+    const availCars = Number(sc.available || 0);
+    const onRentCars = Number(sc.on_rent || 0);
+    const bookedCars = Number(sc.booked || 0);
+    const maintCars = Number(sc.maintenance || 0);
     
     // Card 2: on_rent + booked (strictly never including available)
-    const activeRentals = onRentCars + bookedCars;
-    const utilRate = totalFleet > 0 ? ((activeRentals / totalFleet) * 100).toFixed(1) : "0.0";
-    const totalRev = stats.total_revenue !== undefined ? parseFloat(stats.total_revenue || 0) : (this.completedJobs || []).reduce((sum, j) => sum + parseFloat(j.net_price || 0), 0);
+    const activeRentals = (stats.active_rentals !== undefined) ? Number(stats.active_rentals) : (onRentCars + bookedCars);
+    const utilRate = (stats.utilization_rate !== undefined) ? Number(stats.utilization_rate).toFixed(1) : (totalFleet > 0 ? ((activeRentals / totalFleet) * 100).toFixed(1) : "0.0");
+    const totalRev = stats.total_revenue !== undefined ? parseFloat(stats.total_revenue || 0) : 0;
 
     const elTotal = document.getElementById("kpi-total-cars");
     const elAvail = document.getElementById("kpi-avail-pill");
@@ -7685,14 +7685,14 @@ ${e.message}`);
 
     const isEn = (this.currentLang === "EN");
     const stats = this.dashboardStats || {};
-    const sb = stats.status_breakdown || stats.fleet_status_breakdown || {};
+    const sc = stats.status_counts || stats.status_breakdown || stats.fleet_status_breakdown || {};
 
-    // SINGLE SOURCE OF TRUTH: Direct binding from Backend API response
-    const totalCars = (stats.total_fleet !== undefined) ? Number(stats.total_fleet) : ((stats.total_cars !== undefined) ? Number(stats.total_cars) : (this.cars || []).length);
-    const availCount = (sb.available !== undefined) ? Number(sb.available) : ((stats.available_cars !== undefined) ? Number(stats.available_cars) : (this.cars || []).filter(c => c.status === "ว่างพร้อมใช้งาน").length);
-    const rentCount = (sb.on_rent !== undefined) ? Number(sb.on_rent) : ((stats.rented_cars !== undefined) ? Number(stats.rented_cars) : 0);
-    const bookCount = (sb.booked !== undefined) ? Number(sb.booked) : ((stats.booked_cars !== undefined) ? Number(stats.booked_cars) : 0);
-    const maintCount = (sb.maintenance !== undefined) ? Number(sb.maintenance) : ((stats.maintenance_cars !== undefined) ? Number(stats.maintenance_cars) : 0);
+    // STRICT SINGLE SOURCE OF TRUTH: Direct binding from Backend API status_counts
+    const totalCars = (stats.total_fleet !== undefined) ? Number(stats.total_fleet) : 0;
+    const availCount = Number(sc.available || 0);
+    const rentCount = Number(sc.on_rent || 0);
+    const bookCount = Number(sc.booked || 0);
+    const maintCount = Number(sc.maintenance || 0);
 
     if (badge) {
       badge.textContent = isEn ? `${totalCars} cars` : `${totalCars} คัน`;
@@ -7703,7 +7703,7 @@ ${e.message}`);
     const labels = isEn 
       ? ["Available", "Rented", "Reserved", "Maintenance"]
       : ["ว่างพร้อมให้บริการ", "กำลังเช่า", "ติดจอง", "ซ่อมบำรุง"];
-    const colors = ["#10B981", "#EF4444", "#F59E0B", "#F97316"]; // เขียว, แดง, เหลือง, ส้ม
+    const colors = ["#10B981", "#3B82F6", "#F59E0B", "#F97316"]; // เขียว, น้ำเงิน, เหลือง, ส้ม
 
     if (this.donutChart) {
       this.donutChart.destroy();
@@ -7718,13 +7718,13 @@ ${e.message}`);
           backgroundColor: colors,
           borderColor: '#FFFFFF',
           borderWidth: 2,
-          hoverOffset: 6
+          hoverOffset: 4
         }]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        cutout: '75%',
+        cutout: '80%', // Minimalist thin donut ring
         plugins: {
           legend: { display: false },
           tooltip: {
@@ -7741,12 +7741,16 @@ ${e.message}`);
     });
 
     if (legend) {
+      legend.className = "grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-slate-100";
+      legend.style.display = "grid";
+      legend.style.gridTemplateColumns = "repeat(2, 1fr)";
+      legend.style.gap = "6px 12px";
       legend.innerHTML = labels.map((lbl, idx) => {
         const val = dataArr[idx];
         const pct = totalCars > 0 ? ((val / totalCars) * 100).toFixed(1) : "0.0";
         const cDot = colors[idx];
         return `
-          <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px; padding:3px 4px; background:#F8FAFC; border-radius:6px; border:1px solid #F1F5F9;">
+          <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px; padding:4px 8px; background:#F8FAFC; border-radius:6px; border:1px solid #F1F5F9;">
             <span style="display:inline-flex; align-items:center; gap:5px; color:#475569;">
               <span style="color:${cDot}; font-size:13px; line-height:1;">●</span>
               <span style="font-weight:600;">${lbl}</span>
