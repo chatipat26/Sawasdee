@@ -1,6 +1,7 @@
 /**
  * Sawasdee Rental - High-Speed SPA Application Logic
  */
+var isRent = false;
 
 class App {
   constructor() {
@@ -5249,21 +5250,24 @@ class App {
 
     this.boCalendar = new FullCalendar.Calendar(calendarEl, {
       initialView: 'dayGridMonth',
+      navLinks: true,
       headerToolbar: {
         left: 'prev,next today',
         center: 'title',
-        right: 'dayGridMonth,timeGridWeek,listMonth'
+        right: 'dayGridMonth,timeGridWeek,timeGridDay,listMonth'
       },
       locale: isEn ? 'en' : 'th',
       buttonText: isEn ? {
         today: 'Today',
         month: 'Month',
         week: 'Week',
+        day: 'Day',
         list: 'List'
       } : {
         today: 'วันนี้',
         month: 'เดือน',
         week: 'สัปดาห์',
+        day: 'รายวัน',
         list: 'รายการ'
       },
       events: events,
@@ -5274,8 +5278,35 @@ class App {
       },
       displayEventTime: true,
       dayMaxEvents: 3,
+      navLinkDayClick: (date, jsEvent) => {
+        const dStr = typeof date === "string" ? date : (date.toISOString ? date.toISOString().split("T")[0] : String(date));
+        if (this.boCalendar) {
+          try {
+            this.boCalendar.changeView('timeGridDay', dStr);
+          } catch(e) {
+            try {
+              this.boCalendar.changeView('listDay', dStr);
+            } catch(e2) {
+              this.boCalendar.gotoDate(dStr);
+            }
+          }
+        }
+        this.onCalendarDateClick(dStr);
+      },
       dateClick: (info) => {
-        this.onCalendarDateClick(info.dateStr);
+        const dStr = info.dateStr || (info.date && info.date.toISOString ? info.date.toISOString().split("T")[0] : "");
+        if (this.boCalendar && dStr) {
+          try {
+            this.boCalendar.changeView('timeGridDay', dStr);
+          } catch(e) {
+            try {
+              this.boCalendar.changeView('listDay', dStr);
+            } catch(e2) {
+              this.boCalendar.gotoDate(dStr);
+            }
+          }
+        }
+        this.onCalendarDateClick(dStr);
       },
       eventClick: (info) => {
         this.onCalendarEventClick(info.event);

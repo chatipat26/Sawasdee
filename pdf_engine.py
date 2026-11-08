@@ -30,22 +30,36 @@ def now_th():
 def load_thai_font():
     bold_name = "Helvetica-Bold"
     reg_name = "Helvetica"
-    for r_f in ["Sarabun-Regular.ttf", os.path.join(BASE_DIR, "Sarabun-Regular.ttf")]:
+    font_candidates_reg = [
+        "Sarabun-Regular.ttf",
+        os.path.join(BASE_DIR, "Sarabun-Regular.ttf"),
+        os.path.join(os.getcwd(), "Sarabun-Regular.ttf"),
+        os.path.abspath("Sarabun-Regular.ttf"),
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "Sarabun-Regular.ttf")
+    ]
+    for r_f in font_candidates_reg:
         if os.path.exists(r_f):
             try:
                 pdfmetrics.registerFont(TTFont("Sarabun", r_f))
                 reg_name = "Sarabun"
                 break
-            except Exception:
-                pass
-    for b_f in ["Sarabun-Bold.ttf", os.path.join(BASE_DIR, "Sarabun-Bold.ttf")]:
+            except Exception as e:
+                print(f"PDF Font Notice (Regular): {e}")
+    font_candidates_bold = [
+        "Sarabun-Bold.ttf",
+        os.path.join(BASE_DIR, "Sarabun-Bold.ttf"),
+        os.path.join(os.getcwd(), "Sarabun-Bold.ttf"),
+        os.path.abspath("Sarabun-Bold.ttf"),
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "Sarabun-Bold.ttf")
+    ]
+    for b_f in font_candidates_bold:
         if os.path.exists(b_f):
             try:
                 pdfmetrics.registerFont(TTFont("Sarabun-Bold", b_f))
                 bold_name = "Sarabun-Bold"
                 break
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"PDF Font Notice (Bold): {e}")
     return reg_name, bold_name
 
 FONT_REGULAR, FONT_BOLD = load_thai_font()
@@ -130,7 +144,7 @@ def draw_field(can, field_key, value):
     cfg = CONTRACT_COORDINATES.get(field_key)
     if not cfg or value is None:
         return
-    text = str(value)
+    text = str(value).strip()
     if not text or text == "-":
         return
     max_c = cfg.get("max_chars")
@@ -140,7 +154,12 @@ def draw_field(can, field_key, value):
     can.setFont(font_name, cfg.get("size", 9))
     color = cfg.get("color", (0.15, 0.15, 0.15))
     can.setFillColorRGB(*color)
-    can.drawString(cfg["x"], cfg["y"], text)
+    try:
+        can.drawString(cfg["x"], cfg["y"], text)
+    except UnicodeEncodeError:
+        # Fallback if standard Type 1 font is active
+        safe_text = text.encode("ascii", "replace").decode("ascii")
+        can.drawString(cfg["x"], cfg["y"], safe_text)
 
 def clear_dash_box(can, x, y, width=14, height=10):
     """Clear dash character in base template before drawing overlay text"""
@@ -153,132 +172,152 @@ def generate_filled_pdf(template_path="rental_template_blank_v2.pdf", booking_in
     Uses reportlab for the transparent text canvas and pypdf / PyPDF2 for page overlay.
     Strictly NO HTML-to-PDF tables.
     """
-    candidate_paths = [
-        template_path,
-        os.path.join(BASE_DIR, template_path or ""),
-        os.path.join(os.getcwd(), template_path or ""),
-        os.path.join(BASE_DIR, "rental_template_blank_v2.pdf"),
-        os.path.join(os.getcwd(), "rental_template_blank_v2.pdf"),
-    ]
-    resolved_path = None
-    for p in candidate_paths:
-        if p and os.path.exists(p):
-            resolved_path = p
-            break
+    try:
+        candidate_paths = [
+            template_path,
+            os.path.join(BASE_DIR, template_path or ""),
+            os.path.join(os.getcwd(), template_path or ""),
+            os.path.join(BASE_DIR, "rental_template_blank_v2.pdf"),
+            os.path.join(os.getcwd(), "rental_template_blank_v2.pdf"),
+            os.path.abspath("rental_template_blank_v2.pdf"),
+            os.path.join(os.path.dirname(os.path.abspath(__file__)), "rental_template_blank_v2.pdf"),
+            os.path.join(os.path.dirname(os.getcwd()), "rental_template_blank_v2.pdf"),
+        ]
+        resolved_path = None
+        for p in candidate_paths:
+            if p and os.path.exists(p) and os.path.isfile(p):
+                resolved_path = os.path.abspath(p)
+                break
 
-    if not resolved_path:
-        raise FileNotFoundError(f"Base PDF template 'rental_template_blank_v2.pdf' not found in {candidate_paths}")
+        if not resolved_path:
+            for root, _, files in os.walk(BASE_DIR):
+                if "rental_template_blank_v2.pdf" in files:
+                    resolved_path = os.path.join(root, "rental_template_blank_v2.pdf")
+                    break
 
-    booking_info = booking_info or {}
-    customer_info = customer_info or {}
-    car_info = car_info or {}
+        if not resolved_path:
+            err_msg = f"Base PDF template 'rental_template_blank_v2.pdf' not found in candidate paths: {candidate_paths}"
+            print(f"PDF Error: {err_msg}")
+            raise FileNotFoundError(err_msg)
 
-    packet = io.BytesIO()
-    can = canvas.Canvas(packet, pagesize=A4)
+        booking_info = booking_info or {}
+        customer_info = customer_info or {}
+        car_info = car_info or {}
 
-    # 0. Header (Reference No. & Date)
-    th_now = now_th()
-    b_id = str(booking_info.get("booking_id", "-"))
-    draw_field(can, "booking_id", b_id)
-    draw_field(can, "issue_date", f"Issued: {format_date_dmy(th_now.date())} {th_now.strftime('%H:%M')} น.")
+        packet = io.BytesIO()
+        can = canvas.Canvas(packet, pagesize=A4)
 
-    # 1. Section 01: VEHICLE
-    car_brand_model = f"{car_info.get('brand', '')} {car_info.get('model', '')}".strip() or "-"
-    car_plate = str(car_info.get("plate", "-"))
-    car_color = str(car_info.get("color", "-"))
-    draw_field(can, "car_brand_model", car_brand_model)
-    draw_field(can, "car_plate", car_plate)
-    draw_field(can, "car_color", car_color)
+        # 0. Header (Reference No. & Date)
+        th_now = now_th()
+        b_id = str(booking_info.get("booking_id", "-"))
+        draw_field(can, "booking_id", b_id)
+        draw_field(can, "issue_date", f"Issued: {format_date_dmy(th_now.date())} {th_now.strftime('%H:%M')} น.")
 
-    # 2. Section 02: RENTER
-    c_name = str(customer_info.get("full_name") or customer_info.get("name") or "-")
-    c_nat = str(customer_info.get("nationality", "-"))
-    c_dob = format_date_dmy(customer_info.get("dob", "-"))
-    c_pass = str(customer_info.get("passport_id") or customer_info.get("id_card") or "-")
-    c_lic = str(customer_info.get("licence_no", "-"))
-    c_lic_issue = str(customer_info.get("issue_place", "-"))
-    c_lic_exp = format_date_dmy(customer_info.get("licence_expiry", "-"))
-    c_home = str(customer_info.get("home_address", "-"))
-    c_thai = str(customer_info.get("thai_address", "-"))
-    c_email = str(customer_info.get("email", "-"))
-    c_phone = str(customer_info.get("contact_no") or customer_info.get("phone") or "-")
-    c_wa = str(customer_info.get("whatsapp", "-"))
+        # 1. Section 01: VEHICLE
+        car_brand_model = f"{car_info.get('brand', '')} {car_info.get('model', '')}".strip() or "-"
+        car_plate = str(car_info.get("plate", "-"))
+        car_color = str(car_info.get("color", "-"))
+        draw_field(can, "car_brand_model", car_brand_model)
+        draw_field(can, "car_plate", car_plate)
+        draw_field(can, "car_color", car_color)
 
-    draw_field(can, "customer_name", c_name)
-    draw_field(can, "nationality", c_nat)
-    draw_field(can, "dob", c_dob)
-    draw_field(can, "licence_no", c_lic)
-    draw_field(can, "issue_place", c_lic_issue)
-    draw_field(can, "licence_expiry", c_lic_exp)
-    draw_field(can, "passport_id", c_pass)
-    draw_field(can, "home_address", c_home)
+        # 2. Section 02: RENTER
+        c_name = str(customer_info.get("full_name") or customer_info.get("name") or "-")
+        c_nat = str(customer_info.get("nationality", "-"))
+        c_dob = format_date_dmy(customer_info.get("dob", "-"))
+        c_pass = str(customer_info.get("passport_id") or customer_info.get("id_card") or "-")
+        c_lic = str(customer_info.get("licence_no", "-"))
+        c_lic_issue = str(customer_info.get("issue_place", "-"))
+        c_lic_exp = format_date_dmy(customer_info.get("licence_expiry", "-"))
+        c_home = str(customer_info.get("home_address", "-"))
+        c_thai = str(customer_info.get("thai_address", "-"))
+        c_email = str(customer_info.get("email", "-"))
+        c_phone = str(customer_info.get("contact_no") or customer_info.get("phone") or "-")
+        c_wa = str(customer_info.get("whatsapp", "-"))
 
-    if c_thai and c_thai != "-":
-        clear_dash_box(can, CONTRACT_COORDINATES["thai_address"]["x"], CONTRACT_COORDINATES["thai_address"]["y"])
-        draw_field(can, "thai_address", c_thai)
+        draw_field(can, "customer_name", c_name)
+        draw_field(can, "nationality", c_nat)
+        draw_field(can, "dob", c_dob)
+        draw_field(can, "licence_no", c_lic)
+        draw_field(can, "issue_place", c_lic_issue)
+        draw_field(can, "licence_expiry", c_lic_exp)
+        draw_field(can, "passport_id", c_pass)
+        draw_field(can, "home_address", c_home)
 
-    draw_field(can, "email", c_email)
-    draw_field(can, "contact_no", c_phone)
-    draw_field(can, "whatsapp", c_wa)
+        if c_thai and c_thai != "-":
+            clear_dash_box(can, CONTRACT_COORDINATES["thai_address"]["x"], CONTRACT_COORDINATES["thai_address"]["y"])
+            draw_field(can, "thai_address", c_thai)
 
-    # 3. Section 03: RENTAL PERIOD & DELIVERY
-    s_time_pdf = booking_info.get('start_time') or th_now.strftime('%H:%M')
-    e_time_pdf = booking_info.get('end_time') or th_now.strftime('%H:%M')
-    s_date = f"{format_date_dmy(booking_info.get('start_date'))} ({s_time_pdf} น.)"
-    e_date = f"{format_date_dmy(booking_info.get('end_date'))} ({e_time_pdf} น.)"
-    loc_del = str(booking_info.get("loc_delivery") or "Sukhumvit")
-    loc_ret = str(booking_info.get("loc_return") or loc_del)
+        draw_field(can, "email", c_email)
+        draw_field(can, "contact_no", c_phone)
+        draw_field(can, "whatsapp", c_wa)
 
-    draw_field(can, "start_datetime", s_date)
-    if loc_del and loc_del != "-":
-        clear_dash_box(can, CONTRACT_COORDINATES["loc_delivery"]["x"], CONTRACT_COORDINATES["loc_delivery"]["y"])
-        draw_field(can, "loc_delivery", loc_del)
+        # 3. Section 03: RENTAL PERIOD & DELIVERY
+        s_time_pdf = booking_info.get('start_time') or th_now.strftime('%H:%M')
+        e_time_pdf = booking_info.get('end_time') or th_now.strftime('%H:%M')
+        s_date = f"{format_date_dmy(booking_info.get('start_date'))} ({s_time_pdf} น.)"
+        e_date = f"{format_date_dmy(booking_info.get('end_date'))} ({e_time_pdf} น.)"
+        loc_del = str(booking_info.get("loc_delivery") or "Sukhumvit")
+        loc_ret = str(booking_info.get("loc_return") or loc_del)
 
-    draw_field(can, "end_datetime", e_date)
-    if loc_ret and loc_ret != "-":
-        clear_dash_box(can, CONTRACT_COORDINATES["loc_return"]["x"], CONTRACT_COORDINATES["loc_return"]["y"])
-        draw_field(can, "loc_return", loc_ret)
+        draw_field(can, "start_datetime", s_date)
+        if loc_del and loc_del != "-":
+            clear_dash_box(can, CONTRACT_COORDINATES["loc_delivery"]["x"], CONTRACT_COORDINATES["loc_delivery"]["y"])
+            draw_field(can, "loc_delivery", loc_del)
 
-    # 4. Section 04: CHARGES
-    net_price = booking_info.get('net_price', 0)
-    price_val = f"{net_price:,}" if isinstance(net_price, (int, float)) else str(net_price)
-    draw_field(can, "net_price", f"฿ {price_val}")
+        draw_field(can, "end_datetime", e_date)
+        if loc_ret and loc_ret != "-":
+            clear_dash_box(can, CONTRACT_COORDINATES["loc_return"]["x"], CONTRACT_COORDINATES["loc_return"]["y"])
+            draw_field(can, "loc_return", loc_ret)
 
-    # 5. Section 05: PAYMENT CONFIRMATION
-    draw_field(can, "confirm_ref", b_id)
-    draw_field(can, "confirm_amount", f"THB {price_val}")
+        # 4. Section 04: CHARGES
+        net_price = booking_info.get('net_price', 0)
+        price_val = f"{net_price:,}" if isinstance(net_price, (int, float)) else str(net_price)
+        draw_field(can, "net_price", f"฿ {price_val}")
 
-    can.save()
-    packet.seek(0)
+        # 5. Section 05: PAYMENT CONFIRMATION
+        draw_field(can, "confirm_ref", b_id)
+        draw_field(can, "confirm_amount", f"THB {price_val}")
 
-    # Merge overlay with template PDF
-    overlay_pdf = PdfReader(packet)
-    with open(resolved_path, "rb") as f_tpl:
-        template_pdf = PdfReader(f_tpl)
-        output = PdfWriter()
+        can.save()
+        packet.seek(0)
 
-        base_page = template_pdf.pages[0]
-        overlay_page = overlay_pdf.pages[0]
-        if hasattr(base_page, "merge_page"):
-            base_page.merge_page(overlay_page)
-        elif hasattr(base_page, "mergePage"):
-            base_page.mergePage(overlay_page)
+        # Merge overlay with template PDF safely across library versions
+        overlay_pdf = PdfReader(packet)
+        with open(resolved_path, "rb") as f_tpl:
+            template_pdf = PdfReader(f_tpl)
+            output = PdfWriter()
 
-        if hasattr(output, "add_page"):
-            output.add_page(base_page)
-        elif hasattr(output, "addPage"):
-            output.addPage(base_page)
+            tpl_pages = list(template_pdf.pages) if hasattr(template_pdf, "pages") else [template_pdf.getPage(i) for i in range(template_pdf.getNumPages())]
+            ovl_pages = list(overlay_pdf.pages) if hasattr(overlay_pdf, "pages") else [overlay_pdf.getPage(i) for i in range(overlay_pdf.getNumPages())]
 
-        for i in range(1, len(template_pdf.pages)):
-            p = template_pdf.pages[i]
+            base_page = tpl_pages[0]
+            overlay_page = ovl_pages[0]
+            if hasattr(base_page, "merge_page"):
+                base_page.merge_page(overlay_page)
+            elif hasattr(base_page, "mergePage"):
+                base_page.mergePage(overlay_page)
+
             if hasattr(output, "add_page"):
-                output.add_page(p)
+                output.add_page(base_page)
             elif hasattr(output, "addPage"):
-                output.addPage(p)
+                output.addPage(base_page)
 
-        out_stream = io.BytesIO()
-        output.write(out_stream)
-        return out_stream.getvalue()
+            for i in range(1, len(tpl_pages)):
+                p = tpl_pages[i]
+                if hasattr(output, "add_page"):
+                    output.add_page(p)
+                elif hasattr(output, "addPage"):
+                    output.addPage(p)
+
+            out_stream = io.BytesIO()
+            output.write(out_stream)
+            return out_stream.getvalue()
+    except Exception as e:
+        print(f"PDF Error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise
 
 def generate_pdf_bytes(booking_info=None, customer_info=None, car_info=None):
     """

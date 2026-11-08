@@ -2457,7 +2457,13 @@ async def get_contract_pdf(bk_id: str, download: int = 0):
         raise HTTPException(status_code=404, detail="ไม่พบข้อมูลการจอง")
 
     cust, car = _resolve_cust_and_car(target)
-    pdf_bytes = pdf_engine.generate_filled_pdf("rental_template_blank_v2.pdf", target, cust, car)
+    try:
+        pdf_bytes = pdf_engine.generate_filled_pdf("rental_template_blank_v2.pdf", target, cust, car)
+    except Exception as e:
+        print(f"PDF Error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"PDF Error: {str(e)}")
 
     if not target.get("contract_issued") and target.get("deposit_paid") and target.get("rental_paid"):
         target["contract_issued"] = True
