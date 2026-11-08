@@ -150,8 +150,14 @@ class PgQuery:
                 conflict_cols = [c.strip() for c in self._on_conflict.split(",")]
             else:
                 conflict_cols = self._client.primary_key(self._table)
+        known_cols = set(self._client.table_columns(self._table)) if hasattr(self._client, "table_columns") else set()
         for row in self._rows():
-            cols = list(row.keys())
+            if known_cols:
+                cols = [c for c in row.keys() if c in known_cols]
+            else:
+                cols = list(row.keys())
+            if not cols:
+                continue
             q = sql.SQL("INSERT INTO {} ({}) VALUES ({})").format(
                 sql.Identifier(self._table),
                 sql.SQL(", ").join(sql.Identifier(c) for c in cols),
@@ -428,6 +434,24 @@ class PgClient:
             )])
             self._pk_cache[table] = [r["col"] for r in rows]
         return self._pk_cache[table]
+
+    def table_columns(self, table):
+        if not hasattr(self, "_cols_cache"):
+            self._cols_cache = {}
+        if table not in self._cols_cache:
+            try:
+                rows = self.run([(
+                    sql.SQL(
+                        "SELECT column_name FROM information_schema.columns "
+                        "WHERE table_schema = 'public' AND table_name = %s"
+                    ),
+                    [table]
+                )])
+                self._cols_cache[table] = [r["column_name"] for r in rows]
+            except Exception as e:
+                print(f"[pg_client] Error fetching columns for {table}: {e}")
+                self._cols_cache[table] = []
+        return self._cols_cache[table]
 
     def table(self, name):
         return PgQuery(self, name)

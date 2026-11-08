@@ -1673,10 +1673,10 @@ async def record_deposit(bk_id: str, payload: Dict[str, Any]):
     if not target:
         raise HTTPException(status_code=404, detail="ไม่พบรายการจอง")
 
-    dep_amount = 5000.0 # STRICT RULE: Fixed 5,000 THB deposit
+    dep_amount = float(payload.get("amount") or payload.get("deposit_amount") or 5000.0) # STRICT RULE: Fixed 5,000 THB deposit
     dep_method = str(payload.get("payment_method", "โอนเงิน / สแกน QR"))
-    dep_ref = str(payload.get("payment_ref") or payload.get("deposit_ref") or "").strip()
-    dep_slip = convert_gdrive_url(str(payload.get("slip_url") or payload.get("deposit_slip") or "").strip())
+    dep_ref = str(payload.get("ref_id") or payload.get("payment_ref") or payload.get("deposit_ref") or "").strip()
+    dep_slip = convert_gdrive_url(str(payload.get("slip_image_url") or payload.get("slip_url") or payload.get("deposit_slip") or "").strip())
     pay_type = str(payload.get("payment_type") or "").strip() or ("มัดจำและค่าเช่า" if bool(payload.get("also_pay_rental", False)) else "มัดจำประกันสัญญา")
     gdrive_link = str(payload.get("google_drive_link") or "").strip()
     also_pay_rental = bool(payload.get("also_pay_rental", False))
@@ -1724,36 +1724,55 @@ async def record_deposit(bk_id: str, payload: Dict[str, Any]):
 
     store.async_sync_booking(target)
 
-    # Record financial: Deposit
+    # Record financial: Deposit (Strict mapping to financial_records per Mission 2)
     car_comp = store.cars.get(car_id, {}).get("company", "Sawasdee Rent A Car")
     dep_detail = f"รับเงินมัดจำประกันสัญญาตอนจองรถ ({dep_method})"
     if dep_ref:
         dep_detail += f" [Ref/สลิป: {dep_ref}]"
+    
+    now_ts = now_th().strftime("%Y-%m-%d %H:%M:%S")
     f_dep = {
-        "company": car_comp,
-        "type": "รายรับ",
-        "category": "เงินมัดจำประกันสัญญา (จองรถ)",
+        "date": now_ts,
+        "type": "Income",
+        "category": "Deposit",
         "amount": dep_amount,
+        "ref_id": bk_id,
+        "description": dep_detail,
+        # Backward-compatible & schema aliases
         "ref": bk_id,
-        "date": th_today,
-        "detail": dep_detail
+        "detail": dep_detail,
+        "company": car_comp,
+        "payment_method": dep_method,
+        "slip_image_url": dep_slip,
+        "slip_url": dep_slip
     }
-    store.async_sync_financial(f_dep)
+    try:
+        store.sync_financial(f_dep)
+    except Exception as fin_err:
+        print(f"Error recording financial deposit: {fin_err}")
 
     if also_pay_rental:
         rent_detail = f"ชำระค่าเช่ารถพร้อมมัดจำ {car_id} ({dep_method})"
         if dep_ref:
             rent_detail += f" [Ref/สลิป: {dep_ref}]"
         f_rent = {
-            "company": car_comp,
-            "type": "รายรับ",
-            "category": "ค่าเช่ารถ",
+            "date": now_ts,
+            "type": "Income",
+            "category": "Rental",
             "amount": net_p,
+            "ref_id": bk_id,
+            "description": rent_detail,
             "ref": bk_id,
-            "date": th_today,
-            "detail": rent_detail
+            "detail": rent_detail,
+            "company": car_comp,
+            "payment_method": dep_method,
+            "slip_image_url": dep_slip,
+            "slip_url": dep_slip
         }
-        store.async_sync_financial(f_rent)
+        try:
+            store.sync_financial(f_rent)
+        except Exception as fin_rent_err:
+            print(f"Error recording financial rental: {fin_rent_err}")
 
     # Deposit confirmation no longer sends LINE. Receipt PDF and DB save stay unchanged.
     # try:
@@ -1792,19 +1811,28 @@ async def settle_rental(bk_id: str, payload: Dict[str, Any]):
 
     car_id = target.get("car_id")
     car_comp = store.cars.get(car_id, {}).get("company", "Sawasdee Rent A Car")
+    now_ts = now_th().strftime("%Y-%m-%d %H:%M:%S")
     rent_detail = f"ชำระค่าเช่ารถคงเหลือ {car_id} ({settle_method})"
     if settle_ref:
         rent_detail += f" [Ref/สลิป: {settle_ref}]"
     f_rent = {
-        "company": car_comp,
-        "type": "รายรับ",
-        "category": "ค่าเช่ารถ",
+        "date": now_ts,
+        "type": "Income",
+        "category": "Rental",
         "amount": net_p,
+        "ref_id": bk_id,
+        "description": rent_detail,
         "ref": bk_id,
-        "date": th_today,
-        "detail": rent_detail
+        "detail": rent_detail,
+        "company": car_comp,
+        "payment_method": settle_method,
+        "slip_image_url": settle_slip,
+        "slip_url": settle_slip
     }
-    store.async_sync_financial(f_rent)
+    try:
+        store.sync_financial(f_rent)
+    except Exception as fin_settle_err:
+        print(f"Error recording financial settle: {fin_settle_err}")
 
     # LINE notification disabled for deposit/rental payments (kept only for work orders)
     # try:
@@ -2474,6 +2502,25 @@ def normalize_payment_channel(raw_method: str) -> str:
         return "PayPal"
     return "โอนเงิน / สแกน QR"
 
+@app.post("/api/financial-records")
+@app.post("/api/finance/records")
+async def create_financial_record(payload: Dict[str, Any]):
+    now_ts = now_th().strftime("%Y-%m-%d %H:%M:%S")
+    f_rec = {
+        "date": str(payload.get("date") or now_ts),
+        "type": str(payload.get("type") or "Income"),
+        "category": str(payload.get("category") or "Deposit"),
+        "amount": float(payload.get("amount") or 0.0),
+        "ref_id": str(payload.get("ref_id") or payload.get("booking_id") or payload.get("ref") or ""),
+        "description": str(payload.get("description") or payload.get("detail") or payload.get("notes") or ""),
+        "ref": str(payload.get("ref_id") or payload.get("booking_id") or payload.get("ref") or ""),
+        "detail": str(payload.get("description") or payload.get("detail") or ""),
+        "payment_method": payload.get("payment_method"),
+        "slip_image_url": payload.get("slip_image_url") or payload.get("slip_url")
+    }
+    store.sync_financial(f_rec)
+    return {"success": True, "record": f_rec}
+
 @app.get("/api/finance/summary")
 async def get_finance_summary(month: Optional[str] = None, start_date: Optional[str] = None, end_date: Optional[str] = None):
     """
@@ -2575,8 +2622,8 @@ async def get_finance_summary(month: Optional[str] = None, start_date: Optional[
                 })
 
     for f in store.financial_records:
-        if f.get("type") == "รายรับ":
-            f_ref = f.get("ref", "")
+        if f.get("type") in ["รายรับ", "Income", "income"]:
+            f_ref = f.get("ref_id") or f.get("ref", "")
             if not f_ref or (f"rent_{f_ref}" not in seen_refs and f"dep_{f_ref}" not in seen_refs):
                 f_amt = float(f.get("amount") or 0.0)
                 if f_amt > 0:
@@ -2947,7 +2994,7 @@ def compute_dashboard_statistics():
 
     if total_rev == 0.0:
         for f in getattr(store, "financial_records", []):
-            if f.get("type") in ["รายรับ", "income"] or str(f.get("type", "")).strip() == "รายรับ":
+            if f.get("type") in ["รายรับ", "income", "Income"] or str(f.get("type", "")).strip().lower() in ["รายรับ", "income"]:
                 total_rev += float(f.get("amount", 0) or 0)
 
     # Monthly revenue trend (past 6 months)

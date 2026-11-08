@@ -664,8 +664,20 @@ class DataStore:
             try:
                 f_res = sb.table("financial_records").select("*").order("date", desc=True).execute()
                 if f_res.data is not None:
+                    norm_financial = []
+                    for item in f_res.data:
+                        rec = dict(item)
+                        if "ref_id" in rec and "ref" not in rec:
+                            rec["ref"] = rec["ref_id"]
+                        elif "ref" in rec and "ref_id" not in rec:
+                            rec["ref_id"] = rec["ref"]
+                        if "description" in rec and "detail" not in rec:
+                            rec["detail"] = rec["description"]
+                        elif "detail" in rec and "description" not in rec:
+                            rec["description"] = rec["detail"]
+                        norm_financial.append(rec)
                     with self.lock:
-                        self.financial_records = f_res.data
+                        self.financial_records = norm_financial
             except Exception as e:
                 print(f"Financial records sync error: {e}")
 
@@ -1005,20 +1017,33 @@ class DataStore:
                 print(f"sb_sync_completed_job error: {e}")
         threading.Thread(target=_task, daemon=True).start()
 
-    def async_sync_financial(self, f_dict):
+    def sync_financial(self, f_dict):
+        f_copy = dict(f_dict)
+        if "ref_id" in f_copy and "ref" not in f_copy:
+            f_copy["ref"] = f_copy["ref_id"]
+        elif "ref" in f_copy and "ref_id" not in f_copy:
+            f_copy["ref_id"] = f_copy["ref"]
+        if "description" in f_copy and "detail" not in f_copy:
+            f_copy["detail"] = f_copy["description"]
+        elif "detail" in f_copy and "description" not in f_copy:
+            f_copy["description"] = f_copy["detail"]
         with self.lock:
-            self.financial_records.insert(0, f_dict)
+            self.financial_records.insert(0, f_copy)
         def _task():
             sb = get_db_client()
             if not sb: return
             try:
-                row = dict(f_dict)
+                row = dict(f_copy)
                 row.pop("id", None)
                 if "date" in row and row["date"]: row["date"] = str(row["date"])
                 sb.table("financial_records").insert(row).execute()
+                print(f"[Financial] Successfully synced to financial_records: {row.get('ref_id') or row.get('ref')}")
             except Exception as e:
                 print(f"sb_sync_financial error: {e}")
         threading.Thread(target=_task, daemon=True).start()
+
+    def async_sync_financial(self, f_dict):
+        return self.sync_financial(f_dict)
 
     def async_sync_user(self, username, u_dict):
         with self.lock:

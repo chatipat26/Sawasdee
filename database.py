@@ -101,9 +101,31 @@ def init_db():
         );""",
         "CREATE INDEX IF NOT EXISTS idx_vehicle_maintenances_car_id ON public.vehicle_maintenances(car_id);"
     ]
+    financial_migrations = [
+        """CREATE TABLE IF NOT EXISTS public.financial_records (
+            id BIGSERIAL PRIMARY KEY,
+            date TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+            type VARCHAR(50),
+            category VARCHAR(150),
+            amount NUMERIC DEFAULT 0,
+            description TEXT,
+            ref_id VARCHAR(100)
+        );""",
+        "ALTER TABLE public.financial_records ADD COLUMN IF NOT EXISTS date TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP;",
+        "ALTER TABLE public.financial_records ADD COLUMN IF NOT EXISTS type VARCHAR(50);",
+        "ALTER TABLE public.financial_records ADD COLUMN IF NOT EXISTS category VARCHAR(150);",
+        "ALTER TABLE public.financial_records ADD COLUMN IF NOT EXISTS amount NUMERIC DEFAULT 0;",
+        "ALTER TABLE public.financial_records ADD COLUMN IF NOT EXISTS description TEXT;",
+        "ALTER TABLE public.financial_records ADD COLUMN IF NOT EXISTS ref_id VARCHAR(100);",
+        "ALTER TABLE public.financial_records ADD COLUMN IF NOT EXISTS payment_method VARCHAR(100);",
+        "ALTER TABLE public.financial_records ADD COLUMN IF NOT EXISTS slip_image_url TEXT;",
+        "ALTER TABLE public.financial_records ADD COLUMN IF NOT EXISTS ref VARCHAR(100);",
+        "ALTER TABLE public.financial_records ADD COLUMN IF NOT EXISTS detail TEXT;",
+        "ALTER TABLE public.financial_records ADD COLUMN IF NOT EXISTS company VARCHAR(150);"
+    ]
     try:
         with engine.begin() as conn:
-            for sql_stmt in customer_migrations + car_migrations + booking_migrations + maintenance_migrations:
+            for sql_stmt in customer_migrations + car_migrations + booking_migrations + maintenance_migrations + financial_migrations:
                 try:
                     conn.execute(text(sql_stmt))
                 except Exception:

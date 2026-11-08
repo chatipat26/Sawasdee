@@ -4091,9 +4091,14 @@ class App {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          deposit_amount: depAmt,
+          booking_id: bkId,
+          amount: depAmt,
           payment_method: depMethod,
+          ref_id: depRef,
+          slip_image_url: slipUrl || gdriveLink,
+          deposit_amount: depAmt,
           payment_ref: depRef,
+          deposit_ref: depRef,
           slip_url: slipUrl,
           payment_type: payType,
           google_drive_link: gdriveLink,
@@ -4101,17 +4106,37 @@ class App {
         })
       });
       const data = await res.json();
-      if (data.success) {
-        this.showToast(`✅ บันทึกรับเงินมัดจำ ${bkId} เรียบร้อย! กำลังพาไปหน้าออกใบงานส่ง/รับรถ...`, "success");
+      if (res.ok && data.success) {
+        this.showToast("บันทึกข้อมูลการเงินสำเร็จ", "success");
+        if (typeof Swal !== "undefined") {
+          Swal.fire({
+            icon: 'success',
+            title: 'บันทึกข้อมูลการเงินสำเร็จ',
+            text: `บันทึกเงินมัดจำสำหรับใบจอง ${bkId} เรียบร้อยแล้ว`,
+            timer: 2000,
+            showConfirmButton: false
+          });
+        }
         await this.loadBookings();
         await this.loadCars();
+        if (typeof this.loadDashboardKPIs === "function") {
+          await this.loadDashboardKPIs();
+        }
         this.onSelectDepositBooking();
         await this.goToTabWithBooking("assign", bkId);
       } else {
         throw new Error(data.detail || "บันทึกไม่สำเร็จ");
       }
     } catch (e) {
-      this.showToast("เกิดข้อผิดพลาด: " + e.message, "danger");
+      console.error("[Deposit] Error submitting deposit:", e);
+      this.showToast("เกิดข้อผิดพลาด: " + (e.message || "ไม่สามารถบันทึกข้อมูลการเงินได้"), "danger");
+      if (typeof Swal !== "undefined") {
+        Swal.fire({
+          icon: 'error',
+          title: 'เกิดข้อผิดพลาด',
+          text: e.message || 'ไม่สามารถบันทึกข้อมูลการเงินได้'
+        });
+      }
     }
   }
 
@@ -4121,6 +4146,8 @@ class App {
     const depMethod = document.getElementById("deposit-method-input").value;
     const depRef = (document.getElementById("deposit-ref-input")?.value || "").trim();
     const slipUrl = (document.getElementById("deposit-slip-url")?.value || "").trim();
+    const gdriveLink = (document.getElementById("deposit-gdrive-input")?.value || "").trim();
+    const rentAmt = parseFloat(this.currentSelectedBooking?.remaining_rental || this.currentSelectedBooking?.net_price || 0);
 
     try {
       this.showToast(`⏳ กำลังบันทึกชำระค่าเช่าคงเหลือ ${bkId}...`, "info");
@@ -4128,21 +4155,43 @@ class App {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          booking_id: bkId,
+          amount: rentAmt,
           payment_method: depMethod,
+          ref_id: depRef,
+          slip_image_url: slipUrl || gdriveLink,
           payment_ref: depRef,
+          rental_ref: depRef,
           slip_url: slipUrl
         })
       });
       const data = await res.json();
-      if (data.success) {
-        this.showToast(`🎉 บันทึกชำระค่าเช่าคงเหลือ ${bkId} ครบถ้วน!`, "success");
+      if (res.ok && data.success) {
+        this.showToast("บันทึกข้อมูลการเงินสำเร็จ", "success");
+        if (typeof Swal !== "undefined") {
+          Swal.fire({
+            icon: 'success',
+            title: 'บันทึกข้อมูลการเงินสำเร็จ',
+            text: `บันทึกชำระค่าเช่าสำหรับใบจอง ${bkId} เรียบร้อยแล้ว`,
+            timer: 2000,
+            showConfirmButton: false
+          });
+        }
         await this.loadBookings();
         this.onSelectDepositBooking();
       } else {
         throw new Error(data.detail || "บันทึกไม่สำเร็จ");
       }
     } catch (e) {
-      this.showToast("เกิดข้อผิดพลาด: " + e.message, "danger");
+      console.error("[Settle] Error submitting settle:", e);
+      this.showToast("เกิดข้อผิดพลาด: " + (e.message || "ไม่สามารถบันทึกข้อมูลการเงินได้"), "danger");
+      if (typeof Swal !== "undefined") {
+        Swal.fire({
+          icon: 'error',
+          title: 'เกิดข้อผิดพลาด',
+          text: e.message || 'ไม่สามารถบันทึกข้อมูลการเงินได้'
+        });
+      }
     }
   }
 
