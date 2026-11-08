@@ -1398,7 +1398,7 @@ async def create_booking(payload: Dict[str, Any]):
 
     discount = float(payload.get("discount", 0))
     net_price = max(0.0, float(base_price) - discount)
-    deposit_amount = float(payload.get("deposit_amount", 5000.0))
+    deposit_amount = 5000.0 # STRICT RULE: Fixed 5,000 THB deposit
     deposit_paid = bool(payload.get("deposit_paid", False))
     rental_paid = bool(payload.get("rental_paid", False))
 
@@ -1512,6 +1512,20 @@ async def update_booking(bk_id: str, payload: Dict[str, Any]):
         release_car_after_booking(target.get("car_id"), bk_id)
 
     store.async_sync_booking(target)
+
+    # Log to universal work_order_logs
+    try:
+        store.log_work_order(
+            car_id=car_id or target.get("car_id", ""),
+            booking_id=bk_id,
+            work_type="Dispatch",
+            description=f"ส่งมอบรถยนต์เรียบร้อย เลขไมล์: {mileage or '-'}, น้ำมัน: {fuel}, หมายเหตุ: {notes}",
+            cost=0.0,
+            staff_id=target.get("worker_delivery", "admin")
+        )
+    except Exception as e:
+        print(f"Error logging dispatch work order: {e}")
+
     return {"success": True, "booking": target}
 
 @app.post("/api/bookings/{bk_id}/extend")
@@ -1652,7 +1666,7 @@ async def record_deposit(bk_id: str, payload: Dict[str, Any]):
     if not target:
         raise HTTPException(status_code=404, detail="ไม่พบรายการจอง")
 
-    dep_amount = float(payload.get("deposit_amount", 5000.0))
+    dep_amount = 5000.0 # STRICT RULE: Fixed 5,000 THB deposit
     dep_method = str(payload.get("payment_method", "โอนเงิน / สแกน QR"))
     dep_ref = str(payload.get("payment_ref") or payload.get("deposit_ref") or "").strip()
     dep_slip = convert_gdrive_url(str(payload.get("slip_url") or payload.get("deposit_slip") or "").strip())
@@ -2071,6 +2085,21 @@ async def close_return(bk_id: str, payload: Dict[str, Any]):
         )
         if not success:
             raise HTTPException(status_code=404, detail="ไม่สามารถเปลี่ยนรถทดแทนได้ หรือไม่พบรหัสการจอง")
+
+        # Log to universal work_order_logs for Swap
+        try:
+            target = next((b for b in store.bookings if b.get("booking_id") == bk_id), {})
+            store.log_work_order(
+                car_id=target.get("car_id") or new_car_id,
+                booking_id=bk_id,
+                work_type="Swap",
+                description=f"สลับเปลี่ยนรถทดแทนเป็น {new_car_id} เนื่องจากรถเสียหาย: {damage_desc}. เลขไมล์: {mileage or '-'}, น้ำมัน: {fuel}",
+                cost=repair_cost,
+                staff_id="admin"
+            )
+        except Exception as e:
+            print(f"Error logging swap work order: {e}")
+
         return {"success": True, "action": "swap_vehicle", "new_car_id": new_car_id}
 
     success = store.archive_completed_booking(
@@ -2087,6 +2116,25 @@ async def close_return(bk_id: str, payload: Dict[str, Any]):
     )
     if not success:
         raise HTTPException(status_code=404, detail="ไม่สามารถปิดงานรับคืนได้ หรือไม่พบรหัสการจอง")
+
+    # Log to universal work_order_logs for Return
+    try:
+        target = next((b for b in store.bookings if b.get("booking_id") == bk_id), {})
+        desc_text = f"ตรวจรับรถคืน ({condition})"
+        if damage_desc:
+            desc_text += f" ความเสียหาย: {damage_desc}"
+        desc_text += f", เลขไมล์: {mileage or '-'}, น้ำมัน: {fuel}, หมายเหตุ: {notes}"
+        store.log_work_order(
+            car_id=target.get("car_id", ""),
+            booking_id=bk_id,
+            work_type="Return",
+            description=desc_text,
+            cost=repair_cost,
+            staff_id="admin"
+        )
+    except Exception as e:
+        print(f"Error logging return work order: {e}")
+
     return {"success": True, "action": "end_contract"}
 
 @app.post("/api/upload-photo")
@@ -2285,7 +2333,21 @@ async def create_maintenance(payload: Dict[str, Any]):
         notify_line_maintenance(record)
     except Exception as e:
         print(f"Error notifying line maintenance: {e}")
-        
+
+    # Log to universal work_order_logs
+    try:
+        w_type = "Renew Tax" if is_renewal else "Maintenance"
+        store.log_work_order(
+            car_id=car_id,
+            booking_id=None,
+            work_type=w_type,
+            description=f"{order_type}: {service_items}. สถานที่/อู่: {service_center}. เลขไมล์: {current_mileage}",
+            cost=cost_val,
+            staff_id=assigned_worker
+        )
+    except Exception as e:
+        print(f"Error logging work order for maintenance: {e}")
+
     return {"success": True, "maintenance": record}
 
 @app.get("/api/maintenance/{mnt_id}")
@@ -2336,6 +2398,22 @@ async def close_maintenance(mnt_id: str, payload: Dict[str, Any]):
         notify_line_close_maintenance(closed, store.cars.get(closed.get("car_id")))
     except Exception as e:
         print(f"Error notifying line close maintenance: {e}")
+
+    # Log to universal work_order_logs
+    try:
+        rec = closed or {}
+        is_renewal = any(k in str(rec.get("order_type", "")) for k in ["ต่อทะเบียน", "พ.ร.บ.", "พรบ", "ประกัน", "ภาษี"])
+        w_type = "Renew Tax" if is_renewal else "Maintenance"
+        store.log_work_order(
+            car_id=rec.get("car_id", ""),
+            booking_id=None,
+            work_type=w_type,
+            description=f"ปิดงาน {rec.get('order_type')}: {notes}. เลขไมล์เสร็จ: {new_mileage or '-'}",
+            cost=float(actual_cost or rec.get("cost", 0) or 0),
+            staff_id=rec.get("assigned_worker", "admin")
+        )
+    except Exception as e:
+        print(f"Error logging close maintenance work order: {e}")
 
     return {"success": True, "maintenance": closed, "car": store.cars.get(closed.get("car_id"))}
 
@@ -3017,3 +3095,12 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8501))
     uvicorn.run("server:app", host="0.0.0.0", port=port, reload=False)
 
+
+@app.get("/api/work-order-logs")
+async def list_work_order_logs(car_id: Optional[str] = None, booking_id: Optional[str] = None, limit: int = 100):
+    logs = list(store.work_order_logs)
+    if car_id:
+        logs = [l for l in logs if l.get("car_id") == car_id]
+    if booking_id:
+        logs = [l for l in logs if l.get("booking_id") == booking_id]
+    return logs[:limit]

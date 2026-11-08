@@ -326,6 +326,9 @@ class DataStore:
         self.load_local_users()
         self.load_local_maintenance()
         self.load_local_vehicle_maintenances()
+        self.work_order_logs_file = os.path.join(BASE_DIR, "data_work_order_logs.json")
+        self.work_order_logs = []
+        self.load_local_work_order_logs()
 
     def load_local_users(self):
         merged = {k: dict(v) for k, v in DEFAULT_USERS.items()}
@@ -458,6 +461,7 @@ class DataStore:
                                 pass
                             continue
                         b_copy = dict(b)
+                        b_copy["deposit_amount"] = 5000.0 # STRICT: Fixed 5,000 THB
                         if b_copy.get("start_date"): b_copy["start_date"] = to_date(b_copy["start_date"])
                         if b_copy.get("end_date"): b_copy["end_date"] = to_date(b_copy["end_date"])
                         # Reconstruct payment slip and ref metadata from extension_history if stored
@@ -685,6 +689,16 @@ class DataStore:
             self.initial_sync_done = True
         except Exception as e:
             print(f"Sync task exception: {e}")
+            # 9. Work Order Logs
+            try:
+                wol_res = sb.table("work_order_logs").select("*").order("created_at", desc=True).limit(500).execute()
+                if wol_res.data is not None:
+                    with self.lock:
+                        self.work_order_logs = wol_res.data
+                    self.save_local_work_order_logs()
+            except Exception:
+                pass
+
         finally:
             self.is_syncing = False
 
@@ -1147,6 +1161,51 @@ class DataStore:
 
         threading.Thread(target=_task, daemon=True).start()
 
+    def load_local_work_order_logs(self):
+        try:
+            if os.path.exists(self.work_order_logs_file):
+                with open(self.work_order_logs_file, "r", encoding="utf-8") as f:
+                    self.work_order_logs = json.load(f)
+                return
+        except Exception as e:
+            print(f"Error loading work order logs: {e}")
+        self.work_order_logs = []
+        self.save_local_work_order_logs()
+
+    def save_local_work_order_logs(self):
+        try:
+            with open(self.work_order_logs_file, "w", encoding="utf-8") as f:
+                json.dump(self.work_order_logs, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            print(f"Error saving work order logs: {e}")
+
+    def log_work_order(self, car_id, booking_id=None, work_type="Maintenance", description="", cost=0.0, staff_id="admin"):
+        log_id = f"WOL{datetime.now().strftime('%y%m%d%H%M%S%f')[:15]}"
+        log_entry = {
+            "id": log_id,
+            "car_id": str(car_id or "").strip(),
+            "booking_id": str(booking_id or "").strip() or None,
+            "work_type": str(work_type or "Maintenance").strip(),
+            "description": str(description or "").strip(),
+            "cost": float(cost or 0.0),
+            "staff_id": str(staff_id or "admin").strip(),
+            "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        }
+        with self.lock:
+            self.work_order_logs.insert(0, log_entry)
+            self.save_local_work_order_logs()
+
+        def _db_task():
+            try:
+                sb = get_db_client()
+                if sb:
+                    sb.table("work_order_logs").insert(dict(log_entry)).execute()
+            except Exception as e:
+                print(f"Error logging work order to DB: {e}")
+
+        threading.Thread(target=_db_task, daemon=True).start()
+        return log_entry
+
     def get_car_financial_roi(self, car_plate):
         p_clean = str(car_plate or "").strip()
         income = 0.0
@@ -1278,7 +1337,7 @@ class DataStore:
             b_comp = b_car.get("company", "Sawasdee Rent A Car")
             net_p = float(target.get("net_price", 0))
             car_id = target.get("car_id")
-            dep_amt = float(target.get("deposit_amount", 5000.0))
+            dep_amt = 5000.0 # STRICT RULE: Fixed 5,000 THB deposit for all bookings
             repair_cost = float(repair_cost or 0.0)
             pending_damage = float(target.get("pending_damage_cost") or 0.0)
             total_damage = repair_cost + pending_damage

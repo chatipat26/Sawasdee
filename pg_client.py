@@ -279,7 +279,27 @@ class PgClient:
                 except Exception as e:
                     print(f"PostgreSQL Schema check note: {e}")
                 self._migrate_customers()
+                self._migrate_work_order_logs()
         return self._conn
+    def _migrate_work_order_logs(self):
+        try:
+            with self._conn.cursor() as cur:
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS public.work_order_logs (
+                        id VARCHAR(100) PRIMARY KEY,
+                        car_id VARCHAR(100),
+                        booking_id VARCHAR(100),
+                        work_type VARCHAR(100),
+                        description TEXT,
+                        cost NUMERIC DEFAULT 0,
+                        staff_id VARCHAR(100),
+                        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                    );
+                """)
+            print("PostgreSQL work_order_logs table ensured.")
+        except Exception as e:
+            print(f"Work order logs migration note: {e}")
+
 
     def _migrate_customers(self):
         """Add the 10 customer columns and backfill them from legacy columns.

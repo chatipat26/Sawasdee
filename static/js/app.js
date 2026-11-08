@@ -3889,9 +3889,9 @@ class App {
     const isRent = b.rental_paid;
     const netP = parseFloat(b.net_price || 0);
 
-    // 1. Populate amount & payment method
+    // 1. Populate amount & payment method (Fixed 5,000 THB)
     const amtEl = document.getElementById("deposit-amount-input");
-    if (amtEl) amtEl.value = b.deposit_amount || 5000;
+    if (amtEl) amtEl.value = 5000;
     const methEl = document.getElementById("deposit-method-input");
     if (methEl && b.deposit_method) {
       methEl.value = b.deposit_method;
@@ -5827,9 +5827,7 @@ class App {
   }
 
   recalcInspRefundPreview() {
-    const bkId = document.getElementById("insp-bk-id")?.value;
-    const b = (this.bookings || []).find(x => x.booking_id === bkId);
-    const depAmt = parseFloat(b?.deposit_amount || 5000);
+    const depAmt = 5000; // STRICT RULE: Fixed 5,000 THB deposit always
     const repCost = parseFloat(document.getElementById("insp-repair-cost")?.value || 0);
     const isRepair = document.getElementById("insp-cond-repair")?.checked;
     const isSwap = document.getElementById("insp-sub-swap-car")?.checked;
@@ -5846,12 +5844,12 @@ class App {
       const deducted = Math.min(repCost, depAmt);
       const refund = Math.max(0, depAmt - deducted);
       prevEl.innerHTML = `
-        💵 <b>สรุปการเงินมัดจำ:</b> มัดจำเดิม ฿${depAmt.toLocaleString()} | หักค่าซ่อม ฿${deducted.toLocaleString()} | <b>คืนมัดจำสุทธิ: <span style="color:#15803D;">฿${refund.toLocaleString()}</span></b>
+        💵 <b>สรุปการเงินมัดจำ:</b> มัดจำเดิม ฿5,000 | หักค่าซ่อม ฿${deducted.toLocaleString()} | <b>คืนมัดจำสุทธิ: <span style="color:#15803D;">฿${refund.toLocaleString()}</span></b>
       `;
     } else {
       prevEl.style.display = "block";
       prevEl.innerHTML = `
-        💵 <b>คืนเงินมัดจำเต็มจำนวน:</b> <b style="color:#15803D;">฿${depAmt.toLocaleString()}</b>
+        💵 <b>คืนเงินมัดจำเต็มจำนวน:</b> <b style="color:#15803D;">฿5,000</b>
       `;
     }
   }

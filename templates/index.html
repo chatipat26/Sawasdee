@@ -1842,23 +1842,23 @@
           </div>
 
           <!-- Sub-Options for Damaged Car: End Contract vs Swap Vehicle -->
-          <div id="insp-repair-suboptions-container" style="background:#FFFFFF; border:1.5px solid #FCA5A5; border-radius:8px; padding:10px 12px; margin-bottom:12px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:4px;">
-              <label style="font-size:12px; font-weight:800; color:#991B1B;">
-                🎯 แนวทางการดำเนินงานสัญญา (Contract Action):
+          <div id="insp-repair-suboptions-container" style="background:#FFFFFF; border:2px solid #EF4444; border-radius:10px; padding:12px 14px; margin-bottom:14px; box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-wrap:wrap; gap:6px;">
+              <label style="font-size:13px; font-weight:800; color:#991B1B; margin:0;">
+                🎯 เลือกการดำเนินการสัญญา (Contract Action):
               </label>
-              <span id="insp-early-return-badge" style="display:none; font-size:11px; padding:2px 8px; border-radius:6px; background:#EFF6FF; color:#1D4ED8; font-weight:700; border:1px solid #BFDBFE;">
+              <span id="insp-early-return-badge" style="display:none; font-size:11.5px; padding:3px 10px; border-radius:6px; background:#EFF6FF; color:#1D4ED8; font-weight:700; border:1px solid #BFDBFE;">
                 ⚡ คืนรถก่อนกำหนดสัญญา
               </span>
             </div>
-            <div style="display:flex; gap:16px; flex-wrap:wrap;">
-              <label style="font-size:12.5px; font-weight:700; color:#334155; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
-                <input type="radio" name="insp-branch-b-action" id="insp-sub-end-contract" value="end_contract" checked onchange="app.onInspBranchBActionChange('end_contract')">
-                🛑 ยุติสัญญาและคืนรถ (End Contract)
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+              <label style="font-size:13px; font-weight:700; color:#1E293B; cursor:pointer; display:flex; align-items:center; gap:8px; background:#FEF2F2; border:1.5px solid #FCA5A5; border-radius:8px; padding:10px 12px; transition:all 0.15s ease;">
+                <input type="radio" name="insp-branch-b-action" id="insp-sub-end-contract" value="end_contract" checked onchange="app.onInspBranchBActionChange('end_contract')" style="transform:scale(1.2);">
+                <span>🔴 <b>1. ยุติสัญญาและคืนรถทันที</b><br><small style="color:#64748B; font-weight:normal;">(End Contract - ปิดการจอง & หักมัดจำ)</small></span>
               </label>
-              <label style="font-size:12.5px; font-weight:700; color:#C2410C; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
-                <input type="radio" name="insp-branch-b-action" id="insp-sub-swap-car" value="swap_car" onchange="app.onInspBranchBActionChange('swap_car')">
-                🔄 เปลี่ยนรถทดแทน (Swap Vehicle)
+              <label style="font-size:13px; font-weight:700; color:#1E293B; cursor:pointer; display:flex; align-items:center; gap:8px; background:#EFF6FF; border:1.5px solid #93C5FD; border-radius:8px; padding:10px 12px; transition:all 0.15s ease;">
+                <input type="radio" name="insp-branch-b-action" id="insp-sub-swap-car" value="swap_car" onchange="app.onInspBranchBActionChange('swap_car')" style="transform:scale(1.2);">
+                <span>🔵 <b>2. เปลี่ยนรถทดแทน</b><br><small style="color:#1D4ED8; font-weight:normal;">(Swap Vehicle - ให้ลูกค้าเช่าต่อ)</small></span>
               </label>
             </div>
           </div>
@@ -1866,7 +1866,7 @@
           <!-- Swap Vehicle Panel (shown only when Swap Vehicle selected) -->
           <div id="insp-swap-car-panel" style="display:none; background:#FFF7ED; border:1.5px solid #FDBA74; border-radius:8px; padding:12px; margin-bottom:12px; position:relative;">
             <label style="font-size:12px; font-weight:800; color:#9A3412; display:block; margin-bottom:6px;">
-              🚗 เลือกรถคันใหม่ทดแทน (เฉพาะรถสถานะ "ว่างพร้อมใช้งาน"):
+              🚗 เลือกรถคันใหม่ทดแทน (ดึงเฉพาะรถสถานะ "ว่างพร้อมใช้งาน"):
             </label>
             <div style="position:relative; margin-bottom:6px;" id="insp-swap-car-dropdown-container">
               <input type="text" id="insp-swap-car-search" class="form-control" placeholder="🔍 พิมพ์ค้นหาเลขทะเบียน หรือ รุ่นรถที่ว่างพร้อมใช้งาน..."
@@ -1910,8 +1910,8 @@
           </div>
 
           <!-- Swap Vehicle Damage Cost Deferred Warning -->
-          <div id="insp-swap-damage-warning" style="display:none; background:#FFFBEB; border:1.5px solid #FCD34D; color:#92400E; border-radius:6px; padding:10px 12px; font-size:12px; line-height:1.5;">
-            ⚠️ <b>ระบบจะบันทึกยอดค่าเสียหายนี้ไว้เป็นหนี้คงค้าง</b> เพื่อนำไปหักลบกับเงินมัดจำในวันรับรถคืนเมื่อครบกำหนดสัญญาจริง
+          <div id="insp-swap-damage-warning" style="display:none; background:#FFFBEB; border:1.5px solid #FCD34D; color:#92400E; border-radius:8px; padding:12px 14px; font-size:12.5px; line-height:1.6; margin-top:8px;">
+            ⚠️ <b>แจ้งเตือน:</b> ค่าเสียหายของรถคันเก่าจะถูกบันทึกไว้หักมัดจำในวันสิ้นสุดสัญญา (ไม่หักมัดจำตอนนี้)
           </div>
         </div>
       </div>
@@ -2709,7 +2709,7 @@
   <div class="toast-container" id="toast-container"></div>
 
   <!-- Scripts with cache busting -->
-  <script src="/static/js/app.js?v=11.7"></script>
+  <script src="/static/js/app.js?v=11.8"></script>
 
   <!-- ===================================================================== -->
   <!-- MODAL: ACTIVE RENTALS / CARS WITH CUSTOMERS (POPUP FOR CARD 1) -->
