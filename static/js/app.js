@@ -1625,12 +1625,12 @@ class App {
     const stats = this.dashboardStats || {};
     const sc = stats.status_counts || stats.status_breakdown || stats.fleet_status_breakdown || {};
 
-    // STRICT SINGLE SOURCE OF TRUTH: Direct binding from Backend API status_counts
-    const totalFleet = (stats.total_fleet !== undefined) ? Number(stats.total_fleet) : 0;
-    const availCars = Number(sc.available || 0);
-    const onRentCars = Number(sc.on_rent || 0);
-    const bookedCars = Number(sc.booked || 0);
-    const maintCars = Number(sc.maintenance || 0);
+    // STRICT SINGLE SOURCE OF TRUTH: Direct binding from Backend API status_counts (with robust alias resolution)
+    const totalFleet = (stats.total_fleet !== undefined) ? Number(stats.total_fleet) : (stats.total_cars !== undefined ? Number(stats.total_cars) : 0);
+    const availCars = Number(sc.available !== undefined ? sc.available : (stats.available !== undefined ? stats.available : (stats.available_cars || 0)));
+    const onRentCars = Number(sc.on_rent !== undefined ? sc.on_rent : (sc.rented !== undefined ? sc.rented : (sc.onRent !== undefined ? sc.onRent : (stats.on_rent !== undefined ? stats.on_rent : (stats.rented_cars || 0)))));
+    const bookedCars = Number(sc.booked !== undefined ? sc.booked : (sc.reserved !== undefined ? sc.reserved : (stats.booked !== undefined ? stats.booked : (stats.booked_cars || 0))));
+    const maintCars = Number(sc.maintenance !== undefined ? sc.maintenance : (sc.maint !== undefined ? sc.maint : (stats.maintenance !== undefined ? stats.maintenance : (stats.maintenance_cars || 0))));
     
     // Card 2: on_rent + booked (strictly never including available)
     const activeRentals = (stats.active_rentals !== undefined) ? Number(stats.active_rentals) : (onRentCars + bookedCars);
@@ -7685,14 +7685,19 @@ ${e.message}`);
 
     const isEn = (this.currentLang === "EN");
     const stats = this.dashboardStats || {};
-    const sc = stats.status_counts || stats.status_breakdown || stats.fleet_status_breakdown || {};
+    const sc = stats.status_counts || stats.status_breakdown || stats.fleet_status_breakdown || stats || {};
 
-    // STRICT SINGLE SOURCE OF TRUTH: Direct binding from Backend API status_counts
-    const totalCars = (stats.total_fleet !== undefined) ? Number(stats.total_fleet) : 0;
-    const availCount = Number(sc.available || 0);
-    const rentCount = Number(sc.on_rent || 0);
-    const bookCount = Number(sc.booked || 0);
-    const maintCount = Number(sc.maintenance || 0);
+    console.log("[Dashboard Donut] Raw API stats received:", stats);
+    console.log("[Dashboard Donut] Parsed status_counts:", sc);
+
+    // STRICT SINGLE SOURCE OF TRUTH: Direct binding from Backend API status_counts (with robust alias resolution)
+    const totalCars = (stats.total_fleet !== undefined) ? Number(stats.total_fleet) : (stats.total_cars !== undefined ? Number(stats.total_cars) : 0);
+    const availCount = Number(sc.available !== undefined ? sc.available : (stats.available !== undefined ? stats.available : (stats.available_cars || 0)));
+    const rentCount = Number(sc.on_rent !== undefined ? sc.on_rent : (sc.rented !== undefined ? sc.rented : (sc.onRent !== undefined ? sc.onRent : (stats.on_rent !== undefined ? stats.on_rent : (stats.rented_cars || 0)))));
+    const bookCount = Number(sc.booked !== undefined ? sc.booked : (sc.reserved !== undefined ? sc.reserved : (stats.booked !== undefined ? stats.booked : (stats.booked_cars || 0))));
+    const maintCount = Number(sc.maintenance !== undefined ? sc.maintenance : (sc.maint !== undefined ? sc.maint : (stats.maintenance !== undefined ? stats.maintenance : (stats.maintenance_cars || 0))));
+
+    console.log(`[Dashboard Donut] Final counts => Available: ${availCount}, On Rent: ${rentCount}, Booked: ${bookCount}, Maintenance: ${maintCount}, Total: ${totalCars}`);
 
     if (badge) {
       badge.textContent = isEn ? `${totalCars} cars` : `${totalCars} คัน`;
