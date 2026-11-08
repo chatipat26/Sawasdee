@@ -2871,8 +2871,8 @@ def compute_dashboard_statistics():
         norm_p = normalize_plate_str(pl)
         c_st = str(c.get("status") or c.get("car_status") or "").strip()
 
-        # Check maintenance / renewal
-        if c_st in ["ซ่อมบำรุง", "สถานะซ่อมบำรุง", "ไม่พร้อมใช้งาน", "ระงับการใช้งาน", "ส่งซ่อม", "ต่อทะเบียน/ประกัน", "ต่อภาษี/ประกัน", "รอต่อทะเบียน"]:
+        # 1. Maintenance: only if explicitly marked as repair/maintenance
+        if c_st in ["ซ่อมบำรุง", "สถานะซ่อมบำรุง", "ส่งซ่อม"]:
             maint_count += 1
             car_status_map[pl] = "ซ่อมบำรุง"
             continue
@@ -2884,7 +2884,7 @@ def compute_dashboard_statistics():
             and str(b.get("status") or "").strip() not in ["เสร็จสิ้น", "ยกเลิก", "Completed", "Canceled", "completed", "canceled"]
         ]
 
-        # Is on rent now?
+        # 2. Currently Rented
         is_rented = False
         if c_st in ["กำลังเช่า", "เช่าอยู่", "รอรับคืน"]:
             is_rented = True
@@ -2905,7 +2905,7 @@ def compute_dashboard_statistics():
             car_status_map[pl] = "กำลังเช่า"
             continue
 
-        # Is reserved / booked?
+        # 3. Booked / Reserved
         is_booked = False
         if c_st in ["ติดจอง", "จอง", "เตรียมส่งมอบ", "รอส่งมอบ"]:
             is_booked = True
@@ -2917,7 +2917,7 @@ def compute_dashboard_statistics():
             car_status_map[pl] = "ติดจอง"
             continue
 
-        # Otherwise available
+        # 4. Otherwise Available
         avail_count += 1
         car_status_map[pl] = "ว่างพร้อมใช้งาน"
 
@@ -2927,9 +2927,13 @@ def compute_dashboard_statistics():
             store.cars[pl]["operational_status"] = op_status
             if op_status == "กำลังเช่า":
                 store.cars[pl]["is_on_rent"] = True
-            elif op_status == "ว่างพร้อมใช้งาน" and store.cars[pl].get("status") in ["กำลังเช่า", "ติดจอง"]:
-                store.cars[pl]["status"] = "ว่างพร้อมใช้งาน"
+                store.cars[pl]["status"] = "กำลังเช่า"
+            elif op_status == "ติดจอง":
                 store.cars[pl]["is_on_rent"] = False
+                store.cars[pl]["status"] = "ติดจอง"
+            elif op_status == "ว่างพร้อมใช้งาน":
+                store.cars[pl]["is_on_rent"] = False
+                store.cars[pl]["status"] = "ว่างพร้อมใช้งาน"
 
     active_rentals = rent_count + book_count
     utilization_rate = round((active_rentals / max(1, total_cars)) * 100, 1)
@@ -2948,6 +2952,11 @@ def compute_dashboard_statistics():
             if b.get("rental_paid") or b.get("is_fully_paid") or str(b.get("status")) in ["กำลังเช่า", "รอรับคืน", "เสร็จสิ้น"]:
                 total_rev += float(b.get("net_price") or b.get("rental_rate") or 0.0)
                 seen_bids.add(bid)
+
+    if total_rev == 0.0:
+        for f in store.financial_records:
+            if f.get("type") in ["รายรับ", "income"] or str(f.get("type", "")).strip() == "รายรับ":
+                total_rev += float(f.get("amount", 0) or 0)
 
     # Monthly revenue trend (past 6 months)
     th_months = ["", "ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."]
@@ -2972,6 +2981,13 @@ def compute_dashboard_statistics():
             if b_d and b_d.year == y and b_d.month == m:
                 if b.get("rental_paid") or b.get("is_fully_paid") or str(b.get("status")) in ["กำลังเช่า", "รอรับคืน"]:
                     rev_m += float(b.get("net_price") or b.get("rental_rate") or 0.0)
+        for f in store.financial_records:
+            if f.get("type") == "รายรับ":
+                f_d = to_date(f.get("date") or f.get("created_at"))
+                if f_d and f_d.year == y and f_d.month == m:
+                    f_ref = f.get("ref")
+                    if not f_ref or f_ref not in seen_bids:
+                        rev_m += float(f.get("amount") or 0.0)
         monthly_trend.append({
             "label": m_label,
             "month": m,

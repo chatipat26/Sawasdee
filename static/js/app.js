@@ -7742,7 +7742,7 @@ ${e.message}`);
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        cutout: '65%',
+        cutout: '75%',
         plugins: {
           legend: { display: false },
           tooltip: {
@@ -7764,9 +7764,14 @@ ${e.message}`);
         const pct = totalCars > 0 ? ((val / totalCars) * 100).toFixed(1) : "0.0";
         const cDot = colors[idx];
         return `
-          <div style="display:flex; justify-content:space-between; align-items:center; font-size:12.5px; padding:3px 0;">
-            <span><span style="color:${cDot}; font-size:14px; margin-right:6px;">●</span>${lbl}</span>
-            <span style="font-weight:700; color:#1F2937;">${val} ${isEn ? 'cars' : 'คัน'} <span style="font-weight:400; color:#6B7280; font-size:11px;">(${pct}%)</span></span>
+          <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px; padding:3px 4px; background:#F8FAFC; border-radius:6px; border:1px solid #F1F5F9;">
+            <span style="display:inline-flex; align-items:center; gap:5px; color:#475569;">
+              <span style="color:${cDot}; font-size:13px; line-height:1;">●</span>
+              <span style="font-weight:600;">${lbl}</span>
+            </span>
+            <span style="font-weight:700; color:#1E293B;">
+              ${val} ${isEn ? 'cars' : 'คัน'} <span style="font-weight:400; color:#94A3B8; font-size:11px;">(${pct}%)</span>
+            </span>
           </div>
         `;
       }).join("");
@@ -7838,6 +7843,12 @@ ${e.message}`);
     }
 
     const isBar = (this.trendType || "bar") === "bar";
+
+    const sumPill = document.getElementById("trend-summary-pill");
+    if (sumPill) {
+      const totalPeriodRev = dataRev.reduce((a, b) => a + Number(b || 0), 0);
+      sumPill.textContent = (isEn ? "Period Rev: " : "รวม 6 เดือน: ") + "฿" + totalPeriodRev.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    }
 
     this.trendChart = new Chart(canvas, {
       type: isBar ? 'bar' : 'line',
