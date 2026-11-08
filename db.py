@@ -156,20 +156,21 @@ def get_car_fleet_status(car_plate, car_obj, bookings, filter_start_date=None, f
     is_currently_rented = False
     today_d = date.today()
     if has_date_filter:
-        if c_status in ["กำลังเช่า", "รอส่งมอบ", "เตรียมส่งมอบ", "เตรียมรับคืน"]:
+        if c_status in ["กำลังเช่า", "รอรับคืน"]:
             if chk_s <= today_d <= chk_e:
                 is_currently_rented = True
     else:
-        if c_status in ["กำลังเช่า", "รอส่งมอบ", "เตรียมส่งมอบ", "เตรียมรับคืน"]:
+        if c_status in ["กำลังเช่า", "รอรับคืน"]:
             is_currently_rented = True
         else:
             for b in active_bks:
-                b_s = to_date(b.get("start_date"))
-                b_e = to_date(b.get("end_date"))
-                if b_s and b_e and (b_s <= today_d <= b_e):
-                    is_currently_rented = True
-                    booked_b = b
-                    break
+                if b.get("status") in ["กำลังเช่า", "รอรับคืน"]:
+                    b_s = to_date(b.get("start_date"))
+                    b_e = to_date(b.get("end_date"))
+                    if b_s and b_e and (b_s <= today_d <= b_e):
+                        is_currently_rented = True
+                        booked_b = b
+                        break
                     
     if is_booked_on_selected_date or is_currently_rented:
         info_txt = "ไม่ว่างในวันที่เลือก"
@@ -516,6 +517,18 @@ class DataStore:
                                     sb.table("cars").update({"status": "ว่างพร้อมใช้งาน"}).eq("plate", pl).execute()
                                 except Exception:
                                     pass
+                            elif c.get("status") == "กำลังเช่า":
+                                has_real_on_rent = any(
+                                    (b.get("car_id") == pl or re.sub(r"[\s\-_]", "", str(b.get("car_id", ""))).strip().lower() == clean_norm)
+                                    and b.get("status") in ("กำลังเช่า", "รอรับคืน")
+                                    for b in fresh_b
+                                )
+                                if not has_real_on_rent:
+                                    c["status"] = "ติดจอง"
+                                    try:
+                                        sb.table("cars").update({"status": "ติดจอง"}).eq("plate", pl).execute()
+                                    except Exception:
+                                        pass
                             merged_c = dict(self.cars.get(pl, {}))
                             for k, v in c.items():
                                 if v is not None and v != "":

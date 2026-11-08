@@ -92,18 +92,34 @@ def raise_overlap_error(conflict, action="จองรถ"):
         )
     )
 
+def get_car_key(car_id):
+    """Resolve car key from store.cars matching raw car_id, plate, or normalized string."""
+    if not car_id:
+        return None
+    if car_id in store.cars:
+        return car_id
+    clean_target = re.sub(r"[\s\-_]", "", str(car_id)).strip().lower()
+    for k, v in store.cars.items():
+        if re.sub(r"[\s\-_]", "", str(k)).strip().lower() == clean_target:
+            return k
+        if re.sub(r"[\s\-_]", "", str(v.get("plate", ""))).strip().lower() == clean_target:
+            return k
+    return None
+
 def release_car_after_booking(car_id, finished_booking_id=None):
     """Return car to Available, or back to Reserved if another active queue still exists."""
-    if car_id not in store.cars:
+    c_key = get_car_key(car_id)
+    if not c_key or c_key not in store.cars:
         return
+    norm_ck = re.sub(r"[\s\-_]", "", str(c_key)).strip().lower()
     has_queue = any(
-        b.get("car_id") == car_id
+        re.sub(r"[\s\-_]", "", str(b.get("car_id", ""))).strip().lower() == norm_ck
         and b.get("booking_id") != finished_booking_id
         and b.get("status") not in INACTIVE_BOOKING_STATUSES
         for b in store.bookings
     )
-    store.cars[car_id]["status"] = "ติดจอง" if has_queue else "ว่างพร้อมใช้งาน"
-    store.async_sync_car(car_id, store.cars[car_id])
+    store.cars[c_key]["status"] = "ติดจอง" if has_queue else "ว่างพร้อมใช้งาน"
+    store.async_sync_car(c_key, store.cars[c_key])
 
 def require_contract_before_rent(booking):
     """On-Rent status may only be reached after the rental contract has been issued."""
@@ -473,6 +489,27 @@ async def list_cars(start_date: Optional[str] = None, end_date: Optional[str] = 
         store.sync_from_database(force=True)
     cars_data = []
     for plate, car in store.cars.items():
+        norm_p = re.sub(r"[\s\-_]", "", str(plate)).strip().lower()
+
+        # Check if this car has an active booking that is truly On Rent
+        has_real_on_rent = any(
+            re.sub(r"[\s\-_]", "", str(_b.get("car_id", ""))).strip().lower() == norm_p
+            and _b.get("status") in ("กำลังเช่า", "รอรับคืน")
+            for _b in store.bookings
+        )
+
+        # Self-healing: if car.status is "กำลังเช่า" but NO booking is actually on rent, auto-correct
+        if car.get("status") == "กำลังเช่า" and not has_real_on_rent:
+            has_queue = any(
+                re.sub(r"[\s\-_]", "", str(_b.get("car_id", ""))).strip().lower() == norm_p
+                and _b.get("status") not in INACTIVE_BOOKING_STATUSES
+                for _b in store.bookings
+            )
+            corrected_status = "ติดจอง" if has_queue else "ว่างพร้อมใช้งาน"
+            car["status"] = corrected_status
+            store.cars[plate]["status"] = corrected_status
+            store.async_sync_car(plate, store.cars[plate])
+
         status_key, status_desc, color, bg, border = get_car_fleet_status(
             plate, car, store.bookings, start_date, end_date
         )
@@ -481,7 +518,6 @@ async def list_cars(start_date: Optional[str] = None, end_date: Optional[str] = 
         _fs, _fe = to_date(start_date), to_date(end_date)
         if _fs and not _fe: _fe = _fs
         if _fe and not _fs: _fs = _fe
-        norm_p = re.sub(r"[\s\-_]", "", str(plate)).strip().lower()
         _on_rent = False
         if _fs and _fe:
             for _b in store.bookings:
@@ -500,10 +536,8 @@ async def list_cars(start_date: Optional[str] = None, end_date: Optional[str] = 
                             _on_rent = True
                         break
         else:
-            _on_rent = str(car.get("status") or "").strip() in ("กำลังเช่า", "รอรับคืน") or any(
-                re.sub(r"[\s\-_]", "", str(_b.get("car_id", ""))).strip().lower() == norm_p and _b.get("status") in ("กำลังเช่า", "รอรับคืน")
-                for _b in store.bookings
-            )
+            _on_rent = has_real_on_rent
+
         c_copy["is_on_rent"] = _on_rent
         c_copy["fleet_status_desc"] = status_desc
         c_copy["status_color"] = color
@@ -1111,9 +1145,17 @@ async def create_booking(payload: Dict[str, Any]):
         store.bookings.insert(0, booking)
         # Flow step 4: after booking the car becomes "Reserved" (never jumps to On Rent).
         # A car that is currently On Rent / in workshop keeps its status while accepting future queues.
-        if car_id in store.cars and store.cars[car_id].get("status") not in ("กำลังเช่า", "ซ่อมบำรุง"):
-            store.cars[car_id]["status"] = "ติดจอง"
-            store.async_sync_car(car_id, store.cars[car_id])
+        c_key = get_car_key(car_id)
+        if c_key and c_key in store.cars:
+            norm_ck = re.sub(r"[\s\-_]", "", str(c_key)).strip().lower()
+            has_active_on_rent = any(
+                re.sub(r"[\s\-_]", "", str(b.get("car_id", ""))).strip().lower() == norm_ck
+                and b.get("status") in ("กำลังเช่า", "รอรับคืน")
+                for b in store.bookings
+            )
+            if not has_active_on_rent and store.cars[c_key].get("status") != "ซ่อมบำรุง":
+                store.cars[c_key]["status"] = "ติดจอง"
+                store.async_sync_car(c_key, store.cars[c_key])
             
     store.async_sync_booking(booking)
     w_del = str(booking.get("worker_delivery", "")).strip()
@@ -1359,9 +1401,18 @@ async def record_deposit(bk_id: str, payload: Dict[str, Any]):
         target["status"] = "รอส่งมอบ"
 
     car_id = target.get("car_id")
-    if car_id in store.cars and store.cars[car_id].get("status") not in ("กำลังเช่า", "ซ่อมบำรุง"):
-        store.cars[car_id]["status"] = "ติดจอง"
-        store.async_sync_car(car_id, store.cars[car_id])
+    c_key = get_car_key(car_id)
+    if c_key and c_key in store.cars:
+        norm_ck = re.sub(r"[\s\-_]", "", str(c_key)).strip().lower()
+        has_active_on_rent = any(
+            re.sub(r"[\s\-_]", "", str(b.get("car_id", ""))).strip().lower() == norm_ck
+            and b.get("booking_id") != bk_id
+            and b.get("status") in ("กำลังเช่า", "รอรับคืน")
+            for b in store.bookings
+        )
+        if not has_active_on_rent and store.cars[c_key].get("status") != "ซ่อมบำรุง":
+            store.cars[c_key]["status"] = "ติดจอง"
+            store.async_sync_car(c_key, store.cars[c_key])
 
     store.async_sync_booking(target)
 

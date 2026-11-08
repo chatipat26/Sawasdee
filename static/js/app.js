@@ -2174,19 +2174,23 @@ class App {
       const isStatusBooked = cleanStat === "ติดจอง" || cleanStat === "Reserved";
       const isStatusRenting = cleanStat === "กำลังเช่า" || cleanStat === "On Rent" || cleanStat === "Currently Renting";
 
+      const hasBookingOnRent = activeBookings.some(b => b.status === "กำลังเช่า" || b.status === "รอรับคืน");
+      const isTrulyOnRent = hasBookingOnRent || (c.is_on_rent && c.status === "กำลังเช่า");
+
       if (isStatusRenting) {
         // เลือก "กำลังเช่า": แสดงรถที่สถานะปัจจุบันคือ On Rent (ลูกค้ากำลังใช้งาน)
-        if (c.status !== "กำลังเช่า" && !c.is_on_rent) return false;
+        if (!isTrulyOnRent) return false;
       } else if (isStatusBooked) {
-        // เลือก "ติดจอง": แสดงรถที่มีการสร้าง Booking ไว้แล้ว (มีคิวในระบบ)
-        if (!hasAnyActiveBooking && c.status !== "ติดจอง" && c.fleet_status_key !== "reserved") {
+        // เลือก "ติดจอง": แสดงรถที่มีการสร้าง Booking ไว้แล้ว (มีคิวในระบบ) หรือสถานะติดจอง
+        if (isTrulyOnRent) return false;
+        if (!hasAnyActiveBooking && c.status !== "ติดจอง" && c.fleet_status_key !== "reserved" && c.fleet_status_key !== "unavailable") {
           return false;
         }
       } else if (isStatusAvail) {
         // เลือก "ว่าง": แสดงเฉพาะรถที่ ไม่มี คิวจองทับซ้อน (Overlap) ในช่วงวันที่เลือก และสถานะรถปัจจุบันไม่ใช่ "กำลังเช่า"
-        if (c.status === "กำลังเช่า" || c.is_on_rent) return false;
+        if (isTrulyOnRent || c.status === "กำลังเช่า") return false;
         if (c.fleet_status_key === "maintenance" || c.status === "ซ่อมบำรุง" || c.status === "สถานะซ่อมบำรุง") return false;
-        if (c.fleet_status_key === "unavailable") return false;
+        if (c.fleet_status_key === "unavailable" || c.status === "ติดจอง" || c.fleet_status_key === "reserved") return false;
         if (searchS && searchE) {
           if (hasOverlapOnSelectedDates) return false;
         } else {
@@ -2205,7 +2209,7 @@ class App {
         if (searchS && searchE) {
           if (c.fleet_status_key === "maintenance" || c.status === "ซ่อมบำรุง" || c.status === "สถานะซ่อมบำรุง") return false;
           if (c.fleet_status_key === "unavailable" || hasOverlapOnSelectedDates) return false;
-          if (c.is_on_rent || c.status === "กำลังเช่า") {
+          if (isTrulyOnRent) {
             const today = new Date();
             today.setHours(0, 0, 0, 0);
             if (searchS <= today && searchE >= today) return false;
@@ -2278,17 +2282,18 @@ class App {
       const dict = (window.translations && window.translations[l]) ? window.translations[l] : null;
       let statusText = (dict && dict.available) || (isEn ? "Available" : "ว่างพร้อมใช้งาน");
       let statusBg = "#ECFDF5", statusBorder = "#A7F3D0", statusColor = "#065F46", statusDot = "#10B981";
-      if (c.fleet_status_key === "reserved") {
-        statusText = (dict && dict.reserved) || (isEn ? "Reserved" : "ติดจอง");
-        statusBg = "#FEFCE8"; statusBorder = "#FEF08A"; statusColor = "#A16207"; statusDot = "#F59E0B";
-      } else if (c.fleet_status_key === "maintenance") {
+
+      const hasBookingOnRent = activeBookings.some(b => b.status === "กำลังเช่า" || b.status === "รอรับคืน");
+      const isTrulyOnRent = hasBookingOnRent || (c.is_on_rent && c.status === "กำลังเช่า");
+
+      if (c.fleet_status_key === "maintenance" || c.status === "ซ่อมบำรุง" || c.status === "สถานะซ่อมบำรุง") {
         statusText = (dict && dict.workshop) || (isEn ? "Workshop" : "ซ่อมบำรุง");
         statusBg = "#FFF7ED"; statusBorder = "#FED7AA"; statusColor = "#9A3412"; statusDot = "#F97316";
-      } else if (c.is_on_rent) {
+      } else if (isTrulyOnRent) {
         statusText = (dict && dict.on_rent) || (isEn ? "On rent" : "กำลังเช่า");
         statusBg = "#EFF6FF"; statusBorder = "#BFDBFE"; statusColor = "#1E40AF"; statusDot = "#3B82F6";
-      } else if (c.fleet_status_key === "unavailable") {
-        // Booked (deposit stage / awaiting hand-over) but NOT yet handed over -> "Reserved", never "On rent"
+      } else if (c.status === "ติดจอง" || c.fleet_status_key === "reserved" || c.fleet_status_key === "unavailable" || hasAnyActiveBooking) {
+        // Booked (deposit stage / awaiting hand-over) -> STRICTLY "Reserved / ติดจอง", never "On rent"
         statusText = (dict && dict.reserved) || (isEn ? "Reserved" : "ติดจอง");
         statusBg = "#FEFCE8"; statusBorder = "#FEF08A"; statusColor = "#A16207"; statusDot = "#F59E0B";
       }
