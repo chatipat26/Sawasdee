@@ -4717,9 +4717,6 @@ class App {
               🚚 ${isEn ? 'Handed Over (Renting) ➔' : 'ส่งมอบรถแล้ว (กำลังเช่า) ➔'}
             </button>` : ''}
             ${['กำลังเช่า', 'เตรียมรับคืน'].includes(b.status) ? `
-            <button type="button" onclick="app.quickConfirmReturn('${b.booking_id}')" class="btn btn-warning btn-sm" style="font-size:11.5px; padding:4px 10px; font-weight:600; color:#1E293B;" title="${isEn ? 'Customer returned vehicle ➔ Inspection & Return Checklist' : 'ลูกค้านำรถมาคืน ➔ ตรวจสภาพตาม Checklist และรับรถคืน'}">
-              🏁 ${isEn ? 'Returned (Checklist) ➔' : 'ตรวจรับรถคืน (Checklist) ➔'}
-            </button>
             <button type="button" onclick="app.openExtendContract()" class="btn btn-warning btn-sm" style="font-size:11.5px; padding:4px 10px; font-weight:700; background:#f59e0b; border-color:#d97706; color:#1F2937;" title="${isEn ? 'Extend Contract Period' : 'ต่อสัญญา (Extend Contract)'}">
               📝 ${isEn ? 'Extend Contract' : 'ต่อสัญญา (Extend Contract)'}
             </button>` : ''}
@@ -6771,13 +6768,13 @@ class App {
         tbody.innerHTML = matched.map((it, idx) => {
           const badgeClass = it.status_key === "overdue" ? "badge badge-danger" : (it.status_key === "pending" ? "badge badge-warning" : "badge badge-success");
           return `
-            <tr>
-              <td style="text-align:center; font-weight:700; color:#64748B;">${idx + 1}</td>
-              <td><b>${it.plate}</b><br/><small style="color:#64748B;">${it.model}</small></td>
-              <td><b>${it.expense_type}</b></td>
-              <td style="text-align:center; font-weight:600;">${it.due_date || '-'}<br/><small style="color:${it.days_left < 0 ? '#DC2626' : '#64748B'};">${it.notes || ''}</small></td>
-              <td style="text-align:right; font-weight:800; color:#0F172A;">฿${Number(it.amount || 0).toLocaleString('th-TH', {minimumFractionDigits: 2})}</td>
-              <td style="text-align:center;"><span class="${badgeClass}">${it.status}</span></td>
+            <tr style="background:#ffffff !important;">
+              <td style="text-align:center; font-weight:700; color:#64748B; background:#ffffff !important;">${idx + 1}</td>
+              <td style="background:#ffffff !important;"><b>${it.plate}</b><br/><small style="color:#64748B;">${it.model}</small></td>
+              <td style="background:#ffffff !important;"><b>${it.expense_type}</b></td>
+              <td style="text-align:center; font-weight:600; background:#ffffff !important;">${it.due_date || '-'}<br/><small style="color:${it.days_left < 0 ? '#DC2626' : '#64748B'};">${it.notes || ''}</small></td>
+              <td style="text-align:right; font-weight:800; color:#0F172A; background:#ffffff !important;">฿${Number(it.amount || 0).toLocaleString('th-TH', {minimumFractionDigits: 2})}</td>
+              <td style="text-align:center; background:#ffffff !important;"><span class="${badgeClass}">${it.status}</span></td>
             </tr>
           `;
         }).join("");
@@ -6785,6 +6782,103 @@ class App {
     }
 
     this.openModal("modal-cycle-expiries");
+  }
+
+
+  openTopExpensesModal() {
+    const isEn = (this.currentLang === "EN");
+    const data = this.monthlyExpensesData || {};
+    const allExpenses = data.expenses || [];
+
+    // Map: plate -> { plate, model, company, total, breakdown: [] }
+    const carMap = {};
+
+    // 1. Populate all registered cars
+    (this.cars || []).forEach(c => {
+      const pl = c.id || c.plate;
+      if (!pl) return;
+      carMap[pl] = {
+        plate: pl,
+        model: `${c.brand || ''} ${c.model || ''}`.trim() || '-',
+        company: c.company || c.owner_company || '-',
+        total: 0,
+        breakdown: []
+      };
+    });
+
+    // 2. Aggregate expenses for each car (ภาษี + พ.ร.บ. + ประกัน + ค่างวด)
+    allExpenses.forEach(exp => {
+      const pl = exp.plate;
+      if (!pl) return;
+      if (!carMap[pl]) {
+        carMap[pl] = {
+          plate: pl,
+          model: exp.model || '-',
+          company: exp.company || '-',
+          total: 0,
+          breakdown: []
+        };
+      }
+      const amt = parseFloat(exp.amount || 0);
+      carMap[pl].total += amt;
+      carMap[pl].breakdown.push({
+        type: exp.expense_type,
+        amount: amt
+      });
+    });
+
+    // 3. Convert to array and sort descending by total expenses
+    const rankedCars = Object.values(carMap);
+    rankedCars.sort((a, b) => b.total - a.total);
+
+    const grandTotal = rankedCars.reduce((sum, c) => sum + c.total, 0);
+
+    // 4. Populate Summary Ribbon
+    const summaryEl = document.getElementById("modal-top-expenses-summary");
+    if (summaryEl) {
+      summaryEl.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+          <div>
+            <b>${isEn ? 'Total Vehicles:' : 'จำนวนรถทั้งหมด:'}</b> <span style="font-weight:800; color:#991B1B;">${rankedCars.length} ${isEn ? 'cars' : 'คัน'}</span>
+          </div>
+          <div>
+            <b>${isEn ? 'Highest Expense Car:' : 'รถที่มีค่าใช้จ่ายสูงสุด:'}</b> <span style="font-weight:800; color:#DC2626;">${rankedCars[0] ? `${rankedCars[0].plate} (฿${rankedCars[0].total.toLocaleString('th-TH', {minimumFractionDigits: 2})})` : '-'}</span>
+          </div>
+          <div>
+            <b>${isEn ? 'Total Fleet Expenses:' : 'ยอดค่าใช้จ่ายรวมทุกคัน:'}</b> <span style="font-weight:800; color:#991B1B;">฿${grandTotal.toLocaleString('th-TH', {minimumFractionDigits: 2})}</span>
+          </div>
+        </div>
+      `;
+    }
+
+    // 5. Populate Table Body
+    const tbody = document.getElementById("modal-top-expenses-tbody");
+    if (tbody) {
+      if (rankedCars.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:32px; color:#64748B;">${isEn ? 'No vehicle expense data found.' : 'ไม่พบข้อมูลค่าใช้จ่ายรถยนต์'}</td></tr>`;
+      } else {
+        tbody.innerHTML = rankedCars.map((c, idx) => {
+          const rankBadge = idx === 0 
+            ? '<span style="font-size:16px;">🥇</span>' 
+            : (idx === 1 ? '<span style="font-size:16px;">🥈</span>' : (idx === 2 ? '<span style="font-size:16px;">🥉</span>' : `<span style="font-weight:700; color:#64748B;">#${idx + 1}</span>`));
+          const bdText = c.breakdown.length > 0 
+            ? c.breakdown.map(b => `<span style="display:inline-block; background:#F8FAFC; border:1px solid #E2E8F0; border-radius:6px; padding:1px 6px; margin:2px;">${b.type}: ฿${Number(b.amount).toLocaleString()}</span>`).join(" ")
+            : '<span style="color:#94A3B8;">ไม่มีรายการค้างชำระ</span>';
+
+          return `
+            <tr style="background:#ffffff !important;">
+              <td style="text-align:center; font-size:14px; background:#ffffff !important;">${rankBadge}</td>
+              <td style="background:#ffffff !important;"><b style="font-size:13.5px; color:#0F172A;">${c.plate}</b></td>
+              <td style="background:#ffffff !important;"><span style="font-weight:600; color:#334155;">${c.model}</span></td>
+              <td style="font-size:11.5px; color:#64748B; background:#ffffff !important;">${bdText}</td>
+              <td style="text-align:right; font-weight:800; color:#DC2626; font-size:13.5px; background:#ffffff !important;">฿${c.total.toLocaleString('th-TH', {minimumFractionDigits: 2})}</td>
+            </tr>
+          `;
+        }).join("");
+      }
+    }
+
+    this.openModal("modal-top-expenses");
   }
 
   // --- Unified Monthly Expenses Tracker (ภาษี / พ.ร.บ. / ประกัน / ค่างวด) ---

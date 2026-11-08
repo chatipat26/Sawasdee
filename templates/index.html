@@ -1174,12 +1174,15 @@
             </div>
           </div>
 
-          <!-- Card 4: Total Revenue -->
-          <div class="kpi-card">
+          <!-- Card 4: Total Revenue -> Click pops up Top Expenses Car Ranking Modal -->
+          <div class="kpi-card interactive" onclick="app.openTopExpensesModal()" title="คลิกเพื่อดูอันดับรถที่มีค่าใช้จ่ายสูงสุด" style="cursor:pointer;">
             <div class="kpi-icon" style="background:#FEF2F2; color:#DC2626;">💰</div>
             <div>
               <div class="kpi-value" id="kpi-total-revenue">฿0.00</div>
-              <div class="kpi-label" id="dash-kpi-rev-lbl">Total Revenue</div>
+              <div class="kpi-label">
+                <span id="dash-kpi-rev-lbl">Total Revenue</span>
+                <span id="dash-kpi-rev-badge" style="font-size:10px; color:#DC2626; font-weight:700; background:#FEF2F2; padding:1px 6px; border-radius:8px; margin-left:4px;">อันดับค่าใช้จ่าย</span>
+              </div>
             </div>
           </div>
 
@@ -1609,10 +1612,10 @@
 
   <!-- ===================================================================== -->
   <!-- MODALS -->
-  <!-- Modal: Expiry Cycle Details (รอบวันที่ 1 และ 16) -->
+  <!-- Modal: Expiry Cycle Details (รอบวันที่ 1 และ 16) - Pure White Background -->
   <div id="modal-cycle-expiries" class="modal-backdrop">
-    <div class="modal-card" style="max-width:850px; width:92%; max-height:90vh; overflow-y:auto; border-radius:14px; padding:22px;">
-      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1.5px solid #FED7AA; padding-bottom:12px; margin-bottom:14px;">
+    <div class="modal-card" style="max-width:850px; width:92%; max-height:90vh; overflow-y:auto; border-radius:18px; padding:24px; background:#ffffff !important; box-shadow:0 20px 50px rgba(0,0,0,0.12);">
+      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1.5px solid #FED7AA; padding-bottom:14px; margin-bottom:16px; background:#ffffff !important;">
         <div>
           <div style="font-size:16px; font-weight:800; color:#C2410C; display:flex; align-items:center; gap:8px;">
             <span>📅</span> <span id="modal-cycle-title">รายการเอกสารที่ต้องต่ออายุ (รอบวันที่ 1 / 16)</span>
@@ -1621,38 +1624,92 @@
             รอบการแจ้งเตือนและรายการที่ครบกำหนด
           </div>
         </div>
-        <button type="button" class="btn-close" onclick="app.closeModal('modal-cycle-expiries')" style="background:transparent; border:none; font-size:20px; cursor:pointer; color:#94A3B8;">✕</button>
+        <button type="button" class="btn-close" onclick="app.closeModal('modal-cycle-expiries')" style="background:transparent; border:none; font-size:22px; cursor:pointer; color:#94A3B8;">✕</button>
       </div>
 
-      <!-- Cycle Summary Strip -->
-      <div id="modal-cycle-summary-bar" style="background:#FFF7ED; border:1px solid #FDBA74; border-radius:10px; padding:12px 16px; margin-bottom:16px; font-size:12.5px; color:#9A3412;">
+      <!-- Cycle Summary Strip (Pure White Background with Accent Border) -->
+      <div id="modal-cycle-summary-bar" style="background:#ffffff !important; border:1.5px solid #FED7AA; border-radius:10px; padding:12px 16px; margin-bottom:16px; font-size:12.5px; color:#9A3412;">
         <!-- Populated by JS -->
       </div>
 
-      <!-- Expiring Items Table -->
-      <div class="table-responsive" style="max-height:360px; overflow-y:auto; border:1px solid #E2E8F0; border-radius:8px; margin-bottom:16px;">
-        <table class="custom-table" style="font-size:12.5px; margin:0;">
-          <thead style="position:sticky; top:0; background:#F8FAFC; z-index:2;">
+      <!-- Expiring Items Table (Pure White Background) -->
+      <div class="table-responsive" style="max-height:360px; overflow-y:auto; border:1px solid #E2E8F0; border-radius:10px; margin-bottom:16px; background:#ffffff !important;">
+        <table class="custom-table" style="font-size:12.5px; margin:0; background:#ffffff !important;">
+          <thead style="position:sticky; top:0; background:#ffffff !important; z-index:2;">
             <tr>
-              <th style="width:45px; text-align:center;">#</th>
-              <th>ทะเบียนรถ / รุ่น</th>
-              <th>รายการเอกสาร</th>
-              <th style="text-align:center;">วันครบกำหนด</th>
-              <th style="text-align:right;">ยอดเงิน (฿)</th>
-              <th style="text-align:center;">สถานะ</th>
+              <th style="width:45px; text-align:center; background:#F8FAFC !important; border-bottom:2px solid #E2E8F0;">#</th>
+              <th style="background:#F8FAFC !important; border-bottom:2px solid #E2E8F0;">ทะเบียนรถ / รุ่น</th>
+              <th style="background:#F8FAFC !important; border-bottom:2px solid #E2E8F0;">รายการเอกสาร</th>
+              <th style="text-align:center; background:#F8FAFC !important; border-bottom:2px solid #E2E8F0;">วันครบกำหนด</th>
+              <th style="text-align:right; background:#F8FAFC !important; border-bottom:2px solid #E2E8F0;">ยอดเงิน (฿)</th>
+              <th style="text-align:center; background:#F8FAFC !important; border-bottom:2px solid #E2E8F0;">สถานะ</th>
             </tr>
           </thead>
-          <tbody id="modal-cycle-tbody">
+          <tbody id="modal-cycle-tbody" style="background:#ffffff !important;">
             <!-- Populated by JS -->
           </tbody>
         </table>
       </div>
 
-      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; border-top:1px solid #E2E8F0; padding-top:14px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; border-top:1px solid #E2E8F0; padding-top:14px; background:#ffffff !important;">
         <button type="button" class="btn btn-primary" onclick="app.jumpToFilteredExpensesTable()" style="font-weight:700; background:#EA580C; border-color:#EA580C; display:inline-flex; align-items:center; gap:6px;">
           📋 ดูในตารางสรุปค่าใช้จ่ายประจำเดือน ➔
         </button>
         <button type="button" class="btn btn-secondary" onclick="app.closeModal('modal-cycle-expiries')" style="font-weight:700;">
+          ปิดหน้าต่าง
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Top Expenses Cars (อันดับรถที่มีค่าใช้จ่ายสูงสุด) - Pure White Background -->
+  <div id="modal-top-expenses" class="modal-backdrop">
+    <div class="modal-card" style="max-width:820px; width:92%; max-height:88vh; overflow-y:auto; border-radius:18px; padding:24px; background:#ffffff !important; box-shadow:0 20px 50px rgba(0,0,0,0.12);">
+      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1.5px solid #FEE2E2; padding-bottom:14px; margin-bottom:16px; background:#ffffff !important;">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <div style="font-size:24px; background:#FEF2F2; width:44px; height:44px; border-radius:12px; display:flex; align-items:center; justify-content:center; color:#DC2626;">
+            💸
+          </div>
+          <div>
+            <div style="font-size:16px; font-weight:800; color:#991B1B;" id="modal-top-exp-title">
+              อันดับรถที่มีค่าใช้จ่ายสะสมสูงสุด (Top Fleet Expenses)
+            </div>
+            <div style="font-size:12px; color:#64748B; margin-top:2px;" id="modal-top-exp-subtitle">
+              คำนวณจากค่าใช้จ่ายทั้งหมดของรถแต่ละคัน (ภาษี + พ.ร.บ. + ประกันภัย + ค่างวด)
+            </div>
+          </div>
+        </div>
+        <button type="button" class="btn-close" onclick="app.closeModal('modal-top-expenses')" style="background:transparent; border:none; font-size:22px; cursor:pointer; color:#94A3B8;">✕</button>
+      </div>
+
+      <!-- Top Summary Ribbon -->
+      <div id="modal-top-expenses-summary" style="background:#FFF5F5; border:1px solid #FECACA; border-radius:10px; padding:12px 16px; margin-bottom:16px; font-size:12.5px; color:#991B1B;">
+        <!-- Populated by JS -->
+      </div>
+
+      <!-- Table: Cars ranked by total expenses -->
+      <div class="table-responsive" style="max-height:400px; overflow-y:auto; border:1px solid #E2E8F0; border-radius:10px; margin-bottom:16px; background:#ffffff !important;">
+        <table class="custom-table" style="font-size:12.5px; margin:0; background:#ffffff !important;">
+          <thead style="position:sticky; top:0; background:#ffffff !important; z-index:2;">
+            <tr>
+              <th style="width:60px; text-align:center; background:#F8FAFC !important; border-bottom:2px solid #E2E8F0;">อันดับ</th>
+              <th style="background:#F8FAFC !important; border-bottom:2px solid #E2E8F0;">ทะเบียนรถ</th>
+              <th style="background:#F8FAFC !important; border-bottom:2px solid #E2E8F0;">รุ่นรถ (Make & Model)</th>
+              <th style="background:#F8FAFC !important; border-bottom:2px solid #E2E8F0;">รายละเอียดค่าใช้จ่าย</th>
+              <th style="text-align:right; background:#F8FAFC !important; border-bottom:2px solid #E2E8F0;">ยอดค่าใช้จ่ายรวม (฿)</th>
+            </tr>
+          </thead>
+          <tbody id="modal-top-expenses-tbody" style="background:#ffffff !important;">
+            <!-- Populated by app.openTopExpensesModal() -->
+          </tbody>
+        </table>
+      </div>
+
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; border-top:1px solid #E2E8F0; padding-top:14px; background:#ffffff !important;">
+        <button type="button" class="btn btn-primary" onclick="app.jumpToFilteredExpensesTable()" style="font-weight:700; background:#EA580C; border-color:#EA580C; font-size:12.5px;">
+          📋 ดูตารางสรุปค่าใช้จ่ายประจำเดือน ➔
+        </button>
+        <button type="button" class="btn btn-secondary" onclick="app.closeModal('modal-top-expenses')" style="font-weight:700; font-size:12.5px;">
           ปิดหน้าต่าง
         </button>
       </div>
@@ -2577,7 +2634,7 @@
   <div class="toast-container" id="toast-container"></div>
 
   <!-- Scripts with cache busting -->
-  <script src="/static/js/app.js?v=11.4"></script>
+  <script src="/static/js/app.js?v=11.5"></script>
 
   <!-- ===================================================================== -->
   <!-- MODAL: ACTIVE RENTALS / CARS WITH CUSTOMERS (POPUP FOR CARD 1) -->

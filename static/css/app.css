@@ -1936,3 +1936,36 @@ section,
     grid-template-columns: 1fr !important;
   }
 }
+
+/* Pure White Modals Override (Modal Card & Inner Tables) */
+.modal-dialog,
+.modal-box,
+.modal-card {
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+}
+
+#modal-cycle-expiries .modal-card,
+#modal-cycle-expiries .table-responsive,
+#modal-cycle-expiries table,
+#modal-cycle-expiries thead,
+#modal-cycle-expiries tbody,
+#modal-cycle-expiries th,
+#modal-cycle-expiries td,
+#modal-cycle-expiries tr,
+#modal-top-expenses .modal-card,
+#modal-top-expenses .table-responsive,
+#modal-top-expenses table,
+#modal-top-expenses thead,
+#modal-top-expenses tbody,
+#modal-top-expenses th,
+#modal-top-expenses td,
+#modal-top-expenses tr {
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+}
+
+#modal-cycle-expiries .custom-table tr:hover td,
+#modal-top-expenses .custom-table tr:hover td {
+  background: #F8FAFC !important;
+}
