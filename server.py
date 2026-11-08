@@ -1136,6 +1136,31 @@ async def pay_monthly_expense(payload: Dict[str, Any]):
 
     store.async_sync_car(car_key, car)
 
+    # Log to persistent maintenance_logs
+    try:
+        exp_cost = 0.0
+        if expense_type in ("tax", "ภาษี"):
+            exp_cost = float(car.get("tax_price") or 1500.0)
+        elif expense_type in ("act", "prb", "พ.ร.บ.", "พรบ"):
+            exp_cost = float(car.get("prb_price") or car.get("act_price") or 645.0)
+        elif expense_type in ("insurance", "ins", "ประกัน", "ประกันภัย"):
+            exp_cost = float(car.get("insurance_premium") or car.get("ins_premium") or 7500.0)
+        elif expense_type in ("installment", "finance", "hp", "ผ่อนรถ", "ค่างวด"):
+            exp_cost = float(car.get("installment_amount") or 0.0)
+
+        if exp_cost > 0:
+            due_note = f" (ต่ออายุรอบใหม่ถึง {new_date.strftime('%d/%m/%Y')})" if new_date else ""
+            store.log_maintenance(
+                car_id=car_key,
+                date=today.isoformat(),
+                expense_type=item_title,
+                description=f"ชำระ {item_title} ทะเบียน {car_key}{due_note}",
+                cost=exp_cost,
+                recorded_by="admin"
+            )
+    except Exception as e:
+        print(f"pay_monthly_expense log error: {e}")
+
     return {
         "success": True,
         "message": f"อัปเดตชำระเงิน {item_title} ทะเบียน {car_key} เรียบร้อยแล้ว",
@@ -2360,6 +2385,8 @@ async def close_maintenance(mnt_id: str, payload: Dict[str, Any]):
     recorded_by = payload.get("recorded_by", "admin")
     new_act_expiry = payload.get("new_act_expiry")
     new_ins_expiry = payload.get("new_ins_expiry")
+    new_tax_expiry = payload.get("new_tax_expiry")
+    insurance_company = payload.get("insurance_company")
     policy_no = payload.get("policy_no")
     
     closed = store.close_maintenance_record(
@@ -2370,6 +2397,8 @@ async def close_maintenance(mnt_id: str, payload: Dict[str, Any]):
         recorded_by=recorded_by,
         new_act_expiry=new_act_expiry,
         new_ins_expiry=new_ins_expiry,
+        new_tax_expiry=new_tax_expiry,
+        insurance_company=insurance_company,
         policy_no=policy_no
     )
     if not closed:
@@ -2642,7 +2671,7 @@ import urllib.parse
 @app.get("/api/cars/{plate:path}/maintenances")
 async def get_car_maintenances(plate: str):
     clean_plate = urllib.parse.unquote(plate).strip()
-    records = store.get_vehicle_maintenances(clean_plate)
+    records = store.get_combined_maintenance_history(clean_plate)
     roi_data = store.get_car_financial_roi(clean_plate)
     return {
         "success": True,
@@ -2675,8 +2704,21 @@ async def add_car_maintenance(plate: str, payload: Dict[str, Any]):
         "created_at": datetime.now().isoformat()
     }
     saved = store.async_add_vehicle_maintenance(record)
+    # Also log to persistent maintenance_logs
+    try:
+        store.log_maintenance(
+            car_id=clean_plate,
+            date=m_date,
+            expense_type="ซ่อมบำรุง",
+            description=desc,
+            cost=cost_val,
+            recorded_by="admin"
+        )
+    except Exception:
+        pass
+
     roi_data = store.get_car_financial_roi(clean_plate)
-    records = store.get_vehicle_maintenances(clean_plate)
+    records = store.get_combined_maintenance_history(clean_plate)
 
     return {
         "success": True,
@@ -2690,8 +2732,9 @@ async def add_car_maintenance(plate: str, payload: Dict[str, Any]):
 async def delete_car_maintenance(plate: str, m_id: str):
     clean_plate = urllib.parse.unquote(plate).strip()
     store.async_delete_vehicle_maintenance(m_id)
+    store.async_delete_maintenance_log(m_id)
     roi_data = store.get_car_financial_roi(clean_plate)
-    records = store.get_vehicle_maintenances(clean_plate)
+    records = store.get_combined_maintenance_history(clean_plate)
     return {
         "success": True,
         "message": "ลบรายการซ่อมบำรุงเรียบร้อย",
@@ -2734,6 +2777,13 @@ async def get_car_profitability():
             exp_by_car[pl] = exp_by_car.get(pl, 0.0) + cost_val
         if m.get("id"):
             mnt_ids.add(m["id"])
+
+    for ml in getattr(store, "maintenance_logs", []):
+        pl = ml.get("car_id")
+        if pl and ml.get("id") not in mnt_ids:
+            cost_val = float(ml.get("cost") or 0.0)
+            exp_by_car[pl] = exp_by_car.get(pl, 0.0) + cost_val
+            mnt_ids.add(ml["id"])
 
     for f in store.financial_records:
         f_type = f.get("type")

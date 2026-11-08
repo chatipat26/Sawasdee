@@ -2631,6 +2631,14 @@
           <span>🛡️</span> <span>ระบุวันหมดอายุรอบใหม่หลังต่อเสร็จสิ้น (New Expiry Dates):</span>
         </div>
         
+        <div id="close-mnt-tax-wrapper" class="form-group" style="margin-bottom:10px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:3px;">
+            <label style="font-size:12px; font-weight:700; color:#1E3A8A;">🏷️ วันหมดอายุ ภาษีประจำปี รอบใหม่:</label>
+            <span id="close-mnt-tax-current" style="font-size:11px; color:#6B7280;">(เดิม: -)</span>
+          </div>
+          <input type="date" id="close-mnt-tax-expiry" class="form-control" style="font-weight:700; color:#1E40AF; background:white;">
+        </div>
+
         <div id="close-mnt-act-wrapper" class="form-group" style="margin-bottom:10px;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:3px;">
             <label style="font-size:12px; font-weight:700; color:#1E3A8A;">📅 วันหมดอายุ พ.ร.บ. รอบใหม่:</label>
@@ -2645,6 +2653,29 @@
             <span id="close-mnt-ins-current" style="font-size:11px; color:#6B7280;">(เดิม: -)</span>
           </div>
           <input type="date" id="close-mnt-ins-expiry" class="form-control" style="font-weight:700; color:#1E40AF; background:white;">
+        </div>
+
+        <div id="close-mnt-company-wrapper" class="form-group" style="margin-bottom:10px;">
+          <label style="font-size:12px; font-weight:700; color:#1E3A8A;">🏢 บริษัทประกันภัย (Insurance Company):</label>
+          <input type="text" id="close-mnt-insurance-company" list="close-mnt-insurance-companies" class="form-control" placeholder="พิมพ์ค้นหาหรือเลือกบริษัทประกัน..." style="background:white;">
+          <datalist id="close-mnt-insurance-companies">
+            <option value="กรุงเทพประกันภัย (Bangkok Insurance)">
+            <option value="วิริยะประกันภัย (Viriyah Insurance)">
+            <option value="ทิพยประกันภัย (Dhipaya Insurance)">
+            <option value="คุ้มภัยโตเกียวมารีน (Tokio Marine)">
+            <option value="เมืองไทยประกันภัย (Muang Thai Insurance)">
+            <option value="สินมั่นคงประกันภัย (Syn Mun Kong)">
+            <option value="ธนชาตประกันภัย (Thanachart)">
+            <option value="ไทยวิวัฒน์ (Thaivivat Insurance)">
+            <option value="อาคเนย์ประกันภัย (Southeast)">
+            <option value="แอลเอ็มจี ประกันภัย (LMG Insurance)">
+            <option value="ชับบ์สามัคคีประกันภัย (Chubb)">
+            <option value="เอไอจี ประเทศไทย (AIG)">
+            <option value="มิตซุย สุมิโตโม (MSIG)">
+            <option value="อลิอันซ์ อยุธยา (Allianz Ayudhya)">
+            <option value="เคเอสเค ประกันภัย (KSK Insurance)">
+            <option value="นวกิจประกันภัย (Navakij Insurance)">
+          </datalist>
         </div>
 
         <div class="form-group" style="margin-bottom:0;">
@@ -2709,7 +2740,7 @@
   <div class="toast-container" id="toast-container"></div>
 
   <!-- Scripts with cache busting -->
-  <script src="/static/js/app.js?v=12.0"></script>
+  <script src="/static/js/app.js?v=12.2"></script>
 
   <!-- ===================================================================== -->
   <!-- MODAL: ACTIVE RENTALS / CARS WITH CUSTOMERS (POPUP FOR CARD 1) -->

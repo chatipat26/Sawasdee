@@ -8845,36 +8845,49 @@ ${e.message}`);
     document.getElementById("close-mnt-record-expense").checked = true;
 
     const renewalSec = document.getElementById("close-mnt-renewal-section");
+    const taxWrapper = document.getElementById("close-mnt-tax-wrapper");
     const actWrapper = document.getElementById("close-mnt-act-wrapper");
     const insWrapper = document.getElementById("close-mnt-ins-wrapper");
+    const coWrapper = document.getElementById("close-mnt-company-wrapper");
     const submitBtn = document.getElementById("close-mnt-submit-btn");
 
     if (isRenewal) {
       if (renewalSec) renewalSec.style.display = "block";
-      const hasAct = oType.includes("พ.ร.บ.") || oType.includes("พรบ") || oType.includes("ต่อทะเบียน") || oType.includes("ภาษี") || oType.includes("แพ็กคู่");
+      const hasTax = oType.includes("ภาษี") || oType.includes("ต่อทะเบียน") || oType.includes("แพ็กคู่");
+      const hasAct = oType.includes("พ.ร.บ.") || oType.includes("พรบ") || oType.includes("ต่อทะเบียน") || oType.includes("แพ็กคู่");
       const hasIns = oType.includes("ประกัน") || oType.includes("แพ็กคู่");
 
+      if (taxWrapper) taxWrapper.style.display = hasTax ? "block" : "none";
       if (actWrapper) actWrapper.style.display = hasAct ? "block" : "none";
       if (insWrapper) insWrapper.style.display = hasIns ? "block" : "none";
+      if (coWrapper) coWrapper.style.display = (hasIns || isRenewal) ? "block" : "none";
 
+      const curTax = car.tax_expiry || "-";
       const curAct = car.act_expiry || "-";
       const curIns = car.ins_expiry || "-";
+      const taxCurrentEl = document.getElementById("close-mnt-tax-current");
       const actCurrentEl = document.getElementById("close-mnt-act-current");
       const insCurrentEl = document.getElementById("close-mnt-ins-current");
+      if (taxCurrentEl) taxCurrentEl.textContent = `(วันหมดอายุเดิม: ${curTax})`;
       if (actCurrentEl) actCurrentEl.textContent = `(วันหมดอายุเดิม: ${curAct})`;
       if (insCurrentEl) insCurrentEl.textContent = `(วันหมดอายุเดิม: ${curIns})`;
 
       // Compute next 1 year default
+      const nextTaxStr = this.computeRenewedDateStr(curTax);
       const nextActStr = this.computeRenewedDateStr(curAct);
       const nextInsStr = this.computeRenewedDateStr(curIns);
 
+      const taxInput = document.getElementById("close-mnt-tax-expiry");
       const actInput = document.getElementById("close-mnt-act-expiry");
       const insInput = document.getElementById("close-mnt-ins-expiry");
+      const coInput = document.getElementById("close-mnt-insurance-company");
       const policyInput = document.getElementById("close-mnt-policy-no");
 
+      if (taxInput) taxInput.value = this.dmyToYmd(nextTaxStr);
       if (actInput) actInput.value = this.dmyToYmd(nextActStr);
       if (insInput) insInput.value = this.dmyToYmd(nextInsStr);
-      if (policyInput) policyInput.value = rec.policy_no || "";
+      if (coInput) coInput.value = car.insurance_company || car.ins_company || "";
+      if (policyInput) policyInput.value = rec.policy_no || car.insurance_policy_no || car.policy_no || "";
 
       if (submitBtn) submitBtn.innerHTML = "🏁 ยืนยันส่งงาน & อัปเดตวันหมดอายุ";
     } else {
@@ -8894,18 +8907,26 @@ ${e.message}`);
     const renewalSec = document.getElementById("close-mnt-renewal-section");
     const isRenewal = renewalSec && renewalSec.style.display !== "none";
 
+    let newTaxExpiry = "";
     let newActExpiry = "";
     let newInsExpiry = "";
+    let insuranceCompany = "";
     let policyNo = "";
 
     if (isRenewal) {
+      const taxRaw = document.getElementById("close-mnt-tax-expiry")?.value;
       const actRaw = document.getElementById("close-mnt-act-expiry")?.value;
       const insRaw = document.getElementById("close-mnt-ins-expiry")?.value;
+      insuranceCompany = document.getElementById("close-mnt-insurance-company")?.value.trim() || "";
       policyNo = document.getElementById("close-mnt-policy-no")?.value.trim() || "";
 
+      const taxWrapper = document.getElementById("close-mnt-tax-wrapper");
       const actWrapper = document.getElementById("close-mnt-act-wrapper");
       const insWrapper = document.getElementById("close-mnt-ins-wrapper");
 
+      if (taxWrapper && taxWrapper.style.display !== "none" && taxRaw) {
+        newTaxExpiry = this.ymdToDmy(taxRaw);
+      }
       if (actWrapper && actWrapper.style.display !== "none" && actRaw) {
         newActExpiry = this.ymdToDmy(actRaw);
       }
@@ -8924,8 +8945,10 @@ ${e.message}`);
           actual_cost: actualCost ? parseFloat(actualCost) : 0,
           mileage: mileage,
           completion_notes: notes,
+          new_tax_expiry: newTaxExpiry,
           new_act_expiry: newActExpiry,
           new_ins_expiry: newInsExpiry,
+          insurance_company: insuranceCompany,
           policy_no: policyNo,
           recorded_by: this.user?.name || this.user?.username || "Admin"
         })
@@ -8933,13 +8956,35 @@ ${e.message}`);
       const data = await res.json();
       if (data.success) {
         this.closeModal("modal-close-maintenance");
+
+        // Immediately update local car object for instant UI sync
+        if (this.cars) {
+          const rec = (this.maintenanceRecords || []).find(m => m.id === mntId);
+          const c = rec ? this.cars.find(x => x.plate === rec.car_id) : null;
+          if (c) {
+            if (newTaxExpiry) { c.tax_expiry = newTaxExpiry; c.tax_expire_date = this.dmyToYmd(newTaxExpiry); }
+            if (newActExpiry) { c.act_expiry = newActExpiry; c.prb_expire_date = this.dmyToYmd(newActExpiry); }
+            if (newInsExpiry) { c.ins_expiry = newInsExpiry; c.insurance_expire_date = this.dmyToYmd(newInsExpiry); }
+            if (insuranceCompany) { c.insurance_company = insuranceCompany; c.ins_company = insuranceCompany; }
+            if (policyNo) { c.insurance_policy_no = policyNo; c.policy_no = policyNo; }
+            c.status = "ว่างพร้อมใช้งาน";
+          }
+        }
+
         let successMsg = `🏁 ปิดงาน ${mntId} เรียบร้อย!`;
-        if (newActExpiry || newInsExpiry) {
-          successMsg = `🏁 ส่งงานสำเร็จ! อัปเดตวันหมดอายุเรียบร้อย ${newActExpiry ? `(พ.ร.บ.: ${newActExpiry})` : ''} ${newInsExpiry ? `(ประกัน: ${newInsExpiry})` : ''}`;
+        if (newTaxExpiry || newActExpiry || newInsExpiry) {
+          const parts = [];
+          if (newTaxExpiry) parts.push(`ภาษี: ${newTaxExpiry}`);
+          if (newActExpiry) parts.push(`พ.ร.บ.: ${newActExpiry}`);
+          if (newInsExpiry) parts.push(`ประกัน: ${newInsExpiry}`);
+          successMsg = `🏁 ส่งงานสำเร็จ! อัปเดตข้อมูลรถเรียบร้อย (${parts.join(", ")})`;
         }
         this.showToast(successMsg, "success");
         await this.loadMaintenanceRecords();
         await this.loadCars();
+        this.renderCars();
+        this.renderExpiringAlerts();
+        this.renderUnifiedExpensesTable();
         await this.loadBackOfficeJobs();
         await this.loadDashboardKPIs();
         this.renderFleetOverviewTable();
@@ -9706,10 +9751,11 @@ ${e.message}`);
             const costNum = Number(r.cost || 0);
             const safeId = String(r.id || "");
             const safePl = String(cleanPlate).replace(/'/g, "\\'");
+            const typeBadge = r.expense_type ? `<span style="display:inline-block; font-size:10.5px; font-weight:700; background:#EFF6FF; color:#1D4ED8; border:1px solid #BFDBFE; border-radius:4px; padding:1px 6px; margin-right:6px;">${r.expense_type}</span>` : '';
             return `
               <tr>
                 <td style="padding:6px 8px; white-space:nowrap; font-weight:600;">${r.date || '-'}</td>
-                <td style="padding:6px 8px;">${r.description || '-'}</td>
+                <td style="padding:6px 8px;">${typeBadge}${r.description || '-'}</td>
                 <td style="padding:6px 8px; text-align:right; font-weight:700; color:#E11D48;">฿${costNum.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
                 <td style="padding:6px 8px; text-align:center;">
                   <button type="button" onclick="app.deleteCarMaintenance('${safePl}', '${safeId}')" class="btn btn-sm btn-danger" style="padding:2px 6px; font-size:11px;" title="${isEn ? 'Delete' : 'ลบ'}">

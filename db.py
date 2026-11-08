@@ -330,6 +330,10 @@ class DataStore:
         self.work_order_logs = []
         self.load_local_work_order_logs()
 
+        self.maintenance_logs_file = os.path.join(BASE_DIR, "data_maintenance_logs.json")
+        self.maintenance_logs = []
+        self.load_local_maintenance_logs()
+
     def load_local_users(self):
         merged = {k: dict(v) for k, v in DEFAULT_USERS.items()}
         try:
@@ -699,6 +703,16 @@ class DataStore:
             except Exception:
                 pass
 
+            # 10. Maintenance Logs
+            try:
+                ml_res = sb.table("maintenance_logs").select("*").order("created_at", desc=True).limit(1000).execute()
+                if ml_res.data is not None:
+                    with self.lock:
+                        self.maintenance_logs = ml_res.data
+                    self.save_local_maintenance_logs()
+            except Exception:
+                pass
+
         finally:
             self.is_syncing = False
 
@@ -790,7 +804,8 @@ class DataStore:
         CAR_DB_COLS = STANDARD_34_COLS | {
             'engine_cc', 'fuel_type', 'company', 'price_day', 'price_week', 'price_month',
             'status', 'chassis_no', 'act_expiry', 'ins_expiry', 'image', 'created_at',
-            'owner', 'reg_year', 'tax_expiry', 'ins_company', 'act_price', 'ins_premium'
+            'owner', 'reg_year', 'tax_expiry', 'ins_company', 'act_price', 'ins_premium',
+            'insurance_policy_no', 'policy_no'
         }
         ALL_CAR_COLS = CAR_DB_COLS | {
             'next_service', 'tire_change', 'hp_contract_no', 'hp_installment',
@@ -823,6 +838,7 @@ class DataStore:
             _pair_sync(existing, 'prb_expire_date', 'act_expiry')
             _pair_sync(existing, 'insurance_expire_date', 'ins_expiry')
             _pair_sync(existing, 'insurance_company', 'ins_company')
+            _pair_sync(existing, 'insurance_policy_no', 'policy_no')
             _pair_sync(existing, 'car_owner', 'owner')
             _pair_sync(existing, 'register_year', 'reg_year')
             _pair_sync(existing, 'car_status', 'status')
@@ -1206,6 +1222,133 @@ class DataStore:
         threading.Thread(target=_db_task, daemon=True).start()
         return log_entry
 
+    def load_local_maintenance_logs(self):
+        try:
+            if os.path.exists(self.maintenance_logs_file):
+                with open(self.maintenance_logs_file, "r", encoding="utf-8") as f:
+                    self.maintenance_logs = json.load(f)
+                return
+        except Exception as e:
+            print(f"Error loading maintenance logs: {e}")
+        self.maintenance_logs = []
+        self.save_local_maintenance_logs()
+
+    def save_local_maintenance_logs(self):
+        try:
+            with open(self.maintenance_logs_file, "w", encoding="utf-8") as f:
+                json.dump(self.maintenance_logs, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            print(f"Error saving maintenance logs: {e}")
+
+    def log_maintenance(self, car_id, date=None, expense_type="ซ่อมบำรุง", description="", cost=0.0, recorded_by="admin"):
+        log_id = f"ML{datetime.now().strftime('%y%m%d%H%M%S%f')[:15]}"
+        d_val = str(date or datetime.now().strftime("%Y-%m-%d")).strip()
+        log_entry = {
+            "id": log_id,
+            "car_id": str(car_id or "").strip(),
+            "date": d_val,
+            "expense_type": str(expense_type or "ซ่อมบำรุง").strip(),
+            "description": str(description or "").strip(),
+            "cost": float(cost or 0.0),
+            "recorded_by": str(recorded_by or "admin").strip(),
+            "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        }
+        with self.lock:
+            self.maintenance_logs.insert(0, log_entry)
+            self.save_local_maintenance_logs()
+
+        def _db_task():
+            try:
+                sb = get_db_client()
+                if sb:
+                    sb.table("maintenance_logs").insert(dict(log_entry)).execute()
+            except Exception as e:
+                print(f"Error logging maintenance to DB: {e}")
+
+        threading.Thread(target=_db_task, daemon=True).start()
+        return log_entry
+
+    def async_delete_maintenance_log(self, m_id):
+        with self.lock:
+            self.maintenance_logs = [x for x in self.maintenance_logs if str(x.get("id")) != str(m_id)]
+            self.save_local_maintenance_logs()
+        def _task():
+            try:
+                sb = get_db_client()
+                if sb:
+                    sb.table("maintenance_logs").delete().eq("id", m_id).execute()
+            except Exception as e:
+                pass
+        threading.Thread(target=_task, daemon=True).start()
+
+    def get_combined_maintenance_history(self, car_plate):
+        p_clean = normalize_plate_str(car_plate)
+        history = []
+        seen_ids = set()
+
+        # 1. maintenance_logs (newest persistent logs)
+        for ml in self.maintenance_logs:
+            if normalize_plate_str(ml.get("car_id")) == p_clean:
+                m_id = str(ml.get("id") or "")
+                if m_id and m_id not in seen_ids:
+                    seen_ids.add(m_id)
+                    history.append({
+                        "id": m_id,
+                        "car_id": ml.get("car_id"),
+                        "date": ml.get("date") or ml.get("created_at", "")[:10],
+                        "expense_type": ml.get("expense_type") or "ซ่อมบำรุง",
+                        "description": ml.get("description") or "-",
+                        "cost": float(ml.get("cost") or 0.0),
+                        "recorded_by": ml.get("recorded_by") or "-",
+                        "created_at": ml.get("created_at") or ""
+                    })
+
+        # 2. vehicle_maintenances (legacy quick logs)
+        for vm in self.vehicle_maintenances:
+            if normalize_plate_str(vm.get("car_id")) == p_clean:
+                m_id = str(vm.get("id") or "")
+                if m_id and m_id not in seen_ids:
+                    seen_ids.add(m_id)
+                    history.append({
+                        "id": m_id,
+                        "car_id": vm.get("car_id"),
+                        "date": vm.get("date") or vm.get("created_at", "")[:10],
+                        "expense_type": "ซ่อมบำรุง",
+                        "description": vm.get("description") or "-",
+                        "cost": float(vm.get("cost") or 0.0),
+                        "recorded_by": "admin",
+                        "created_at": vm.get("created_at") or ""
+                    })
+
+        # 3. maintenance_records (work orders)
+        for mr in self.maintenance_records:
+            if normalize_plate_str(mr.get("car_id")) == p_clean:
+                m_id = str(mr.get("id") or "")
+                if m_id and m_id not in seen_ids:
+                    seen_ids.add(m_id)
+                    cost_val = float(mr.get("actual_cost") or mr.get("cost") or 0.0)
+                    m_date = mr.get("completed_at", "")[:10] or mr.get("schedule_date", "")[:10] or mr.get("created_at", "")[:10]
+                    desc_parts = [mr.get("order_type", ""), mr.get("service_items", "")]
+                    if mr.get("service_center"):
+                        desc_parts.append(f"อู่: {mr.get('service_center')}")
+                    if mr.get("completion_notes"):
+                        desc_parts.append(f"({mr.get('completion_notes')})")
+                    desc = " - ".join(p for p in desc_parts if p)
+                    history.append({
+                        "id": m_id,
+                        "car_id": mr.get("car_id"),
+                        "date": m_date or datetime.now().strftime("%Y-%m-%d"),
+                        "expense_type": mr.get("order_type") or "ซ่อมบำรุง",
+                        "description": desc or "-",
+                        "cost": cost_val,
+                        "recorded_by": mr.get("assigned_worker") or "admin",
+                        "created_at": mr.get("created_at") or mr.get("completed_at") or ""
+                    })
+
+        # Sort descending by date, then created_at
+        history.sort(key=lambda item: (str(item.get("date") or ""), str(item.get("created_at") or "")), reverse=True)
+        return history
+
     def get_car_financial_roi(self, car_plate):
         p_clean = str(car_plate or "").strip()
         income = 0.0
@@ -1224,14 +1367,9 @@ class DataStore:
                 if cj.get("booking_id") not in b_ids:
                     income += float(cj.get("net_price") or cj.get("rental_rate") or 0.0)
 
-        maint_cost = 0.0
-        for m in self.vehicle_maintenances:
-            if str(m.get("car_id") or "").strip() == p_clean:
-                maint_cost += float(m.get("cost") or 0.0)
-
-        for mr in self.maintenance_records:
-            if str(mr.get("car_id") or "").strip() == p_clean:
-                maint_cost += float(mr.get("actual_cost") or mr.get("cost") or 0.0)
+        # Calculate maintenance cost from combined history to strictly guarantee consistency with the history table
+        combined_history = self.get_combined_maintenance_history(p_clean)
+        maint_cost = sum(float(h.get("cost") or 0.0) for h in combined_history)
 
         net_profit = income - maint_cost
         return {
@@ -1241,7 +1379,7 @@ class DataStore:
             "net_profit_roi": round(net_profit, 2)
         }
 
-    def close_maintenance_record(self, mnt_id, actual_cost=None, completion_notes="", new_mileage=None, recorded_by="admin", new_act_expiry=None, new_ins_expiry=None, policy_no=None):
+    def close_maintenance_record(self, mnt_id, actual_cost=None, completion_notes="", new_mileage=None, recorded_by="admin", new_act_expiry=None, new_ins_expiry=None, new_tax_expiry=None, insurance_company=None, policy_no=None):
         with self.lock:
             rec = next((x for x in self.maintenance_records if x.get("id") == mnt_id), None)
             if not rec:
@@ -1265,6 +1403,10 @@ class DataStore:
                 rec["new_act_expiry"] = str(new_act_expiry).strip()
             if new_ins_expiry and str(new_ins_expiry).strip():
                 rec["new_ins_expiry"] = str(new_ins_expiry).strip()
+            if new_tax_expiry and str(new_tax_expiry).strip():
+                rec["new_tax_expiry"] = str(new_tax_expiry).strip()
+            if insurance_company and str(insurance_company).strip():
+                rec["insurance_company"] = str(insurance_company).strip()
                 
             car_plate = rec.get("car_id")
             if car_plate and car_plate in self.cars:
@@ -1273,11 +1415,43 @@ class DataStore:
                     car["status"] = "ว่างพร้อมใช้งาน"
                 if new_mileage and str(new_mileage).strip():
                     car["mileage"] = str(new_mileage).strip()
+                if new_tax_expiry and str(new_tax_expiry).strip() and str(new_tax_expiry).strip() != "-":
+                    car["tax_expiry"] = str(new_tax_expiry).strip()
+                    car["tax_expire_date"] = str(new_tax_expiry).strip()
                 if new_act_expiry and str(new_act_expiry).strip() and str(new_act_expiry).strip() != "-":
                     car["act_expiry"] = str(new_act_expiry).strip()
+                    car["prb_expire_date"] = str(new_act_expiry).strip()
                 if new_ins_expiry and str(new_ins_expiry).strip() and str(new_ins_expiry).strip() != "-":
                     car["ins_expiry"] = str(new_ins_expiry).strip()
+                    car["insurance_expire_date"] = str(new_ins_expiry).strip()
+                if insurance_company and str(insurance_company).strip() and str(insurance_company).strip() != "-":
+                    car["insurance_company"] = str(insurance_company).strip()
+                    car["ins_company"] = str(insurance_company).strip()
+                if policy_no and str(policy_no).strip():
+                    car["insurance_policy_no"] = str(policy_no).strip()
+                    car["policy_no"] = str(policy_no).strip()
                 self.async_sync_car(car_plate, car)
+
+            # Insert persistent maintenance log entry
+            final_cost = float(rec.get("actual_cost") or rec.get("cost", 0))
+            today_str = datetime.now().strftime("%Y-%m-%d")
+            o_type = rec.get("order_type") or "ซ่อมบำรุง"
+            desc_items = []
+            if rec.get("service_items"): desc_items.append(str(rec.get("service_items")))
+            if insurance_company: desc_items.append(f"บริษัทประกัน: {insurance_company}")
+            if policy_no: desc_items.append(f"เลขที่กรมธรรม์/ใบเสร็จ: {policy_no}")
+            if rec.get("service_center"): desc_items.append(f"อู่/ศูนย์: {rec.get('service_center')}")
+            if completion_notes: desc_items.append(f"บันทึก: {completion_notes}")
+            full_desc = f"{o_type} - {' | '.join(desc_items)}" if desc_items else o_type
+
+            self.log_maintenance(
+                car_id=car_plate,
+                date=today_str,
+                expense_type=o_type,
+                description=full_desc,
+                cost=final_cost,
+                recorded_by=recorded_by
+            )
                 
             # Record financial expense
             final_cost = float(rec.get("actual_cost") or rec.get("cost", 0))

@@ -280,6 +280,7 @@ class PgClient:
                     print(f"PostgreSQL Schema check note: {e}")
                 self._migrate_customers()
                 self._migrate_work_order_logs()
+                self._migrate_maintenance_logs()
         return self._conn
     def _migrate_work_order_logs(self):
         try:
@@ -299,6 +300,31 @@ class PgClient:
             print("PostgreSQL work_order_logs table ensured.")
         except Exception as e:
             print(f"Work order logs migration note: {e}")
+
+    def _migrate_maintenance_logs(self):
+        try:
+            with self._conn.cursor() as cur:
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS public.maintenance_logs (
+                        id VARCHAR(100) PRIMARY KEY,
+                        car_id VARCHAR(100),
+                        date VARCHAR(50),
+                        expense_type VARCHAR(100),
+                        description TEXT,
+                        cost NUMERIC DEFAULT 0,
+                        recorded_by VARCHAR(100),
+                        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                    );
+                """)
+                cur.execute("ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS insurance_policy_no VARCHAR(100);")
+                cur.execute("ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS policy_no VARCHAR(100);")
+                cur.execute("ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS tax_expiry VARCHAR(50);")
+                cur.execute("ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS act_expiry VARCHAR(50);")
+                cur.execute("ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS ins_expiry VARCHAR(50);")
+                cur.execute("ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS ins_company VARCHAR(150);")
+            print("PostgreSQL maintenance_logs table and car columns ensured.")
+        except Exception as e:
+            print(f"Maintenance logs migration note: {e}")
 
 
     def _migrate_customers(self):
