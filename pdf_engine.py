@@ -6,7 +6,7 @@ from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image as RLImage
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image as RLImage, HRFlowable
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 
@@ -70,185 +70,294 @@ def format_date_dmy(date_val):
     return str(date_val)
 
 def generate_filled_pdf(template_path, booking_info, customer_info, car_info):
-    """Generate filled rental agreement PDF overlaying on blank template"""
-    try:
-        if not os.path.isabs(template_path):
-            template_path = os.path.join(BASE_DIR, template_path)
-            
-        if not os.path.exists(template_path):
-            return generate_pdf_bytes(booking_info, customer_info, car_info)
-            
-        booking_info = booking_info or {}
-        customer_info = customer_info or {}
-        car_info = car_info or {}
-            
-        packet = io.BytesIO()
-        can = canvas.Canvas(packet, pagesize=A4)
-        
-        car_brand_model = f"{car_info.get('brand', '')} {car_info.get('model', '')}".strip() or "-"
-        car_plate = str(car_info.get("plate", "-"))
-        car_color = str(car_info.get("color", "-"))
-        th_now = now_th()
-        s_time_pdf = booking_info.get('start_time') or th_now.strftime('%H:%M')
-        e_time_pdf = booking_info.get('end_time') or th_now.strftime('%H:%M')
-        s_date = f"{format_date_dmy(booking_info.get('start_date'))} ({s_time_pdf} น.)"
-        e_date = f"{format_date_dmy(booking_info.get('end_date'))} ({e_time_pdf} น.)"
-        net_price = booking_info.get('net_price', 0)
-        price_val = f"{net_price:,}" if isinstance(net_price, (int, float)) else str(net_price)
-        b_id = str(booking_info.get("booking_id", "-"))
-        
-        c_name = str(customer_info.get("full_name", "-"))
-        c_nat = str(customer_info.get("nationality", "-"))
-        c_dob = format_date_dmy(customer_info.get("dob", "-"))
-        c_pass = str(customer_info.get("passport_id", "-"))
-        c_lic = str(customer_info.get("licence_no", "-"))
-        c_lic_issue = str(customer_info.get("issue_place", "-"))
-        c_lic_exp = format_date_dmy(customer_info.get("licence_expiry", "-"))
-        c_home = str(customer_info.get("home_address", "-"))
-        c_thai = str(customer_info.get("thai_address", "-"))
-        c_email = str(customer_info.get("email", "-"))
-        c_phone = str(customer_info.get("contact_no", "-"))
-        c_wa = str(customer_info.get("whatsapp", "-"))
-        
-        loc_del = str(booking_info.get("loc_delivery", "Sukhumvit"))
-        loc_ret = str(booking_info.get("loc_return", loc_del))
-        
-        # --- 0. Header (Reference No. & Date) ---
-        can.setFont(FONT_BOLD, 12)
-        can.setFillColorRGB(0.1, 0.1, 0.1)
-        can.drawString(485, 782, b_id)
-        can.setFont(FONT_REGULAR, 7.5)
-        can.drawString(485, 768, f"Issued: {format_date_dmy(th_now.date())} {th_now.strftime('%H:%M')} น.")
-        
-        # --- 1. Section 01: VEHICLE ---
-        can.setFillColorRGB(1, 1, 1)
-        can.setFont(FONT_BOLD, 9.5)
-        can.drawString(44, 701, car_brand_model)
-        
-        can.setFillColorRGB(0.15, 0.15, 0.15)
-        can.setFont(FONT_REGULAR, 9)
-        can.drawString(250, 701, car_plate)
-        can.drawString(355, 701, car_color)
-        
-        # --- 2. Section 02: RENTER ---
-        can.setFont(FONT_REGULAR, 8.5)
-        can.drawString(37, 601, c_name)
-        can.drawString(215, 601, c_nat)
-        can.drawString(393, 601, c_dob)
-        
-        can.drawString(37, 573, c_lic)
-        can.drawString(170, 573, c_lic_issue)
-        can.drawString(304, 573, c_lic_exp)
-        can.drawString(437, 573, c_pass)
-        
-        # ที่อยู่
-        can.setFont(FONT_REGULAR, 8)
-        can.drawString(37, 544, c_home[:55] if len(c_home) > 55 else c_home)
-        
-        # ลบขีดแดชเดิมในแม่แบบออกก่อนพิมพ์ที่อยู่ในไทย
-        if c_thai and c_thai != "-":
-            can.setFillColorRGB(1, 1, 1)
-            can.rect(304, 541, 14, 10, fill=1, stroke=0)
-            can.setFillColorRGB(0.15, 0.15, 0.15)
-            can.drawString(304, 544, c_thai[:55] if len(c_thai) > 55 else c_thai)
-        
-        # ข้อมูลติดต่อ
-        can.setFont(FONT_REGULAR, 8.5)
-        can.drawString(37, 516, c_email)
-        can.drawString(215, 516, c_phone)
-        can.drawString(393, 516, c_wa)
-        
-        # --- 3. Section 03: RENTAL PERIOD & DELIVERY ---
-        can.setFont(FONT_REGULAR, 8.5)
-        can.drawString(37, 474, s_date)
-        
-        if loc_del and loc_del != "-":
-            can.setFillColorRGB(1, 1, 1)
-            can.rect(170, 471, 14, 10, fill=1, stroke=0)
-            can.setFillColorRGB(0.15, 0.15, 0.15)
-            can.drawString(170, 474, loc_del[:30])
-            
-        can.drawString(304, 474, e_date)
-        
-        if loc_ret and loc_ret != "-":
-            can.setFillColorRGB(1, 1, 1)
-            can.rect(437, 471, 14, 10, fill=1, stroke=0)
-            can.setFillColorRGB(0.15, 0.15, 0.15)
-            can.drawString(437, 474, loc_ret[:30])
-        
-        # --- 4. Section 04: CHARGES (กล่องขาวในแถบสีส้ม TO BE INVOICED) ---
-        can.setFont(FONT_BOLD, 10)
-        can.setFillColorRGB(0.9, 0.35, 0.15)
-        can.drawString(498, 303, f"฿ {price_val}")
-        
-        # --- 5. Section 05: PAYMENT CONFIRMATION ---
-        can.setFillColorRGB(0.15, 0.15, 0.15)
-        can.setFont(FONT_REGULAR, 8)
-        can.drawString(37, 259, b_id)
-        can.setFont(FONT_BOLD, 8.5)
-        can.drawString(231, 259, f"THB {price_val}")
-        
-        can.save()
-        packet.seek(0)
-        
-        new_pdf = PdfReader(packet)
-        existing_pdf = PdfReader(open(template_path, "rb"))
-        output = PdfWriter()
-        
-        page = existing_pdf.pages[0]
-        page.merge_page(new_pdf.pages[0])
-        output.add_page(page)
-        
-        for i in range(1, len(existing_pdf.pages)):
-            output.add_page(existing_pdf.pages[i])
-            
-        out_stream = io.BytesIO()
-        output.write(out_stream)
-        return out_stream.getvalue()
-    except Exception as e:
-        print(f"Error filling PDF: {e}")
-        return generate_pdf_bytes(booking_info, customer_info, car_info)
+    """Generate official vehicle rental agreement PDF using formal document template"""
+    return generate_pdf_bytes(booking_info, customer_info, car_info)
 
 def generate_pdf_bytes(booking_info=None, customer_info=None, car_info=None):
-    """Fallback PDF generator when template PDF is missing"""
+    """Generate official formal vehicle rental agreement PDF (A4 Full Formal Agreement)"""
     pdf_buffer = io.BytesIO()
-    doc = SimpleDocTemplate(pdf_buffer, pagesize=A4, rightMargin=36, leftMargin=36, topMargin=36, bottomMargin=36)
+    doc = SimpleDocTemplate(
+        pdf_buffer,
+        pagesize=A4,
+        rightMargin=36,
+        leftMargin=36,
+        topMargin=28,
+        bottomMargin=28
+    )
     elements = []
     styles = getSampleStyleSheet()
-    
-    title_style = ParagraphStyle('TitleStyle', parent=styles['Heading1'], fontSize=18, leading=22, textColor=colors.HexColor('#1F2937'), alignment=1, fontName=FONT_BOLD)
-    body_style = ParagraphStyle('BodyStyle', parent=styles['Normal'], fontSize=10, leading=14, textColor=colors.HexColor('#374151'), fontName=FONT_REGULAR)
-    
-    elements.append(Paragraph("<b>SAWASDEE CAR RENTAL CO., LTD.</b>", title_style))
-    elements.append(Paragraph("VEHICLE RENTAL AGREEMENT (สัญญาเช่ารถยนต์)", title_style))
-    elements.append(Spacer(1, 15))
-    
+
+    # Typography styles
+    comp_sub_style = ParagraphStyle(
+        'CompSub', parent=styles['Normal'],
+        fontSize=8, leading=11, textColor=colors.HexColor('#475569'),
+        fontName=FONT_REGULAR, alignment=0
+    )
+    doc_title_style = ParagraphStyle(
+        'DocTitle', parent=styles['Heading2'],
+        fontSize=13, leading=16, textColor=colors.HexColor('#0F172A'),
+        fontName=FONT_BOLD, alignment=1
+    )
+    doc_sub_style = ParagraphStyle(
+        'DocSub', parent=styles['Normal'],
+        fontSize=8.5, leading=12, textColor=colors.HexColor('#64748B'),
+        fontName=FONT_REGULAR, alignment=1
+    )
+    sec_header_style = ParagraphStyle(
+        'SecHeader', parent=styles['Normal'],
+        fontSize=9.5, leading=13, textColor=colors.HexColor('#1E3A8A'),
+        fontName=FONT_BOLD
+    )
+    cell_lbl_style = ParagraphStyle(
+        'CellLabel', parent=styles['Normal'],
+        fontSize=8, leading=11, textColor=colors.HexColor('#475569'),
+        fontName=FONT_BOLD
+    )
+    cell_val_style = ParagraphStyle(
+        'CellVal', parent=styles['Normal'],
+        fontSize=8, leading=11, textColor=colors.HexColor('#0F172A'),
+        fontName=FONT_REGULAR
+    )
+    terms_title_style = ParagraphStyle(
+        'TermsTitle', parent=styles['Normal'],
+        fontSize=9, leading=12, textColor=colors.HexColor('#1E3A8A'),
+        fontName=FONT_BOLD
+    )
+    terms_body_style = ParagraphStyle(
+        'TermsBody', parent=styles['Normal'],
+        fontSize=7.2, leading=9.5, textColor=colors.HexColor('#334155'),
+        fontName=FONT_REGULAR
+    )
+    sig_lbl_style = ParagraphStyle(
+        'SigLabel', parent=styles['Normal'],
+        fontSize=8, leading=11, textColor=colors.HexColor('#334155'),
+        fontName=FONT_REGULAR, alignment=1
+    )
+    sig_name_style = ParagraphStyle(
+        'SigName', parent=styles['Normal'],
+        fontSize=8.5, leading=11, textColor=colors.HexColor('#0F172A'),
+        fontName=FONT_BOLD, alignment=1
+    )
+
     bk = booking_info or {}
     cust = customer_info or {}
     car = car_info or {}
-    
-    data = [
-        ["Booking ID (รหัสการจอง):", bk.get("booking_id", "-")],
-        ["Customer Name (ชื่อลูกค้า):", cust.get("full_name", "-")],
-        ["ID / Passport No.:", cust.get("passport_id", "-")],
-        ["Phone (เบอร์โทร):", cust.get("contact_no", "-")],
-        ["Vehicle (รถยนต์):", f"{car.get('brand', '')} {car.get('model', '')} ({car.get('plate', '-')})"],
-        ["Rental Period (ระยะเวลา):", f"{format_date_dmy(bk.get('start_date'))} ({bk.get('start_time', '10:00')}) - {format_date_dmy(bk.get('end_date'))} ({bk.get('end_time', '10:00')})"],
-        ["Net Rental Amount (ค่าเช่าสุทธิ):", f"THB {float(bk.get('net_price', 0)):,.2f}"],
-        ["Deposit (เงินมัดจำประกันสัญญา):", f"THB {float(bk.get('deposit_amount', 5000)):,.2f}"]
+    th_now = now_th()
+
+    bk_id = str(bk.get("booking_id", "-"))
+    cust_name = str(cust.get("full_name") or cust.get("name") or "-")
+    cust_id = str(cust.get("passport_id") or cust.get("id_card") or "-")
+    cust_lic = str(cust.get("licence_no") or "-")
+    cust_phone = str(cust.get("contact_no") or cust.get("phone") or "-")
+    cust_email = str(cust.get("email") or "-")
+    cust_addr = str(cust.get("thai_address") or cust.get("home_address") or cust.get("address") or "-")
+
+    car_brand = str(car.get("brand", ""))
+    car_model = str(car.get("model", ""))
+    car_full_name = f"{car_brand} {car_model}".strip() or "-"
+    car_plate = str(car.get("plate", "-"))
+    car_color = str(car.get("color", "-"))
+    car_fuel = str(car.get("fuel_type", "เบนซิน"))
+    car_year = str(car.get("reg_year") or car.get("year") or "2024")
+
+    s_time = bk.get("start_time") or th_now.strftime("%H:%M")
+    e_time = bk.get("end_time") or th_now.strftime("%H:%M")
+    s_date_str = f"{format_date_dmy(bk.get('start_date'))} ({s_time} น.)"
+    e_date_str = f"{format_date_dmy(bk.get('end_date'))} ({e_time} น.)"
+    loc_del = str(bk.get("loc_delivery") or "สำนักงานใหญ่ (Sukhumvit)")
+    loc_ret = str(bk.get("loc_return") or loc_del)
+
+    net_price = float(bk.get("net_price", 0))
+    deposit_amt = float(bk.get("deposit_amount", 5000))
+    pay_method = str(bk.get("rental_payment_method") or bk.get("deposit_method") or "โอนเงิน / สแกน QR")
+    created_date = format_date_dmy(bk.get("created_at") or th_now.date())
+
+    # -------------------------------------------------------------
+    # 1. HEADER (Logo + Company Address & Tax ID)
+    # -------------------------------------------------------------
+    logo_path = os.path.join(BASE_DIR, "sawasdee-logo.png")
+    header_logo = None
+    if os.path.exists(logo_path):
+        try:
+            header_logo = RLImage(logo_path, width=80, height=28)
+        except Exception:
+            header_logo = None
+
+    comp_info_html = (
+        "<b>SAWASDEE CAR RENTAL CO., LTD. (บริษัท สวัสดี เรนทัล จำกัด)</b><br/>"
+        "88/1 Sukhumvit Rd., Khlong Toei, Bangkok 10110 Thailand | โทร: 02-123-4567, 081-234-5678<br/>"
+        "อีเมล: contact@sawasdeerental.com | เลขประจำตัวผู้เสียภาษี: 0105565012345"
+    )
+
+    if header_logo:
+        header_table = Table(
+            [[header_logo, Paragraph(comp_info_html, comp_sub_style)]],
+            colWidths=[90, 433]
+        )
+        header_table.setStyle(TableStyle([
+            ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+            ('LEFTPADDING', (1,0), (1,0), 6),
+            ('RIGHTPADDING', (0,0), (-1,-1), 0),
+            ('TOPPADDING', (0,0), (-1,-1), 0),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 0),
+        ]))
+        elements.append(header_table)
+    else:
+        elements.append(Paragraph(comp_info_html, comp_sub_style))
+
+    elements.append(Spacer(1, 6))
+    elements.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor('#CBD5E1'), spaceAfter=8, spaceBefore=4))
+
+    # Document Title & Subtitle
+    elements.append(Paragraph("<b>VEHICLE RENTAL AGREEMENT (สัญญาเช่ารถยนต์)</b>", doc_title_style))
+    elements.append(Paragraph(
+        f"เลขที่สัญญา (Agreement No.): <b>{bk_id}</b> &nbsp;|&nbsp; วันที่ทำสัญญา (Date): <b>{created_date}</b>",
+        doc_sub_style
+    ))
+    elements.append(Spacer(1, 8))
+
+    # -------------------------------------------------------------
+    # 2. DETAILS SECTION (Customer, Vehicle, Rental Period, Charges)
+    # -------------------------------------------------------------
+    details_data = [
+        [
+            Paragraph("<b>ข้อมูลผู้เช่า (Lessee Information)</b>", sec_header_style), "",
+            Paragraph("<b>ข้อมูลรถยนต์ (Vehicle Information)</b>", sec_header_style), ""
+        ],
+        [
+            Paragraph("ชื่อ-นามสกุล (Name):", cell_lbl_style), Paragraph(cust_name, cell_val_style),
+            Paragraph("ยี่ห้อ / รุ่น (Model):", cell_lbl_style), Paragraph(f"<b>{car_full_name}</b> ({car_year})", cell_val_style)
+        ],
+        [
+            Paragraph("บัตร ปชช./Passport:", cell_lbl_style), Paragraph(cust_id, cell_val_style),
+            Paragraph("ทะเบียนรถ (Plate):", cell_lbl_style), Paragraph(f"<b>{car_plate}</b> (สี: {car_color})", cell_val_style)
+        ],
+        [
+            Paragraph("ใบขับขี่ (Driving License):", cell_lbl_style), Paragraph(cust_lic, cell_val_style),
+            Paragraph("ประเภทเชื้อเพลิง (Fuel):", cell_lbl_style), Paragraph(car_fuel, cell_val_style)
+        ],
+        [
+            Paragraph("เบอร์โทรศัพท์ (Phone):", cell_lbl_style), Paragraph(cust_phone, cell_val_style),
+            Paragraph("สถานที่รับรถ (Pick-up):", cell_lbl_style), Paragraph(loc_del[:35], cell_val_style)
+        ],
+        [
+            Paragraph("อีเมล (Email):", cell_lbl_style), Paragraph(cust_email[:32], cell_val_style),
+            Paragraph("สถานที่คืนรถ (Return):", cell_lbl_style), Paragraph(loc_ret[:35], cell_val_style)
+        ],
+        [
+            Paragraph("ที่อยู่ (Address):", cell_lbl_style), Paragraph(cust_addr[:45], cell_val_style),
+            Paragraph("ระยะเวลาเช่า (Period):", cell_lbl_style), Paragraph(f"{s_date_str}<br/>ถึง {e_date_str}", cell_val_style)
+        ],
+        [
+            Paragraph("<b>ค่าเช่าสุทธิ (Net Rental):</b>", cell_lbl_style),
+            Paragraph(f"<b>THB {net_price:,.2f}</b>", cell_val_style),
+            Paragraph("<b>เงินมัดจำ (Deposit):</b>", cell_lbl_style),
+            Paragraph(f"<b>THB {deposit_amt:,.2f}</b> ({pay_method})", cell_val_style)
+        ]
     ]
-    t = Table(data, colWidths=[180, 320])
-    t.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#FFFFFF')),
-        ('TEXTCOLOR', (0,0), (-1,-1), colors.HexColor('#2D2D2D')),
-        ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#E0D5C7')),
-        ('FONTNAME', (0,0), (-1,-1), FONT_REGULAR),
-        ('FONTSIZE', (0,0), (-1,-1), 10),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 6),
-        ('TOPPADDING', (0,0), (-1,-1), 6),
-        ('FONTNAME', (0,0), (0,-1), FONT_BOLD)
+
+    details_table = Table(details_data, colWidths=[105, 155, 110, 153])
+    details_table.setStyle(TableStyle([
+        ('SPAN', (0,0), (1,0)),
+        ('SPAN', (2,0), (3,0)),
+        ('BACKGROUND', (0,0), (1,0), colors.HexColor('#F1F5F9')),
+        ('BACKGROUND', (2,0), (3,0), colors.HexColor('#F1F5F9')),
+        ('BACKGROUND', (0,7), (-1,7), colors.HexColor('#FFF7ED')),
+        ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#E2E8F0')),
+        ('TOPPADDING', (0,0), (-1,-1), 3),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 3),
+        ('LEFTPADDING', (0,0), (-1,-1), 5),
+        ('RIGHTPADDING', (0,0), (-1,-1), 5),
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
     ]))
-    elements.append(t)
+    elements.append(details_table)
+    elements.append(Spacer(1, 8))
+
+    # -------------------------------------------------------------
+    # 3. TERMS & CONDITIONS (ข้อตกลงและเงื่อนไขการเช่ารถยนต์)
+    # -------------------------------------------------------------
+    terms_header = Paragraph("<b>ข้อตกลงและเงื่อนไขการเช่ารถยนต์ (TERMS AND CONDITIONS)</b>", terms_title_style)
+    elements.append(terms_header)
+    elements.append(Spacer(1, 4))
+
+    terms_data = [
+        [
+            Paragraph("<b>1. คุณสมบัติและการใช้งานรถ (Driver Eligibility & Vehicle Use):</b>", terms_body_style),
+            Paragraph(
+                "ผู้เช่าต้องมีอายุไม่ต่ำกว่า 20 ปีบริบูรณ์และมีใบอนุญาตขับขี่ที่ยังไม่หมดอายุตามกฎหมายไทย ผู้เช่าต้องเป็นผู้ขับขี่แต่เพียงผู้เดียว เว้นแต่ได้ระบุชื่อผู้ขับขี่ร่วมไว้เป็นลายลักษณ์อักษร ห้ามนำรถยนต์ไปใช้ในทางที่ผิดกฎหมาย แข่งขันความเร็ว บรรทุกน้ำหนักเกิน หรือนำออกนอกราชอาณาจักรไทยโดยเด็ดขาด",
+                terms_body_style
+            )
+        ],
+        [
+            Paragraph("<b>2. การดูแลรักษาและน้ำมันเชื้อเพลิง (Maintenance & Fuel Policy):</b>", terms_body_style),
+            Paragraph(
+                "ผู้เช่าต้องเติมน้ำมันเชื้อเพลิงตามประเภทที่ระบุไว้ประจำรถยนต์เท่านั้น และต้องส่งมอบรถคืนในระดับน้ำมันเท่ากับระดับตอนรับรถ หากน้ำมันขาด บริษัทขอคิดค่าน้ำมันตามจริงพร้อมค่าบริการเติมน้ำมันครั้งละ 200 บาท และห้ามสูบบุหรี่ หรือนำสิ่งของกลิ่นรุนแรงเข้ามาในห้องโดยสาร (ปรับ 2,000 บาท)",
+                terms_body_style
+            )
+        ],
+        [
+            Paragraph("<b>3. ประกันภัยและความรับผิดชอบต่อความเสียหาย (Insurance & Liabilities):</b>", terms_body_style),
+            Paragraph(
+                "รถยนต์มีประกันภัยคุ้มครองตามเงื่อนไขที่กฎหมายกำหนด กรณีเกิดอุบัติเหตุหรือความเสียหายจากความประมาทของผู้เช่า หรือไม่สามารถระบุคู่กรณีได้ ผู้เช่าต้องรับผิดชอบค่าเสียหายส่วนแรก (Deductible/Excess) ตามเงื่อนไขของกรมธรรม์ประกันภัย และต้องแจ้งให้บริษัททราบทันทีที่เกิดเหตุ",
+                terms_body_style
+            )
+        ],
+        [
+            Paragraph("<b>4. การส่งคืนรถและการต่อสัญญา (Vehicle Return & Extension):</b>", terms_body_style),
+            Paragraph(
+                "ผู้เช่าต้องส่งมอบรถคืนตามวัน เวลา และสถานที่ที่ระบุในสัญญา หากส่งคืนล่าช้าเกิน 1 ชั่วโมงโดยไม่แจ้งล่วงหน้า บริษัทขอสงวนสิทธิ์คิดค่าปรับรายชั่วโมงในอัตรา 200 บาท/ชม. (หากเกิน 3 ชม. คิดเป็นค่าเช่าเต็ม 1 วัน) การขอต่อสัญญาต้องแจ้งและชำระค่าเช่าล่วงหน้าอย่างน้อย 24 ชั่วโมงก่อนหมดสัญญา",
+                terms_body_style
+            )
+        ],
+        [
+            Paragraph("<b>5. เงินมัดจำประกันสัญญาและการคืนเงิน (Security Deposit & Refund):</b>", terms_body_style),
+            Paragraph(
+                "บริษัทจะทำการคืนเงินมัดจำประกันสัญญาเต็มจำนวนให้แก่ผู้เช่าหลังจากตรวจสอบสภาพรถยนต์และอุปกรณ์ประจำรถครบถ้วนสมบูรณ์ โดยไม่มีความเสียหาย ค่าปรับจราจร หรือค่าใช้จ่ายค้างชำระใดๆ ทั้งนี้ หากมีค่าปรับจราจรในระหว่างระยะเวลาเช่า ผู้เช่ายินยอมรับผิดชอบชำระค่าปรับดังกล่าวตามจริง",
+                terms_body_style
+            )
+        ]
+    ]
+
+    terms_table = Table(terms_data, colWidths=[155, 368])
+    terms_table.setStyle(TableStyle([
+        ('VALIGN', (0,0), (-1,-1), 'TOP'),
+        ('TOPPADDING', (0,0), (-1,-1), 2),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 2),
+        ('LEFTPADDING', (0,0), (-1,-1), 3),
+        ('RIGHTPADDING', (0,0), (-1,-1), 3),
+        ('LINEBELOW', (0,0), (-1,-2), 0.3, colors.HexColor('#F1F5F9')),
+    ]))
+    elements.append(terms_table)
+    elements.append(Spacer(1, 10))
+
+    # -------------------------------------------------------------
+    # 4. SIGNATURE BLOCKS (ช่องลงนามสองฝ่าย)
+    # -------------------------------------------------------------
+    sig_content = [
+        [
+            Paragraph("ข้าพเจ้าได้อ่าน เข้าใจ และยอมรับข้อตกลงและเงื่อนไขการเช่ารถยนต์ข้างต้นทุกประการ", sig_lbl_style),
+            Paragraph("ในนาม บริษัท สวัสดี เรนทัล จำกัด ได้ส่งมอบรถยนต์ในสภาพสมบูรณ์เรียบร้อยแล้ว", sig_lbl_style)
+        ],
+        [
+            Paragraph("<br/><br/>ลงชื่อ ................................................................<br/>( <b>" + cust_name + "</b> )<br/>ผู้เช่า (Lessee / Customer)<br/>วันที่: " + created_date, sig_name_style),
+            Paragraph("<br/><br/>ลงชื่อ ................................................................<br/>( <b>ผู้มีอำนาจลงนาม / พนักงานส่งมอบ</b> )<br/>ผู้ให้เช่า (Lessor / Sawasdee Rental)<br/>วันที่: " + created_date, sig_name_style)
+        ]
+    ]
+
+    sig_table = Table(sig_content, colWidths=[261, 262])
+    sig_table.setStyle(TableStyle([
+        ('VALIGN', (0,0), (-1,-1), 'TOP'),
+        ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+        ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#F8FAFC')),
+        ('BOX', (0,0), (-1,-1), 0.5, colors.HexColor('#CBD5E1')),
+        ('LINEBEFORE', (1,0), (1,-1), 0.5, colors.HexColor('#E2E8F0')),
+        ('TOPPADDING', (0,0), (-1,-1), 6),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 6),
+        ('LEFTPADDING', (0,0), (-1,-1), 8),
+        ('RIGHTPADDING', (0,0), (-1,-1), 8),
+    ]))
+    elements.append(sig_table)
+
     doc.build(elements)
     return pdf_buffer.getvalue()
 
