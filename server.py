@@ -2836,107 +2836,39 @@ async def get_car_profitability():
 def compute_dashboard_statistics():
     sb = get_db_client()
     live_cars = []
-    live_bookings = []
     
     if sb:
         try:
-            c_res = sb.table("cars").select("*").execute()
+            c_res = sb.table("cars").select("plate, status, car_status").execute()
             if c_res and c_res.data:
                 live_cars = c_res.data
-        except Exception:
-            pass
-        try:
-            b_res = sb.table("bookings").select("*").execute()
-            if b_res and b_res.data:
-                live_bookings = b_res.data
         except Exception:
             pass
 
     if not live_cars:
         live_cars = list(store.cars.values())
-    if not live_bookings:
-        live_bookings = list(store.bookings)
 
     today = now_th().date()
-    total_cars = len(live_cars)
+    total_fleet = len(live_cars)
     avail_count = 0
-    rent_count = 0
-    book_count = 0
+    on_rent_count = 0
+    booked_count = 0
     maint_count = 0
 
-    car_status_map = {}
-
     for c in live_cars:
-        pl = str(c.get("plate", "")).strip()
-        norm_p = normalize_plate_str(pl)
-        c_st = str(c.get("status") or c.get("car_status") or "").strip()
-
-        # 1. Maintenance: only if explicitly marked as repair/maintenance
-        if c_st in ["ซ่อมบำรุง", "สถานะซ่อมบำรุง", "ส่งซ่อม"]:
+        st = str(c.get("status") or c.get("car_status") or "").strip().lower()
+        if any(k in st for k in ["ซ่อม", "ไม่พร้อม", "ระงับ", "maint"]):
             maint_count += 1
-            car_status_map[pl] = "ซ่อมบำรุง"
-            continue
-
-        # Check active bookings for this car
-        car_bks = [
-            b for b in live_bookings
-            if normalize_plate_str(b.get("car_id")) == norm_p
-            and str(b.get("status") or "").strip() not in ["เสร็จสิ้น", "ยกเลิก", "Completed", "Canceled", "completed", "canceled"]
-        ]
-
-        # 2. Currently Rented
-        is_rented = False
-        if c_st in ["กำลังเช่า", "เช่าอยู่", "รอรับคืน"]:
-            is_rented = True
+        elif any(k in st for k in ["เช่า", "rent"]):
+            on_rent_count += 1
+        elif any(k in st for k in ["จอง", "book"]):
+            booked_count += 1
         else:
-            for b in car_bks:
-                b_st = str(b.get("status") or "").strip()
-                if b_st in ["กำลังเช่า", "รอรับคืน"]:
-                    is_rented = True
-                    break
-                b_s = to_date(b.get("start_date"))
-                b_e = to_date(b.get("end_date"))
-                if b_s and b_e and (b_s <= today <= b_e):
-                    is_rented = True
-                    break
+            avail_count += 1
 
-        if is_rented:
-            rent_count += 1
-            car_status_map[pl] = "กำลังเช่า"
-            continue
-
-        # 3. Booked / Reserved
-        is_booked = False
-        if c_st in ["ติดจอง", "จอง", "เตรียมส่งมอบ", "รอส่งมอบ"]:
-            is_booked = True
-        elif car_bks:
-            is_booked = True
-
-        if is_booked:
-            book_count += 1
-            car_status_map[pl] = "ติดจอง"
-            continue
-
-        # 4. Otherwise Available
-        avail_count += 1
-        car_status_map[pl] = "ว่างพร้อมใช้งาน"
-
-    # Synchronize store.cars in memory so operational state matches
-    for pl, op_status in car_status_map.items():
-        if pl in store.cars:
-            store.cars[pl]["operational_status"] = op_status
-            if op_status == "กำลังเช่า":
-                store.cars[pl]["is_on_rent"] = True
-                store.cars[pl]["status"] = "กำลังเช่า"
-            elif op_status == "ติดจอง":
-                store.cars[pl]["is_on_rent"] = False
-                store.cars[pl]["status"] = "ติดจอง"
-            elif op_status == "ว่างพร้อมใช้งาน":
-                store.cars[pl]["is_on_rent"] = False
-                store.cars[pl]["status"] = "ว่างพร้อมใช้งาน"
-
-    active_rentals = rent_count + book_count
-    utilization_rate = round((active_rentals / max(1, total_cars)) * 100, 1)
+    # Active rentals: on_rent + booked (strictly never including available)
+    active_rentals = on_rent_count + booked_count
+    utilization_rate = round((active_rentals / max(1, total_fleet)) * 100, 1)
 
     # Real-time revenue calculation
     total_rev = 0.0
@@ -2946,7 +2878,7 @@ def compute_dashboard_statistics():
         if bid: seen_bids.add(bid)
         total_rev += float(cj.get("net_price") or 0.0) + float(cj.get("late_fee") or 0.0)
 
-    for b in live_bookings:
+    for b in store.bookings:
         bid = b.get("booking_id")
         if bid and bid not in seen_bids:
             if b.get("rental_paid") or b.get("is_fully_paid") or str(b.get("status")) in ["กำลังเช่า", "รอรับคืน", "เสร็จสิ้น"]:
@@ -2976,7 +2908,7 @@ def compute_dashboard_statistics():
             c_d = to_date(cj.get("completed_date") or cj.get("end_date"))
             if c_d and c_d.year == y and c_d.month == m:
                 rev_m += float(cj.get("net_price") or 0.0)
-        for b in live_bookings:
+        for b in store.bookings:
             b_d = to_date(b.get("start_date") or b.get("created_at"))
             if b_d and b_d.year == y and b_d.month == m:
                 if b.get("rental_paid") or b.get("is_fully_paid") or str(b.get("status")) in ["กำลังเช่า", "รอรับคืน"]:
@@ -3001,22 +2933,26 @@ def compute_dashboard_statistics():
         comp = c.get("company", "อื่นๆ")
         company_counts[comp] = company_counts.get(comp, 0) + 1
 
+    status_breakdown = {
+        "available": avail_count,
+        "on_rent": on_rent_count,
+        "booked": booked_count,
+        "maintenance": maint_count
+    }
+
     return {
         "success": True,
-        "total_cars": total_cars,
-        "available_cars": avail_count,
-        "rented_cars": rent_count,
-        "booked_cars": book_count,
-        "maintenance_cars": maint_count,
+        "total_fleet": total_fleet,
+        "status_breakdown": status_breakdown,
         "active_rentals": active_rentals,
         "utilization_rate": utilization_rate,
         "total_revenue": round(total_rev, 2),
-        "fleet_status_breakdown": {
-            "available": avail_count,
-            "rented": rent_count,
-            "booked": book_count,
-            "maintenance": maint_count
-        },
+        "total_cars": total_fleet,
+        "available_cars": avail_count,
+        "rented_cars": on_rent_count,
+        "booked_cars": booked_count,
+        "maintenance_cars": maint_count,
+        "fleet_status_breakdown": status_breakdown,
         "monthly_trend": monthly_trend,
         "company_distribution": company_counts,
         "total_bookings": len(store.bookings),

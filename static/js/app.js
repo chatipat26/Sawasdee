@@ -1623,22 +1623,19 @@ class App {
   updateDashboardKPIsFromScope() {
     const isEn = (this.currentLang === "EN");
     const stats = this.dashboardStats || {};
-    const scopedCars = this.cars || [];
+    const sb = stats.status_breakdown || stats.fleet_status_breakdown || {};
 
-    const totalCars = stats.total_cars !== undefined ? stats.total_cars : scopedCars.length;
-    const availCars = stats.available_cars !== undefined ? stats.available_cars : scopedCars.filter(c => (c.operational_status === "ว่างพร้อมใช้งาน") || (c.fleet_status_key === "available" && c.status !== "กำลังเช่า")).length;
-    const maintCars = stats.maintenance_cars !== undefined ? stats.maintenance_cars : scopedCars.filter(c => (c.operational_status === "ซ่อมบำรุง") || c.fleet_status_key === "maintenance" || ["ซ่อมบำรุง", "ส่งซ่อม", "ไม่พร้อมใช้งาน", "ต่อทะเบียน/ประกัน"].includes(c.status)).length;
-    const activeRentals = stats.active_rentals !== undefined ? stats.active_rentals : scopedCars.filter(c => (c.operational_status && c.operational_status !== "ว่างพร้อมใช้งาน" && c.operational_status !== "ซ่อมบำรุง") || c.is_on_rent || c.fleet_status_key === "unavailable" || ["กำลังเช่า", "ติดจอง"].includes(c.status)).length;
-    const utilRate = stats.utilization_rate !== undefined ? stats.utilization_rate : (totalCars > 0 ? ((activeRentals / totalCars) * 100).toFixed(1) : "0.0");
-
-    let totalRev = 0;
-    if (stats.total_revenue !== undefined) {
-      totalRev = parseFloat(stats.total_revenue || 0);
-    } else if (this.rawKpiData && this.rawKpiData.total_revenue !== undefined) {
-      totalRev = parseFloat(this.rawKpiData.total_revenue || 0);
-    } else {
-      totalRev = (this.completedJobs || []).reduce((sum, j) => sum + parseFloat(j.net_price || 0), 0);
-    }
+    // SINGLE SOURCE OF TRUTH: Direct binding from Backend API response
+    const totalFleet = (stats.total_fleet !== undefined) ? Number(stats.total_fleet) : ((stats.total_cars !== undefined) ? Number(stats.total_cars) : (this.cars || []).length);
+    const availCars = (sb.available !== undefined) ? Number(sb.available) : ((stats.available_cars !== undefined) ? Number(stats.available_cars) : (this.cars || []).filter(c => c.status === "ว่างพร้อมใช้งาน").length);
+    const onRentCars = (sb.on_rent !== undefined) ? Number(sb.on_rent) : ((stats.rented_cars !== undefined) ? Number(stats.rented_cars) : 0);
+    const bookedCars = (sb.booked !== undefined) ? Number(sb.booked) : ((stats.booked_cars !== undefined) ? Number(stats.booked_cars) : 0);
+    const maintCars = (sb.maintenance !== undefined) ? Number(sb.maintenance) : ((stats.maintenance_cars !== undefined) ? Number(stats.maintenance_cars) : 0);
+    
+    // Card 2: on_rent + booked (strictly never including available)
+    const activeRentals = onRentCars + bookedCars;
+    const utilRate = totalFleet > 0 ? ((activeRentals / totalFleet) * 100).toFixed(1) : "0.0";
+    const totalRev = stats.total_revenue !== undefined ? parseFloat(stats.total_revenue || 0) : (this.completedJobs || []).reduce((sum, j) => sum + parseFloat(j.net_price || 0), 0);
 
     const elTotal = document.getElementById("kpi-total-cars");
     const elAvail = document.getElementById("kpi-avail-pill");
@@ -1649,20 +1646,25 @@ class App {
     const elInst = document.getElementById("kpi-monthly-installments");
     const elUpd = document.getElementById("dash-last-updated-txt");
 
-    const totalFleetInstallments = scopedCars.reduce((sum, c) => {
+    const totalFleetInstallments = (this.cars || []).reduce((sum, c) => {
       const isDebtFree = Boolean(c.is_debt_free);
       const instAmt = parseFloat(c.installment_amount || 0);
-      if (!isDebtFree && instAmt > 0) {
-        return sum + instAmt;
-      }
+      if (!isDebtFree && instAmt > 0) return sum + instAmt;
       return sum;
     }, 0);
 
-    if (elTotal) elTotal.textContent = totalCars;
+    // Card 1: total_fleet and available
+    if (elTotal) elTotal.textContent = totalFleet;
     if (elAvail) elAvail.textContent = isEn ? `Available ${availCars} cars` : `พร้อมให้บริการ ${availCars} คัน`;
+    
+    // Card 2: on_rent + booked and maintenance
     if (elActive) elActive.textContent = activeRentals;
     if (elMaint) elMaint.textContent = isEn ? `Maintenance ${maintCars} cars` : `ซ่อมบำรุง ${maintCars} คัน`;
+    
+    // Card 3: utilization rate
     if (elUtil) elUtil.textContent = `${utilRate}%`;
+    
+    // Card 4: revenue
     if (elRev) elRev.textContent = `฿${Number(totalRev).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     if (elInst) elInst.textContent = `฿${totalFleetInstallments.toLocaleString('th-TH', { minimumFractionDigits: 2 })}`;
     if (elUpd) {
@@ -7683,40 +7685,20 @@ ${e.message}`);
 
     const isEn = (this.currentLang === "EN");
     const stats = this.dashboardStats || {};
-    let totalCars = 0;
-    let availCount = 0;
-    let rentCount = 0;
-    let bookCount = 0;
-    let maintCount = 0;
+    const sb = stats.status_breakdown || stats.fleet_status_breakdown || {};
 
-    if (stats.fleet_status_breakdown) {
-      availCount = Number(stats.fleet_status_breakdown.available || 0);
-      rentCount = Number(stats.fleet_status_breakdown.rented || 0);
-      bookCount = Number(stats.fleet_status_breakdown.booked || 0);
-      maintCount = Number(stats.fleet_status_breakdown.maintenance || 0);
-      totalCars = stats.total_cars !== undefined ? Number(stats.total_cars) : (availCount + rentCount + bookCount + maintCount);
-    } else {
-      totalCars = (this.cars || []).length;
-      (this.cars || []).forEach(c => {
-        const opSt = String(c.operational_status || "").trim();
-        const st = String(c.status || "").trim();
-        const fst = String(c.fleet_status_key || "").trim();
-        if (opSt === "ซ่อมบำรุง" || fst === "maintenance" || ["ซ่อมบำรุง", "ส่งซ่อม", "ไม่พร้อมใช้งาน", "ต่อทะเบียน/ประกัน"].includes(st)) {
-          maintCount++;
-        } else if (opSt === "กำลังเช่า" || c.is_on_rent || ["กำลังเช่า", "เช่าอยู่", "รอรับคืน"].includes(st)) {
-          rentCount++;
-        } else if (opSt === "ติดจอง" || fst === "unavailable" || fst === "booked" || ["ติดจอง", "จอง", "เตรียมส่งมอบ", "รอส่งมอบ"].includes(st)) {
-          bookCount++;
-        } else {
-          availCount++;
-        }
-      });
-    }
+    // SINGLE SOURCE OF TRUTH: Direct binding from Backend API response
+    const totalCars = (stats.total_fleet !== undefined) ? Number(stats.total_fleet) : ((stats.total_cars !== undefined) ? Number(stats.total_cars) : (this.cars || []).length);
+    const availCount = (sb.available !== undefined) ? Number(sb.available) : ((stats.available_cars !== undefined) ? Number(stats.available_cars) : (this.cars || []).filter(c => c.status === "ว่างพร้อมใช้งาน").length);
+    const rentCount = (sb.on_rent !== undefined) ? Number(sb.on_rent) : ((stats.rented_cars !== undefined) ? Number(stats.rented_cars) : 0);
+    const bookCount = (sb.booked !== undefined) ? Number(sb.booked) : ((stats.booked_cars !== undefined) ? Number(stats.booked_cars) : 0);
+    const maintCount = (sb.maintenance !== undefined) ? Number(sb.maintenance) : ((stats.maintenance_cars !== undefined) ? Number(stats.maintenance_cars) : 0);
 
     if (badge) {
       badge.textContent = isEn ? `${totalCars} cars` : `${totalCars} คัน`;
     }
 
+    // Sequence: 1. Available (ว่าง), 2. On Rent (กำลังเช่า), 3. Booked (ติดจอง), 4. Maintenance (ซ่อมบำรุง)
     const dataArr = [availCount, rentCount, bookCount, maintCount];
     const labels = isEn 
       ? ["Available", "Rented", "Reserved", "Maintenance"]
