@@ -291,6 +291,8 @@ class DataStore:
         self.users_file = os.path.join(BASE_DIR, "data_users.json")
         self.maintenance_file = os.path.join(BASE_DIR, "data_maintenance.json")
         self.maintenance_records = []
+        self.vehicle_maintenances_file = os.path.join(BASE_DIR, "data_vehicle_maintenances.json")
+        self.vehicle_maintenances = []
         self.deleted_booking_ids = {
             "MRC261017104446", "MRC261017071034", "MRC261017102938", "MRC261017101804",
             "MRC261017104728", "MRC261017105734", "MRC261014110200", "MRC261014174658",
@@ -306,6 +308,7 @@ class DataStore:
         self.load_local_cars()
         self.load_local_users()
         self.load_local_maintenance()
+        self.load_local_vehicle_maintenances()
 
     def load_local_users(self):
         merged = {k: dict(v) for k, v in DEFAULT_USERS.items()}
@@ -631,6 +634,16 @@ class DataStore:
                     with self.lock:
                         self.maintenance_records = m_res.data
                     self.save_local_maintenance()
+            except Exception:
+                pass
+
+            # 8. Vehicle Maintenances
+            try:
+                vm_res = sb.table("vehicle_maintenances").select("*").order("date", desc=True).execute()
+                if vm_res.data is not None:
+                    with self.lock:
+                        self.vehicle_maintenances = vm_res.data
+                    self.save_local_vehicle_maintenances()
             except Exception:
                 pass
 
@@ -1019,6 +1032,111 @@ class DataStore:
             except Exception:
                 pass
         threading.Thread(target=_task, daemon=True).start()
+
+    def load_local_vehicle_maintenances(self):
+        try:
+            if os.path.exists(self.vehicle_maintenances_file):
+                with open(self.vehicle_maintenances_file, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    if isinstance(data, list):
+                        self.vehicle_maintenances = data
+                        return
+        except Exception as e:
+            print(f"Error loading local vehicle maintenances: {e}")
+        self.vehicle_maintenances = []
+        self.save_local_vehicle_maintenances()
+
+    def save_local_vehicle_maintenances(self):
+        try:
+            with open(self.vehicle_maintenances_file, "w", encoding="utf-8") as f:
+                json.dump(self.vehicle_maintenances, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            print(f"Error saving local vehicle maintenances: {e}")
+
+    def get_vehicle_maintenances(self, car_plate):
+        p_clean = str(car_plate or "").strip()
+        with self.lock:
+            return [
+                m for m in self.vehicle_maintenances
+                if str(m.get("car_id") or "").strip() == p_clean
+            ]
+
+    def async_add_vehicle_maintenance(self, m_dict):
+        with self.lock:
+            if not m_dict.get("id"):
+                existing_ids = [m.get("id") for m in self.vehicle_maintenances if isinstance(m.get("id"), int)]
+                m_dict["id"] = max(existing_ids, default=0) + 1
+            if not m_dict.get("created_at"):
+                m_dict["created_at"] = datetime.now().isoformat()
+            self.vehicle_maintenances.insert(0, m_dict)
+        self.save_local_vehicle_maintenances()
+
+        def _task():
+            sb = get_db_client()
+            if not sb: return
+            try:
+                row = {
+                    "car_id": str(m_dict.get("car_id", "")),
+                    "date": str(m_dict.get("date", "")),
+                    "description": str(m_dict.get("description", "")),
+                    "cost": float(m_dict.get("cost") or 0.0),
+                }
+                sb.table("vehicle_maintenances").insert(row).execute()
+            except Exception as e:
+                print(f"async_add_vehicle_maintenance error: {e}")
+
+        threading.Thread(target=_task, daemon=True).start()
+        return m_dict
+
+    def async_delete_vehicle_maintenance(self, m_id):
+        with self.lock:
+            self.vehicle_maintenances = [m for m in self.vehicle_maintenances if str(m.get("id")) != str(m_id)]
+        self.save_local_vehicle_maintenances()
+
+        def _task():
+            sb = get_db_client()
+            if not sb: return
+            try:
+                sb.table("vehicle_maintenances").delete().eq("id", m_id).execute()
+            except Exception as e:
+                print(f"async_delete_vehicle_maintenance error: {e}")
+
+        threading.Thread(target=_task, daemon=True).start()
+
+    def get_car_financial_roi(self, car_plate):
+        p_clean = str(car_plate or "").strip()
+        income = 0.0
+        for b in self.bookings:
+            if str(b.get("car_id") or "").strip() == p_clean:
+                if b.get("rental_paid") or b.get("is_fully_paid") or b.get("status") in ["เสร็จสิ้น", "กำลังเช่า", "รอส่งมอบ", "รอรับคืน"]:
+                    income += float(b.get("net_price") or b.get("rental_rate") or 0.0)
+                exts = b.get("extension_history") or []
+                for ext in exts:
+                    if ext.get("paid"):
+                        income += float(ext.get("amount") or 0.0)
+
+        b_ids = {b.get("booking_id") for b in self.bookings if b.get("booking_id")}
+        for cj in self.completed_jobs:
+            if str(cj.get("car_id") or "").strip() == p_clean:
+                if cj.get("booking_id") not in b_ids:
+                    income += float(cj.get("net_price") or cj.get("rental_rate") or 0.0)
+
+        maint_cost = 0.0
+        for m in self.vehicle_maintenances:
+            if str(m.get("car_id") or "").strip() == p_clean:
+                maint_cost += float(m.get("cost") or 0.0)
+
+        for mr in self.maintenance_records:
+            if str(mr.get("car_id") or "").strip() == p_clean:
+                maint_cost += float(mr.get("actual_cost") or mr.get("cost") or 0.0)
+
+        net_profit = income - maint_cost
+        return {
+            "car_id": p_clean,
+            "total_income": round(income, 2),
+            "total_maintenance_cost": round(maint_cost, 2),
+            "net_profit_roi": round(net_profit, 2)
+        }
 
     def close_maintenance_record(self, mnt_id, actual_cost=None, completion_notes="", new_mileage=None, recorded_by="admin", new_act_expiry=None, new_ins_expiry=None, policy_no=None):
         with self.lock:

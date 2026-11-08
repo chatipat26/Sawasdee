@@ -90,9 +90,20 @@ def init_db():
         "ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS payment_type VARCHAR(50);",
         "ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS google_drive_link TEXT;"
     ]
+    maintenance_migrations = [
+        """CREATE TABLE IF NOT EXISTS public.vehicle_maintenances (
+            id SERIAL PRIMARY KEY,
+            car_id VARCHAR(50) NOT NULL,
+            date VARCHAR(50) NOT NULL,
+            description TEXT NOT NULL,
+            cost NUMERIC DEFAULT 0,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );""",
+        "CREATE INDEX IF NOT EXISTS idx_vehicle_maintenances_car_id ON public.vehicle_maintenances(car_id);"
+    ]
     try:
         with engine.begin() as conn:
-            for sql_stmt in customer_migrations + car_migrations + booking_migrations:
+            for sql_stmt in customer_migrations + car_migrations + booking_migrations + maintenance_migrations:
                 try:
                     conn.execute(text(sql_stmt))
                 except Exception:

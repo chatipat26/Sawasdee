@@ -1593,6 +1593,7 @@ class App {
         this.rawKpiData = await res.json();
       }
       await this.loadMonthlyReports();
+      await this.loadFinanceSummary();
       this.updateDashboardKPIsFromScope();
       this.renderDashboardCharts();
       this.renderFleetOverviewTable();
@@ -2526,6 +2527,70 @@ class App {
         </div>
       ` : ''}
 
+
+      <!-- Maintenance Tracker & ROI Section (MISSION 2) -->
+      <div style="background:#FFFFFF; border:1.5px solid #CBD5E1; border-radius:10px; padding:14px; margin-bottom:16px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
+          <div style="font-size:13px; font-weight:800; color:#1E293B; display:flex; align-items:center; gap:6px;">
+            <span>🔧</span>
+            <span>${isEn ? 'Maintenance History & Vehicle ROI' : 'ประวัติซ่อมบำรุง & วิเคราะห์กำไรสุทธิ (ROI)'}</span>
+          </div>
+          <span id="car-roi-badge" style="font-size:12px; font-weight:700; padding:3px 10px; border-radius:12px; background:#F1F5F9; color:#475569;">
+            ${isEn ? 'Calculating...' : 'กำลังคำนวณ...'}
+          </span>
+        </div>
+
+        <!-- 3 ROI KPI Cards -->
+        <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:10px; margin-bottom:12px; text-align:center;">
+          <div style="background:#F0FDF4; border:1px solid #BBF7D0; border-radius:8px; padding:8px;">
+            <div style="font-size:10.5px; color:#15803D; font-weight:700;">${isEn ? 'Total Revenue' : 'รายได้รวมสะสม'}</div>
+            <div id="car-roi-income" style="font-size:14px; font-weight:800; color:#16A34A; margin-top:2px;">฿0.00</div>
+          </div>
+          <div style="background:#FFF1F2; border:1px solid #FECDD3; border-radius:8px; padding:8px;">
+            <div style="font-size:10.5px; color:#BE123C; font-weight:700;">${isEn ? 'Total Maintenance Cost' : 'ค่าซ่อมบำรุงสะสม'}</div>
+            <div id="car-roi-cost" style="font-size:14px; font-weight:800; color:#E11D48; margin-top:2px;">฿0.00</div>
+          </div>
+          <div id="car-roi-profit-card" style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:8px; padding:8px;">
+            <div style="font-size:10.5px; color:#475569; font-weight:700;">${isEn ? 'Net Profit / ROI' : 'กำไรสุทธิ (ROI)'}</div>
+            <div id="car-roi-profit" style="font-size:14px; font-weight:800; color:#0F172A; margin-top:2px;">฿0.00</div>
+          </div>
+        </div>
+
+        <!-- Add Maintenance Form -->
+        <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:8px; padding:10px; margin-bottom:10px;">
+          <div style="font-size:11.5px; font-weight:700; color:#334155; margin-bottom:6px;">
+            ${isEn ? '+ Record New Maintenance Entry' : '➕ บันทึกรายการซ่อมบำรุงใหม่'}
+          </div>
+          <div style="display:grid; grid-template-columns: 140px 1fr 120px auto; gap:8px; align-items:center;">
+            <input type="date" id="maint-input-date" class="form-control" style="font-size:11.5px; padding:5px 8px;" value="${new Date().toISOString().split('T')[0]}">
+            <input type="text" id="maint-input-desc" class="form-control" style="font-size:11.5px; padding:5px 8px;" placeholder="${isEn ? 'Description (e.g. Oil change, brakes)' : 'รายการซ่อม (เช่น ถ่ายน้ำมันเครื่อง, ผ้าเบรก, ยาง)'}">
+            <input type="number" id="maint-input-cost" class="form-control" style="font-size:11.5px; padding:5px 8px;" placeholder="${isEn ? 'Cost (฿)' : 'ค่าใช้จ่าย (฿)'}" min="0" step="any">
+            <button type="button" onclick="app.submitCarMaintenance('${safePlate}')" class="btn btn-sm btn-primary" style="font-size:11.5px; padding:6px 14px; white-space:nowrap;">
+              ${isEn ? 'Save' : 'บันทึก'}
+            </button>
+          </div>
+        </div>
+
+        <!-- Maintenance History Table -->
+        <div class="table-responsive" style="max-height:160px; overflow-y:auto; border:1px solid #E2E8F0; border-radius:6px;">
+          <table class="custom-table" style="margin:0; font-size:11.5px;">
+            <thead style="position:sticky; top:0; background:#F1F5F9; z-index:1;">
+              <tr>
+                <th style="padding:6px 8px;">${isEn ? 'Date' : 'วันที่'}</th>
+                <th style="padding:6px 8px;">${isEn ? 'Description' : 'รายการซ่อมบำรุง'}</th>
+                <th style="padding:6px 8px; text-align:right;">${isEn ? 'Cost (฿)' : 'ค่าใช้จ่าย (฿)'}</th>
+                <th style="padding:6px 8px; text-align:center; width:50px;">${isEn ? 'Action' : 'จัดการ'}</th>
+              </tr>
+            </thead>
+            <tbody id="car-details-maint-tbody">
+              <tr>
+                <td colspan="4" style="text-align:center; color:#94A3B8; padding:12px;">${isEn ? 'Loading maintenance records...' : 'กำลังโหลดประวัติซ่อมบำรุง...'}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       <!-- Bottom Actions Bar -->
       <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding-top:12px; border-top:1px solid #E2E8F0; flex-wrap:wrap;">
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
@@ -2549,6 +2614,7 @@ class App {
     `;
 
     this.openModal("modal-car-details");
+    this.loadCarMaintenances(cleanPlate);
   }
 
   // --- Quick Car Photo Upload & Edit Car Modal ---
@@ -8122,6 +8188,329 @@ class App {
         </tr>
       `;
     }).join("");
+  }
+
+  // =========================================================================
+  // MISSION 2: VEHICLE MAINTENANCE TRACKER & ROI METHODS
+  // =========================================================================
+  async loadCarMaintenances(plate) {
+    const isEn = (this.currentLang === "EN");
+    const cleanPlate = String(plate || "").trim();
+    if (!cleanPlate) return;
+
+    const tbody = document.getElementById("car-details-maint-tbody");
+    const incEl = document.getElementById("car-roi-income");
+    const costEl = document.getElementById("car-roi-cost");
+    const profitEl = document.getElementById("car-roi-profit");
+    const badgeEl = document.getElementById("car-roi-badge");
+    const cardEl = document.getElementById("car-roi-profit-card");
+
+    try {
+      const res = await fetch(`/api/cars/${encodeURIComponent(cleanPlate)}/maintenances`);
+      if (!res.ok) throw new Error("Failed to load maintenances");
+      const data = await res.json();
+
+      const totalInc = Number(data.total_income || 0);
+      const totalCost = Number(data.total_maintenance_cost || 0);
+      const netProfit = Number(data.net_profit_roi || 0);
+
+      if (incEl) incEl.textContent = "฿" + totalInc.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+      if (costEl) costEl.textContent = "฿" + totalCost.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+      if (profitEl) {
+        profitEl.textContent = (netProfit >= 0 ? "+฿" : "-฿") + Math.abs(netProfit).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        profitEl.style.color = netProfit >= 0 ? "#16A34A" : "#DC2626";
+      }
+      if (cardEl) {
+        cardEl.style.background = netProfit >= 0 ? "#F0FDF4" : "#FEF2F2";
+        cardEl.style.borderColor = netProfit >= 0 ? "#BBF7D0" : "#FECACA";
+      }
+      if (badgeEl) {
+        if (netProfit >= 0) {
+          badgeEl.textContent = isEn ? "ROI: Profitable" : "กำไรสุทธิ (ROI บวก)";
+          badgeEl.style.background = "#DCFCE7";
+          badgeEl.style.color = "#15803D";
+          badgeEl.style.border = "1px solid #86EFAC";
+        } else {
+          badgeEl.textContent = isEn ? "ROI: Loss" : "ขาดทุนสุทธิ (ROI ลบ)";
+          badgeEl.style.background = "#FEE2E2";
+          badgeEl.style.color = "#991B1B";
+          badgeEl.style.border = "1px solid #FCA5A5";
+        }
+      }
+
+      if (tbody) {
+        const records = data.records || [];
+        if (records.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#94A3B8; padding:12px;">${isEn ? 'No maintenance records yet' : 'ยังไม่มีประวัติการซ่อมบำรุง'}</td></tr>`;
+        } else {
+          tbody.innerHTML = records.map(r => {
+            const costNum = Number(r.cost || 0);
+            const safeId = String(r.id || "");
+            const safePl = String(cleanPlate).replace(/'/g, "\\'");
+            return `
+              <tr>
+                <td style="padding:6px 8px; white-space:nowrap; font-weight:600;">${r.date || '-'}</td>
+                <td style="padding:6px 8px;">${r.description || '-'}</td>
+                <td style="padding:6px 8px; text-align:right; font-weight:700; color:#E11D48;">฿${costNum.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                <td style="padding:6px 8px; text-align:center;">
+                  <button type="button" onclick="app.deleteCarMaintenance('${safePl}', '${safeId}')" class="btn btn-sm btn-danger" style="padding:2px 6px; font-size:11px;" title="${isEn ? 'Delete' : 'ลบ'}">
+                    ✕
+                  </button>
+                </td>
+              </tr>
+            `;
+          }).join("");
+        }
+      }
+    } catch (err) {
+      console.error("loadCarMaintenances error:", err);
+      if (tbody) {
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#EF4444; padding:12px;">${isEn ? 'Failed to load maintenance records' : 'โหลดข้อมูลประวัติซ่อมไม่สำเร็จ'}</td></tr>`;
+      }
+    }
+  }
+
+  async submitCarMaintenance(plate) {
+    const isEn = (this.currentLang === "EN");
+    const dateInput = document.getElementById("maint-input-date");
+    const descInput = document.getElementById("maint-input-desc");
+    const costInput = document.getElementById("maint-input-cost");
+
+    const mDate = dateInput ? dateInput.value.trim() : "";
+    const mDesc = descInput ? descInput.value.trim() : "";
+    const mCost = costInput ? parseFloat(costInput.value) || 0 : 0;
+
+    if (!mDesc) {
+      this.showToast(isEn ? "Please enter maintenance description" : "กรุณาระบุรายละเอียดการซ่อม", "danger");
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/cars/${encodeURIComponent(plate)}/maintenances`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          date: mDate || new Date().toISOString().split("T")[0],
+          description: mDesc,
+          cost: mCost
+        })
+      });
+      if (!res.ok) throw new Error("Failed to save maintenance");
+
+      if (descInput) descInput.value = "";
+      if (costInput) costInput.value = "";
+      this.showToast(isEn ? "Maintenance record added successfully" : "บันทึกประวัติซ่อมบำรุงเรียบร้อยแล้ว", "success");
+      await this.loadCarMaintenances(plate);
+    } catch (err) {
+      console.error("submitCarMaintenance error:", err);
+      this.showToast(isEn ? "Error saving maintenance" : "เกิดข้อผิดพลาดในการบันทึก", "danger");
+    }
+  }
+
+  async deleteCarMaintenance(plate, mId) {
+    const isEn = (this.currentLang === "EN");
+    if (!confirm(isEn ? "Are you sure you want to delete this maintenance entry?" : "ยืนยันการลบรายการซ่อมนี้ใช่หรือไม่?")) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/cars/${encodeURIComponent(plate)}/maintenances/${encodeURIComponent(mId)}`, {
+        method: "DELETE"
+      });
+      if (!res.ok) throw new Error("Failed to delete");
+      this.showToast(isEn ? "Maintenance record deleted" : "ลบรายการซ่อมบำรุงเรียบร้อยแล้ว", "success");
+      await this.loadCarMaintenances(plate);
+    } catch (err) {
+      console.error("deleteCarMaintenance error:", err);
+      this.showToast(isEn ? "Error deleting maintenance" : "เกิดข้อผิดพลาดในการลบ", "danger");
+    }
+  }
+
+  // =========================================================================
+  // MISSION 1: FINANCIAL DASHBOARD & SHIFT CLOSING METHODS
+  // =========================================================================
+  setShiftClosingMode(mode) {
+    this.shiftClosingMode = mode;
+    const btnD = document.getElementById("btn-shift-mode-daily");
+    const btnM = document.getElementById("btn-shift-mode-monthly");
+    const thDate = document.getElementById("th-shift-date");
+
+    if (btnD && btnM) {
+      if (mode === "daily") {
+        btnD.style.background = "#E85826";
+        btnD.style.color = "#FFF";
+        btnM.style.background = "transparent";
+        btnM.style.color = "#475569";
+        if (thDate) thDate.textContent = (this.currentLang === "EN") ? "Date (Daily)" : "วันที่ (รายวัน)";
+      } else {
+        btnM.style.background = "#E85826";
+        btnM.style.color = "#FFF";
+        btnD.style.background = "transparent";
+        btnD.style.color = "#475569";
+        if (thDate) thDate.textContent = (this.currentLang === "EN") ? "Period (Monthly)" : "งวดเดือน (รายเดือน)";
+      }
+    }
+    this.renderShiftClosingTable();
+  }
+
+  filterShiftClosing() {
+    this.renderShiftClosingTable();
+  }
+
+  resetShiftClosingFilter() {
+    const f = document.getElementById("shift-month-filter");
+    if (f) f.value = "";
+    this.renderShiftClosingTable();
+  }
+
+  async loadFinanceSummary() {
+    try {
+      const res = await fetch("/api/finance/summary");
+      if (res.ok) {
+        this.financeSummaryData = await res.json();
+        this.renderShiftClosingTable();
+      }
+    } catch (err) {
+      console.error("loadFinanceSummary error:", err);
+    }
+  }
+
+  renderShiftClosingTable() {
+    if (!this.financeSummaryData) return;
+    const isEn = (this.currentLang === "EN");
+    const data = this.financeSummaryData;
+
+    const sumTotalEl = document.getElementById("shift-sum-total");
+    const sumQrEl = document.getElementById("shift-sum-qr");
+    const sumCashEl = document.getElementById("shift-sum-cash");
+    const sumCardEl = document.getElementById("shift-sum-card");
+    const sumPaypalEl = document.getElementById("shift-sum-paypal");
+
+    const byMethod = data.by_method || {};
+    if (sumTotalEl) sumTotalEl.textContent = "฿" + Number(data.total_revenue || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    if (sumQrEl) sumQrEl.textContent = "฿" + Number(byMethod["โอนเงิน / สแกน QR"] || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    if (sumCashEl) sumCashEl.textContent = "฿" + Number(byMethod["เงินสด"] || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    if (sumCardEl) sumCardEl.textContent = "฿" + Number(byMethod["บัตรเครดิต"] || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    if (sumPaypalEl) sumPaypalEl.textContent = "฿" + Number(byMethod["PayPal"] || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
+    const tbody = document.getElementById("shift-closing-tbody");
+    if (!tbody) return;
+
+    const filterInput = document.getElementById("shift-month-filter");
+    const filterVal = filterInput ? filterInput.value.trim() : "";
+
+    const currentMode = this.shiftClosingMode || "daily";
+    let rows = (currentMode === "monthly") ? (data.monthly || []) : (data.daily || []);
+    if (filterVal) {
+      rows = rows.filter(r => (r.month && r.month === filterVal) || (r.date && r.date.startsWith(filterVal)));
+    }
+
+    if (rows.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:#94A3B8; padding:20px;">${isEn ? 'No financial transactions recorded for this period' : 'ไม่มีรายการรายรับในงวดที่เลือก'}</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = rows.map((r, idx) => {
+      const periodLabel = r.date || r.month || "-";
+      const totalNum = Number(r.total || 0);
+      const methods = r.by_method || {};
+      const qrNum = Number(methods["โอนเงิน / สแกน QR"] || 0);
+      const cashNum = Number(methods["เงินสด"] || 0);
+      const cardNum = Number(methods["บัตรเครดิต"] || 0);
+      const paypalNum = Number(methods["PayPal"] || 0);
+      const countNum = Number(r.count || 0);
+      const hasRecords = Array.isArray(r.records) && r.records.length > 0;
+
+      return `
+        <tr style="border-bottom:1px solid #F1F5F9;">
+          <td style="padding:10px 12px; font-weight:700; color:#1E293B;">
+            📅 ${periodLabel}
+          </td>
+          <td style="padding:10px 12px; text-align:right; font-weight:800; color:#EA580C; font-size:13px;">
+            ฿${totalNum.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+          </td>
+          <td style="padding:10px 12px; text-align:right; font-weight:600; color:${qrNum > 0 ? '#2563EB' : '#94A3B8'};">
+            ${qrNum > 0 ? '฿' + qrNum.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '-'}
+          </td>
+          <td style="padding:10px 12px; text-align:right; font-weight:600; color:${cashNum > 0 ? '#059669' : '#94A3B8'};">
+            ${cashNum > 0 ? '฿' + cashNum.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '-'}
+          </td>
+          <td style="padding:10px 12px; text-align:right; font-weight:600; color:${cardNum > 0 ? '#DB2777' : '#94A3B8'};">
+            ${cardNum > 0 ? '฿' + cardNum.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '-'}
+          </td>
+          <td style="padding:10px 12px; text-align:right; font-weight:600; color:${paypalNum > 0 ? '#7C3AED' : '#94A3B8'};">
+            ${paypalNum > 0 ? '฿' + paypalNum.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '-'}
+          </td>
+          <td style="padding:10px 12px; text-align:center;">
+            <span style="background:#F1F5F9; color:#475569; font-size:11.5px; font-weight:700; padding:2px 8px; border-radius:10px;">
+              ${countNum} ${isEn ? 'tx' : 'รายการ'}
+            </span>
+          </td>
+          <td style="padding:10px 12px; text-align:center;">
+            ${hasRecords ? `
+              <button type="button" onclick="app.toggleShiftRowDetails(${idx})" class="btn btn-sm btn-secondary" style="font-size:11px; padding:3px 8px;">
+                🔍 ${isEn ? 'View' : 'ดูย่อย'}
+              </button>
+            ` : '-'}
+          </td>
+        </tr>
+      `;
+    }).join("");
+  }
+
+  toggleShiftRowDetails(idx) {
+    const isEn = (this.currentLang === "EN");
+    const box = document.getElementById("shift-closing-details-box");
+    if (!box || !this.financeSummaryData) return;
+
+    const currentMode = this.shiftClosingMode || "daily";
+    const rows = (currentMode === "monthly") ? (this.financeSummaryData.monthly || []) : (this.financeSummaryData.daily || []);
+    const row = rows[idx];
+    if (!row || !Array.isArray(row.records)) {
+      box.style.display = "none";
+      return;
+    }
+
+    if (box.dataset.activeIdx === String(idx) && box.style.display === "block") {
+      box.style.display = "none";
+      box.dataset.activeIdx = "";
+      return;
+    }
+
+    box.dataset.activeIdx = String(idx);
+    box.style.display = "block";
+    box.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; border-bottom:1px solid #CBD5E1; padding-bottom:6px;">
+        <b style="font-size:13px; color:#1E293B;">🔍 ${isEn ? 'Transaction Details for' : 'รายละเอียดรายการประจำงวด'} ${row.date || row.month} (${row.records.length} ${isEn ? 'items' : 'รายการ'})</b>
+        <button type="button" onclick="document.getElementById('shift-closing-details-box').style.display='none'" class="btn btn-sm btn-secondary" style="padding:1px 6px; font-size:11px;">✕ ${isEn ? 'Close' : 'ปิด'}</button>
+      </div>
+      <div class="table-responsive" style="max-height:180px; overflow-y:auto;">
+        <table class="custom-table" style="margin:0; font-size:11.5px;">
+          <thead>
+            <tr style="background:#E2E8F0;">
+              <th>${isEn ? 'Booking / Ref' : 'รหัสจอง / อ้างอิง'}</th>
+              <th>${isEn ? 'Vehicle' : 'ทะเบียนรถ'}</th>
+              <th>${isEn ? 'Customer' : 'ลูกค้า'}</th>
+              <th>${isEn ? 'Category' : 'หมวดหมู่'}</th>
+              <th>${isEn ? 'Method' : 'ช่องทางชำระ'}</th>
+              <th style="text-align:right;">${isEn ? 'Amount (฿)' : 'ยอดเงิน (฿)'}</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${row.records.map(rec => `
+              <tr>
+                <td style="font-weight:700;">${rec.ref || '-'}</td>
+                <td>${rec.car_id || '-'}</td>
+                <td>${rec.customer || '-'}</td>
+                <td><span style="background:#EFF6FF; color:#1D4ED8; padding:1px 6px; border-radius:4px; font-size:10.5px; font-weight:600;">${rec.category || '-'}</span></td>
+                <td><span style="font-weight:600;">${rec.payment_method || '-'}</span></td>
+                <td style="text-align:right; font-weight:700; color:#EA580C;">฿${Number(rec.amount || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      </div>
+    `;
   }
 
 }

@@ -1231,6 +1231,94 @@
           </div>
         </div>
 
+        <!-- Collapsible Table: Shift Closing & Financial Breakdown Table (ตารางสรุปยอดปิดกะและการเงิน) -->
+        <div class="expander-card" id="expander-shift-closing" style="margin-bottom:20px;">
+          <div class="expander-header open" onclick="app.toggleExpander('expander-shift-closing')" style="background:linear-gradient(135deg, #FFF7ED 0%, #FFFFFF 100%); border-bottom:1px solid #FED7AA;">
+            <div class="expander-title" style="display:flex; align-items:center; gap:8px;">
+              <span style="font-size:16px;">📊</span>
+              <span id="title-expander-shift" style="color:#C2410C; font-weight:800;">ตารางสรุปยอดปิดกะและการเงิน (Shift Closing & Revenue Summary)</span>
+            </div>
+            <div class="expander-indicator">
+              <span id="indicator-expander-shift" style="color:#EA580C; font-size:12px; font-weight:700;">คลิกเพื่อย่อ/ขยาย</span>
+            </div>
+          </div>
+          <div class="expander-body" id="body-expander-shift-closing" style="display:block; padding:16px;">
+            <!-- Filter & Mode Selector Toolbar -->
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:16px; background:#F8FAFC; padding:12px 16px; border-radius:10px; border:1px solid #E2E8F0;">
+              <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                <span style="font-size:13px; font-weight:700; color:#334155;">มุมมอง:</span>
+                <div style="display:flex; background:#E2E8F0; padding:2px; border-radius:8px;">
+                  <button type="button" id="btn-shift-mode-daily" onclick="app.setShiftClosingMode('daily')" class="btn btn-sm" style="background:#E85826; color:#FFF; font-size:12px; font-weight:700; border-radius:6px; padding:4px 12px; border:none; cursor:pointer;">
+                    รายวัน (Daily)
+                  </button>
+                  <button type="button" id="btn-shift-mode-monthly" onclick="app.setShiftClosingMode('monthly')" class="btn btn-sm" style="background:transparent; color:#475569; font-size:12px; font-weight:700; border-radius:6px; padding:4px 12px; border:none; cursor:pointer;">
+                    รายเดือน (Monthly)
+                  </button>
+                </div>
+              </div>
+
+              <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                <span style="font-size:12.5px; font-weight:600; color:#64748B;">กรองงวด/เดือน:</span>
+                <input type="month" id="shift-month-filter" class="form-control" style="width:auto; padding:4px 10px; font-size:12px;" onchange="app.filterShiftClosing()">
+                <button type="button" onclick="app.resetShiftClosingFilter()" class="btn btn-sm btn-secondary" style="font-size:12px; padding:5px 10px;">
+                  ล้างตัวกรอง
+                </button>
+                <button type="button" onclick="app.loadFinanceSummary()" class="btn btn-sm btn-primary" style="font-size:12px; padding:5px 12px;">
+                  🔄 รีเฟรชยอด
+                </button>
+              </div>
+            </div>
+
+            <!-- 5 Channel Revenue Summary Mini-Cards -->
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:12px; margin-bottom:18px;">
+              <div style="background:#FFF7ED; border:1.5px solid #FDBA74; border-radius:10px; padding:12px; text-align:center;">
+                <div style="font-size:11.5px; color:#9A3412; font-weight:700; text-transform:uppercase;">💰 รายได้รวมทั้งหมด</div>
+                <div id="shift-sum-total" style="font-size:20px; font-weight:800; color:#EA580C; margin-top:4px;">฿0.00</div>
+              </div>
+              <div style="background:#EFF6FF; border:1.5px solid #BFDBFE; border-radius:10px; padding:12px; text-align:center;">
+                <div style="font-size:11.5px; color:#1E40AF; font-weight:700; text-transform:uppercase;">🏦 โอนเงิน / QR Code</div>
+                <div id="shift-sum-qr" style="font-size:19px; font-weight:800; color:#2563EB; margin-top:4px;">฿0.00</div>
+              </div>
+              <div style="background:#ECFDF5; border:1.5px solid #A7F3D0; border-radius:10px; padding:12px; text-align:center;">
+                <div style="font-size:11.5px; color:#065F46; font-weight:700; text-transform:uppercase;">💵 เงินสด</div>
+                <div id="shift-sum-cash" style="font-size:19px; font-weight:800; color:#059669; margin-top:4px;">฿0.00</div>
+              </div>
+              <div style="background:#FDF2F8; border:1.5px solid #FBCFE8; border-radius:10px; padding:12px; text-align:center;">
+                <div style="font-size:11.5px; color:#9D174D; font-weight:700; text-transform:uppercase;">💳 บัตรเครดิต</div>
+                <div id="shift-sum-card" style="font-size:19px; font-weight:800; color:#DB2777; margin-top:4px;">฿0.00</div>
+              </div>
+              <div style="background:#F5F3FF; border:1.5px solid #DDD6FE; border-radius:10px; padding:12px; text-align:center;">
+                <div style="font-size:11.5px; color:#5B21B6; font-weight:700; text-transform:uppercase;">🅿️ PayPal</div>
+                <div id="shift-sum-paypal" style="font-size:19px; font-weight:800; color:#7C3AED; margin-top:4px;">฿0.00</div>
+              </div>
+            </div>
+
+            <!-- Shift Closing Table -->
+            <div class="table-responsive" style="max-height:380px; overflow-y:auto; border:1px solid #E2E8F0; border-radius:8px;">
+              <table class="custom-table" style="margin:0;">
+                <thead style="position:sticky; top:0; background:#F8FAFC; z-index:2;">
+                  <tr>
+                    <th id="th-shift-date" style="font-size:12px; font-weight:700; color:#334155;">วันที่ / งวด</th>
+                    <th style="font-size:12px; font-weight:700; color:#C2410C; text-align:right;">ยอดรวมสุทธิ (฿)</th>
+                    <th style="font-size:12px; font-weight:700; color:#2563EB; text-align:right;">โอนเงิน / สแกน QR</th>
+                    <th style="font-size:12px; font-weight:700; color:#059669; text-align:right;">เงินสด</th>
+                    <th style="font-size:12px; font-weight:700; color:#DB2777; text-align:right;">บัตรเครดิต</th>
+                    <th style="font-size:12px; font-weight:700; color:#7C3AED; text-align:right;">PayPal</th>
+                    <th style="font-size:12px; font-weight:700; color:#64748B; text-align:center;">จำนวนรายการ</th>
+                    <th style="font-size:12px; font-weight:700; color:#64748B; text-align:center;">รายละเอียด</th>
+                  </tr>
+                </thead>
+                <tbody id="shift-closing-tbody">
+                  <!-- Populated dynamically by app.renderShiftClosingTable -->
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Item details drilldown container -->
+            <div id="shift-closing-details-box" style="display:none; margin-top:14px; background:#F8FAFC; border:1px solid #CBD5E1; border-radius:8px; padding:12px;"></div>
+          </div>
+        </div>
+
         <!-- Collapsible Table 1: Fleet Status Table -->
         <div class="expander-card" id="expander-fleet">
           <div class="expander-header open" onclick="app.toggleExpander('expander-fleet')">

@@ -1904,6 +1904,275 @@ async def get_maintenance_pdf(mnt_id: str):
     )
 
 # -------------------------------------------------------------------------
+# FINANCIAL SUMMARY & SHIFT CLOSING (MISSION 1)
+# -------------------------------------------------------------------------
+def normalize_payment_channel(raw_method: str) -> str:
+    m = str(raw_method or "").strip().lower()
+    if any(k in m for k in ["โอน", "qr", "transfer", "scan", "bank"]):
+        return "โอนเงิน / สแกน QR"
+    if any(k in m for k in ["สด", "cash"]):
+        return "เงินสด"
+    if any(k in m for k in ["เครดิต", "credit", "card", "edc"]):
+        return "บัตรเครดิต"
+    if "paypal" in m:
+        return "PayPal"
+    return "โอนเงิน / สแกน QR"
+
+@app.get("/api/finance/summary")
+async def get_finance_summary(month: Optional[str] = None, start_date: Optional[str] = None, end_date: Optional[str] = None):
+    """
+    Financial Dashboard & Shift Closing Summary (Read-Only)
+    Aggregates income (deposit + rental + extensions) grouped by day and month,
+    and broken down by the 4 payment methods.
+    """
+    tx_list = []
+    seen_refs = set()
+
+    for b in store.bookings:
+        bid = b.get("booking_id")
+        dep_amt = float(b.get("deposit_amount") or 0.0)
+        dep_paid = b.get("deposit_paid") or (b.get("status") not in ["รอชำระมัดจำ", "ยกเลิก"] and dep_amt > 0)
+        if dep_amt > 0 and dep_paid:
+            d_date = b.get("deposit_date") or str(b.get("start_date") or "")
+            d_date_clean = str(to_date(d_date) or d_date or "").strip()
+            if not d_date_clean or len(d_date_clean) < 10:
+                d_date_clean = now_th().date().isoformat()
+            method = normalize_payment_channel(b.get("deposit_method") or "โอนเงิน / สแกน QR")
+            tx_key = f"dep_{bid}"
+            seen_refs.add(tx_key)
+            tx_list.append({
+                "id": tx_key,
+                "ref": bid,
+                "date": d_date_clean,
+                "month": d_date_clean[:7],
+                "car_id": b.get("car_id", "-"),
+                "customer": b.get("customer_name", "-"),
+                "category": "เงินมัดจำ",
+                "payment_method": method,
+                "amount": dep_amt,
+                "note": f"มัดจำจองรถ {b.get('car_id', '')}"
+            })
+
+        rent_paid = b.get("rental_paid") or b.get("is_fully_paid") or b.get("status") in ["เสร็จสิ้น", "กำลังเช่า", "รอส่งมอบ", "รอรับคืน"]
+        rent_amt = float(b.get("net_price") or b.get("rental_rate") or 0.0)
+        if rent_amt > 0 and rent_paid:
+            r_date = b.get("rental_payment_date") or str(b.get("start_date") or "")
+            r_date_clean = str(to_date(r_date) or r_date or "").strip()
+            if not r_date_clean or len(r_date_clean) < 10:
+                r_date_clean = now_th().date().isoformat()
+            r_method = normalize_payment_channel(b.get("rental_payment_method") or b.get("deposit_method") or "โอนเงิน / สแกน QR")
+            tx_key = f"rent_{bid}"
+            seen_refs.add(tx_key)
+            tx_list.append({
+                "id": tx_key,
+                "ref": bid,
+                "date": r_date_clean,
+                "month": r_date_clean[:7],
+                "car_id": b.get("car_id", "-"),
+                "customer": b.get("customer_name", "-"),
+                "category": "ค่าเช่ารถ",
+                "payment_method": r_method,
+                "amount": rent_amt,
+                "note": f"ค่าเช่ารถ {b.get('car_id', '')}"
+            })
+
+        ext_list = b.get("extension_history") or []
+        for idx, ext in enumerate(ext_list):
+            if ext.get("paid"):
+                e_amt = float(ext.get("amount") or 0.0)
+                if e_amt > 0:
+                    e_date = str(to_date(ext.get("extended_at") or ext.get("date") or "") or now_th().date().isoformat())
+                    e_method = normalize_payment_channel(ext.get("payment_method") or "โอนเงิน / สแกน QR")
+                    tx_list.append({
+                        "id": f"ext_{bid}_{idx}",
+                        "ref": bid,
+                        "date": e_date,
+                        "month": e_date[:7],
+                        "car_id": b.get("car_id", "-"),
+                        "customer": b.get("customer_name", "-"),
+                        "category": "ค่าต่อสัญญา",
+                        "payment_method": e_method,
+                        "amount": e_amt,
+                        "note": f"ต่อสัญญา #{ext.get('extension_no', idx+1)}"
+                    })
+
+    for cj in store.completed_jobs:
+        cbid = cj.get("booking_id")
+        tx_key = f"rent_{cbid}"
+        if tx_key not in seen_refs:
+            c_amt = float(cj.get("net_price") or cj.get("rental_rate") or 0.0)
+            if c_amt > 0:
+                c_date = str(to_date(cj.get("completed_date") or cj.get("end_date") or cj.get("start_date") or "") or now_th().date().isoformat())
+                c_method = normalize_payment_channel(cj.get("rental_payment_method") or cj.get("deposit_method") or "โอนเงิน / สแกน QR")
+                seen_refs.add(tx_key)
+                tx_list.append({
+                    "id": tx_key,
+                    "ref": cbid,
+                    "date": c_date,
+                    "month": c_date[:7],
+                    "car_id": cj.get("car_id", "-"),
+                    "customer": cj.get("customer_name", "-"),
+                    "category": "ค่าเช่ารถ",
+                    "payment_method": c_method,
+                    "amount": c_amt,
+                    "note": f"งานเสร็จสิ้น {cj.get('car_id', '')}"
+                })
+
+    for f in store.financial_records:
+        if f.get("type") == "รายรับ":
+            f_ref = f.get("ref", "")
+            if not f_ref or (f"rent_{f_ref}" not in seen_refs and f"dep_{f_ref}" not in seen_refs):
+                f_amt = float(f.get("amount") or 0.0)
+                if f_amt > 0:
+                    f_date = str(to_date(f.get("date")) or f.get("date") or now_th().date().isoformat())
+                    f_method = normalize_payment_channel(f.get("detail", "") or f.get("category", ""))
+                    tx_list.append({
+                        "id": f"fin_{len(tx_list)}",
+                        "ref": f_ref or "-",
+                        "date": f_date,
+                        "month": f_date[:7],
+                        "car_id": "-",
+                        "customer": "-",
+                        "category": f.get("category", "รายรับอื่นๆ"),
+                        "payment_method": f_method,
+                        "amount": f_amt,
+                        "note": f.get("detail", "")
+                    })
+
+    if month:
+        tx_list = [t for t in tx_list if t["month"] == month]
+    if start_date:
+        s_d = to_date(start_date)
+        if s_d:
+            tx_list = [t for t in tx_list if to_date(t["date"]) and to_date(t["date"]) >= s_d]
+    if end_date:
+        e_d = to_date(end_date)
+        if e_d:
+            tx_list = [t for t in tx_list if to_date(t["date"]) and to_date(t["date"]) <= e_d]
+
+    all_methods = ["โอนเงิน / สแกน QR", "เงินสด", "บัตรเครดิต", "PayPal"]
+    method_totals = {m: 0.0 for m in all_methods}
+    total_rev = 0.0
+    for t in tx_list:
+        m = t["payment_method"]
+        if m not in method_totals:
+            m = "โอนเงิน / สแกน QR"
+        amt = float(t["amount"])
+        method_totals[m] += amt
+        total_rev += amt
+
+    daily_map = {}
+    for t in tx_list:
+        d = t["date"]
+        if d not in daily_map:
+            daily_map[d] = {
+                "date": d,
+                "month": d[:7],
+                "total": 0.0,
+                "by_method": {m: 0.0 for m in all_methods},
+                "count": 0,
+                "records": []
+            }
+        daily_map[d]["total"] += float(t["amount"])
+        daily_map[d]["by_method"][t["payment_method"]] += float(t["amount"])
+        daily_map[d]["count"] += 1
+        daily_map[d]["records"].append(t)
+
+    daily_list = list(daily_map.values())
+    daily_list.sort(key=lambda x: x["date"], reverse=True)
+
+    monthly_map = {}
+    for t in tx_list:
+        mo = t["month"]
+        if mo not in monthly_map:
+            monthly_map[mo] = {
+                "month": mo,
+                "total": 0.0,
+                "by_method": {m: 0.0 for m in all_methods},
+                "count": 0
+            }
+        monthly_map[mo]["total"] += float(t["amount"])
+        monthly_map[mo]["by_method"][t["payment_method"]] += float(t["amount"])
+        monthly_map[mo]["count"] += 1
+
+    monthly_list = list(monthly_map.values())
+    monthly_list.sort(key=lambda x: x["month"], reverse=True)
+
+    return {
+        "success": True,
+        "total_revenue": round(total_rev, 2),
+        "by_method": {m: round(amt, 2) for m, amt in method_totals.items()},
+        "daily": daily_list,
+        "monthly": monthly_list,
+        "total_transactions": len(tx_list)
+    }
+
+# -------------------------------------------------------------------------
+# VEHICLE MAINTENANCE & ROI (MISSION 2)
+# -------------------------------------------------------------------------
+import urllib.parse
+
+@app.get("/api/cars/{plate:path}/maintenances")
+async def get_car_maintenances(plate: str):
+    clean_plate = urllib.parse.unquote(plate).strip()
+    records = store.get_vehicle_maintenances(clean_plate)
+    roi_data = store.get_car_financial_roi(clean_plate)
+    return {
+        "success": True,
+        "plate": clean_plate,
+        "records": records,
+        **roi_data
+    }
+
+@app.post("/api/cars/{plate:path}/maintenances")
+async def add_car_maintenance(plate: str, payload: Dict[str, Any]):
+    clean_plate = urllib.parse.unquote(plate).strip()
+    if not clean_plate:
+        raise HTTPException(status_code=400, detail="ไม่พบทะเบียนรถ")
+
+    m_date = str(payload.get("date") or now_th().date().isoformat()).strip()
+    desc = str(payload.get("description") or "").strip()
+    if not desc:
+        raise HTTPException(status_code=400, detail="กรุณาระบุรายละเอียดการซ่อมบำรุง")
+
+    try:
+        cost_val = float(payload.get("cost") or 0.0)
+    except Exception:
+        cost_val = 0.0
+
+    record = {
+        "car_id": clean_plate,
+        "date": m_date,
+        "description": desc,
+        "cost": cost_val,
+        "created_at": datetime.now().isoformat()
+    }
+    saved = store.async_add_vehicle_maintenance(record)
+    roi_data = store.get_car_financial_roi(clean_plate)
+    records = store.get_vehicle_maintenances(clean_plate)
+
+    return {
+        "success": True,
+        "message": "บันทึกประวัติซ่อมบำรุงเรียบร้อย",
+        "record": saved,
+        "records": records,
+        **roi_data
+    }
+
+@app.delete("/api/cars/{plate:path}/maintenances/{m_id}")
+async def delete_car_maintenance(plate: str, m_id: str):
+    clean_plate = urllib.parse.unquote(plate).strip()
+    store.async_delete_vehicle_maintenance(m_id)
+    roi_data = store.get_car_financial_roi(clean_plate)
+    records = store.get_vehicle_maintenances(clean_plate)
+    return {
+        "success": True,
+        "message": "ลบรายการซ่อมบำรุงเรียบร้อย",
+        "records": records,
+        **roi_data
+    }
+
+# -------------------------------------------------------------------------
 # EXECUTIVE DASHBOARD & REPORTS
 # -------------------------------------------------------------------------
 @app.get("/api/reports/car-profitability")

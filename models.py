@@ -79,3 +79,14 @@ class Customer(Base):
     id_card_photo = Column(Text, nullable=True)
     driver_license_photo = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+class VehicleMaintenance(Base):
+    __tablename__ = "vehicle_maintenances"
+
+    id = Column(Integer, primary_key=True, autoincrement=True, index=True)
+    car_id = Column(String(50), nullable=False, index=True)
+    date = Column(String(50), nullable=False)
+    description = Column(Text, nullable=False)
+    cost = Column(Numeric, default=0.0)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
