@@ -1279,6 +1279,11 @@ class App {
         const listEl = document.getElementById("mnt-car-dropdown-list");
         if (listEl) listEl.style.display = "none";
       }
+      const swapContainer = document.getElementById("insp-swap-car-dropdown-container");
+      if (swapContainer && !swapContainer.contains(e.target)) {
+        const swapList = document.getElementById("insp-swap-car-dropdown-list");
+        if (swapList) swapList.style.display = "none";
+      }
     });
   }
 
@@ -5647,6 +5652,34 @@ class App {
       condSec.style.display = jobType === "Return" ? "block" : "none";
       const radNorm = document.getElementById("insp-cond-normal");
       if (radNorm) radNorm.checked = true;
+
+      // Check if early return (returning before contract end date)
+      const badgeEarly = document.getElementById("insp-early-return-badge");
+      if (badgeEarly && b) {
+        const endStr = b.end_date ? (typeof b.end_date === "string" ? b.end_date.split("T")[0] : "") : "";
+        const todayStr = new Date().toISOString().split("T")[0];
+        if (endStr && todayStr < endStr) {
+          badgeEarly.style.display = "inline-block";
+          const dmy = this.ymdToDmy ? this.ymdToDmy(endStr) : endStr;
+          badgeEarly.textContent = `⚡ คืนรถก่อนกำหนดสัญญา (ครบกำหนดจริง: ${dmy})`;
+        } else {
+          badgeEarly.style.display = "none";
+        }
+      }
+
+      // Reset Branch B sub-options
+      const radEnd = document.getElementById("insp-sub-end-contract");
+      if (radEnd) radEnd.checked = true;
+      const swapInput = document.getElementById("insp-swap-car-search");
+      if (swapInput) swapInput.value = "";
+      const swapPlate = document.getElementById("insp-swap-selected-plate");
+      if (swapPlate) swapPlate.value = "";
+      const swapBadge = document.getElementById("insp-swap-selected-badge");
+      if (swapBadge) {
+        swapBadge.style.display = "none";
+        swapBadge.innerHTML = "";
+      }
+
       this.onInspConditionChange("normal");
     }
 
@@ -5659,14 +5692,138 @@ class App {
   onInspConditionChange(cond) {
     const normInfo = document.getElementById("insp-cond-normal-info");
     const repInfo = document.getElementById("insp-cond-repair-info");
+    const submitBtn = document.getElementById("btn-submit-inspection");
+
     if (cond === "needs_repair") {
       if (normInfo) normInfo.style.display = "none";
       if (repInfo) repInfo.style.display = "block";
+      const isSwap = document.getElementById("insp-sub-swap-car")?.checked;
+      this.onInspBranchBActionChange(isSwap ? "swap_car" : "end_contract");
     } else {
       if (normInfo) normInfo.style.display = "block";
       if (repInfo) repInfo.style.display = "none";
+      if (submitBtn) submitBtn.innerHTML = `✅ ยืนยันบันทึกผล & ปิดงาน`;
+      this.recalcInspRefundPreview();
     }
-    this.recalcInspRefundPreview();
+  }
+
+  onInspBranchBActionChange(action) {
+    const swapPanel = document.getElementById("insp-swap-car-panel");
+    const depositPreview = document.getElementById("insp-deposit-calc-preview");
+    const swapWarning = document.getElementById("insp-swap-damage-warning");
+    const submitBtn = document.getElementById("btn-submit-inspection");
+
+    if (action === "swap_car") {
+      if (swapPanel) swapPanel.style.display = "block";
+      if (depositPreview) depositPreview.style.display = "none";
+      if (swapWarning) swapWarning.style.display = "block";
+      if (submitBtn) submitBtn.innerHTML = `🔄 ยืนยันสลับรถทดแทน & ส่งรถเก่าเข้าซ่อม`;
+      this.populateInspSwapCars();
+    } else {
+      if (swapPanel) swapPanel.style.display = "none";
+      if (depositPreview) depositPreview.style.display = "block";
+      if (swapWarning) swapWarning.style.display = "none";
+      if (submitBtn) submitBtn.innerHTML = `✅ ยืนยันบันทึกผล & ปิดงาน`;
+      this.recalcInspRefundPreview();
+    }
+  }
+
+  populateInspSwapCars(searchKw = "") {
+    const listEl = document.getElementById("insp-swap-car-dropdown-list");
+    if (!listEl) return;
+
+    const bkId = document.getElementById("insp-bk-id")?.value;
+    const currentBooking = (this.bookings || []).find(x => x.booking_id === bkId);
+    const currentPlate = currentBooking?.car_id || "";
+
+    // Show only cars that are Available ("ว่างพร้อมใช้งาน") and not the currently rented car
+    const availableCars = (this.cars || []).filter(c => {
+      const isAvailable = (c.status === "ว่างพร้อมใช้งาน" || c.status === "ว่าง" || !c.status);
+      return isAvailable && c.plate !== currentPlate;
+    });
+
+    const kw = (searchKw || "").toLowerCase().trim();
+    const filtered = availableCars.filter(c => {
+      if (!kw) return true;
+      const plateMatch = (c.plate || "").toLowerCase().includes(kw);
+      const brandMatch = (c.brand || "").toLowerCase().includes(kw);
+      const modelMatch = (c.model || "").toLowerCase().includes(kw);
+      const colorMatch = (c.color || "").toLowerCase().includes(kw);
+      return plateMatch || brandMatch || modelMatch || colorMatch;
+    });
+
+    if (filtered.length === 0) {
+      listEl.innerHTML = `<div style="padding:10px 12px; color:#94A3B8; font-size:12px; text-align:center;">${availableCars.length === 0 ? "⚠️ ไม่มีรถยนต์ที่ว่างพร้อมใช้งานในขณะนี้" : `ไม่พบรถที่ตรงกับ "${kw}"`}</div>`;
+      return;
+    }
+
+    const currentSelected = document.getElementById("insp-swap-selected-plate")?.value || "";
+    listEl.innerHTML = filtered.map(c => {
+      const isSelected = c.plate === currentSelected;
+      const priceStr = c.price_day || c.daily_rate ? `฿${Number(c.price_day || c.daily_rate).toLocaleString()}/วัน` : '';
+      return `
+        <div class="insp-swap-car-option-item ${isSelected ? 'selected' : ''}" 
+             onclick="app.selectInspSwapCar('${c.plate}')"
+             title="${c.plate} - ${c.brand || ''} ${c.model || ''}">
+          <div style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding-right:8px;">
+            <span style="font-weight:800; color:#0F172A; margin-right:6px;">${c.plate}</span>
+            <span style="color:#334155; font-weight:600;">${c.brand || ''} ${c.model || ''}</span>
+            ${c.color ? `<span style="color:#64748B; font-size:11.5px; margin-left:4px;">(${c.color})</span>` : ''}
+          </div>
+          <div style="display:flex; align-items:center; gap:6px;">
+            ${priceStr ? `<span style="font-size:11px; color:#D97706; font-weight:600;">${priceStr}</span>` : ''}
+            <span style="font-size:11px; padding:2px 6px; border-radius:4px; font-weight:700; background:#ECFDF5; color:#065F46; white-space:nowrap;">
+              ว่าง
+            </span>
+          </div>
+        </div>
+      `;
+    }).join("");
+  }
+
+  showInspSwapCarDropdown(show = true) {
+    const listEl = document.getElementById("insp-swap-car-dropdown-list");
+    if (!listEl) return;
+    if (show) {
+      this.populateInspSwapCars(document.getElementById("insp-swap-car-search")?.value || "");
+      listEl.style.display = "block";
+    } else {
+      listEl.style.display = "none";
+    }
+  }
+
+  toggleInspSwapCarDropdown() {
+    const listEl = document.getElementById("insp-swap-car-dropdown-list");
+    if (!listEl) return;
+    if (listEl.style.display === "none" || !listEl.style.display) {
+      this.showInspSwapCarDropdown(true);
+      document.getElementById("insp-swap-car-search")?.focus();
+    } else {
+      this.showInspSwapCarDropdown(false);
+    }
+  }
+
+  filterInspSwapCars(kw) {
+    this.populateInspSwapCars(kw);
+    const listEl = document.getElementById("insp-swap-car-dropdown-list");
+    if (listEl) listEl.style.display = "block";
+  }
+
+  selectInspSwapCar(plate) {
+    const car = (this.cars || []).find(c => c.plate === plate);
+    const searchInput = document.getElementById("insp-swap-car-search");
+    const hiddenPlate = document.getElementById("insp-swap-selected-plate");
+    const badgeEl = document.getElementById("insp-swap-selected-badge");
+
+    if (car) {
+      if (searchInput) searchInput.value = `${car.plate} - ${car.brand || ''} ${car.model || ''} (${car.color || ''})`;
+      if (hiddenPlate) hiddenPlate.value = car.plate;
+      if (badgeEl) {
+        badgeEl.style.display = "block";
+        badgeEl.innerHTML = `✅ <b>เลือกรถทดแทน:</b> <span style="font-weight:800; color:#065F46;">${car.plate}</span> (${car.brand || ''} ${car.model || ''}) — ลูกค้าจะได้รับรถคันนี้ไปใช้งานต่อจนครบกำหนดสัญญา`;
+      }
+    }
+    this.showInspSwapCarDropdown(false);
   }
 
   recalcInspRefundPreview() {
@@ -5675,17 +5832,24 @@ class App {
     const depAmt = parseFloat(b?.deposit_amount || 5000);
     const repCost = parseFloat(document.getElementById("insp-repair-cost")?.value || 0);
     const isRepair = document.getElementById("insp-cond-repair")?.checked;
+    const isSwap = document.getElementById("insp-sub-swap-car")?.checked;
 
     const prevEl = document.getElementById("insp-deposit-calc-preview");
     if (!prevEl) return;
 
     if (isRepair) {
+      if (isSwap) {
+        prevEl.style.display = "none";
+        return;
+      }
+      prevEl.style.display = "block";
       const deducted = Math.min(repCost, depAmt);
       const refund = Math.max(0, depAmt - deducted);
       prevEl.innerHTML = `
         💵 <b>สรุปการเงินมัดจำ:</b> มัดจำเดิม ฿${depAmt.toLocaleString()} | หักค่าซ่อม ฿${deducted.toLocaleString()} | <b>คืนมัดจำสุทธิ: <span style="color:#15803D;">฿${refund.toLocaleString()}</span></b>
       `;
     } else {
+      prevEl.style.display = "block";
       prevEl.innerHTML = `
         💵 <b>คืนเงินมัดจำเต็มจำนวน:</b> <b style="color:#15803D;">฿${depAmt.toLocaleString()}</b>
       `;
@@ -5814,6 +5978,21 @@ class App {
     const repairCost = parseFloat(document.getElementById("insp-repair-cost")?.value || 0);
     const serviceCenter = (document.getElementById("insp-service-center")?.value || "").trim();
 
+    // Check Branch B sub-option (end_contract vs swap_vehicle)
+    let branchBAction = "end_contract";
+    let swapNewPlate = "";
+    if (jobType === "Return" && isRepair) {
+      const isSwap = document.getElementById("insp-sub-swap-car")?.checked;
+      if (isSwap) {
+        branchBAction = "swap_vehicle";
+        swapNewPlate = (document.getElementById("insp-swap-selected-plate")?.value || "").trim();
+        if (!swapNewPlate) {
+          alert("⚠️ กรุณาเลือกรถคันใหม่สำหรับเปลี่ยนทดแทนให้ลูกค้าก่อนกดยืนยัน");
+          return;
+        }
+      }
+    }
+
     const payload = {
       fuel_level: fuel,
       mileage: mileage,
@@ -5822,7 +6001,9 @@ class App {
       condition: (jobType === "Return" && isRepair) ? "needs_repair" : "normal",
       damage_desc: damageDesc,
       repair_cost: repairCost,
-      service_center: serviceCenter
+      service_center: serviceCenter,
+      action: branchBAction,
+      new_car_id: swapNewPlate
     };
 
     const endpoint = jobType === "Dispatch" ? `/api/bookings/${bkId}/close-dispatch` : `/api/bookings/${bkId}/close-return`;
@@ -5837,7 +6018,11 @@ class App {
       if (data.success) {
         this.closeModal("modal-handover");
         if (jobType === "Return" && isRepair) {
-          this.showToast(`⚠️ รับคืนรถ ${bkId} เรียบร้อย (ส่งซ่อมบำรุง & หักมัดจำ ฿${repairCost.toLocaleString()})`, "warning");
+          if (branchBAction === "swap_vehicle") {
+            this.showToast(`🔄 สลับรถทดแทนเป็น ${swapNewPlate} เรียบร้อย (รถเดิมเข้าซ่อมบำรุง & แขวนยอดค่าเสียหาย ฿${repairCost.toLocaleString()})`, "success");
+          } else {
+            this.showToast(`⚠️ รับคืนรถ ${bkId} เรียบร้อย (ส่งซ่อมบำรุง & หักมัดจำ ฿${repairCost.toLocaleString()})`, "warning");
+          }
         } else {
           this.showToast(`🎉 ปิดงาน ${jobType} สำหรับ ${bkId} สมบูรณ์!`, "success");
         }

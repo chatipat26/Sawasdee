@@ -2043,6 +2043,7 @@ async def close_dispatch(bk_id: str, payload: Dict[str, Any]):
 
 @app.post("/api/bookings/{bk_id}/close-return")
 async def close_return(bk_id: str, payload: Dict[str, Any]):
+    action = payload.get("action", "end_contract")
     fuel = payload.get("fuel_level", "⛽ เต็มถัง (Full - 8/8) [100%]")
     mileage = payload.get("mileage", "")
     notes = payload.get("notes", "ตรวจสภาพรถยนต์ตอนรับคืนเรียบร้อยดี")
@@ -2052,6 +2053,25 @@ async def close_return(bk_id: str, payload: Dict[str, Any]):
     damage_desc = payload.get("damage_desc", "")
     repair_cost = float(payload.get("repair_cost", 0.0))
     service_center = payload.get("service_center", "")
+
+    if action == "swap_vehicle":
+        new_car_id = str(payload.get("new_car_id", "")).strip()
+        if not new_car_id:
+            raise HTTPException(status_code=400, detail="กรุณาเลือกรถคันใหม่สำหรับเปลี่ยนทดแทน")
+        success = store.swap_booking_vehicle(
+            booking_id=bk_id,
+            new_car_id=new_car_id,
+            fuel_level=fuel,
+            inspection_notes=notes,
+            inspection_photos=photos,
+            mileage=mileage,
+            damage_desc=damage_desc,
+            repair_cost=repair_cost,
+            service_center=service_center
+        )
+        if not success:
+            raise HTTPException(status_code=404, detail="ไม่สามารถเปลี่ยนรถทดแทนได้ หรือไม่พบรหัสการจอง")
+        return {"success": True, "action": "swap_vehicle", "new_car_id": new_car_id}
 
     success = store.archive_completed_booking(
         booking_id=bk_id,
@@ -2067,7 +2087,7 @@ async def close_return(bk_id: str, payload: Dict[str, Any]):
     )
     if not success:
         raise HTTPException(status_code=404, detail="ไม่สามารถปิดงานรับคืนได้ หรือไม่พบรหัสการจอง")
-    return {"success": True}
+    return {"success": True, "action": "end_contract"}
 
 @app.post("/api/upload-photo")
 async def upload_photo(file: UploadFile = File(...)):

@@ -1995,3 +1995,29 @@ section,
   background-color: #FFEDD5 !important;
   font-weight: 700;
 }
+
+/* Inspection Return Modal: Swap Vehicle Dropdown */
+.insp-swap-car-option-item {
+  padding: 8px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid #F1F5F9;
+  font-size: 12.5px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: background-color 0.15s ease;
+  user-select: none;
+}
+
+.insp-swap-car-option-item:last-child {
+  border-bottom: none;
+}
+
+.insp-swap-car-option-item:hover {
+  background-color: #FFF7ED !important;
+}
+
+.insp-swap-car-option-item.selected {
+  background-color: #FFEDD5 !important;
+  font-weight: 700;
+}

@@ -481,6 +481,11 @@ class DataStore:
                                     b_copy["google_drive_link"] = item["google_drive_link"]
                                 if item.get("contract_issued") and not b_copy.get("contract_issued"):
                                     b_copy["contract_issued"] = True
+                            if isinstance(item, dict) and item.get("type") == "swap_meta":
+                                if item.get("pending_damage_cost") is not None:
+                                    b_copy["pending_damage_cost"] = float(item["pending_damage_cost"])
+                                if item.get("swap_history"):
+                                    b_copy["swap_history"] = item["swap_history"]
                         fresh_b.append(b_copy)
                     with self.lock:
                         self.bookings = fresh_b
@@ -708,6 +713,16 @@ class DataStore:
                 }
                 ext_list = [x for x in ext_list if not (isinstance(x, dict) and x.get("type") == "payment_meta")]
                 ext_list.append(meta_item)
+
+                swap_meta_item = {
+                    "type": "swap_meta",
+                    "pending_damage_cost": float(row.get("pending_damage_cost") or 0.0),
+                    "swap_history": list(row.get("swap_history") or [])
+                }
+                ext_list = [x for x in ext_list if not (isinstance(x, dict) and x.get("type") == "swap_meta")]
+                if swap_meta_item["pending_damage_cost"] > 0 or swap_meta_item["swap_history"]:
+                    ext_list.append(swap_meta_item)
+
                 row["extension_history"] = ext_list
 
                 VALID_COLS = {
@@ -1265,44 +1280,62 @@ class DataStore:
             car_id = target.get("car_id")
             dep_amt = float(target.get("deposit_amount", 5000.0))
             repair_cost = float(repair_cost or 0.0)
+            pending_damage = float(target.get("pending_damage_cost") or 0.0)
+            total_damage = repair_cost + pending_damage
             today_str = datetime.now().strftime("%Y-%m-%d")
 
-            # Branching logic: Branch A (normal) vs Branch B (needs repair)
-            if condition == "needs_repair":
-                deducted = min(repair_cost, dep_amt) if dep_amt > 0 else 0.0
+            # Branching logic: Branch A (normal) vs Branch B (needs repair or has deferred damage)
+            if condition == "needs_repair" or total_damage > 0:
+                deducted = min(total_damage, dep_amt) if dep_amt > 0 else 0.0
                 refund_rem = max(0.0, dep_amt - deducted)
-                target["needs_repair"] = True
-                target["damage_desc"] = damage_desc
+                target["needs_repair"] = bool(repair_cost > 0)
+                full_damage_desc = damage_desc
+                if pending_damage > 0:
+                    note_pending = f"[รวมค่าเสียหายยกยอดจากรถเดิม ฿{pending_damage:,.2f}]"
+                    full_damage_desc = f"{damage_desc} {note_pending}".strip() if damage_desc else note_pending
+                target["damage_desc"] = full_damage_desc
                 target["repair_cost_deducted"] = deducted
                 target["deposit_refunded"] = True
                 target["deposit_refund_amount"] = refund_rem
 
-                # Car transitions to Maintenance status
-                if car_id in self.cars:
+                # Car transitions to Maintenance status if current vehicle has damage
+                if repair_cost > 0 and car_id in self.cars:
                     self.cars[car_id]["status"] = "สถานะซ่อมบำรุง"
                     if mileage:
                         self.cars[car_id]["mileage"] = mileage
                     self.async_sync_car(car_id, self.cars[car_id])
+                elif car_id in self.cars:
+                    has_queue = any(
+                        b.get("car_id") == car_id
+                        and b.get("booking_id") != booking_id
+                        and b.get("status") not in ("ยกเลิก", "เสร็จสิ้น")
+                        for b in self.bookings
+                    )
+                    self.cars[car_id]["status"] = "ติดจอง" if has_queue else "ว่างพร้อมใช้งาน"
+                    if mileage:
+                        self.cars[car_id]["mileage"] = mileage
+                    self.async_sync_car(car_id, self.cars[car_id])
 
-                # Auto-create maintenance record in store
-                mnt_id = f"MNT{datetime.now().strftime('%y%m%d%H%M%S')}"
-                c_brand = b_car.get("brand", "")
-                c_model = b_car.get("model", "")
-                mnt_rec = {
-                    "id": mnt_id,
-                    "car_id": car_id,
-                    "car_brand": f"{c_brand} {c_model}".strip(),
-                    "order_type": "ซ่อมบำรุงจากความเสียหายหลังการเช่า",
-                    "service_items": damage_desc or inspection_notes or "ตรวจพบความเสียหายหลังการเช่า",
-                    "cost": repair_cost,
-                    "status": "รอดำเนินการ",
-                    "schedule_date": date.today(),
-                    "expected_finish_date": date.today(),
-                    "service_center": service_center or "ศูนย์บริการ / อู่ซ่อม",
-                    "notes": f"เปิดจากงานรับคืน {booking_id} (หักเงินมัดจำ ฿{deducted:,.2f})"
-                }
-                self.maintenance_records.insert(0, mnt_rec)
-                self.async_sync_maintenance(mnt_rec)
+                # Auto-create maintenance record in store if current vehicle is damaged
+                if repair_cost > 0:
+                    mnt_id = f"MNT{datetime.now().strftime('%y%m%d%H%M%S')}"
+                    c_brand = b_car.get("brand", "")
+                    c_model = b_car.get("model", "")
+                    mnt_rec = {
+                        "id": mnt_id,
+                        "car_id": car_id,
+                        "car_brand": f"{c_brand} {c_model}".strip(),
+                        "order_type": "ซ่อมบำรุงจากความเสียหายหลังการเช่า",
+                        "service_items": damage_desc or inspection_notes or "ตรวจพบความเสียหายหลังการเช่า",
+                        "cost": repair_cost,
+                        "status": "รอดำเนินการ",
+                        "schedule_date": date.today(),
+                        "expected_finish_date": date.today(),
+                        "service_center": service_center or "ศูนย์บริการ / อู่ซ่อม",
+                        "notes": f"เปิดจากงานรับคืน {booking_id} (หักเงินมัดจำ ฿{deducted:,.2f})"
+                    }
+                    self.maintenance_records.insert(0, mnt_rec)
+                    self.async_sync_maintenance(mnt_rec)
 
                 # Record financial deduction & refund
                 if deducted > 0:
@@ -1313,7 +1346,7 @@ class DataStore:
                         "amount": deducted,
                         "ref": booking_id,
                         "date": today_str,
-                        "detail": f"หักค่าเสียหาย/ซ่อมบำรุงจากมัดจำ {booking_id} ({car_id})"
+                        "detail": f"หักค่าเสียหาย/ซ่อมบำรุงจากมัดจำ {booking_id} ({car_id})" + (f" (รวมยกยอด ฿{pending_damage:,.2f})" if pending_damage > 0 else "")
                     }
                     self.async_sync_financial(f_deduct)
 
@@ -1410,6 +1443,80 @@ class DataStore:
                     "detail": f"ค่าปรับคืนรถล่าช้าเกิน 4 ชม. (1 วันเต็ม) {target['car_id']}"
                 }
                 self.async_sync_financial(f_late)
+            return True
+
+    def swap_booking_vehicle(self, booking_id, new_car_id, fuel_level="⛽ เต็มถัง (Full - 8/8) [100%]", inspection_notes="สลับรถทดแทน", inspection_photos=None, mileage="", damage_desc="", repair_cost=0.0, service_center=""):
+        with self.lock:
+            target = next((b for b in self.bookings if b.get("booking_id") == booking_id), None)
+            if not target:
+                return False
+
+            old_car_id = target.get("car_id")
+            repair_cost = float(repair_cost or 0.0)
+            today_str = datetime.now().strftime("%Y-%m-%d")
+
+            # 1. Update Old Car -> Maintenance
+            b_old_car = self.cars.get(old_car_id, {})
+            if old_car_id in self.cars:
+                self.cars[old_car_id]["status"] = "สถานะซ่อมบำรุง"
+                if mileage:
+                    self.cars[old_car_id]["mileage"] = mileage
+                self.async_sync_car(old_car_id, self.cars[old_car_id])
+
+            # Auto-create maintenance record for old car
+            mnt_id = f"MNT{datetime.now().strftime('%y%m%d%H%M%S')}"
+            c_brand = b_old_car.get("brand", "")
+            c_model = b_old_car.get("model", "")
+            mnt_rec = {
+                "id": mnt_id,
+                "car_id": old_car_id,
+                "car_brand": f"{c_brand} {c_model}".strip(),
+                "order_type": "ซ่อมบำรุงจากความเสียหายระหว่างเช่า (สลับรถทดแทน)",
+                "service_items": damage_desc or inspection_notes or "ตรวจพบความเสียหายระหว่างเช่า ลูกค้าเปลี่ยนรถทดแทน",
+                "cost": repair_cost,
+                "status": "รอดำเนินการ",
+                "schedule_date": date.today(),
+                "expected_finish_date": date.today(),
+                "service_center": service_center or "ศูนย์บริการ / อู่ซ่อม",
+                "notes": f"เกิดจากการสลับรถทดแทนใน Booking {booking_id} (ยอดค่าเสียหายรอหักมัดจำ ฿{repair_cost:,.2f})"
+            }
+            self.maintenance_records.insert(0, mnt_rec)
+            self.async_sync_maintenance(mnt_rec)
+
+            # 2. Update New Car -> On Rent
+            if new_car_id in self.cars:
+                self.cars[new_car_id]["status"] = "กำลังเช่า"
+                self.async_sync_car(new_car_id, self.cars[new_car_id])
+
+            # 3. Update Existing Booking (booking continuation)
+            target["car_id"] = new_car_id
+            target["status"] = "กำลังเช่า"
+            target["dispatch_closed"] = True
+            target["return_closed"] = False
+
+            # Accumulate pending damage cost to be deducted at contract completion
+            prev_pending = float(target.get("pending_damage_cost") or 0.0)
+            target["pending_damage_cost"] = prev_pending + repair_cost
+
+            # Record swap history
+            if "swap_history" not in target or not isinstance(target["swap_history"], list):
+                target["swap_history"] = []
+            target["swap_history"].append({
+                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "old_car_id": old_car_id,
+                "new_car_id": new_car_id,
+                "damage_desc": damage_desc,
+                "repair_cost": repair_cost,
+                "mileage": mileage,
+                "fuel_level": fuel_level,
+                "notes": inspection_notes,
+                "photos": inspection_photos or [],
+                "service_center": service_center
+            })
+
+            self.save_local_cars()
+            self.save_local_bookings()
+            self.async_sync_booking(target)
             return True
 
 store = DataStore()
