@@ -4462,6 +4462,13 @@ class App {
     const cust = this.customers.find(c => c.full_name === b.customer) || {};
     const car = this.cars.find(c => c.plate === b.car_id) || {};
 
+    // Financial & Status variables declared upfront to avoid ReferenceError / TDZ
+    const netP = parseFloat(b.net_price || 0);
+    const depAmt = parseFloat(b.deposit_amount || 5000);
+    const isDep = !!b.deposit_paid;
+    const isRent = !!b.rental_paid;
+    const remP = isRent ? 0 : parseFloat(b.remaining_rental !== undefined ? b.remaining_rental : netP);
+
     // Header with badges
     const header = document.getElementById("contract-header-info");
     if (header) {
@@ -4570,7 +4577,7 @@ class App {
             </div>
           ` : (!b.contract_issued ? `
             <div style="background:#EFF6FF; border:1px solid #BFDBFE; border-radius:6px; padding:7px 10px; font-size:12px; color:#1E40AF; margin-top:8px;">
-              📝 <b>ชำระค่าเช่าครบแล้ว</b> ➔ กรุณากดปุ่ม <b>"✅ ยืนยันออกสัญญาเรียบร้อย"</b> ด้านล่างก่อนส่งมอบรถ
+              📝 <b>ชำระค่าเช่าครบแล้ว</b> ➔ กรุณากดปุ่ม <b>"📝 ดาวน์โหลดสัญญาเช่า (PDF)"</b> เพื่อออกสัญญาและเริ่มการเช่าทันที
             </div>
           ` : `
             <div style="background:#F0FDF4; border:1px solid #BBF7D0; border-radius:6px; padding:7px 10px; font-size:12px; color:#166534; margin-top:8px;">
@@ -4582,12 +4589,6 @@ class App {
     }
 
     // Financial
-    const netP = parseFloat(b.net_price || 0);
-    const depAmt = parseFloat(b.deposit_amount || 5000);
-    const isDep = !!b.deposit_paid;
-    const isRent = !!b.rental_paid;
-    const remP = isRent ? 0 : parseFloat(b.remaining_rental || netP);
-
     const netEl = document.getElementById("contract-net-price");
     if (netEl) netEl.textContent = `฿${netP.toLocaleString('th-TH', {minimumFractionDigits: 2})}`;
 
