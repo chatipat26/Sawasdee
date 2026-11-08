@@ -1271,6 +1271,15 @@ class App {
         }
       }
     });
+
+    // Dismiss custom searchable dropdowns when clicking outside
+    document.addEventListener("click", (e) => {
+      const container = document.getElementById("mnt-car-dropdown-container");
+      if (container && !container.contains(e.target)) {
+        const listEl = document.getElementById("mnt-car-dropdown-list");
+        if (listEl) listEl.style.display = "none";
+      }
+    });
   }
 
   getThaiDateTime(offsetDays = 0) {
@@ -8223,16 +8232,150 @@ ${e.message}`);
     }).join("");
   }
 
-  openNewMaintenanceModal(targetPlate = null, defaultType = null) {
+  populateMaintenanceCars(searchKw = "") {
+    const listEl = document.getElementById("mnt-car-dropdown-list");
     const carSel = document.getElementById("mnt-car-select");
+    const currentCarId = carSel ? carSel.value : "";
+
+    // Always keep hidden #mnt-car-select populated with options for 100% backward compatibility
     if (carSel) {
       const opts = (this.cars || []).map(c => `<option value="${c.plate}">${c.plate} - ${c.brand || ''} ${c.model || ''} (${c.color || ''}) [${c.status}]</option>`);
       carSel.innerHTML = opts.join("");
-      if (targetPlate && this.cars.some(c => c.plate === targetPlate)) {
-        carSel.value = targetPlate;
-      }
+      if (currentCarId) carSel.value = currentCarId;
     }
 
+    if (!listEl) return;
+    const kw = (searchKw || "").toLowerCase().trim();
+    const filtered = (this.cars || []).filter(c => {
+      if (!kw) return true;
+      const plateMatch = (c.plate || "").toLowerCase().includes(kw);
+      const brandMatch = (c.brand || "").toLowerCase().includes(kw);
+      const modelMatch = (c.model || "").toLowerCase().includes(kw);
+      const colorMatch = (c.color || "").toLowerCase().includes(kw);
+      const statusMatch = (c.status || "").toLowerCase().includes(kw);
+      return plateMatch || brandMatch || modelMatch || colorMatch || statusMatch;
+    });
+
+    if (filtered.length === 0) {
+      listEl.innerHTML = `<div style="padding:10px 14px; color:#94A3B8; font-size:12px; text-align:center;">ไม่พบข้อมูลรถยนต์ที่ตรงกับ "${kw}"</div>`;
+      return;
+    }
+
+    listEl.innerHTML = filtered.map(c => {
+      const isSelected = c.plate === currentCarId;
+      const statusBg = c.status === "ว่างพร้อมใช้งาน" ? "#ECFDF5" : (c.status === "สถานะซ่อมบำรุง" ? "#FEF2F2" : "#FFFBEB");
+      const statusColor = c.status === "ว่างพร้อมใช้งาน" ? "#065F46" : (c.status === "สถานะซ่อมบำรุง" ? "#991B1B" : "#92400E");
+      return `
+        <div class="mnt-car-option-item ${isSelected ? 'selected' : ''}" 
+             onclick="app.selectMaintenanceCar('${c.plate}')"
+             title="${c.plate} - ${c.brand || ''} ${c.model || ''}">
+          <div style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding-right:8px;">
+            <span style="font-weight:800; color:#0F172A; margin-right:6px;">${c.plate}</span>
+            <span style="color:#334155; font-weight:600;">${c.brand || ''} ${c.model || ''}</span>
+            ${c.color ? `<span style="color:#64748B; font-size:11.5px; margin-left:4px;">(${c.color})</span>` : ''}
+          </div>
+          <span style="font-size:11px; padding:2px 6px; border-radius:4px; font-weight:700; background:${statusBg}; color:${statusColor}; white-space:nowrap;">
+            ${c.status || '-'}
+          </span>
+        </div>
+      `;
+    }).join("");
+  }
+
+  showMntCarDropdown(show = true) {
+    const listEl = document.getElementById("mnt-car-dropdown-list");
+    if (!listEl) return;
+    if (show) {
+      this.populateMaintenanceCars(document.getElementById("mnt-car-search-input")?.value || "");
+      listEl.style.display = "block";
+    } else {
+      listEl.style.display = "none";
+    }
+  }
+
+  toggleMntCarDropdown() {
+    const listEl = document.getElementById("mnt-car-dropdown-list");
+    if (!listEl) return;
+    if (listEl.style.display === "none" || !listEl.style.display) {
+      this.showMntCarDropdown(true);
+      document.getElementById("mnt-car-search-input")?.focus();
+    } else {
+      this.showMntCarDropdown(false);
+    }
+  }
+
+  filterMaintenanceCars(kw) {
+    this.populateMaintenanceCars(kw);
+    const listEl = document.getElementById("mnt-car-dropdown-list");
+    if (listEl) listEl.style.display = "block";
+  }
+
+  selectMaintenanceCar(plate) {
+    const car = (this.cars || []).find(c => c.plate === plate);
+    const searchInput = document.getElementById("mnt-car-search-input");
+    const carSel = document.getElementById("mnt-car-select");
+
+    if (car) {
+      if (searchInput) {
+        searchInput.value = `${car.plate} - ${car.brand || ''} ${car.model || ''} (${car.color || ''})`;
+      }
+      if (carSel) {
+        carSel.value = car.plate;
+      }
+      this.onMaintenanceCarSelected(car.plate);
+
+      const isEdit = Boolean(document.getElementById("mnt-form-id")?.value);
+      if (!isEdit) {
+        const typeSel = document.getElementById("mnt-order-type");
+        if (typeSel) {
+          this.fetchAndPopulateLastCost(car.plate, typeSel.value);
+        }
+      }
+    }
+    this.showMntCarDropdown(false);
+  }
+
+  async fetchAndPopulateLastCost(carId, typeVal) {
+    const costInput = document.getElementById("mnt-cost");
+    const hintEl = document.getElementById("mnt-cost-hint");
+    if (!costInput) return;
+    if (!carId) {
+      if (hintEl) hintEl.innerHTML = "";
+      return;
+    }
+
+    if (hintEl) {
+      hintEl.innerHTML = `<span style="color:#D97706;">⏳ กำลังตรวจสอบประวัติราคาเดิม...</span>`;
+    }
+
+    try {
+      const resp = await fetch(`/api/maintenance/last-cost?car_id=${encodeURIComponent(carId)}&type=${encodeURIComponent(typeVal || "")}`);
+      if (!resp.ok) {
+        if (hintEl) hintEl.innerHTML = "";
+        return;
+      }
+      const data = await resp.json();
+      if (data && data.success && data.cost > 0) {
+        costInput.value = data.cost;
+        const sourceLabel = data.source === "maintenance_record"
+          ? "ประวัติใบงานเดิมล่าสุด"
+          : (data.source === "vehicle_maintenance" ? "ประวัติการซ่อมบำรุงเดิม" : "ค่าบริการตามสเปกรถ");
+        if (hintEl) {
+          hintEl.innerHTML = `<span style="color:#059669; font-weight:600;">💡 ดึงราคาล่าสุดอัตโนมัติ: ฿${Number(data.cost).toLocaleString()} (${sourceLabel}) — สามารถแก้ไขได้</span>`;
+        }
+      } else {
+        costInput.value = 0;
+        if (hintEl) {
+          hintEl.innerHTML = `<span style="color:#64748B;">ไม่มีประวัติราคาเดิมในระบบ (กรุณาระบุงบประมาณตามจริง)</span>`;
+        }
+      }
+    } catch (e) {
+      console.warn("fetchAndPopulateLastCost error:", e);
+      if (hintEl) hintEl.innerHTML = "";
+    }
+  }
+
+  openNewMaintenanceModal(targetPlate = null, defaultType = null) {
     const workerSel = document.getElementById("mnt-assigned-worker");
     if (workerSel) {
       const userList = (this.users || []).filter(u => u.status === "approved" || !u.status);
@@ -8248,8 +8391,28 @@ ${e.message}`);
       workerSel.innerHTML = opts.join("");
     }
 
-    const chosenPlate = targetPlate || (carSel ? carSel.value : (this.cars[0]?.plate || ""));
-    this.onMaintenanceCarSelected(chosenPlate);
+    document.getElementById("mnt-form-id").value = "";
+    document.getElementById("mnt-cost").value = "";
+    const hintEl = document.getElementById("mnt-cost-hint");
+    if (hintEl) hintEl.innerHTML = "";
+    document.getElementById("mnt-notes").value = "";
+    const itemArea = document.getElementById("mnt-service-items");
+    if (itemArea) itemArea.value = "";
+    const gName = document.getElementById("mnt-service-center");
+    if (gName) gName.value = "";
+    const gPhone = document.getElementById("mnt-service-phone");
+    if (gPhone) gPhone.value = "";
+    const gLoc = document.getElementById("mnt-service-loc");
+    if (gLoc) gLoc.value = "";
+    const updateCarCheck = document.getElementById("mnt-update-car-status");
+    if (updateCarCheck) updateCarCheck.checked = true;
+
+    // Populate car options and select target
+    this.populateMaintenanceCars("");
+    const chosenPlate = targetPlate || (this.cars && this.cars[0] ? this.cars[0].plate : "");
+    if (chosenPlate) {
+      this.selectMaintenanceCar(chosenPlate);
+    }
 
     const typeSel = document.getElementById("mnt-order-type");
     if (typeSel) {
@@ -8269,11 +8432,6 @@ ${e.message}`);
     const expDate = document.getElementById("mnt-exp-date");
     if (expDate) expDate.value = tomorrow;
 
-    document.getElementById("mnt-form-id").value = "";
-    document.getElementById("mnt-cost").value = "";
-    document.getElementById("mnt-notes").value = "";
-    document.getElementById("mnt-update-car-status").checked = true;
-
     document.getElementById("modal-mnt-title").textContent = "🛠️ ออกใบงานซ่อมบำรุง / ต่อทะเบียน-ประกัน";
     this.openModal("modal-new-maintenance");
   }
@@ -8289,6 +8447,10 @@ ${e.message}`);
     document.getElementById("mnt-order-type").value = rec.order_type || "ซ่อมบำรุงทั่วไป / เช็คระยะ";
     document.getElementById("mnt-service-items").value = rec.service_items || "";
     document.getElementById("mnt-cost").value = rec.cost || "";
+    const hintEl = document.getElementById("mnt-cost-hint");
+    if (hintEl) {
+      hintEl.innerHTML = `<span style="color:#64748B;">แก้ไขค่างบประมาณของใบงาน (${mntId})</span>`;
+    }
     document.getElementById("mnt-mileage").value = rec.current_mileage || "";
     document.getElementById("mnt-service-center").value = rec.service_center || "";
     document.getElementById("mnt-service-phone").value = rec.service_center_phone || "";
@@ -8299,7 +8461,8 @@ ${e.message}`);
     document.getElementById("mnt-exp-date").value = this.dmyToYmd(rec.expected_finish_date) || (rec.expected_finish_date || "");
     document.getElementById("mnt-exp-time").value = rec.expected_finish_time || "17:00";
     document.getElementById("mnt-notes").value = rec.notes || "";
-    document.getElementById("mnt-update-car-status").checked = Boolean(rec.update_car_status);
+    const updateCarCheck = document.getElementById("mnt-update-car-status");
+    if (updateCarCheck) updateCarCheck.checked = Boolean(rec.update_car_status);
   }
 
   onMaintenanceCarSelected(plate) {
@@ -8317,15 +8480,25 @@ ${e.message}`);
   onMaintenanceTypeChange(typeVal) {
     const itemArea = document.getElementById("mnt-service-items");
     const garageInput = document.getElementById("mnt-service-center");
-    if (!itemArea) return;
-
-    if (typeVal.includes("ต่อทะเบียน") && (!itemArea.value || itemArea.value.includes("น้ำมันเครื่อง"))) {
-      itemArea.value = "1. ตรวจสภาพรถยนต์ ตรอ.\n2. ยื่นต่อภาษีประจำปี ณ กรมการขนส่งทางบก\n3. จัดทำ พ.ร.บ. คุ้มครองผู้ประสบภัยจากรถ";
-      if (garageInput && !garageInput.value) {
-        garageInput.value = "สำนักงานขนส่งกรุงเทพมหานครพื้นที่ 5 (จตุจักร) / ตรอ.วิภาวดี";
+    if (itemArea) {
+      if (typeVal.includes("ต่อทะเบียน") && (!itemArea.value || itemArea.value.includes("น้ำมันเครื่อง"))) {
+        itemArea.value = "1. ตรวจสภาพรถยนต์ ตรอ.\n2. ยื่นต่อภาษีประจำปี ณ กรมการขนส่งทางบก\n3. จัดทำ พ.ร.บ. คุ้มครองผู้ประสบภัยจากรถ";
+        if (garageInput && !garageInput.value) {
+          garageInput.value = "สำนักงานขนส่งกรุงเทพมหานครพื้นที่ 5 (จตุจักร) / ตรอ.วิภาวดี";
+        }
+      } else if (typeVal.includes("ประกัน") && (!itemArea.value || itemArea.value.includes("น้ำมันเครื่อง"))) {
+        itemArea.value = "1. ตรวจสอบเบี้ยประกันภัยรถยนต์ประจำปี\n2. ต่ออายุความคุ้มครองกรมธรรม์ประกันภัยรถยนต์ (ชั้น 1)";
       }
-    } else if (typeVal.includes("ประกัน") && (!itemArea.value || itemArea.value.includes("น้ำมันเครื่อง"))) {
-      itemArea.value = "1. ตรวจสอบเบี้ยประกันภัยรถยนต์ประจำปี\n2. ต่ออายุความคุ้มครองกรมธรรม์ประกันภัยรถยนต์ (ชั้น 1)";
+    }
+
+    // Auto-fetch historical cost for the chosen car & order type if not in edit mode
+    const isEdit = Boolean(document.getElementById("mnt-form-id")?.value);
+    if (!isEdit) {
+      const carSel = document.getElementById("mnt-car-select");
+      const chosenPlate = carSel ? carSel.value : "";
+      if (chosenPlate) {
+        this.fetchAndPopulateLastCost(chosenPlate, typeVal);
+      }
     }
   }
 

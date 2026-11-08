@@ -2082,6 +2082,87 @@ async def upload_photo(file: UploadFile = File(...)):
 # -------------------------------------------------------------------------
 # FLEET MAINTENANCE & SERVICE WORK ORDERS
 # -------------------------------------------------------------------------
+@app.get("/api/maintenance/last-cost")
+async def get_last_maintenance_cost(car_id: str, type: Optional[str] = None):
+    """
+    Returns the latest historical cost or preset document cost for a car and order type.
+    """
+    clean_car = str(car_id or "").strip()
+    clean_type = str(type or "").strip()
+    clean_type_lower = clean_type.lower()
+
+    if not clean_car:
+        return {"success": False, "cost": 0.0, "message": "car_id required"}
+
+    # 1. Check existing maintenance_records (newest first)
+    try:
+        records = sorted(
+            store.maintenance_records,
+            key=lambda r: str(r.get("schedule_date") or r.get("id") or ""),
+            reverse=True
+        )
+        for m in records:
+            if str(m.get("car_id", "")).strip() == clean_car:
+                m_type = str(m.get("order_type") or "")
+                m_type_lower = m_type.lower()
+                if not clean_type or clean_type_lower in m_type_lower or m_type_lower in clean_type_lower:
+                    cost = float(m.get("actual_cost") or m.get("cost") or 0.0)
+                    if cost > 0:
+                        return {
+                            "success": True,
+                            "car_id": clean_car,
+                            "order_type": clean_type or m_type,
+                            "cost": cost,
+                            "source": "maintenance_record",
+                            "record_id": m.get("id")
+                        }
+    except Exception:
+        pass
+
+    # 2. Check vehicle_maintenances (newest first)
+    try:
+        vh_maintenances = sorted(
+            store.get_vehicle_maintenances(clean_car),
+            key=lambda vm: str(vm.get("date") or vm.get("id") or ""),
+            reverse=True
+        )
+        for vm in vh_maintenances:
+            desc = str(vm.get("description") or vm.get("type") or "")
+            desc_lower = desc.lower()
+            if not clean_type or clean_type_lower in desc_lower or desc_lower in clean_type_lower:
+                cost = float(vm.get("cost") or 0.0)
+                if cost > 0:
+                    return {
+                        "success": True,
+                        "car_id": clean_car,
+                        "order_type": clean_type or desc,
+                        "cost": cost,
+                        "source": "vehicle_maintenance"
+                    }
+    except Exception:
+        pass
+
+    # 3. Check car document presets (tax, act/prb, insurance)
+    car = store.cars.get(clean_car, {})
+    if car and clean_type:
+        t_low = clean_type_lower
+        tax_cost = float(car.get("tax_price") or 1500.0)
+        prb_cost = float(car.get("prb_price") or car.get("act_price") or 645.21)
+        ins_cost = float(car.get("insurance_premium") or car.get("ins_premium") or 12000.0)
+
+        if "ภาษี" in t_low and ("พ.ร.บ." in t_low or "พรบ" in t_low) and "ประกัน" in t_low:
+            return {"success": True, "car_id": clean_car, "order_type": clean_type, "cost": round(tax_cost + prb_cost + ins_cost, 2), "source": "car_preset"}
+        elif "ภาษี" in t_low and ("พ.ร.บ." in t_low or "พรบ" in t_low):
+            return {"success": True, "car_id": clean_car, "order_type": clean_type, "cost": round(tax_cost + prb_cost, 2), "source": "car_preset"}
+        elif "ภาษี" in t_low:
+            return {"success": True, "car_id": clean_car, "order_type": clean_type, "cost": round(tax_cost, 2), "source": "car_preset"}
+        elif "พ.ร.บ." in t_low or "พรบ" in t_low:
+            return {"success": True, "car_id": clean_car, "order_type": clean_type, "cost": round(prb_cost, 2), "source": "car_preset"}
+        elif "ประกัน" in t_low:
+            return {"success": True, "car_id": clean_car, "order_type": clean_type, "cost": round(ins_cost, 2), "source": "car_preset"}
+
+    return {"success": True, "car_id": clean_car, "order_type": clean_type, "cost": 0.0, "source": "none"}
+
 @app.get("/api/maintenance")
 async def list_maintenance(
     car_id: Optional[str] = None,

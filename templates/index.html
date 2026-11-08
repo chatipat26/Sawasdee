@@ -2388,16 +2388,34 @@
 
       <input type="hidden" id="mnt-form-id" value="">
 
-      <!-- Vehicle Selection & Info Banner -->
-      <div style="background:#FFF7ED; border:1px solid #FFEDD5; border-radius:10px; padding:12px 14px; margin-bottom:14px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-          <div style="flex:1; min-width:240px;">
-            <label style="font-size:11.5px; font-weight:700; color:#9A3412; display:block; margin-bottom:4px;">เลือกรถยนต์:</label>
-            <select id="mnt-car-select" class="form-control" onchange="app.onMaintenanceCarSelected(this.value)" style="font-weight:700; font-size:13px; color:#1F2937;">
+      <!-- Vehicle Selection & Info Banner (Searchable Dropdown) -->
+      <div style="background:#FFF7ED; border:1px solid #FFEDD5; border-radius:10px; padding:12px 14px; margin-bottom:14px; position:relative;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:10px;">
+          <div style="flex:1; min-width:260px; position:relative;" id="mnt-car-dropdown-container">
+            <label style="font-size:11.5px; font-weight:700; color:#9A3412; display:block; margin-bottom:4px;">
+              🚗 เลือกรถยนต์ <span style="font-weight:normal; color:#C2410C;">(พิมพ์ค้นหาทะเบียน หรือ รุ่นรถได้):</span>
+            </label>
+            <div style="position:relative; display:flex; align-items:center;">
+              <input type="text" id="mnt-car-search-input" class="form-control" placeholder="🔍 พิมพ์ค้นหา เช่น 5181, Yaris, Freed..." 
+                autocomplete="off"
+                onfocus="app.showMntCarDropdown(true)"
+                onclick="app.showMntCarDropdown(true)"
+                oninput="app.filterMaintenanceCars(this.value)"
+                style="font-weight:700; font-size:13px; color:#1F2937; padding-right:32px; background:#FFFFFF; cursor:text;">
+              <button type="button" onclick="app.toggleMntCarDropdown()" 
+                style="position:absolute; right:6px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; color:#94A3B8; font-size:12px; padding:4px 6px;"
+                title="คลิกเพื่อเลือกดูรถทั้งหมด">▼</button>
+            </div>
+            <!-- Custom searchable dropdown list -->
+            <div id="mnt-car-dropdown-list" style="display:none; position:absolute; top:100%; left:0; right:0; z-index:9999; max-height:220px; overflow-y:auto; background:#ffffff; border:1px solid #FDBA74; border-radius:8px; box-shadow:0 8px 20px rgba(0,0,0,0.15); margin-top:4px;">
+              <!-- Populated by JS -->
+            </div>
+            <!-- Hidden original select to maintain 100% backward compatibility -->
+            <select id="mnt-car-select" style="display:none;" onchange="app.onMaintenanceCarSelected(this.value)">
               <!-- Populated by JS -->
             </select>
           </div>
-          <div id="mnt-car-expiry-pill" style="font-size:11.5px; color:#C2410C; background:white; border:1px solid #FDBA74; padding:5px 10px; border-radius:8px;">
+          <div id="mnt-car-expiry-pill" style="font-size:11.5px; color:#C2410C; background:white; border:1px solid #FDBA74; padding:6px 12px; border-radius:8px; white-space:nowrap; margin-top:20px;">
             พ.ร.บ.: <span id="mnt-car-act">-</span> | ประกันภัย: <span id="mnt-car-ins">-</span>
           </div>
         </div>
@@ -2442,6 +2460,7 @@
         <div class="form-group">
           <label style="font-weight:700;">ค่าซ่อมบำรุง / งบประมาณ (THB):</label>
           <input type="number" id="mnt-cost" class="form-control" placeholder="0" min="0" step="50" style="font-weight:700; color:#B45309;">
+          <small id="mnt-cost-hint" style="display:block; font-size:11px; color:#64748B; margin-top:4px; min-height:16px;"></small>
         </div>
         <div class="form-group">
           <label style="font-weight:700;">เลขไมล์ปัจจุบัน (กม.):</label>
@@ -2634,7 +2653,7 @@
   <div class="toast-container" id="toast-container"></div>
 
   <!-- Scripts with cache busting -->
-  <script src="/static/js/app.js?v=11.5"></script>
+  <script src="/static/js/app.js?v=11.6"></script>
 
   <!-- ===================================================================== -->
   <!-- MODAL: ACTIVE RENTALS / CARS WITH CUSTOMERS (POPUP FOR CARD 1) -->
