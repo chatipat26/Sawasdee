@@ -4234,6 +4234,25 @@ class App {
         }
       }
 
+      const odoEl = document.getElementById("assign-disp-odometer");
+      const fuelEl = document.getElementById("assign-disp-fuel");
+      const notesEl = document.getElementById("assign-disp-notes");
+      const photosUrlEl = document.getElementById("assign-disp-photos-url");
+      const photosPrevEl = document.getElementById("assign-disp-photos-preview");
+
+      if (odoEl) odoEl.value = b.odometer_out || "";
+      if (fuelEl && b.fuel_out) fuelEl.value = b.fuel_out;
+      if (notesEl) notesEl.value = b.inspection_notes_out || "";
+      if (photosUrlEl) photosUrlEl.value = b.inspection_photos_out || "";
+      this.assignDispPhotos = b.inspection_photos_out ? b.inspection_photos_out.split(",").map(x => x.trim()).filter(Boolean) : [];
+      if (photosPrevEl) {
+        photosPrevEl.innerHTML = (this.assignDispPhotos || []).map(url => `
+          <a href="${url}" target="_blank" style="display:inline-block; border-radius:6px; overflow:hidden; border:1px solid #CBD5E1;">
+            <img src="${url}" style="width:60px; height:45px; object-fit:cover; display:block;">
+          </a>
+        `).join("");
+      }
+
       if (bannerEl) {
         const isDep = Boolean(b.deposit_paid);
         const isRent = Boolean(b.rental_paid);
@@ -4337,6 +4356,34 @@ class App {
         }
       }
 
+      const odoEl = document.getElementById("assign-ret-odometer");
+      const fuelEl = document.getElementById("assign-ret-fuel");
+      const notesEl = document.getElementById("assign-ret-notes");
+      const photosUrlEl = document.getElementById("assign-ret-photos-url");
+      const photosPrevEl = document.getElementById("assign-ret-photos-preview");
+      const badgeEl = document.getElementById("assign-ret-compare-badge");
+
+      if (odoEl) odoEl.value = b.odometer_in || "";
+      if (fuelEl && b.fuel_in) fuelEl.value = b.fuel_in;
+      if (notesEl) notesEl.value = b.inspection_notes_in || "";
+      if (photosUrlEl) photosUrlEl.value = b.inspection_photos_in || "";
+      this.assignRetPhotos = b.inspection_photos_in ? b.inspection_photos_in.split(",").map(x => x.trim()).filter(Boolean) : [];
+      if (photosPrevEl) {
+        photosPrevEl.innerHTML = (this.assignRetPhotos || []).map(url => `
+          <a href="${url}" target="_blank" style="display:inline-block; border-radius:6px; overflow:hidden; border:1px solid #CBD5E1;">
+            <img src="${url}" style="width:60px; height:45px; object-fit:cover; display:block;">
+          </a>
+        `).join("");
+      }
+
+      if (badgeEl) {
+        const outOdoFmt = b.odometer_out ? `${Number(b.odometer_out).toLocaleString()} กม.` : 'ไม่ได้ระบุ';
+        const outFuelFmt = b.fuel_out || 'ไม่ได้ระบุ';
+        const outNotesFmt = b.inspection_notes_out ? `"${b.inspection_notes_out}"` : 'ไม่มีบันทึก';
+        badgeEl.innerHTML = `📌 <b>ข้อมูลตอนส่งมอบ (Outbound):</b> เลขไมล์: <span style="font-weight:700; color:#B45309;">${outOdoFmt}</span> | ระดับน้ำมัน: <span style="font-weight:700; color:#B45309;">${outFuelFmt}</span> | ตำหนิเดิม: <span style="font-style:italic;">${outNotesFmt}</span>`;
+      }
+      this.recalcReturnInspectionDiff();
+
       if (bannerEl) {
         const wRet = String(b.worker_return || "").trim();
         const hasDriver = wRet && wRet !== "Wait" && wRet !== "-";
@@ -4355,6 +4402,89 @@ class App {
           `;
         }
         bannerEl.innerHTML = html;
+      }
+    }
+  }
+
+
+  async handleInspectionPhotoUpload(input, mode) {
+    if (!input.files || input.files.length === 0) return;
+    const isDisp = mode === "Dispatch";
+    const prevEl = document.getElementById(isDisp ? "assign-disp-photos-preview" : "assign-ret-photos-preview");
+    const urlInput = document.getElementById(isDisp ? "assign-disp-photos-url" : "assign-ret-photos-url");
+    if (isDisp) this.assignDispPhotos = this.assignDispPhotos || [];
+    else this.assignRetPhotos = this.assignRetPhotos || [];
+    const photosArr = isDisp ? this.assignDispPhotos : this.assignRetPhotos;
+
+    for (let i = 0; i < input.files.length; i++) {
+      const file = input.files[i];
+      const formData = new FormData();
+      formData.append("file", file);
+      try {
+        this.showToast(`กำลังอัปโหลดรูปสภาพรถ ${file.name}...`, "info");
+        const res = await fetch("/api/upload-photo", { method: "POST", body: formData });
+        const data = await res.json();
+        if (data.success && data.url) {
+          photosArr.push(data.url);
+          this.showToast(`📸 แนบรูป ${file.name} เรียบร้อย!`, "success");
+        }
+      } catch (e) {
+        this.showToast(`อัปโหลดรูป ${file.name} ไม่สำเร็จ: ` + e.message, "danger");
+      }
+    }
+    if (urlInput) urlInput.value = photosArr.join(",");
+    if (prevEl) {
+      prevEl.innerHTML = photosArr.map(url => `
+        <a href="${url}" target="_blank" style="display:inline-block; border-radius:6px; overflow:hidden; border:1px solid #CBD5E1;">
+          <img src="${url}" style="width:60px; height:45px; object-fit:cover; display:block;">
+        </a>
+      `).join("");
+    }
+  }
+
+  recalcReturnInspectionDiff() {
+    const bkId = document.getElementById("assign-ret-bk")?.value;
+    const b = (this.bookings || []).find(x => x.booking_id === bkId);
+    const odoDiffEl = document.getElementById("assign-ret-mileage-diff");
+    const fuelDiffEl = document.getElementById("assign-ret-fuel-diff");
+    const inOdoVal = parseFloat(document.getElementById("assign-ret-odometer")?.value || "");
+
+    if (b && odoDiffEl) {
+      const outOdoVal = parseFloat(b.odometer_out || "");
+      if (!isNaN(outOdoVal) && !isNaN(inOdoVal) && inOdoVal > 0) {
+        const diff = inOdoVal - outOdoVal;
+        if (diff >= 0) {
+          odoDiffEl.innerHTML = `<span style="color:#059669; font-weight:700;">▲ ใช้งานไป ${diff.toLocaleString()} กม. (จากเลขไมล์ส่งมอบ ${outOdoVal.toLocaleString()})</span>`;
+        } else {
+          odoDiffEl.innerHTML = `<span style="color:#DC2626; font-weight:700;">⚠️ เลขไมล์น้อยกว่าตอนส่งมอบ (${outOdoVal.toLocaleString()} กม.) กรุณาตรวจสอบ</span>`;
+        }
+      } else {
+        odoDiffEl.innerHTML = "";
+      }
+    }
+
+    if (b && fuelDiffEl) {
+      const outFuel = b.fuel_out || "";
+      const inFuel = document.getElementById("assign-ret-fuel")?.value || "";
+      if (outFuel && inFuel) {
+        const fuelScore = (f) => {
+          if (f.includes("เต็มถัง") || f.includes("Full")) return 4;
+          if (f.includes("3/4")) return 3;
+          if (f.includes("1/2")) return 2;
+          if (f.includes("1/4")) return 1;
+          return 0;
+        };
+        const sOut = fuelScore(outFuel);
+        const sIn = fuelScore(inFuel);
+        if (sIn < sOut) {
+          fuelDiffEl.innerHTML = `<span style="color:#DC2626; font-weight:700;">⚠️ น้ำมันน้อยกว่าตอนส่งมอบ (${outFuel}) กรุณาพิจารณาคิดค่าน้ำมันเพิ่ม</span>`;
+        } else if (sIn > sOut) {
+          fuelDiffEl.innerHTML = `<span style="color:#059669; font-weight:700;">✅ น้ำมันมากกว่าตอนส่งมอบ (${outFuel})</span>`;
+        } else {
+          fuelDiffEl.innerHTML = `<span style="color:#4B5563;">ระดับน้ำมันเท่ากับตอนส่งมอบ</span>`;
+        }
+      } else {
+        fuelDiffEl.innerHTML = "";
       }
     }
   }
@@ -4409,7 +4539,13 @@ class App {
           location: loc,
           time: tVal,
           start_date: sDate,
-          end_date: eDate
+          end_date: eDate,
+          odometer: document.getElementById(isDisp ? "assign-disp-odometer" : "assign-ret-odometer")?.value || "",
+          fuel_level: document.getElementById(isDisp ? "assign-disp-fuel" : "assign-ret-fuel")?.value || "",
+          inspection_notes: document.getElementById(isDisp ? "assign-disp-notes" : "assign-ret-notes")?.value || "",
+          inspection_photos: (isDisp ? (this.assignDispPhotos || []) : (this.assignRetPhotos || [])).length > 0
+            ? (isDisp ? this.assignDispPhotos : this.assignRetPhotos).join(",")
+            : (document.getElementById(isDisp ? "assign-disp-photos-url" : "assign-ret-photos-url")?.value || "")
         })
       });
       const data = await res.json();
@@ -5262,20 +5398,16 @@ class App {
       headerToolbar: {
         left: 'prev,next today',
         center: 'title',
-        right: 'dayGridMonth,timeGridWeek,timeGridDay,listMonth'
+        right: 'dayGridMonth,listMonth'
       },
       locale: isEn ? 'en' : 'th',
       buttonText: isEn ? {
         today: 'Today',
         month: 'Month',
-        week: 'Week',
-        day: 'Day',
         list: 'List'
       } : {
         today: 'วันนี้',
-        month: 'เดือน',
-        week: 'สัปดาห์',
-        day: 'รายวัน',
+        month: 'ปฏิทิน',
         list: 'รายการ'
       },
       events: events,
@@ -5290,7 +5422,7 @@ class App {
         const dStr = typeof date === "string" ? date : (date.toISOString ? date.toISOString().split("T")[0] : String(date));
         if (this.boCalendar && dStr) {
           try {
-            this.boCalendar.changeView('timeGridWeek', dStr);
+            this.boCalendar.changeView('listMonth', dStr);
           } catch(e) {
             this.boCalendar.gotoDate(dStr);
           }
@@ -5301,7 +5433,7 @@ class App {
         const dStr = info.dateStr || (info.date && info.date.toISOString ? info.date.toISOString().split("T")[0] : "");
         if (this.boCalendar && dStr) {
           try {
-            this.boCalendar.changeView('timeGridWeek', dStr);
+            this.boCalendar.changeView('listMonth', dStr);
           } catch(e) {
             this.boCalendar.gotoDate(dStr);
           }

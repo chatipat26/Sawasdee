@@ -413,6 +413,7 @@
                     <option id="opt-dep-method-card" value="บัตรเครดิต">บัตรเครดิต</option>
                     <option id="opt-dep-method-cash" value="เงินสด">เงินสด</option>
                     <option id="opt-dep-method-paypal" value="PayPal">PayPal</option>
+                    <option id="opt-dep-method-return" value="ชำระวันคืนรถ">ชำระวันคืนรถ (Pay on Return)</option>
                   </select>
                 </div>
                 <div class="form-group">
@@ -539,6 +540,42 @@
                   <label id="lbl-assign-disp-loc">📍 สถานที่นัดหมายส่งมอบรถ:</label>
                   <textarea id="assign-disp-loc" class="form-control" rows="2" placeholder="เช่น สนามบินสุวรรณภูมิ หรือใส่ Google Maps link"></textarea>
                 </div>
+
+                <!-- Car Inspection Checklist (Dispatch) -->
+                <div style="background:#F8FAFC; border:1.5px solid #CBD5E1; border-radius:8px; padding:14px; margin-bottom:14px;">
+                  <div style="font-size:13.5px; font-weight:800; color:#1E293B; margin-bottom:10px; display:flex; align-items:center; gap:6px;">
+                    <span>🔍</span> เช็คลิสต์สภาพรถก่อนส่งมอบ (Car Inspection - Dispatch)
+                  </div>
+                  <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:10px;">
+                    <div class="form-group">
+                      <label style="font-size:12px; font-weight:700; color:#334155;">🔢 เลขไมล์ก่อนส่งมอบ (Odometer - Out):</label>
+                      <input type="number" id="assign-disp-odometer" class="form-control" placeholder="เช่น 45200">
+                    </div>
+                    <div class="form-group">
+                      <label style="font-size:12px; font-weight:700; color:#334155;">⛽ ระดับน้ำมันก่อนส่งมอบ (Fuel Level):</label>
+                      <select id="assign-disp-fuel" class="form-control">
+                        <option value="เต็มถัง (Full - 8/8) [100%]">⛽ เต็มถัง (Full - 8/8) [100%]</option>
+                        <option value="3/4 ถัง [75%]">3/4 ถัง [75%]</option>
+                        <option value="1/2 ถัง (Half) [50%]">1/2 ถัง (Half) [50%]</option>
+                        <option value="1/4 ถัง [25%]">1/4 ถัง [25%]</option>
+                        <option value="ไฟเตือนน้ำมันโชว์ (Empty / Low Fuel)">⚠️ ไฟเตือนน้ำมันโชว์ (Empty / Low Fuel)</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="form-group" style="margin-bottom:10px;">
+                    <label style="font-size:12px; font-weight:700; color:#334155;">📝 บันทึกตำหนิ / รอยขีดข่วนเดิมรอบคัน:</label>
+                    <textarea id="assign-disp-notes" class="form-control" rows="2" placeholder="เช่น กันชนหน้ามีรอยสะเก็ดหินเล็กน้อย, ล้อแม็กหน้าซ้ายมีรอยเบียดฟุตบาทเล็กน้อย"></textarea>
+                  </div>
+                  <div class="form-group" style="margin-bottom:0;">
+                    <label style="font-size:12px; font-weight:700; color:#334155;">📸 แนบรูปถ่ายสภาพรถตอนส่งมอบ (Upload Inspection Photos):</label>
+                    <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                      <input type="file" id="assign-disp-photos-input" class="form-control" style="flex:1; min-width:200px;" multiple accept="image/*" onchange="app.handleInspectionPhotoUpload(this, 'Dispatch')">
+                      <input type="text" id="assign-disp-photos-url" class="form-control" style="flex:1; min-width:200px;" placeholder="หรือใส่ URL รูปถ่าย / Google Drive link">
+                    </div>
+                    <div id="assign-disp-photos-preview" style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;"></div>
+                  </div>
+                </div>
+
                 <div>
                   <button type="button" id="btn-assign-disp-sched" onclick="app.submitAssign('Dispatch', 'prepare')" class="btn btn-primary" style="width:100%; font-weight:700; background:#EA580C; border-color:#EA580C; padding:10px 16px; font-size:14px;" title="บันทึกนัดหมายส่งมอบรถยนต์และไปหน้าจัดทำสัญญา">
                     📅 นัดหมายส่งมอบ ➔
@@ -594,6 +631,48 @@
                   <label id="lbl-assign-ret-loc">📍 สถานที่นัดหมายรับรถคืน:</label>
                   <textarea id="assign-ret-loc" class="form-control" rows="2" placeholder="เช่น สถานที่เดิม หรือ โรงแรม..."></textarea>
                 </div>
+
+                <!-- Car Inspection Checklist (Return) -->
+                <div style="background:#FFFBEB; border:1.5px solid #FDE68A; border-radius:8px; padding:14px; margin-bottom:14px;">
+                  <div style="font-size:13.5px; font-weight:800; color:#92400E; margin-bottom:10px; display:flex; align-items:center; gap:6px;">
+                    <span>🔍</span> เช็คลิสต์สภาพรถตอนรับคืน (Car Inspection - Return)
+                  </div>
+                  <!-- Outbound Comparison Reference Badge -->
+                  <div id="assign-ret-compare-badge" style="background:#FFF; border:1px solid #FEF08A; border-radius:6px; padding:8px 12px; margin-bottom:10px; font-size:12px; color:#854D0E;">
+                    📌 <b>ข้อมูลขาไป (ส่งมอบ):</b> กรุณาเลือกรหัสการจองเพื่อเทียบข้อมูล
+                  </div>
+                  <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:10px;">
+                    <div class="form-group">
+                      <label style="font-size:12px; font-weight:700; color:#334155;">🔢 เลขไมล์รับคืน (Odometer - In):</label>
+                      <input type="number" id="assign-ret-odometer" class="form-control" placeholder="เช่น 45850" oninput="app.recalcReturnInspectionDiff()">
+                      <small id="assign-ret-mileage-diff" style="font-size:11px; color:#64748B;"></small>
+                    </div>
+                    <div class="form-group">
+                      <label style="font-size:12px; font-weight:700; color:#334155;">⛽ ระดับน้ำมันรับคืน (Fuel Level):</label>
+                      <select id="assign-ret-fuel" class="form-control" onchange="app.recalcReturnInspectionDiff()">
+                        <option value="เต็มถัง (Full - 8/8) [100%]">⛽ เต็มถัง (Full - 8/8) [100%]</option>
+                        <option value="3/4 ถัง [75%]">3/4 ถัง [75%]</option>
+                        <option value="1/2 ถัง (Half) [50%]">1/2 ถัง (Half) [50%]</option>
+                        <option value="1/4 ถัง [25%]">1/4 ถัง [25%]</option>
+                        <option value="ไฟเตือนน้ำมันโชว์ (Empty / Low Fuel)">⚠️ ไฟเตือนน้ำมันโชว์ (Empty / Low Fuel)</option>
+                      </select>
+                      <small id="assign-ret-fuel-diff" style="font-size:11px; color:#64748B;"></small>
+                    </div>
+                  </div>
+                  <div class="form-group" style="margin-bottom:10px;">
+                    <label style="font-size:12px; font-weight:700; color:#334155;">📝 บันทึกตำหนิ / ความเสียหายเพิ่มเติม (เพื่อพิจารณาหักมัดจำ):</label>
+                    <textarea id="assign-ret-notes" class="form-control" rows="2" placeholder="เช่น สภาพสมบูรณ์เรียบร้อย ไม่มีรอยเพิ่ม หรือ ระบุรอยใหม่ถ้ามี"></textarea>
+                  </div>
+                  <div class="form-group" style="margin-bottom:0;">
+                    <label style="font-size:12px; font-weight:700; color:#334155;">📸 แนบรูปถ่ายสภาพรถตอนรับคืน (Upload Inspection Photos):</label>
+                    <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                      <input type="file" id="assign-ret-photos-input" class="form-control" style="flex:1; min-width:200px;" multiple accept="image/*" onchange="app.handleInspectionPhotoUpload(this, 'Return')">
+                      <input type="text" id="assign-ret-photos-url" class="form-control" style="flex:1; min-width:200px;" placeholder="หรือใส่ URL รูปถ่าย / Google Drive link">
+                    </div>
+                    <div id="assign-ret-photos-preview" style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;"></div>
+                  </div>
+                </div>
+
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
                   <button type="button" id="btn-assign-ret-sched" onclick="app.submitAssign('Return', 'prepare')" class="btn btn-secondary" style="width:100%; font-weight:700;" title="บันทึกเตรียมนัดหมายรับรถคืน (สถานะ: เตรียมรับคืน)">
                     📋 นัดรับคืน (เตรียมรับคืน)
@@ -689,6 +768,7 @@
                       <option value="บัตรเครดิต">บัตรเครดิต</option>
                       <option value="เงินสด">เงินสด</option>
                       <option value="PayPal">PayPal</option>
+                      <option value="ชำระวันคืนรถ">ชำระวันคืนรถ (Pay on Return)</option>
                     </select>
                   </div>
                   <div id="contract-extend-preview" style="font-size:12.5px; margin:8px 0;"></div>
@@ -1544,6 +1624,7 @@
           <option value="บัตรเครดิต">บัตรเครดิต</option>
           <option value="เงินสด">เงินสด</option>
           <option value="PayPal">PayPal</option>
+          <option value="ชำระวันคืนรถ">ชำระวันคืนรถ (Pay on Return)</option>
         </select>
       </div>
 
@@ -2433,7 +2514,7 @@
   <div class="toast-container" id="toast-container"></div>
 
   <!-- Scripts with cache busting -->
-  <script src="/static/js/app.js?v=11.2"></script>
+  <script src="/static/js/app.js?v=11.3"></script>
 
   <!-- ===================================================================== -->
   <!-- MODAL: ACTIVE RENTALS / CARS WITH CUSTOMERS (POPUP FOR CARD 1) -->

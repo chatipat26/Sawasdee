@@ -1570,6 +1570,8 @@ async def extend_booking(bk_id: str, payload: Dict[str, Any]):
         target["rental_payment_method"] = pay_method
         if pay_ref:
             target["rental_ref"] = pay_ref
+        if "ชำระวันคืนรถ" in pay_method:
+            target["payment_status_note"] = "รอชำระวันคืนรถ" 
         car_comp = car_obj.get("company", "Sawasdee Rent A Car")
         rent_detail = f"ชำระค่าเช่าต่อสัญญา #{ext_no} รถ {target.get('car_id')} ({pay_method})"
         if pay_ref:
@@ -1657,6 +1659,8 @@ async def record_deposit(bk_id: str, payload: Dict[str, Any]):
     target["deposit_slip"] = dep_slip
     target["payment_type"] = pay_type
     target["google_drive_link"] = gdrive_link
+    if "ชำระวันคืนรถ" in dep_method:
+        target["payment_status_note"] = "รอชำระวันคืนรถ" 
 
     if also_pay_rental:
         target["rental_paid"] = True
@@ -1749,6 +1753,8 @@ async def settle_rental(bk_id: str, payload: Dict[str, Any]):
         target["rental_ref"] = settle_ref
     if settle_slip:
         target["rental_slip"] = settle_slip
+    if "ชำระวันคืนรถ" in settle_method:
+        target["payment_status_note"] = "รอชำระวันคืนรถ" 
 
     store.async_sync_booking(target)
 
@@ -1817,6 +1823,10 @@ async def assign_worker(bk_id: str, payload: Dict[str, Any]):
     e_date_val = payload.get("end_date")
 
     action_type = payload.get("action_type", "assign")
+    odometer = payload.get("odometer")
+    fuel_level = payload.get("fuel_level")
+    inspection_notes = payload.get("inspection_notes")
+    inspection_photos = payload.get("inspection_photos")
 
     # ---- Validate before mutating (state machine + overlap protection) ----
     new_sd = to_date(s_date_val) if s_date_val else to_date(target.get("start_date"))
@@ -1842,6 +1852,14 @@ async def assign_worker(bk_id: str, payload: Dict[str, Any]):
         target["worker_delivery"] = worker
         target["loc_delivery"] = location
         target["start_time"] = time_val
+        if odometer is not None and str(odometer).strip() != "":
+            target["odometer_out"] = str(odometer).strip()
+        if fuel_level is not None and str(fuel_level).strip() != "":
+            target["fuel_out"] = str(fuel_level).strip()
+        if inspection_notes is not None:
+            target["inspection_notes_out"] = str(inspection_notes).strip()
+        if inspection_photos is not None and str(inspection_photos).strip() != "":
+            target["inspection_photos_out"] = str(inspection_photos).strip()
         if action_type == "handover_now":
             target["status"] = "กำลังเช่า"
             target["dispatch_closed"] = True
@@ -1855,6 +1873,14 @@ async def assign_worker(bk_id: str, payload: Dict[str, Any]):
         target["worker_return"] = worker
         target["loc_return"] = location
         target["end_time"] = time_val
+        if odometer is not None and str(odometer).strip() != "":
+            target["odometer_in"] = str(odometer).strip()
+        if fuel_level is not None and str(fuel_level).strip() != "":
+            target["fuel_in"] = str(fuel_level).strip()
+        if inspection_notes is not None:
+            target["inspection_notes_in"] = str(inspection_notes).strip()
+        if inspection_photos is not None and str(inspection_photos).strip() != "":
+            target["inspection_photos_in"] = str(inspection_photos).strip()
         if action_type == "complete_now":
             target["status"] = "เสร็จสิ้น"
             target["return_closed"] = True
@@ -2248,6 +2274,8 @@ async def get_maintenance_pdf(mnt_id: str):
 # -------------------------------------------------------------------------
 def normalize_payment_channel(raw_method: str) -> str:
     m = str(raw_method or "").strip().lower()
+    if any(k in m for k in ["คืนรถ", "return", "pay on return"]):
+        return "ชำระวันคืนรถ"
     if any(k in m for k in ["โอน", "qr", "transfer", "scan", "bank"]):
         return "โอนเงิน / สแกน QR"
     if any(k in m for k in ["สด", "cash"]):
@@ -2390,7 +2418,7 @@ async def get_finance_summary(month: Optional[str] = None, start_date: Optional[
         if e_d:
             tx_list = [t for t in tx_list if to_date(t["date"]) and to_date(t["date"]) <= e_d]
 
-    all_methods = ["โอนเงิน / สแกน QR", "เงินสด", "บัตรเครดิต", "PayPal"]
+    all_methods = ["โอนเงิน / สแกน QR", "เงินสด", "บัตรเครดิต", "PayPal", "ชำระวันคืนรถ"]
     method_totals = {m: 0.0 for m in all_methods}
     total_rev = 0.0
     for t in tx_list:
