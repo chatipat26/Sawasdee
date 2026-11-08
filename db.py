@@ -1234,7 +1234,7 @@ class DataStore:
             print(f"Error encoding photo: {e}")
             return None
 
-    def archive_completed_booking(self, booking_id, fuel_level="⛽ เต็มถัง (Full - 8/8) [100%]", inspection_notes="ตรวจสภาพปกติ", inspection_photos=None, mileage="", late_fee=0.0):
+    def archive_completed_booking(self, booking_id, fuel_level="⛽ เต็มถัง (Full - 8/8) [100%]", inspection_notes="ตรวจสภาพปกติ", inspection_photos=None, mileage="", late_fee=0.0, condition="normal", damage_desc="", repair_cost=0.0, service_center=""):
         with self.lock:
             target = next((b for b in self.bookings if b.get("booking_id") == booking_id), None)
             if not target:
@@ -1249,12 +1249,100 @@ class DataStore:
             b_car = self.cars.get(target.get("car_id"), {})
             b_comp = b_car.get("company", "Sawasdee Rent A Car")
             net_p = float(target.get("net_price", 0))
+            car_id = target.get("car_id")
+            dep_amt = float(target.get("deposit_amount", 5000.0))
+            repair_cost = float(repair_cost or 0.0)
+            today_str = datetime.now().strftime("%Y-%m-%d")
 
-            if target.get("car_id") in self.cars:
-                self.cars[target["car_id"]]["status"] = "ว่างพร้อมใช้งาน"
-                if mileage:
-                    self.cars[target["car_id"]]["mileage"] = mileage
-                self.async_sync_car(target["car_id"], self.cars[target["car_id"]])
+            # Branching logic: Branch A (normal) vs Branch B (needs repair)
+            if condition == "needs_repair":
+                deducted = min(repair_cost, dep_amt) if dep_amt > 0 else 0.0
+                refund_rem = max(0.0, dep_amt - deducted)
+                target["needs_repair"] = True
+                target["damage_desc"] = damage_desc
+                target["repair_cost_deducted"] = deducted
+                target["deposit_refunded"] = True
+                target["deposit_refund_amount"] = refund_rem
+
+                # Car transitions to Maintenance status
+                if car_id in self.cars:
+                    self.cars[car_id]["status"] = "สถานะซ่อมบำรุง"
+                    if mileage:
+                        self.cars[car_id]["mileage"] = mileage
+                    self.async_sync_car(car_id, self.cars[car_id])
+
+                # Auto-create maintenance record in store
+                mnt_id = f"MNT{datetime.now().strftime('%y%m%d%H%M%S')}"
+                c_brand = b_car.get("brand", "")
+                c_model = b_car.get("model", "")
+                mnt_rec = {
+                    "id": mnt_id,
+                    "car_id": car_id,
+                    "car_brand": f"{c_brand} {c_model}".strip(),
+                    "order_type": "ซ่อมบำรุงจากความเสียหายหลังการเช่า",
+                    "service_items": damage_desc or inspection_notes or "ตรวจพบความเสียหายหลังการเช่า",
+                    "cost": repair_cost,
+                    "status": "รอดำเนินการ",
+                    "schedule_date": date.today(),
+                    "expected_finish_date": date.today(),
+                    "service_center": service_center or "ศูนย์บริการ / อู่ซ่อม",
+                    "notes": f"เปิดจากงานรับคืน {booking_id} (หักเงินมัดจำ ฿{deducted:,.2f})"
+                }
+                self.maintenance_records.insert(0, mnt_rec)
+                self.async_sync_maintenance(mnt_rec)
+
+                # Record financial deduction & refund
+                if deducted > 0:
+                    f_deduct = {
+                        "company": b_comp,
+                        "type": "รายรับ",
+                        "category": "ค่าเสียหาย/ซ่อมบำรุงหักจากมัดจำ",
+                        "amount": deducted,
+                        "ref": booking_id,
+                        "date": today_str,
+                        "detail": f"หักค่าเสียหาย/ซ่อมบำรุงจากมัดจำ {booking_id} ({car_id})"
+                    }
+                    self.async_sync_financial(f_deduct)
+
+                if refund_rem > 0:
+                    f_ref_rem = {
+                        "company": b_comp,
+                        "type": "รายจ่าย",
+                        "category": "คืนเงินมัดจำประกันสัญญา",
+                        "amount": refund_rem,
+                        "ref": booking_id,
+                        "date": today_str,
+                        "detail": f"คืนมัดจำคงเหลือหลังหักค่าซ่อม {booking_id} ({car_id})"
+                    }
+                    self.async_sync_financial(f_ref_rem)
+            else:
+                # Branch A: Normal condition -> refund full deposit & release car
+                target["deposit_refunded"] = True
+                target["deposit_refund_amount"] = dep_amt
+
+                if car_id in self.cars:
+                    has_queue = any(
+                        b.get("car_id") == car_id
+                        and b.get("booking_id") != booking_id
+                        and b.get("status") not in ("ยกเลิก", "เสร็จสิ้น")
+                        for b in self.bookings
+                    )
+                    self.cars[car_id]["status"] = "ติดจอง" if has_queue else "ว่างพร้อมใช้งาน"
+                    if mileage:
+                        self.cars[car_id]["mileage"] = mileage
+                    self.async_sync_car(car_id, self.cars[car_id])
+
+                if dep_amt > 0:
+                    f_refund = {
+                        "company": b_comp,
+                        "type": "รายจ่าย",
+                        "category": "คืนเงินมัดจำประกันสัญญา",
+                        "amount": dep_amt,
+                        "ref": booking_id,
+                        "date": today_str,
+                        "detail": f"คืนเงินมัดจำเต็มจำนวนหลังตรวจสภาพผ่าน {booking_id} ({car_id})"
+                    }
+                    self.async_sync_financial(f_refund)
 
             archived_item = {
                 "booking_id": target["booking_id"],

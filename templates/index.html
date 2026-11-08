@@ -1551,6 +1551,55 @@
   <!-- MODALS -->
   <!-- ===================================================================== -->
 
+  <!-- Modal: Settle Remaining Rental Balance (Tab 4 & Tab 3 Quick Settle) -->
+  <div id="modal-settle-rental" class="modal-backdrop">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title" id="modal-settle-title">💳 บันทึกรับชำระค่าเช่าคงเหลือ (Settle Rental Balance)</div>
+        <button class="modal-close" onclick="app.closeModal('modal-settle-rental')">✕</button>
+      </div>
+
+      <input type="hidden" id="modal-settle-bk-id">
+
+      <div id="modal-settle-summary" style="background:#FFF7ED; border:1px solid #FFEDD5; border-radius:8px; padding:12px; margin-bottom:14px; font-size:12.5px;">
+        <!-- Filled by JS -->
+      </div>
+
+      <div class="form-group" style="margin-bottom:14px;">
+        <label id="lbl-modal-settle-amount">💰 ยอดค่าเช่าคงเหลือที่ต้องชำระ (บาท):</label>
+        <input type="text" id="modal-settle-amount" class="form-control" readonly style="background:#F1F5F9; font-weight:800; font-size:15px; color:#92400E;">
+      </div>
+
+      <div class="form-group" style="margin-bottom:14px;">
+        <label id="lbl-modal-settle-method">💳 ช่องทางการชำระเงิน (4 ช่องทางมาตรฐาน):</label>
+        <select id="modal-settle-method" class="form-control" style="font-weight:700;">
+          <option value="โอนเงิน / สแกน QR">โอนเงิน / สแกน QR</option>
+          <option value="บัตรเครดิต">บัตรเครดิต</option>
+          <option value="เงินสด">เงินสด</option>
+          <option value="PayPal">PayPal</option>
+        </select>
+      </div>
+
+      <div class="form-group" style="margin-bottom:14px;">
+        <label id="lbl-modal-settle-ref">🧾 เลข Ref / เลขอ้างอิงสลิป / Trace No.:</label>
+        <input type="text" id="modal-settle-ref" class="form-control" placeholder="เช่น 2026110812345678 / EDC Trace No.">
+      </div>
+
+      <div class="form-group" style="margin-bottom:16px;">
+        <label id="lbl-modal-settle-slip">📎 ลิงก์สลิป / Google Drive หรือ อัปโหลดภาพสลิป:</label>
+        <input type="text" id="modal-settle-slip-url" class="form-control" placeholder="https://drive.google.com/... หรือ แนบไฟล์ด้านล่าง" style="margin-bottom:6px;">
+        <input type="file" id="modal-settle-slip-file" class="form-control" accept="image/*" onchange="app.handleSettleSlipUpload(this)">
+      </div>
+
+      <div style="display:flex; justify-content:flex-end; gap:10px;">
+        <button type="button" onclick="app.closeModal('modal-settle-rental')" class="btn btn-secondary">ยกเลิก</button>
+        <button type="button" onclick="app.submitSettleFromModal()" class="btn btn-primary" id="btn-submit-modal-settle" style="background:#10B981; border-color:#059669; font-weight:700;">
+          ✅ ยืนยันบันทึกชำระค่าเช่า
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- 1. Handover / Inspection Modal (Back Office) -->
   <div id="modal-handover" class="modal-backdrop">
     <div class="modal-dialog">
@@ -1594,6 +1643,52 @@
           <label><input type="checkbox" checked id="chk-clean"> ห้องโดยสารสะอาด</label>
           <label><input type="checkbox" checked id="chk-tools"> ยางอะไหล่/แม่แรงครบ</label>
           <label><input type="checkbox" checked id="chk-docs"> เอกสาร/ป้ายภาษีครบ</label>
+        </div>
+      </div>
+
+      <!-- Return Disposition & Branching Section (Only shown when job_type === 'Return') -->
+      <div id="insp-return-condition-section" style="display:none; background:#FFFBEB; border:1.5px solid #FCD34D; border-radius:8px; padding:12px; margin-bottom:16px;">
+        <label style="font-size:13px; font-weight:800; color:#92400E; display:block; margin-bottom:8px;">
+          ⚖️ ผลการตรวจสภาพรับรถคืน (Return Disposition):
+        </label>
+        <div style="display:flex; gap:14px; margin-bottom:10px; flex-wrap:wrap;">
+          <label style="font-size:13px; font-weight:700; color:#15803D; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
+            <input type="radio" name="insp-condition-radio" id="insp-cond-normal" value="normal" checked onchange="app.onInspConditionChange('normal')">
+            🟢 Branch A: สภาพปกติ (คืนมัดจำ)
+          </label>
+          <label style="font-size:13px; font-weight:700; color:#DC2626; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
+            <input type="radio" name="insp-condition-radio" id="insp-cond-repair" value="needs_repair" onchange="app.onInspConditionChange('needs_repair')">
+            🔴 Branch B: รถเสียหาย / ต้องส่งซ่อม (หักมัดจำ & เข้าซ่อมบำรุง)
+          </label>
+        </div>
+
+        <!-- Normal info banner -->
+        <div id="insp-cond-normal-info" style="font-size:12px; color:#166534; background:#F0FDF4; border:1px solid #BBF7D0; border-radius:6px; padding:8px 10px;">
+          ℹ️ สภาพรถปกติ: ระบบจะปรับสถานะรถกลับเป็น <b>"ว่างพร้อมใช้งาน"</b> และบันทึกคืนเงินมัดจำประกันสัญญาเต็มจำนวนให้ลูกค้า
+        </div>
+
+        <!-- Repair details form (hidden unless Branch B selected) -->
+        <div id="insp-cond-repair-info" style="display:none; margin-top:8px; background:#FEF2F2; border:1px solid #FECACA; border-radius:6px; padding:10px;">
+          <div style="font-size:12px; font-weight:700; color:#991B1B; margin-bottom:8px;">
+            ⚠️ รถพบความเสียหาย: ระบบจะปรับสถานะรถเป็น <b>"สถานะซ่อมบำรุง"</b> และเปิดใบงานซ่อมบำรุงให้อัตโนมัติ
+          </div>
+          <div class="form-group" style="margin-bottom:8px;">
+            <label style="font-size:12px; font-weight:700; color:#991B1B;">🛠️ รายละเอียดความเสียหาย / อาการเสียที่พบ:</label>
+            <input type="text" id="insp-damage-desc" class="form-control" placeholder="เช่น รอยชนกันชนหน้า, ไฟท้ายแตก, เบาะขาด">
+          </div>
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-bottom:8px;">
+            <div class="form-group">
+              <label style="font-size:12px; font-weight:700; color:#991B1B;">💸 ค่าซ่อม / ค่าเสียหายหักจากมัดจำ (บาท):</label>
+              <input type="number" id="insp-repair-cost" class="form-control" value="0" min="0" step="100" oninput="app.recalcInspRefundPreview()">
+            </div>
+            <div class="form-group">
+              <label style="font-size:12px; font-weight:700; color:#475569;">🏢 ศูนย์บริการ / อู่ซ่อม:</label>
+              <input type="text" id="insp-service-center" class="form-control" placeholder="เช่น ศูนย์บริการโตโยต้า / อู่ประจำ">
+            </div>
+          </div>
+          <div id="insp-deposit-calc-preview" style="font-size:12px; color:#9A3412; background:#FFF7ED; border:1px solid #FED7AA; border-radius:6px; padding:6px 10px;">
+            <!-- Filled dynamically by JS -->
+          </div>
         </div>
       </div>
 

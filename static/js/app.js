@@ -4221,11 +4221,25 @@ class App {
               ✅ ${isEn ? 'Rental fee fully paid' : 'ชำระค่าเช่ารถครบถ้วนแล้ว'} (฿${netP.toLocaleString('th-TH', {minimumFractionDigits: 2})})
             </div>
           `;
+          if (b.contract_issued) {
+            html += `
+              <div style="background:#F0FDF4; border:1px solid #86EFAC; border-radius:8px; padding:8px 12px; margin-bottom:8px; font-size:12.5px; color:#166534; font-weight:700;">
+                ✅ ${isEn ? 'Rental contract issued (Ready for vehicle delivery)' : 'ออกสัญญาเช่าเรียบร้อยแล้ว (พร้อมส่งมอบรถยนต์)'}
+              </div>
+            `;
+          } else {
+            html += `
+              <div style="background:#EFF6FF; border:1px solid #BFDBFE; border-radius:8px; padding:8px 12px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
+                <div style="font-size:12.5px; color:#1E40AF;">📝 <b>${isEn ? 'Awaiting Contract:' : 'รอออกสัญญาเช่า:'}</b> ${isEn ? 'Please issue contract in Tab 4 before vehicle handover' : 'กรุณาไปออกสัญญาเช่าในแท็บ 4 ก่อนส่งมอบรถยนต์'}</div>
+                <button type="button" onclick="app.goToTabWithBooking('contract', '${b.booking_id}')" class="btn btn-primary btn-sm" style="padding:4px 10px; font-size:11.5px; font-weight:700;">📝 ${isEn ? 'Go to Contract' : 'ไปหน้าสัญญา ➔'}</button>
+              </div>
+            `;
+          }
         } else {
           html += `
             <div style="background:#EFF6FF; border:1px solid #93C5FD; border-radius:8px; padding:8px 12px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
               <div style="font-size:12.5px; color:#1E40AF;">⏳ <b>${isEn ? 'Pending Rental Fee on Pick-up:' : 'รอชำระค่าเช่าวันรับรถ:'}</b> ฿${netP.toLocaleString('th-TH', {minimumFractionDigits: 2})}</div>
-              <button type="button" onclick="app.goToTabWithBooking('deposit', '${b.booking_id}')" class="btn btn-secondary" style="padding:4px 10px; font-size:12px; font-weight:700;">💳 ${isEn ? 'Pay Rental Fee' : 'กดจ่ายเงินค่าเช่า'}</button>
+              <button type="button" onclick="app.openSettleModal('${b.booking_id}')" class="btn btn-secondary" style="padding:4px 10px; font-size:12px; font-weight:700;">💳 ${isEn ? 'Pay Rental Fee' : 'กดจ่ายเงินค่าเช่า'}</button>
             </div>
           `;
         }
@@ -4312,6 +4326,29 @@ class App {
     const tVal = document.getElementById(isDisp ? "assign-disp-time" : "assign-ret-time").value;
     const sDate = (isDisp ? document.getElementById("assign-disp-date")?.value : null) || document.getElementById(isDisp ? "assign-disp-start-date" : "assign-ret-start-date")?.value || "";
     const eDate = (!isDisp ? document.getElementById("assign-ret-date")?.value : null) || document.getElementById(isDisp ? "assign-disp-end-date" : "assign-ret-end-date")?.value || "";
+
+    const bkObj = (this.bookings || []).find(x => x.booking_id === bkId);
+    if (actionType === "handover") {
+      if (bkObj && !bkObj.deposit_paid) {
+        alert("⚠️ ยังไม่ได้ชำระเงินมัดจำ ไม่สามารถส่งมอบรถได้ (กรุณาไปที่แท็บ \"2. เงินมัดจำ & การเงิน\")");
+        return;
+      }
+      if (bkObj && !bkObj.rental_paid) {
+        alert("⚠️ ยังไม่ได้ชำระค่าเช่าคงเหลือ กรุณาชำระค่าเช่าให้เรียบร้อยก่อนส่งมอบรถ (สามารถกดปุ่ม \"กดจ่ายเงินค่าเช่า\" ในหน้านี้ได้ทันที)");
+        this.openSettleModal(bkId);
+        return;
+      }
+      if (bkObj && !bkObj.contract_issued) {
+        alert("⚠️ สถานะรถจะเปลี่ยนเป็น \"กำลังเช่า\" ได้ก็ต่อเมื่อ \"ออกสัญญาเช่าแล้ว\" เท่านั้น ห้ามเปลี่ยนเป็นกำลังเช่าก่อนออกสัญญาเด็ดขาด กรุณาไปที่แท็บ \"4. จัดทำสัญญาเช่า\" เพื่อตรวจสอบและออกสัญญาเช่าให้เรียบร้อยก่อน");
+        return;
+      }
+    }
+
+    if (actionType === "complete") {
+      // Route to inspection modal to ensure checklist and disposition branching (Branch A vs B)
+      this.openHandoverModal(bkId, "Return");
+      return;
+    }
 
     const thNow = this.getThaiDateTime(0);
     if (isDisp && sDate && sDate < thNow.dateStr && actionType !== "handover") {
@@ -4479,18 +4516,34 @@ class App {
             <button type="button" onclick="app.saveContractSchedule()" class="btn btn-primary btn-sm" style="font-size:11.5px; padding:4px 10px;">
               💾 ${isEn ? 'Save Schedule' : 'บันทึกวัน-เวลาสัญญา'}
             </button>
-            ${['รอส่งมอบ', 'เตรียมส่งมอบ'].includes(b.status) ? `
+            ${['รอส่งมอบ', 'เตรียมส่งมอบ'].includes(b.status) && b.contract_issued ? `
             <button type="button" onclick="app.quickConfirmHandover('${b.booking_id}')" class="btn btn-success btn-sm" style="font-size:11.5px; padding:4px 10px; font-weight:600;" title="${isEn ? 'Handed vehicle over to customer ➔ Update status to Renting' : 'ส่งมอบรถให้ลูกค้าแล้ว ➔ ปรับสถานะเป็น กำลังเช่า'}">
               🚚 ${isEn ? 'Handed Over (Renting) ➔' : 'ส่งมอบรถแล้ว (กำลังเช่า) ➔'}
             </button>` : ''}
             ${['กำลังเช่า', 'เตรียมรับคืน'].includes(b.status) ? `
-            <button type="button" onclick="app.quickConfirmReturn('${b.booking_id}')" class="btn btn-warning btn-sm" style="font-size:11.5px; padding:4px 10px; font-weight:600; color:#1E293B;" title="${isEn ? 'Customer returned vehicle ➔ Update status to Completed' : 'ลูกค้านำรถมาคืนแล้ว ➔ ปรับสถานะเป็น เสร็จสิ้น'}">
-              🏁 ${isEn ? 'Returned (Completed) ➔' : 'รับคืนแล้ว (เสร็จสิ้น) ➔'}
-            </button>` : ''}
+            <button type="button" onclick="app.quickConfirmReturn('${b.booking_id}')" class="btn btn-warning btn-sm" style="font-size:11.5px; padding:4px 10px; font-weight:600; color:#1E293B;" title="${isEn ? 'Customer returned vehicle ➔ Inspection & Return Checklist' : 'ลูกค้านำรถมาคืน ➔ ตรวจสภาพตาม Checklist และรับรถคืน'}">
+              🏁 ${isEn ? 'Returned (Checklist) ➔' : 'ตรวจรับรถคืน (Checklist) ➔'}
+            </button>
             <button type="button" onclick="app.openExtendContract()" class="btn btn-warning btn-sm" style="font-size:11.5px; padding:4px 10px; font-weight:700; background:#f59e0b; border-color:#d97706; color:#1F2937;" title="${isEn ? 'Extend Contract Period' : 'ต่อสัญญา (Extend Contract)'}">
               📝 ${isEn ? 'Extend Contract' : 'ต่อสัญญา (Extend Contract)'}
-            </button>
+            </button>` : ''}
           </div>
+          ${!isRent ? `
+            <div style="background:#FFFBEB; border:1.5px solid #FCD34D; border-radius:6px; padding:7px 10px; font-size:12px; color:#92400E; margin-top:8px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
+              <span>⏳ <b>รอชำระค่าเช่าคงเหลือ: ฿${remP.toLocaleString('th-TH', {minimumFractionDigits: 2})}</b></span>
+              <button type="button" onclick="app.openSettleModal('${b.booking_id}')" class="btn btn-sm btn-success" style="padding:3px 10px; font-size:11.5px; font-weight:700; background:#10B981; border-color:#059669;">
+                💳 ${isEn ? 'Pay Rental Balance' : 'รับชำระค่าเช่าคงเหลือ'}
+              </button>
+            </div>
+          ` : (!b.contract_issued ? `
+            <div style="background:#EFF6FF; border:1px solid #BFDBFE; border-radius:6px; padding:7px 10px; font-size:12px; color:#1E40AF; margin-top:8px;">
+              📝 <b>ชำระค่าเช่าครบแล้ว</b> ➔ กรุณากดปุ่ม <b>"✅ ยืนยันออกสัญญาเรียบร้อย"</b> ด้านล่างก่อนส่งมอบรถ
+            </div>
+          ` : `
+            <div style="background:#F0FDF4; border:1px solid #BBF7D0; border-radius:6px; padding:7px 10px; font-size:12px; color:#166534; margin-top:8px;">
+              ✅ <b>ออกสัญญาเช่าเรียบร้อยแล้ว</b> พร้อมส่งมอบรถ (กำลังเช่า)
+            </div>
+          `)}
         </div>
       `;
     }
@@ -4518,7 +4571,10 @@ class App {
     if (remEl) {
       remEl.innerHTML = isRent 
         ? `<span style="color:#059669;">฿0.00 (${isEn ? 'Fully Paid' : 'ชำระครบแล้ว'})</span>`
-        : `<span style="color:#E85826;">฿${remP.toLocaleString('th-TH', {minimumFractionDigits: 2})}</span>`;
+        : `<span style="color:#E85826;">฿${remP.toLocaleString('th-TH', {minimumFractionDigits: 2})}</span>
+           <button type="button" onclick="app.openSettleModal('${b.booking_id}')" class="btn btn-sm btn-success" style="padding:2px 8px; font-size:11px; font-weight:700; margin-left:6px; vertical-align:middle; background:#10B981; border-color:#059669;">
+             💳 ${isEn ? 'Pay Balance' : 'รับชำระค่าเช่า'}
+           </button>`;
     }
 
     // Extend-contract button only for rentals that are currently On Rent
@@ -4645,8 +4701,23 @@ class App {
   async quickConfirmHandover(bkId) {
     if (!bkId) return;
     const b = (this.bookings || []).find(x => x.booking_id === bkId);
-    const carPlate = b ? b.car_id : "";
-    const custName = b ? b.customer : "";
+    if (!b) return;
+    const carPlate = b.car_id || "";
+    const custName = b.customer || "";
+
+    if (!b.deposit_paid) {
+      alert("⚠️ ยังไม่ได้ชำระเงินมัดจำ ไม่สามารถส่งมอบรถได้ (กรุณาไปที่แท็บ \"2. เงินมัดจำ & การเงิน\")");
+      return;
+    }
+    if (!b.rental_paid) {
+      alert("⚠️ ยังไม่ได้ชำระค่าเช่าคงเหลือ กรุณาชำระค่าเช่าให้เรียบร้อยก่อนส่งมอบรถ (สามารถกดปุ่ม \"รับชำระค่าเช่าคงเหลือ\" ได้ทันที)");
+      this.openSettleModal(bkId);
+      return;
+    }
+    if (!b.contract_issued) {
+      alert("⚠️ สถานะรถจะเปลี่ยนเป็น \"กำลังเช่า\" ได้ก็ต่อเมื่อ \"ออกสัญญาเช่าแล้ว\" เท่านั้น ห้ามเปลี่ยนเป็นกำลังเช่าก่อนออกสัญญาเด็ดขาด กรุณาตรวจสอบเอกสารและกดยืนยันออกสัญญาด้านล่างก่อน");
+      return;
+    }
     
     if (!confirm(`🚚 ยืนยันการส่งมอบรถ ${carPlate} ให้คุณ ${custName} เรียบร้อยแล้ว?\n\nระบบจะปรับสถานะรายการจองเป็น "กำลังเช่า" และปรับสถานะรถเป็น "กำลังเช่า" ทันที`)) {
       return;
@@ -4679,36 +4750,8 @@ class App {
 
   async quickConfirmReturn(bkId) {
     if (!bkId) return;
-    const b = (this.bookings || []).find(x => x.booking_id === bkId);
-    const carPlate = b ? b.car_id : "";
-    const custName = b ? b.customer : "";
-
-    if (!confirm(`🏁 ยืนยันการรับคืนรถ ${carPlate} จากคุณ ${custName} เรียบร้อยแล้ว?\n\nระบบจะปรับสถานะรายการจองเป็น "เสร็จสิ้น" และปล่อยรถคันนี้กลับมา "ว่างพร้อมใช้งาน" ทันที`)) {
-      return;
-    }
-
-    try {
-      const res = await fetch(`/api/bookings/${bkId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "เสร็จสิ้น" })
-      });
-      const data = await res.json();
-      if (data.success) {
-        this.showToast(`🏁 รับคืนรถ ${carPlate} เรียบร้อย! สถานะเป็น "เสร็จสิ้น" และรถว่างพร้อมใช้งานแล้ว 🎉`, "success");
-        await this.loadBookings();
-        await this.loadCars();
-        if (this.activeTab === "contract") this.onSelectContractBooking();
-        if (this.activeTab === "assign") {
-          this.onSelectAssignDispBooking();
-          this.onSelectAssignRetBooking();
-        }
-      } else {
-        throw new Error(data.detail || "อัปเดตสถานะไม่สำเร็จ");
-      }
-    } catch (e) {
-      this.showToast("เกิดข้อผิดพลาด: " + e.message, "danger");
-    }
+    // Strictly open Return Inspection Checklist to enforce Branch A vs Branch B disposition
+    this.openHandoverModal(bkId, "Return");
   }
 
   async markContractIssued() {
@@ -4968,14 +5011,20 @@ class App {
                 (b.status === 'ยกเลิก' ? 'badge-danger' : 
                 (b.status === 'เตรียมส่งมอบ' ? 'badge-warning' : 'badge-info')))
               }">${b.status}</span>
-              ${['รอส่งมอบ', 'เตรียมส่งมอบ'].includes(b.status) ? `
-                <button type="button" onclick="app.quickConfirmHandover('${b.booking_id}')" class="btn btn-sm btn-success" style="font-size:11px; padding:2px 8px; white-space:nowrap; border-radius:4px; font-weight:600;" title="${isEn ? 'Handed vehicle over ➔ Update status to Renting' : 'ส่งมอบรถแล้ว ➔ ปรับสถานะเป็น กำลังเช่า'}">
-                  🚚 ${isEn ? 'Handed Over' : 'ส่งมอบรถแล้ว'}
-                </button>
-              ` : ''}
+              ${['รอส่งมอบ', 'เตรียมส่งมอบ'].includes(b.status) ? (
+                b.contract_issued ? `
+                  <button type="button" onclick="app.quickConfirmHandover('${b.booking_id}')" class="btn btn-sm btn-success" style="font-size:11px; padding:2px 8px; white-space:nowrap; border-radius:4px; font-weight:600;" title="${isEn ? 'Handed vehicle over ➔ Update status to Renting' : 'ส่งมอบรถแล้ว ➔ ปรับสถานะเป็น กำลังเช่า'}">
+                    🚚 ${isEn ? 'Handed Over' : 'ส่งมอบรถแล้ว'}
+                  </button>
+                ` : `
+                  <button type="button" onclick="app.goToTabWithBooking('contract', '${b.booking_id}')" class="btn btn-sm btn-secondary" style="font-size:10.5px; padding:2px 6px; white-space:nowrap; border-radius:4px; font-weight:600; background:#EFF6FF; border-color:#BFDBFE; color:#1E40AF;" title="${isEn ? 'Issue contract in Tab 4 first' : 'ต้องออกสัญญาเช่าในแท็บ 4 ก่อนส่งมอบรถ'}">
+                    📝 ${isEn ? 'Issue Contract' : 'รอออกสัญญา'}
+                  </button>
+                `
+              ) : ''}
               ${['กำลังเช่า', 'เตรียมรับคืน'].includes(b.status) ? `
-                <button type="button" onclick="app.quickConfirmReturn('${b.booking_id}')" class="btn btn-sm btn-warning" style="font-size:11px; padding:2px 8px; white-space:nowrap; color:#1E293B; border-radius:4px; font-weight:600;" title="${isEn ? 'Customer returned vehicle ➔ Update status to Completed' : 'ลูกค้านำรถมาคืนแล้ว ➔ ปรับสถานะเป็น เสร็จสิ้น'}">
-                  🏁 ${isEn ? 'Returned' : 'รับคืนแล้ว'}
+                <button type="button" onclick="app.openHandoverModal('${b.booking_id}', 'Return')" class="btn btn-sm btn-warning" style="font-size:11px; padding:2px 8px; white-space:nowrap; color:#1E293B; border-radius:4px; font-weight:600;" title="${isEn ? 'Customer returned vehicle ➔ Inspection & Return Checklist' : 'ลูกค้านำรถมาคืน ➔ ตรวจสภาพตาม Checklist และรับรถคืน'}">
+                  🏁 ${isEn ? 'Return & Inspect' : 'ตรวจรับรถคืน'}
                 </button>
               ` : ''}
             </div>
@@ -5344,15 +5393,158 @@ class App {
 
   // --- Modal: Handover Inspection ---
   openHandoverModal(bkId, jobType) {
+    const b = (this.bookings || []).find(x => x.booking_id === bkId);
+    if (jobType === "Dispatch") {
+      if (b && !b.deposit_paid) {
+        alert("⚠️ ยังไม่ได้ชำระเงินมัดจำ ไม่สามารถส่งมอบรถได้ (กรุณาไปที่แท็บ \"2. เงินมัดจำ & การเงิน\")");
+        return;
+      }
+      if (b && !b.rental_paid) {
+        alert("⚠️ ยังไม่ได้ชำระค่าเช่าคงเหลือ กรุณาชำระค่าเช่าให้เรียบร้อยก่อนส่งมอบรถ");
+        this.openSettleModal(bkId);
+        return;
+      }
+      if (b && !b.contract_issued) {
+        alert("⚠️ สถานะรถจะเปลี่ยนเป็น \"กำลังเช่า\" ได้ก็ต่อเมื่อ \"ออกสัญญาเช่าแล้ว\" เท่านั้น ห้ามเปลี่ยนเป็นกำลังเช่าก่อนออกสัญญาเด็ดขาด กรุณาไปที่แท็บ \"4. จัดทำสัญญาเช่า\" เพื่อตรวจสอบและออกสัญญาเช่าให้เรียบร้อยก่อน");
+        return;
+      }
+    }
+
     document.getElementById("insp-bk-id").value = bkId;
     document.getElementById("insp-job-type").value = jobType;
     document.getElementById("modal-handover-title").textContent = jobType === "Dispatch"
       ? `🚚 ตรวจสภาพและส่งมอบรถ (Dispatch - ${bkId})`
       : `🔙 ตรวจสภาพและรับรถคืน (Return - ${bkId})`;
 
+    const condSec = document.getElementById("insp-return-condition-section");
+    if (condSec) {
+      condSec.style.display = jobType === "Return" ? "block" : "none";
+      const radNorm = document.getElementById("insp-cond-normal");
+      if (radNorm) radNorm.checked = true;
+      this.onInspConditionChange("normal");
+    }
+
     this.uploadedPhotos = [];
-    document.getElementById("insp-uploaded-photos").innerHTML = "";
+    const photoContainer = document.getElementById("insp-uploaded-photos");
+    if (photoContainer) photoContainer.innerHTML = "";
     this.openModal("modal-handover");
+  }
+
+  onInspConditionChange(cond) {
+    const normInfo = document.getElementById("insp-cond-normal-info");
+    const repInfo = document.getElementById("insp-cond-repair-info");
+    if (cond === "needs_repair") {
+      if (normInfo) normInfo.style.display = "none";
+      if (repInfo) repInfo.style.display = "block";
+    } else {
+      if (normInfo) normInfo.style.display = "block";
+      if (repInfo) repInfo.style.display = "none";
+    }
+    this.recalcInspRefundPreview();
+  }
+
+  recalcInspRefundPreview() {
+    const bkId = document.getElementById("insp-bk-id")?.value;
+    const b = (this.bookings || []).find(x => x.booking_id === bkId);
+    const depAmt = parseFloat(b?.deposit_amount || 5000);
+    const repCost = parseFloat(document.getElementById("insp-repair-cost")?.value || 0);
+    const isRepair = document.getElementById("insp-cond-repair")?.checked;
+
+    const prevEl = document.getElementById("insp-deposit-calc-preview");
+    if (!prevEl) return;
+
+    if (isRepair) {
+      const deducted = Math.min(repCost, depAmt);
+      const refund = Math.max(0, depAmt - deducted);
+      prevEl.innerHTML = `
+        💵 <b>สรุปการเงินมัดจำ:</b> มัดจำเดิม ฿${depAmt.toLocaleString()} | หักค่าซ่อม ฿${deducted.toLocaleString()} | <b>คืนมัดจำสุทธิ: <span style="color:#15803D;">฿${refund.toLocaleString()}</span></b>
+      `;
+    } else {
+      prevEl.innerHTML = `
+        💵 <b>คืนเงินมัดจำเต็มจำนวน:</b> <b style="color:#15803D;">฿${depAmt.toLocaleString()}</b>
+      `;
+    }
+  }
+
+  openSettleModal(bkId) {
+    const b = (this.bookings || []).find(x => x.booking_id === bkId);
+    if (!b) return;
+    const netP = parseFloat(b.net_price || 0);
+    const remP = parseFloat(b.remaining_rental !== undefined ? b.remaining_rental : netP);
+    
+    document.getElementById("modal-settle-bk-id").value = bkId;
+    const sumEl = document.getElementById("modal-settle-summary");
+    if (sumEl) {
+      sumEl.innerHTML = `
+        <b>รหัสการจอง:</b> <span style="color:#C2410C;">${b.booking_id}</span> | <b>ทะเบียน:</b> ${b.car_id}<br/>
+        <b>ผู้เช่า:</b> ${b.customer} | <b>ยอดสัญญาเต็ม:</b> ฿${netP.toLocaleString()}
+      `;
+    }
+    const amtEl = document.getElementById("modal-settle-amount");
+    if (amtEl) amtEl.value = `฿${remP.toLocaleString('th-TH', {minimumFractionDigits: 2})}`;
+
+    const refEl = document.getElementById("modal-settle-ref");
+    if (refEl) refEl.value = b.rental_ref || "";
+    const slipEl = document.getElementById("modal-settle-slip-url");
+    if (slipEl) slipEl.value = b.rental_slip || "";
+
+    this.openModal("modal-settle-rental");
+  }
+
+  async handleSettleSlipUpload(input) {
+    if (!input.files || input.files.length === 0) return;
+    const file = input.files[0];
+    const formData = new FormData();
+    formData.append("file", file);
+    try {
+      this.showToast(`กำลังอัปโหลดสลิป ${file.name}...`, "info");
+      const res = await fetch("/api/upload-photo", { method: "POST", body: formData });
+      const data = await res.json();
+      if (data.success && data.url) {
+        document.getElementById("modal-settle-slip-url").value = data.url;
+        this.showToast("📸 อัปโหลดสลิปเรียบร้อย!", "success");
+      }
+    } catch (e) {
+      this.showToast("อัปโหลดไม่สำเร็จ: " + e.message, "danger");
+    }
+  }
+
+  async submitSettleFromModal() {
+    const bkId = document.getElementById("modal-settle-bk-id")?.value;
+    if (!bkId) return;
+    const method = document.getElementById("modal-settle-method")?.value || "โอนเงิน / สแกน QR";
+    const ref = (document.getElementById("modal-settle-ref")?.value || "").trim();
+    const slip = (document.getElementById("modal-settle-slip-url")?.value || "").trim();
+
+    try {
+      this.showToast(`⏳ กำลังบันทึกชำระค่าเช่า ${bkId}...`, "info");
+      const res = await fetch(`/api/bookings/${bkId}/settle`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          payment_method: method,
+          payment_ref: ref,
+          slip_url: slip
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        this.closeModal("modal-settle-rental");
+        this.showToast(`🎉 ชำระค่าเช่าสำหรับ ${bkId} เรียบร้อย! พร้อมจัดทำสัญญาเช่า`, "success");
+        await this.loadBookings();
+        if (this.activeTab === "contract") this.onSelectContractBooking();
+        if (this.activeTab === "assign") {
+          this.onSelectAssignDispBooking();
+          this.onSelectAssignRetBooking();
+        }
+        if (this.activeTab === "deposit") this.onSelectDepositBooking();
+      } else {
+        throw new Error(data.detail || "ชำระค่าเช่าไม่สำเร็จ");
+      }
+    } catch (e) {
+      alert(e.message);
+      this.showToast("เกิดข้อผิดพลาด: " + e.message, "danger");
+    }
   }
 
   async handlePhotoUpload(input) {
@@ -5391,12 +5583,20 @@ class App {
     const fuel = document.getElementById("insp-fuel-select").value;
     const mileage = document.getElementById("insp-mileage-input").value;
     const notes = document.getElementById("insp-notes-input").value;
+    const isRepair = document.getElementById("insp-cond-repair")?.checked;
+    const damageDesc = (document.getElementById("insp-damage-desc")?.value || "").trim();
+    const repairCost = parseFloat(document.getElementById("insp-repair-cost")?.value || 0);
+    const serviceCenter = (document.getElementById("insp-service-center")?.value || "").trim();
 
     const payload = {
       fuel_level: fuel,
       mileage: mileage,
       notes: notes,
-      photos: this.uploadedPhotos
+      photos: this.uploadedPhotos,
+      condition: (jobType === "Return" && isRepair) ? "needs_repair" : "normal",
+      damage_desc: damageDesc,
+      repair_cost: repairCost,
+      service_center: serviceCenter
     };
 
     const endpoint = jobType === "Dispatch" ? `/api/bookings/${bkId}/close-dispatch` : `/api/bookings/${bkId}/close-return`;
@@ -5410,13 +5610,25 @@ class App {
       const data = await res.json();
       if (data.success) {
         this.closeModal("modal-handover");
-        this.showToast(`🎉 ปิดงาน ${jobType} สำหรับ ${bkId} สมบูรณ์!`, "success");
+        if (jobType === "Return" && isRepair) {
+          this.showToast(`⚠️ รับคืนรถ ${bkId} เรียบร้อย (ส่งซ่อมบำรุง & หักมัดจำ ฿${repairCost.toLocaleString()})`, "warning");
+        } else {
+          this.showToast(`🎉 ปิดงาน ${jobType} สำหรับ ${bkId} สมบูรณ์!`, "success");
+        }
         await this.loadBackOfficeJobs();
         await this.loadBookings();
         await this.loadCars();
         if (jobType === "Return") await this.loadDashboardKPIs();
+        if (this.activeTab === "contract") this.onSelectContractBooking();
+        if (this.activeTab === "assign") {
+          this.onSelectAssignDispBooking();
+          this.onSelectAssignRetBooking();
+        }
+      } else {
+        throw new Error(data.detail || "ปิดงานไม่สำเร็จ");
       }
     } catch (e) {
+      alert(e.message);
       this.showToast("เกิดข้อผิดพลาด: " + e.message, "danger");
     }
   }
