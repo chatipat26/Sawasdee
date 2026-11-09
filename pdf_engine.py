@@ -891,8 +891,8 @@ def _draw_inspection_page(can, page_type, b_info, c_info, car_info, data, is_act
 def _generate_fallback_inspection_pdf(booking_info=None, customer_info=None, car_info=None, is_checkout=True, payload=None):
     """
     Bulletproof standalone PDF generator that draws the full Sawasdee Pre-Rental
-    Inspection checklist with 4-view car diagram using ReportLab Canvas.
-    Guarantees an HTTP 200 PDF output even if the background PDF template is absent.
+    Inspection checklist with 4-view car diagram and complete labels using ReportLab Canvas.
+    Guarantees an HTTP 200 PDF output with all labels intact even if background template is absent.
     """
     pdf_buffer = io.BytesIO()
     can = canvas.Canvas(pdf_buffer, pagesize=(594.96, 841.92))
@@ -909,14 +909,14 @@ def _generate_fallback_inspection_pdf(booking_info=None, customer_info=None, car
     can.drawString(40, 788, "SAWASDEE CAR RENT CO., LTD.")
     can.setFont(FONT_REGULAR, 7.5)
     can.setFillColor(colors.HexColor('#64748B'))
-    can.drawString(40, 776, "199/21 Sukhumvit 31 Alley (Sawasdee), Khlong Tan Nuea, Vadhana, Bangkok 10110 | +66 81 346 6888")
+    can.drawString(40, 776, "199/21 Sukhumvit 31 Alley (Sawasdee), Khlong Tan Nuea, Vadhana, Bangkok 10110 | +66 81 346 6888 · sawasdeecar@gmail.com")
 
     can.setFont(FONT_BOLD, 10.5)
     can.setFillColor(colors.HexColor('#0F172A'))
-    can.drawRightString(554, 788, "PRE-RENTAL INSPECTION (CHECK OUT)" if is_checkout else "PRE-RENTAL INSPECTION (CHECK IN)")
+    can.drawRightString(554, 788, "CHECK OUT INSPECTION" if is_checkout else "CHECK IN INSPECTION")
 
     # Section borders
-    can.setStrokeColor(colors.HexColor('#CBD5E1'))
+    can.setStrokeColor(colors.HexColor('#0F172A'))
     can.setLineWidth(0.8)
     can.rect(36, 680, 523, 46)
     can.rect(36, 440, 160, 230)
@@ -926,8 +926,18 @@ def _generate_fallback_inspection_pdf(booking_info=None, customer_info=None, car
     can.rect(186, 170, 373, 260)
     can.rect(36, 45, 523, 115)
 
+    # 1. Booking Info Labels
+    can.setFont(FONT_BOLD, 8)
+    can.setFillColor(colors.HexColor('#0F172A'))
+    can.drawString(42, 708.5, "Rental Agreement No:")
+    can.drawString(295, 708.5, "REG No:")
+    can.drawString(425, 708.5, "MVA:")
+    can.drawString(42, 693.5, "Date/Time Out:" if is_checkout else "Date/Time In:")
+    can.drawString(205, 693.5, "Kilometer Out:" if is_checkout else "Kilometer In:")
+    can.drawString(345, 693.5, "Car Prepared By:" if is_checkout else "Car Inspected By:")
+
     # Category Section Headings
-    can.setFont(FONT_BOLD, 9)
+    can.setFont(FONT_BOLD, 8.5)
     can.setFillColor(colors.HexColor('#0F172A'))
     can.drawString(42, 658, "Fuel Level (ระดับน้ำมัน)")
     can.drawString(42, 595, "Cleanliness (ความสะอาด)")
@@ -935,45 +945,176 @@ def _generate_fallback_inspection_pdf(booking_info=None, customer_info=None, car
     can.drawString(208, 658, "Interior & Controls (ระบบภายใน)")
     can.drawString(389, 658, "Under Hood & Equipment (เครื่องยนต์)")
 
-    # Remarks Heading
-    can.drawString(42, 418, "Remark / ข้อกำหนด:")
+    # 2. Checkboxes & Checklist Labels
     can.setFont(FONT_REGULAR, 7)
-    can.setFillColor(colors.HexColor('#475569'))
-    can.drawString(42, 402, "1. TRAFFIC LAW: Renter responsible")
-    can.drawString(42, 390, "2. SMOKING: 3,000 THB fine")
-    can.drawString(42, 378, "3. KEY LOST: Charge actual cost")
-    can.drawString(42, 366, "4. CLEAN UP: 1,000 THB improper usage")
-    can.drawString(42, 354, "5. COVERAGE: Waiver ex. tires/glass")
-    can.drawString(42, 342, "6. RETURN: Same condition")
+    can.setFillColor(colors.HexColor('#1E293B'))
+    can.setStrokeColor(colors.HexColor('#475569'))
+    can.setLineWidth(0.7)
 
-    # Diagram Section Schematic Outlines
+    # Fuel Level Checkboxes & Labels
+    can.rect(52.1, 636.8, 7.5, 7.5)
+    can.drawString(62.5, 637.5, "E")
+    can.rect(79.1, 636.8, 7.5, 7.5)
+    can.drawString(89.5, 637.5, "1/4")
+    can.rect(112.1, 636.8, 7.5, 7.5)
+    can.drawString(122.5, 637.5, "1/2")
+    can.rect(144.4, 636.8, 7.5, 7.5)
+    can.drawString(154.8, 637.5, "3/4")
+    can.rect(177.4, 636.8, 7.5, 7.5)
+    can.drawString(187.8, 637.5, "F")
+
+    # Cleanliness Labels
+    clean_items = [
+        (52.1, 577.5, "Ext. & Int. Body (ภายนอก/ใน)"),
+        (52.1, 564.8, "Mats & Carpet (ผ้ายาง/พรม)"),
+        (52.1, 551.3, "Windshield (กระจก)"),
+        (52.1, 538.5, "CHECKED (ตรวจเรียบร้อย)"),
+    ]
+    for bx, by, txt in clean_items:
+        can.rect(bx, by, 7.5, 7.5)
+        can.drawString(63.5, by + 1.2, txt)
+
+    # Tires Labels
+    tire_items = [
+        (52.1, 483.0, "Pressure & Cond. (สภาพ/ลมยาง)"),
+        (52.1, 470.3, "Spare Tire & Tools (ยางอะไหล่/เครื่องมือ)"),
+        (52.1, 456.8, "CHECKED (ตรวจเรียบร้อย)"),
+    ]
+    for bx, by, txt in tire_items:
+        can.rect(bx, by, 7.5, 7.5)
+        can.drawString(63.5, by + 1.2, txt)
+
+    # Interior & Controls Labels
+    interior_items = [
+        (223.1, 624.0, "Driving Controls (เบรค/คันเร่ง/เกียร์)"),
+        (223.1, 610.5, "A/C & Audio (แอร์/วิทยุ)"),
+        (223.1, 597.8, "Wipers & Horn (ปัดน้ำฝน/แตร)"),
+        (223.1, 584.3, "Seats & Mirrors (เบาะ/กระจกมองข้าง)"),
+        (223.1, 561.0, "Meters & Lights (มาตรวัด/ไฟ)"),
+        (223.1, 548.3, "Lighter / USB (ที่จุดบุหรี่/USB)"),
+        (223.1, 534.8, "Manual & Docs (คู่มือ/ทะเบียน/พ.ร.บ.)"),
+        (223.1, 511.5, "Accident Report Form (ใบรายงานฯ)"),
+        (223.1, 493.5, "CHECKED (ตรวจเรียบร้อย)"),
+    ]
+    for bx, by, txt in interior_items:
+        can.rect(bx, by, 7.5, 7.5)
+        can.drawString(234.5, by + 1.2, txt)
+
+    # Under Hood & Equipment Labels
+    hood_items = [
+        (394.1, 624.0, "Motor Oil & Fluids (น้ำมันเครื่อง/เกียร์)"),
+        (394.1, 600.8, "Radiator & Washer (หม้อน้ำ/ฉีดกระจก)"),
+        (394.1, 577.5, "Battery & Belts (แบตเตอรี่/สายพาน)"),
+        (394.1, 564.0, "Hood & Doors Lock (ฝากระโปรง/ล็อค)"),
+        (394.1, 540.8, "Reg. Plate & Tax (ป้ายทะเบียน/ภาษี)"),
+        (394.1, 527.3, "CHECKED (ตรวจเรียบร้อย)"),
+    ]
+    for bx, by, txt in hood_items:
+        can.rect(bx, by, 7.5, 7.5)
+        can.drawString(405.5, by + 1.2, txt)
+
+    # Remarks Heading & Items
+    can.setFont(FONT_BOLD, 8)
+    can.drawString(42, 418, "Remark / หมายเหตุ:")
+    can.setFont(FONT_REGULAR, 6.8)
+    can.setFillColor(colors.HexColor('#475569'))
+    can.drawString(42, 402, "1. TRAFFIC LAW: Renter responsible for all fines.")
+    can.drawString(42, 390, "2. SMOKING: Not permitted. 3,000 THB charge.")
+    can.drawString(42, 378, "3. KEY LOST: Charge at actual cost.")
+    can.drawString(42, 366, "4. CLEAN UP: 1,000 THB for improper usage.")
+    can.drawString(42, 354, "5. COVERAGE: Waiver does not cover tires/glass.")
+    can.drawString(42, 342, "6. RETURNING: Return in received condition.")
+
+    # Damage Section Heading & Legend
+    can.setFont(FONT_BOLD, 8.5)
+    can.setFillColor(colors.HexColor('#0F172A'))
+    can.drawString(195, 418, "Damage Out / ตำหนิรถรับออก" if is_checkout else "Damage In / ตำหนิรถรับคืน")
+    can.setFont(FONT_BOLD, 7.5)
+    can.setFillColor(colors.HexColor('#DC2626'))
+    can.drawRightString(460, 418, "X = Dent (รอยบุบ)")
+    can.setFillColor(colors.HexColor('#2563EB'))
+    can.drawRightString(545, 418, "D = Scratch (รอยขีดข่วน)")
+
+    # Diagram Views Labels & Images
     can.setFont(FONT_BOLD, 7)
     can.setFillColor(colors.HexColor('#475569'))
-    can.drawString(205, 412, "FRONT")
-    can.rect(195, 360, 50, 48)
-    can.drawString(205, 342, "REAR")
-    can.rect(195, 290, 50, 48)
-    can.drawString(300, 412, "TOP VIEW")
-    can.roundRect(280, 280, 70, 128, 8)
-    can.drawString(440, 412, "LEFT")
-    can.rect(400, 360, 120, 48)
-    can.drawString(440, 342, "RIGHT")
-    can.rect(400, 290, 120, 48)
+    can.drawCentredString(220, 404, "FRONT")
+    can.drawCentredString(220, 334, "REAR")
+    can.drawCentredString(315, 404, "TOP VIEW")
+    can.drawCentredString(460, 404, "LEFT")
+    can.drawCentredString(460, 334, "RIGHT")
 
-    # Legend
-    can.setFont(FONT_BOLD, 8)
-    can.setFillColor(colors.HexColor('#DC2626'))
-    can.drawString(200, 180, "X = Dent (รอยบุบ)")
-    can.setFillColor(colors.HexColor('#2563EB'))
-    can.drawString(300, 180, "D = Scratch (รอยขีดข่วน)")
+    # Draw Car Vector/Images if available
+    img_dir = os.path.join(BASE_DIR, "static", "img", "car_diagram")
+    if os.path.exists(img_dir):
+        from reportlab.lib.utils import ImageReader
+        try:
+            f_img = os.path.join(img_dir, "car_front.png")
+            if os.path.exists(f_img):
+                can.drawImage(ImageReader(f_img), 195, 345, width=50, height=48, mask='auto', preserveAspectRatio=True)
+            r_img = os.path.join(img_dir, "car_rear.png")
+            if os.path.exists(r_img):
+                can.drawImage(ImageReader(r_img), 195, 275, width=50, height=48, mask='auto', preserveAspectRatio=True)
+            t_img = os.path.join(img_dir, "car_top.png")
+            if os.path.exists(t_img):
+                can.drawImage(ImageReader(t_img), 280, 270, width=70, height=130, mask='auto', preserveAspectRatio=True)
+            l_img = os.path.join(img_dir, "car_left.png")
+            if os.path.exists(l_img):
+                can.drawImage(ImageReader(l_img), 400, 345, width=120, height=48, mask='auto', preserveAspectRatio=True)
+            rt_img = os.path.join(img_dir, "car_right.png")
+            if os.path.exists(rt_img):
+                can.drawImage(ImageReader(rt_img), 400, 275, width=120, height=48, mask='auto', preserveAspectRatio=True)
+        except Exception as img_err:
+            print(f"[PDF Engine] Fallback car diagram draw note: {img_err}")
+    else:
+        can.rect(195, 350, 50, 48)
+        can.rect(195, 280, 50, 48)
+        can.roundRect(280, 270, 70, 128, 8)
+        can.rect(400, 350, 120, 48)
+        can.rect(400, 280, 120, 48)
 
-    # Overlay all dynamic data
+    # 4. Acknowledgment Statement
+    can.setFont(FONT_REGULAR, 6.2)
+    can.setFillColor(colors.HexColor('#475569'))
+    if is_checkout:
+        ack_t = "I hereby acknowledge receipt of this vehicle and have inspected the exterior and interior for any damage. Before leaving these premises, I will report any additional damage not noted above to Sawasdee Car Rent Co., Ltd. / ข้าพเจ้าขอรับรองว่าได้ตรวจสอบสภาพรถยนต์ทั้งภายนอกและภายในเรียบร้อยแล้ว หากพบความเสียหายเพิ่มเติมจะแจ้งให้บริษัททราบก่อนนำรถออกไป"
+    else:
+        ack_t = "I hereby acknowledge that I have returned this vehicle and the above inspection accurately represents its condition at Check In. / ข้าพเจ้าขอรับรองว่าได้คืนรถยนต์คันนี้ และรายละเอียดการตรวจสอบด้านบนตรงตามสภาพรถที่ส่งคืนจริง"
+    can.drawString(42, 150, ack_t[:170])
+    can.drawString(42, 142, ack_t[170:])
+
+    # 5. Signature Boxes
+    can.setStrokeColor(colors.HexColor('#0F172A'))
+    can.setLineWidth(0.8)
+    can.rect(45, 52, 245, 82)
+    can.rect(304, 52, 245, 82)
+
+    can.setFont(FONT_BOLD, 7.5)
+    can.setFillColor(colors.HexColor('#0F172A'))
+    can.drawCentredString(167.5, 67, "STAFF SIGNATURE")
+    can.setFont(FONT_REGULAR, 6.5)
+    can.setFillColor(colors.HexColor('#64748B'))
+    can.drawCentredString(167.5, 57, "ผู้ตรวจส่งมอบรถ" if is_checkout else "ผู้ตรวจรับรถคืน")
+
+    can.setFont(FONT_BOLD, 7.5)
+    can.setFillColor(colors.HexColor('#0F172A'))
+    can.drawCentredString(426.5, 67, "CUSTOMER SIGNATURE")
+    can.setFont(FONT_REGULAR, 6.5)
+    can.setFillColor(colors.HexColor('#64748B'))
+    can.drawCentredString(426.5, 57, "ผู้เช่า (ตอนรับรถ)" if is_checkout else "ผู้เช่า (ตอนคืนรถ)")
+
+    # Footer
+    can.setFont(FONT_REGULAR, 7)
+    can.setFillColor(colors.HexColor('#94A3B8'))
+    can.drawString(36, 16, "Sawasdee Car Rent Co., Ltd. - Pre-Rental Inspection")
+    can.drawRightString(559, 16, "Page 1 of 2 (Check Out)" if is_checkout else "Page 2 of 2 (Check In)")
+
+    # Overlay dynamic data (Checkmarks, values, signatures, marked diagrams)
     _draw_inspection_page(can, page_type, booking_info or {}, customer_info or {}, car_info or {}, payload or {}, is_active=True)
 
     can.save()
     pdf_buffer.seek(0)
     return pdf_buffer.getvalue()
-
 
 def generate_inspection_checklist_pdf(template_path="Sawasdee Pre-Rental Inspection.pdf", booking_info=None, customer_info=None, car_info=None, inspection_type="checkout", payload=None):
     """
