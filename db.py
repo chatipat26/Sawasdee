@@ -632,8 +632,7 @@ class DataStore:
                             _pair(merged_c, 'insurance_expire_date', 'ins_expiry')
                             _pair(merged_c, 'insurance_company', 'ins_company')
                             _pair(merged_c, 'ins_policy_no', 'insurance_policy_no')
-                            _pair(merged_c, 'ins_policy_no', 'policy_no')
-                            _pair(merged_c, 'insurance_policy_no', 'policy_no')
+                            _pair(merged_c, 'act_policy_no', 'policy_no')
                             _pair(merged_c, 'car_owner', 'owner')
                             _pair(merged_c, 'car_owner', 'owner_name')
                             _pair(merged_c, 'owner', 'owner_name')
@@ -970,8 +969,7 @@ class DataStore:
             _pair_sync(existing, 'insurance_expire_date', 'ins_expiry')
             _pair_sync(existing, 'insurance_company', 'ins_company')
             _pair_sync(existing, 'ins_policy_no', 'insurance_policy_no')
-            _pair_sync(existing, 'ins_policy_no', 'policy_no')
-            _pair_sync(existing, 'insurance_policy_no', 'policy_no')
+            _pair_sync(existing, 'act_policy_no', 'policy_no')
             _pair_sync(existing, 'car_owner', 'owner')
             _pair_sync(existing, 'car_owner', 'owner_name')
             _pair_sync(existing, 'owner', 'owner_name')
@@ -1667,8 +1665,12 @@ class DataStore:
                     car["insurance_company"] = str(insurance_company).strip()
                     car["ins_company"] = str(insurance_company).strip()
                 if policy_no and str(policy_no).strip():
-                    car["insurance_policy_no"] = str(policy_no).strip()
-                    car["policy_no"] = str(policy_no).strip()
+                    if new_act_expiry and str(new_act_expiry).strip() and str(new_act_expiry).strip() != "-":
+                        car["act_policy_no"] = str(policy_no).strip()
+                        car["policy_no"] = str(policy_no).strip()
+                    else:
+                        car["insurance_policy_no"] = str(policy_no).strip()
+                        car["ins_policy_no"] = str(policy_no).strip()
                 self.async_sync_car(car_plate, car)
 
             # Insert persistent maintenance log entry

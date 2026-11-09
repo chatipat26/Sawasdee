@@ -874,16 +874,19 @@ async def create_or_update_car(payload: Union[VehicleCreate, Dict[str, Any]], pl
     engine_no_val = str(payload.get("engine_no") or "-").strip() or "-"
     payload["engine_no"] = engine_no_val
 
-    # Comprehensive Insurance & ACT Policy Details (STRICT SEPARATION)
+    # ACT Policy Details (เลข พ.ร.บ. - Map to policy_no & act_policy_no)
     act_pol = str(payload.get("act_policy_no") or "-").strip() or "-"
+    if act_pol == "-" and payload.get("policy_no") and str(payload.get("policy_no")).strip() not in ["", "-"]:
+        act_pol = str(payload.get("policy_no")).strip()
     payload["act_policy_no"] = act_pol
+    payload["policy_no"] = act_pol  # STRICT: db_car.policy_no = payload.act_policy_no (ACT policy number)
     act_comp = str(payload.get("act_company") or "-").strip() or "-"
     payload["act_company"] = act_comp
 
+    # Comprehensive Insurance Policy Details (เลขกรมธรรม์ประกันภัย - Map to insurance_policy_no & ins_policy_no)
     ins_pol = str(payload.get("ins_policy_no") or payload.get("insurance_policy_no") or "-").strip() or "-"
     payload["ins_policy_no"] = ins_pol
-    payload["insurance_policy_no"] = ins_pol
-    payload["policy_no"] = ins_pol
+    payload["insurance_policy_no"] = ins_pol  # STRICT: db_car.insurance_policy_no = payload.insurance_policy_no
 
 
     payload["ins_category"] = str(payload.get("ins_category") or "-").strip() or "-"

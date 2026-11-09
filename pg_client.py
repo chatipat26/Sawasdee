@@ -443,7 +443,9 @@ class PgClient:
                 cur.execute("ALTER TABLE IF EXISTS public.financial_records ADD COLUMN IF NOT EXISTS ref VARCHAR(100);")
                 cur.execute("ALTER TABLE IF EXISTS public.financial_records ADD COLUMN IF NOT EXISTS company VARCHAR(150);")
                 try:
-                    cur.execute("UPDATE public.cars SET ins_policy_no = COALESCE(NULLIF(ins_policy_no, ''), NULLIF(insurance_policy_no, ''), policy_no) WHERE (ins_policy_no IS NULL OR ins_policy_no = '' OR ins_policy_no = '-') AND (insurance_policy_no IS NOT NULL OR policy_no IS NOT NULL);")
+                    cur.execute("UPDATE public.cars SET ins_policy_no = COALESCE(NULLIF(ins_policy_no, ''), NULLIF(insurance_policy_no, '')) WHERE (ins_policy_no IS NULL OR ins_policy_no = '' OR ins_policy_no = '-') AND insurance_policy_no IS NOT NULL;")
+                    cur.execute("UPDATE public.cars SET act_policy_no = COALESCE(NULLIF(act_policy_no, ''), NULLIF(policy_no, '')) WHERE (act_policy_no IS NULL OR act_policy_no = '' OR act_policy_no = '-') AND policy_no IS NOT NULL;")
+                    cur.execute("UPDATE public.cars SET policy_no = COALESCE(NULLIF(policy_no, ''), NULLIF(act_policy_no, '')) WHERE (policy_no IS NULL OR policy_no = '' OR policy_no = '-') AND act_policy_no IS NOT NULL;")
                 except Exception:
                     pass
             print("PostgreSQL maintenance_logs table and car columns ensured.")

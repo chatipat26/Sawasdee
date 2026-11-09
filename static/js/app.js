@@ -9772,7 +9772,10 @@ ${e.message}`);
             if (newActExpiry) { c.act_expiry = newActExpiry; c.prb_expire_date = this.dmyToYmd(newActExpiry); }
             if (newInsExpiry) { c.ins_expiry = newInsExpiry; c.insurance_expire_date = this.dmyToYmd(newInsExpiry); }
             if (insuranceCompany) { c.insurance_company = insuranceCompany; c.ins_company = insuranceCompany; }
-            if (policyNo) { c.insurance_policy_no = policyNo; c.policy_no = policyNo; }
+            if (policyNo) {
+              if (newActExpiry) { c.act_policy_no = policyNo; c.policy_no = policyNo; }
+              else { c.insurance_policy_no = policyNo; c.ins_policy_no = policyNo; }
+            }
             c.status = "ว่างพร้อมใช้งาน";
           }
         }
