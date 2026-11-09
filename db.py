@@ -481,6 +481,8 @@ class DataStore:
                             b_copy["extension_history"] = []
                         b_copy["is_fully_paid"] = bool(b_copy.get("is_fully_paid", False) or b_copy.get("rental_paid", False))
                         b_copy["contract_pdf_url"] = b_copy.get("contract_pdf_url") or ""
+                        b_copy["checkout_pdf_url"] = b_copy.get("checkout_pdf_url") or ""
+                        b_copy["checkin_pdf_url"] = b_copy.get("checkin_pdf_url") or ""
                         # Reconstruct payment slip and ref metadata from extension_history if stored
                         for item in b_copy.get("extension_history", []) or []:
                             if isinstance(item, dict) and item.get("type") == "payment_meta":
@@ -846,11 +848,15 @@ class DataStore:
                     'remaining_rental', 'created_by', 'status', 'dispatch_closed',
                     'return_closed', 'worker_delivery', 'worker_return', 'loc_delivery',
                     'loc_return', 'extension_history', 'is_fully_paid', 'rental_payment_method',
-                    'payment_type', 'google_drive_link', 'contract_pdf_url'
+                    'payment_type', 'google_drive_link', 'contract_pdf_url', 'checkout_pdf_url', 'checkin_pdf_url'
                 }
                 row["is_fully_paid"] = bool(row.get("is_fully_paid", False) or row.get("rental_paid", False))
                 if "contract_pdf_url" in row:
                     row["contract_pdf_url"] = str(row["contract_pdf_url"]) if row["contract_pdf_url"] else None
+                if "checkout_pdf_url" in row:
+                    row["checkout_pdf_url"] = str(row["checkout_pdf_url"]) if row["checkout_pdf_url"] else None
+                if "checkin_pdf_url" in row:
+                    row["checkin_pdf_url"] = str(row["checkin_pdf_url"]) if row["checkin_pdf_url"] else None
                 filtered_row = {k: v for k, v in row.items() if k in VALID_COLS}
                 db_cols = None
                 if hasattr(sb, "run"):

@@ -218,6 +218,8 @@ class BookingBase(BaseModel):
     extension_history: Optional[Union[list, dict, str]] = Field(default_factory=list)
     is_fully_paid: Optional[bool] = False
     contract_pdf_url: Optional[str] = None
+    checkout_pdf_url: Optional[str] = None
+    checkin_pdf_url: Optional[str] = None
     created_by: Optional[str] = "admin"
     created_at: Optional[Union[datetime, str]] = None
 

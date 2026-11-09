@@ -4367,6 +4367,15 @@ class App {
 
     const b = this.bookings.find(x => x.booking_id === bkId);
     if (b) {
+      const dispPrintBtn = document.getElementById("btn-assign-disp-print-pdf");
+      if (dispPrintBtn) {
+        if (b.checkout_pdf_url) {
+          dispPrintBtn.href = b.checkout_pdf_url;
+          dispPrintBtn.style.display = "block";
+        } else {
+          dispPrintBtn.style.display = "none";
+        }
+      }
       const sDateEl = document.getElementById("assign-disp-start-date");
       const eDateEl = document.getElementById("assign-disp-end-date");
       const dispDateEl = document.getElementById("assign-disp-date");
@@ -4489,6 +4498,15 @@ class App {
     }
     const b = this.bookings.find(x => x.booking_id === bkId);
     if (b) {
+      const retPrintBtn = document.getElementById("btn-assign-ret-print-pdf");
+      if (retPrintBtn) {
+        if (b.checkin_pdf_url) {
+          retPrintBtn.href = b.checkin_pdf_url;
+          retPrintBtn.style.display = "block";
+        } else {
+          retPrintBtn.style.display = "none";
+        }
+      }
       const sDateEl = document.getElementById("assign-ret-start-date");
       const eDateEl = document.getElementById("assign-ret-end-date");
       const retDateEl = document.getElementById("assign-ret-date");
@@ -4954,6 +4972,11 @@ class App {
            </button>`;
     }
 
+    const contractInspBtn = document.getElementById("btn-contract-print-inspection");
+    if (contractInspBtn) {
+      contractInspBtn.href = b.checkout_pdf_url || b.checkin_pdf_url || `/api/pdf/inspection/${b.booking_id}`;
+      contractInspBtn.style.display = "inline-flex";
+    }
     // Extend-contract button only for rentals that are currently On Rent
     const extBtn = document.getElementById("btn-extend-contract");
     if (extBtn) extBtn.style.display = ["กำลังเช่า", "เตรียมรับคืน"].includes(b.status) ? "inline-flex" : "none";
@@ -5427,7 +5450,10 @@ class App {
             <a href="${b.contract_pdf_url || `/api/pdf/contract/${b.booking_id}`}" target="_blank" class="btn btn-sm btn-secondary" title="${isEn ? 'Rental Agreement PDF' : 'สัญญาเช่า (Rental Agreement PDF)'}">📝</a>
             <a href="/api/pdf/deposit-receipt/${b.booking_id}" target="_blank" class="btn btn-sm btn-secondary" title="${isEn ? 'Deposit Receipt PDF' : 'ใบเสร็จมัดจำ (Deposit Receipt PDF)'}">🛡️</a>
             <a href="/api/pdf/receipt/${b.booking_id}" target="_blank" class="btn btn-sm btn-secondary" title="${isEn ? 'Rental Receipt PDF' : 'ใบเสร็จค่าเช่า (Rental Receipt PDF)'}">🧾</a>
-            <a href="/api/pdf/job/${b.booking_id}" target="_blank" class="btn btn-sm btn-secondary" title="${isEn ? 'Vehicle Checklist PDF' : 'ใบตรวจสภาพรถ (Checklist PDF)'}">📋</a>
+            <a href="${b.checkout_pdf_url || b.checkin_pdf_url || `/api/pdf/job/${b.booking_id}`}" target="_blank" class="btn btn-sm btn-secondary" style="${(b.checkout_pdf_url || b.checkin_pdf_url) ? 'background:#EFF6FF; border-color:#93C5FD; color:#1D4ED8; font-weight:700;' : ''}" title="${isEn ? 'Inspection Checklist PDF' : 'ใบตรวจสภาพรถ (Checklist PDF)'}">📋</a>
+            ${(b.checkout_pdf_url || b.checkin_pdf_url) ? `
+              <a href="${b.checkout_pdf_url || b.checkin_pdf_url}" target="_blank" class="btn btn-sm" style="font-size:11px; padding:2px 6px; font-weight:700; white-space:nowrap; text-decoration:none; border-radius:4px; color:#2563EB; border:1px solid #93C5FD; background:#F8FAFC;" title="${isEn ? 'Print Inspection PDF' : 'พิมพ์ใบตรวจสภาพรถ (Print Inspection PDF)'}">🖨️ ${isEn ? 'Inspection' : 'ใบตรวจสภาพ'}</a>
+            ` : ''}
             <button onclick="app.deleteBooking('${b.booking_id}')" class="btn btn-sm btn-danger" title="${isEn ? 'Delete Booking' : 'ลบรายการจอง'}">🗑️</button>
           </td>
         </tr>
@@ -5813,6 +5839,147 @@ class App {
   }
 
   // --- Modal: Handover Inspection ---
+  // --- Interactive Car Diagram Defect Marker ---
+  initDamageCanvas() {
+    const canvas = document.getElementById("insp-car-diagram-canvas");
+    if (!canvas) return;
+    this.damageMarks = this.damageMarks || [];
+    this.currentDamageTool = this.currentDamageTool || "dent";
+    this.redrawDamageCanvas();
+    this.setDamageTool(this.currentDamageTool);
+
+    if (!canvas._hasDamageHandler) {
+      canvas._hasDamageHandler = true;
+      const getPos = (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        return {
+          x: (clientX - rect.left) * scaleX,
+          y: (clientY - rect.top) * scaleY
+        };
+      };
+      const addMark = (e) => {
+        e.preventDefault();
+        const pos = getPos(e);
+        this.damageMarks.push({
+          x: pos.x,
+          y: pos.y,
+          type: this.currentDamageTool
+        });
+        this.redrawDamageCanvas();
+      };
+      canvas.addEventListener("click", addMark);
+    }
+  },
+
+  setDamageTool(tool) {
+    this.currentDamageTool = tool;
+    const btnDent = document.getElementById("btn-tool-dent");
+    const btnScratch = document.getElementById("btn-tool-scratch");
+    if (btnDent && btnScratch) {
+      if (tool === "dent") {
+        btnDent.style.boxShadow = "0 0 0 2px #DC2626";
+        btnDent.style.borderColor = "#DC2626";
+        btnScratch.style.boxShadow = "none";
+        btnScratch.style.borderColor = "#93C5FD";
+      } else {
+        btnScratch.style.boxShadow = "0 0 0 2px #2563EB";
+        btnScratch.style.borderColor = "#2563EB";
+        btnDent.style.boxShadow = "none";
+        btnDent.style.borderColor = "#FCA5A5";
+      }
+    }
+  },
+
+  clearDamageCanvas() {
+    this.damageMarks = [];
+    this.redrawDamageCanvas();
+  },
+
+  redrawDamageCanvas() {
+    const canvas = document.getElementById("insp-car-diagram-canvas");
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    ctx.fillStyle = "#FAFAFA";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.strokeStyle = "#CBD5E1";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(0, 0, canvas.width, canvas.height);
+
+    ctx.fillStyle = "#475569";
+    ctx.font = "bold 10px Sarabun, sans-serif";
+    ctx.textAlign = "center";
+
+    // 1. FRONT
+    ctx.fillText("FRONT", 65, 20);
+    ctx.strokeStyle = "#64748B";
+    ctx.lineWidth = 1.2;
+    ctx.strokeRect(30, 26, 70, 50);
+    ctx.strokeRect(36, 30, 16, 12);
+    ctx.strokeRect(78, 30, 16, 12);
+    ctx.strokeRect(45, 60, 40, 10);
+
+    // 2. REAR
+    ctx.fillText("REAR", 65, 115);
+    ctx.strokeRect(30, 122, 70, 50);
+    ctx.strokeRect(36, 126, 16, 12);
+    ctx.strokeRect(78, 126, 16, 12);
+    ctx.strokeRect(48, 142, 34, 14);
+
+    // 3. TOP VIEW
+    ctx.fillText("TOP VIEW", 240, 18);
+    ctx.strokeRect(205, 24, 70, 160);
+    ctx.strokeRect(213, 50, 54, 25);
+    ctx.strokeRect(213, 85, 54, 45);
+    ctx.strokeRect(213, 138, 54, 25);
+
+    // 4. LEFT
+    ctx.fillText("LEFT SIDE", 400, 20);
+    ctx.strokeRect(335, 28, 130, 48);
+    ctx.beginPath(); ctx.arc(360, 78, 9, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(440, 78, 9, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeRect(365, 34, 32, 20);
+    ctx.strokeRect(402, 34, 32, 20);
+
+    // 5. RIGHT
+    ctx.fillText("RIGHT SIDE", 400, 115);
+    ctx.strokeRect(335, 122, 130, 48);
+    ctx.beginPath(); ctx.arc(360, 172, 9, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(440, 172, 9, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeRect(365, 128, 32, 20);
+    ctx.strokeRect(402, 128, 32, 20);
+
+    (this.damageMarks || []).forEach(m => {
+      ctx.beginPath();
+      if (m.type === "dent") {
+        ctx.fillStyle = "#DC2626";
+        ctx.font = "bold 15px Arial, sans-serif";
+        ctx.fillText("X", m.x, m.y + 5);
+        ctx.strokeStyle = "rgba(220, 38, 38, 0.4)";
+        ctx.arc(m.x, m.y, 9, 0, Math.PI * 2);
+        ctx.stroke();
+      } else {
+        ctx.fillStyle = "#2563EB";
+        ctx.font = "bold 15px Arial, sans-serif";
+        ctx.fillText("D", m.x, m.y + 5);
+        ctx.strokeStyle = "rgba(37, 99, 235, 0.4)";
+        ctx.arc(m.x, m.y, 9, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    });
+  },
+
+  getCarDiagramBase64() {
+    const canvas = document.getElementById("insp-car-diagram-canvas");
+    if (!canvas) return null;
+    return canvas.toDataURL("image/png");
+  },
+
   openHandoverModal(bkId, jobType) {
     const b = (this.bookings || []).find(x => x.booking_id === bkId);
     if (jobType === "Dispatch") {
@@ -5876,6 +6043,20 @@ class App {
     this.uploadedPhotos = [];
     const photoContainer = document.getElementById("insp-uploaded-photos");
     if (photoContainer) photoContainer.innerHTML = "";
+    this.damageMarks = [];
+    setTimeout(() => this.initDamageCanvas(), 60);
+
+    const pdfContainer = document.getElementById("insp-pdf-result-container");
+    const modalPrintBtn = document.getElementById("btn-modal-print-inspection");
+    if (pdfContainer && modalPrintBtn) {
+      const existingPdf = (jobType === "Dispatch" ? b?.checkout_pdf_url : b?.checkin_pdf_url);
+      if (existingPdf) {
+        modalPrintBtn.href = existingPdf;
+        pdfContainer.style.display = "flex";
+      } else {
+        pdfContainer.style.display = "none";
+      }
+    }
     this.openModal("modal-handover");
   }
 
@@ -6194,6 +6375,37 @@ class App {
       new_car_id: swapNewPlate
     };
 
+    // TARGET MISSION 2 & 3: Generate official inspection checklist PDF
+    const diagramBase64 = this.getCarDiagramBase64();
+    let genPdfUrl = null;
+    try {
+      const bObj = (this.bookings || []).find(x => x.booking_id === bkId);
+      const genRes = await fetch(`/api/bookings/${bkId}/generate-inspection-pdf`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          inspection_type: jobType === "Dispatch" ? "checkout" : "checkin",
+          odometer: mileage,
+          fuel_level: fuel,
+          notes: notes,
+          damage_desc: damageDesc,
+          car_diagram: diagramBase64,
+          staff_name: (jobType === "Dispatch" ? bObj?.worker_delivery : bObj?.worker_return) || "Staff",
+          customer_signature: bObj?.customer || "Customer"
+        })
+      });
+      const genData = await genRes.json();
+      if (genData.success && genData.pdf_url) {
+        genPdfUrl = genData.pdf_url;
+        if (bObj) {
+          if (jobType === "Dispatch") bObj.checkout_pdf_url = genPdfUrl;
+          else bObj.checkin_pdf_url = genPdfUrl;
+        }
+      }
+    } catch (pdfErr) {
+      console.warn("[Inspection PDF] Notice generating inspection checklist PDF:", pdfErr);
+    }
+
     const endpoint = jobType === "Dispatch" ? `/api/bookings/${bkId}/close-dispatch` : `/api/bookings/${bkId}/close-return`;
 
     try {
@@ -6213,6 +6425,20 @@ class App {
           }
         } else {
           this.showToast(`🎉 ปิดงาน ${jobType} สำหรับ ${bkId} สมบูรณ์!`, "success");
+        }
+        if (typeof Swal !== "undefined" && genPdfUrl) {
+          Swal.fire({
+            icon: 'success',
+            title: jobType === 'Dispatch' ? 'ส่งมอบรถสำเร็จ!' : 'รับรถคืนสำเร็จ!',
+            html: `
+              <p style="color:#475569; font-size:13.5px; margin-bottom:14px;">ระบบได้สร้างเอกสารใบตรวจสภาพรถยนต์ (Inspection Checklist PDF) พร้อมบันทึกลงฐานข้อมูลเรียบร้อยแล้ว</p>
+              <a href="${genPdfUrl}" target="_blank" class="btn btn-primary" style="font-weight:700; padding:10px 20px; font-size:14px; text-decoration:none; display:inline-block; background:#EA580C; border-color:#EA580C;">
+                🖨️ พิมพ์ใบตรวจสภาพรถ (Print Inspection PDF)
+              </a>
+            `,
+            showConfirmButton: true,
+            confirmButtonText: 'ปิดหน้าต่าง'
+          });
         }
         await this.loadBackOfficeJobs();
         await this.loadBookings();

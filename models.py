@@ -154,6 +154,8 @@ class Booking(Base):
     extension_history = Column(JSON, default=list)
     is_fully_paid = Column(Boolean, default=False)
     contract_pdf_url = Column(Text, nullable=True)
+    checkout_pdf_url = Column(String(500), nullable=True)
+    checkin_pdf_url = Column(String(500), nullable=True)
     created_by = Column(String(100), default="admin")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 

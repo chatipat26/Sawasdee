@@ -131,6 +131,8 @@ CREATE TABLE IF NOT EXISTS public.bookings (
     extension_history JSONB DEFAULT '[]'::jsonb,
     is_fully_paid BOOLEAN DEFAULT FALSE,
     contract_pdf_url TEXT,
+    checkout_pdf_url VARCHAR(500),
+    checkin_pdf_url VARCHAR(500),
     created_by VARCHAR(100),
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
@@ -138,6 +140,8 @@ CREATE TABLE IF NOT EXISTS public.bookings (
 ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS payment_type VARCHAR(50);
 ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS google_drive_link TEXT;
 ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS contract_pdf_url TEXT;
+ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS checkout_pdf_url VARCHAR(500);
+ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS checkin_pdf_url VARCHAR(500);
 ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS extension_history JSONB DEFAULT '[]'::jsonb;
 ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS is_fully_paid BOOLEAN DEFAULT FALSE;
 

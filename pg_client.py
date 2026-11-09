@@ -281,6 +281,8 @@ class PgClient:
                         cur.execute("ALTER TABLE IF EXISTS public.bookings ADD COLUMN IF NOT EXISTS payment_type VARCHAR(50);")
                         cur.execute("ALTER TABLE IF EXISTS public.bookings ADD COLUMN IF NOT EXISTS google_drive_link TEXT;")
                         cur.execute("ALTER TABLE IF EXISTS public.bookings ADD COLUMN IF NOT EXISTS contract_pdf_url TEXT;")
+                        cur.execute("ALTER TABLE IF EXISTS public.bookings ADD COLUMN IF NOT EXISTS checkout_pdf_url VARCHAR(500);")
+                        cur.execute("ALTER TABLE IF EXISTS public.bookings ADD COLUMN IF NOT EXISTS checkin_pdf_url VARCHAR(500);")
                         cur.execute("ALTER TABLE IF EXISTS public.bookings ADD COLUMN IF NOT EXISTS extension_history JSONB DEFAULT '[]'::jsonb;")
                         cur.execute("ALTER TABLE IF EXISTS public.bookings ADD COLUMN IF NOT EXISTS is_fully_paid BOOLEAN DEFAULT FALSE;")
 
@@ -298,6 +300,8 @@ class PgClient:
                 cur.execute("ALTER TABLE IF EXISTS public.bookings ADD COLUMN IF NOT EXISTS payment_type VARCHAR(50);")
                 cur.execute("ALTER TABLE IF EXISTS public.bookings ADD COLUMN IF NOT EXISTS google_drive_link TEXT;")
                 cur.execute("ALTER TABLE IF EXISTS public.bookings ADD COLUMN IF NOT EXISTS contract_pdf_url TEXT;")
+                cur.execute("ALTER TABLE IF EXISTS public.bookings ADD COLUMN IF NOT EXISTS checkout_pdf_url VARCHAR(500);")
+                cur.execute("ALTER TABLE IF EXISTS public.bookings ADD COLUMN IF NOT EXISTS checkin_pdf_url VARCHAR(500);")
                 cur.execute("ALTER TABLE IF EXISTS public.bookings ADD COLUMN IF NOT EXISTS extension_history JSONB DEFAULT '[]'::jsonb;")
                 cur.execute("ALTER TABLE IF EXISTS public.bookings ADD COLUMN IF NOT EXISTS is_fully_paid BOOLEAN DEFAULT FALSE;")
             print("✅ PostgreSQL bookings schema ensured (contract_pdf_url, extension_history, is_fully_paid).")

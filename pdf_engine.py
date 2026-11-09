@@ -632,3 +632,241 @@ def generate_maintenance_job_pdf(maintenance_record, car_info=None):
     doc.build(elements)
     return pdf_buffer.getvalue()
 
+
+
+# =========================================================================
+# SAWASDEE PRE-RENTAL INSPECTION PDF GENERATOR (CHECK-OUT & CHECK-IN)
+# =========================================================================
+
+def _draw_inspection_page(can, page_type, b_info, c_info, car_info, data, is_active=True):
+    from reportlab.lib.utils import ImageReader
+    import base64
+
+    # 1. Header
+    b_id = str(b_info.get("booking_id") or "-")
+    plate = str(car_info.get("plate") or b_info.get("car_id") or "-")
+    mva = f"{car_info.get('brand', '')} {car_info.get('model', '')}".strip() or str(b_info.get("car_brand_model") or "-")
+    
+    th_now = now_th()
+    if page_type == "checkout":
+        dt_str = data.get("datetime_str") or f"{format_date_dmy(b_info.get('dispatch_date') or b_info.get('start_date') or th_now.date())} {b_info.get('start_time') or th_now.strftime('%H:%M')}"
+        km_str = str(data.get("odometer") or data.get("mileage") or b_info.get("dispatch_mileage") or car_info.get("mileage") or "-")
+        staff_str = str(data.get("staff_name") or data.get("inspector_name") or b_info.get("worker_delivery") or "Staff")
+    else:
+        dt_str = data.get("datetime_str") or f"{format_date_dmy(b_info.get('return_date') or b_info.get('end_date') or th_now.date())} {b_info.get('end_time') or th_now.strftime('%H:%M')}"
+        km_str = str(data.get("odometer") or data.get("mileage") or b_info.get("return_mileage") or car_info.get("mileage") or "-")
+        staff_str = str(data.get("staff_name") or data.get("inspector_name") or b_info.get("worker_return") or "Staff")
+
+    can.setFont(FONT_BOLD, 9.5)
+    can.setFillColor(colors.HexColor('#1E293B'))
+
+    # Agreement No, REG No, MVA
+    can.drawString(160, 708.5, b_id)
+    can.drawString(345, 708.5, plate)
+    can.drawString(460, 708.5, mva)
+
+    # Date/Time, Kilometer, Prepared / Inspected By
+    can.drawString(135, 693.5, dt_str)
+    can.drawString(275, 693.5, f"{km_str} km" if km_str != "-" and not km_str.endswith("km") else km_str)
+    can.drawString(445, 693.5, staff_str)
+
+    # 2. Fuel Gauge Selection
+    fuel = str(data.get("fuel_level") or (b_info.get("dispatch_fuel") if page_type == "checkout" else b_info.get("return_fuel")) or "F").strip()
+    fuel_x_map = {
+        "E": 54.0,
+        "1/4": 80.5,
+        "1/2": 113.5,
+        "3/4": 146.5,
+        "F": 179.5
+    }
+    target_fuel_key = "F"
+    if any(k in fuel for k in ["E", "???????", "empty", "Empty", "1/8", "Low", "low"]):
+        target_fuel_key = "E"
+    elif any(k in fuel for k in ["1/4", "25%", "2/8"]):
+        target_fuel_key = "1/4"
+    elif any(k in fuel for k in ["1/2", "50%", "?????", "4/8"]):
+        target_fuel_key = "1/2"
+    elif any(k in fuel for k in ["3/4", "75%", "6/8", "7/8", "?????????"]):
+        target_fuel_key = "3/4"
+    else:
+        target_fuel_key = "F"
+
+    can.setFont("Helvetica-Bold", 11)
+    can.setFillColor(colors.HexColor('#0F172A'))
+    fx = fuel_x_map.get(target_fuel_key, 179.5)
+    can.drawString(fx, 638, "X")
+
+    # 3. Checklists
+    can.setFont("Helvetica-Bold", 10.5)
+    can.setFillColor(colors.HexColor('#1E40AF')) # Crisp blue mark
+    
+    # Cleanliness
+    clean_items = [576.5, 563.5, 550.5, 538.0]
+    for cy in clean_items:
+        can.drawString(53.5, cy, "X")
+
+    # Tires
+    tire_items = [482.0, 469.0, 456.0]
+    for ty in tire_items:
+        can.drawString(53.5, ty, "X")
+
+    # Interior & Controls
+    int_items = [623.5, 610.0, 597.5, 584.0, 560.5, 547.5, 534.5, 511.0, 493.5]
+    for iy in int_items:
+        can.drawString(224.5, iy, "X")
+
+    # Under Hood & Ext.
+    hood_items = [623.5, 600.5, 577.5, 564.0, 540.5, 527.0]
+    for hy in hood_items:
+        can.drawString(395.5, hy, "X")
+
+    # 4. Remarks / Notes
+    notes_val = str(data.get("notes") or data.get("inspection_notes") or data.get("damage_desc") or (b_info.get("dispatch_notes") if page_type == "checkout" else b_info.get("return_notes")) or "").strip()
+    if notes_val:
+        can.setFont(FONT_REGULAR, 7.5)
+        can.setFillColor(colors.HexColor('#DC2626') if page_type == 'checkin' and '???????' in notes_val else colors.HexColor('#1E293B'))
+        # Draw notes neatly inside remark box
+        words = notes_val
+        line1 = words[:38]
+        line2 = words[38:76]
+        line3 = words[76:114]
+        if line1: can.drawString(50, 205, f"Note: {line1}")
+        if line2: can.drawString(50, 195, line2)
+        if line3: can.drawString(50, 185, line3)
+
+    # 5. Car Diagram with Marked Defects (Base64 Image Overlay)
+    car_diag_b64 = data.get("car_diagram") or data.get("diagram_base64")
+    if car_diag_b64 and is_active:
+        try:
+            raw_b64 = str(car_diag_b64)
+            if "," in raw_b64:
+                raw_b64 = raw_b64.split(",", 1)[1]
+            img_bytes = base64.b64decode(raw_b64)
+            img = ImageReader(io.BytesIO(img_bytes))
+            # The damage car diagram box: x=186, y=175, width=363, height=263
+            can.drawImage(img, 186, 175, width=363, height=263, mask='auto', preserveAspectRatio=True)
+        except Exception as diag_err:
+            print(f"[PDF Engine] Inspection Car Diagram overlay note: {diag_err}")
+
+    # 6. Staff & Customer Signatures
+    staff_sig = data.get("staff_signature")
+    if staff_sig:
+        try:
+            if str(staff_sig).startswith("data:image") or len(str(staff_sig)) > 200:
+                s_b64 = str(staff_sig).split(",", 1)[1] if "," in str(staff_sig) else str(staff_sig)
+                s_img = ImageReader(io.BytesIO(base64.b64decode(s_b64)))
+                can.drawImage(s_img, 70, 65, width=190, height=45, mask='auto', preserveAspectRatio=True)
+            else:
+                can.setFont(FONT_BOLD, 10)
+                can.setFillColor(colors.HexColor('#1E293B'))
+                can.drawCentredString(165, 93, str(staff_sig))
+        except Exception as sig_err:
+            print(f"[PDF Engine] Staff signature overlay note: {sig_err}")
+    else:
+        can.setFont(FONT_REGULAR, 9)
+        can.setFillColor(colors.HexColor('#64748B'))
+        can.drawCentredString(165, 93, staff_str)
+
+    cust_sig = data.get("customer_signature")
+    cust_name = str(c_info.get("full_name") or b_info.get("customer") or "Customer")
+    if cust_sig:
+        try:
+            if str(cust_sig).startswith("data:image") or len(str(cust_sig)) > 200:
+                c_b64 = str(cust_sig).split(",", 1)[1] if "," in str(cust_sig) else str(cust_sig)
+                c_img = ImageReader(io.BytesIO(base64.b64decode(c_b64)))
+                can.drawImage(c_img, 330, 65, width=190, height=45, mask='auto', preserveAspectRatio=True)
+            else:
+                can.setFont(FONT_BOLD, 10)
+                can.setFillColor(colors.HexColor('#1E293B'))
+                can.drawCentredString(425, 93, str(cust_sig))
+        except Exception as sig_err:
+            print(f"[PDF Engine] Customer signature overlay note: {sig_err}")
+    else:
+        can.setFont(FONT_REGULAR, 9)
+        can.setFillColor(colors.HexColor('#64748B'))
+        can.drawCentredString(425, 93, cust_name)
+
+
+def generate_inspection_checklist_pdf(template_path="Sawasdee Pre-Rental Inspection.pdf", booking_info=None, customer_info=None, car_info=None, inspection_type="checkout", payload=None):
+    """
+    Generate official Sawasdee Pre-Rental Inspection Checklist PDF by overlaying data
+    onto Sawasdee Pre-Rental Inspection.pdf (Page 1 = Check Out, Page 2 = Check In).
+    Supports Base64 marked car diagram, signatures, fuel level, and condition notes.
+    """
+    candidate_paths = [
+        template_path,
+        os.path.join(BASE_DIR, template_path or ""),
+        os.path.join(os.getcwd(), template_path or ""),
+        os.path.join(BASE_DIR, "Sawasdee Pre-Rental Inspection.pdf"),
+        os.path.join(os.getcwd(), "Sawasdee Pre-Rental Inspection.pdf"),
+        os.path.abspath("Sawasdee Pre-Rental Inspection.pdf"),
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "Sawasdee Pre-Rental Inspection.pdf"),
+    ]
+    resolved_path = None
+    for p in candidate_paths:
+        if p and os.path.exists(p) and os.path.isfile(p):
+            resolved_path = os.path.abspath(p)
+            break
+
+    booking_info = booking_info or {}
+    customer_info = customer_info or {}
+    car_info = car_info or {}
+    payload = payload or {}
+    insp_type = str(inspection_type or "checkout").lower().strip()
+    is_checkout = insp_type in ("checkout", "dispatch", "out")
+
+    if not resolved_path:
+        # Fallback to reportlab flowables if template is somehow missing
+        return generate_job_pdf(booking_info, customer_info, car_info, job_type="Dispatch" if is_checkout else "Return", inspection_data=payload)
+
+    reader = PdfReader(resolved_path)
+    writer = PdfWriter()
+
+    # Determine if Page 0 (Check Out) should be populated
+    page0_data = payload if is_checkout else {
+        "odometer": booking_info.get("dispatch_mileage"),
+        "fuel_level": booking_info.get("dispatch_fuel"),
+        "notes": booking_info.get("dispatch_notes"),
+        "staff_name": booking_info.get("worker_delivery"),
+        "datetime_str": f"{format_date_dmy(booking_info.get('dispatch_date') or booking_info.get('start_date'))} {booking_info.get('start_time') or ''}".strip()
+    }
+    has_page0_data = is_checkout or bool(booking_info.get("dispatch_closed") or booking_info.get("dispatch_mileage"))
+
+    # Determine if Page 1 (Check In) should be populated
+    page1_data = payload if not is_checkout else {
+        "odometer": booking_info.get("return_mileage"),
+        "fuel_level": booking_info.get("return_fuel"),
+        "notes": booking_info.get("return_notes"),
+        "staff_name": booking_info.get("worker_return"),
+        "datetime_str": f"{format_date_dmy(booking_info.get('return_date') or booking_info.get('end_date'))} {booking_info.get('end_time') or ''}".strip()
+    }
+    has_page1_data = (not is_checkout) or bool(booking_info.get("return_closed") or booking_info.get("return_mileage"))
+
+    # Process Page 0 (Check Out)
+    page0 = reader.pages[0]
+    if has_page0_data:
+        packet0 = io.BytesIO()
+        can0 = canvas.Canvas(packet0, pagesize=(594.96, 841.92))
+        _draw_inspection_page(can0, "checkout", booking_info, customer_info, car_info, page0_data, is_active=is_checkout)
+        can0.save()
+        packet0.seek(0)
+        overlay0 = PdfReader(packet0)
+        page0.merge_page(overlay0.pages[0])
+    writer.add_page(page0)
+
+    # Process Page 1 (Check In) if template has 2 pages
+    if len(reader.pages) > 1:
+        page1 = reader.pages[1]
+        if has_page1_data:
+            packet1 = io.BytesIO()
+            can1 = canvas.Canvas(packet1, pagesize=(594.96, 841.92))
+            _draw_inspection_page(can1, "checkin", booking_info, customer_info, car_info, page1_data, is_active=(not is_checkout))
+            can1.save()
+            packet1.seek(0)
+            overlay1 = PdfReader(packet1)
+            page1.merge_page(overlay1.pages[0])
+        writer.add_page(page1)
+
+    out_buf = io.BytesIO()
+    writer.write(out_buf)
+    return out_buf.getvalue()

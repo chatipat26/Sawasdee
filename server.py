@@ -1417,6 +1417,10 @@ async def list_bookings():
             b_copy["extension_history"] = []
         b_copy["is_fully_paid"] = bool(b_copy.get("is_fully_paid", False) or b_copy.get("rental_paid", False))
         b_copy["contract_pdf_url"] = b_copy.get("contract_pdf_url") or ""
+        b_copy["checkout_pdf_url"] = b_copy.get("checkout_pdf_url") or ""
+        b_copy["checkin_pdf_url"] = b_copy.get("checkin_pdf_url") or ""
+        b_copy["checkout_pdf_url"] = b_copy.get("checkout_pdf_url") or ""
+        b_copy["checkin_pdf_url"] = b_copy.get("checkin_pdf_url") or ""
         res.append(b_copy)
     return res
 
@@ -1657,6 +1661,77 @@ async def update_booking_contract_pdf(bk_id: str, payload: Dict[str, Any]):
     target["contract_pdf_url"] = str(pdf_url)
     store.async_sync_booking(target)
     return {"success": True, "booking_id": bk_id, "contract_pdf_url": target["contract_pdf_url"]}
+
+@app.post("/api/bookings/{bk_id}/generate-inspection-pdf")
+async def generate_booking_inspection_pdf(bk_id: str, payload: Optional[Dict[str, Any]] = None):
+    """
+    Generate official vehicle inspection checklist PDF from booking data.
+    Accepts inspection data (Checkout/Checkin), marked car diagram (Base64), signatures, notes.
+    Stores generated PDF file to static storage and saves the URL in checkout_pdf_url / checkin_pdf_url.
+    """
+    payload = payload or {}
+    target = next((b for b in store.bookings if b.get("booking_id") == bk_id), None)
+    if not target:
+        target = next((cj for cj in store.completed_jobs if cj.get("booking_id") == bk_id), None)
+    if not target:
+        raise HTTPException(status_code=404, detail="?????????????????")
+
+    cust, car = _resolve_cust_and_car(target)
+    insp_type = str(payload.get("inspection_type") or ("checkout" if not target.get("return_closed") else "checkin")).lower().strip()
+    is_checkout = insp_type in ("checkout", "dispatch", "out")
+    clean_type = "checkout" if is_checkout else "checkin"
+
+    merged_payload = dict(payload)
+    if not merged_payload.get("odometer") and not merged_payload.get("mileage"):
+        merged_payload["odometer"] = target.get("dispatch_mileage" if is_checkout else "return_mileage") or car.get("mileage")
+    if not merged_payload.get("fuel_level"):
+        merged_payload["fuel_level"] = target.get("dispatch_fuel" if is_checkout else "return_fuel") or "??????? (100%)"
+    if not merged_payload.get("notes") and not merged_payload.get("inspection_notes"):
+        merged_payload["notes"] = target.get("dispatch_notes" if is_checkout else "return_notes")
+    if not merged_payload.get("staff_name") and not merged_payload.get("inspector_name"):
+        merged_payload["staff_name"] = target.get("worker_delivery" if is_checkout else "worker_return") or "Staff"
+
+    try:
+        pdf_bytes = pdf_engine.generate_inspection_checklist_pdf(
+            template_path="Sawasdee Pre-Rental Inspection.pdf",
+            booking_info=target,
+            customer_info=cust,
+            car_info=car,
+            inspection_type=clean_type,
+            payload=merged_payload
+        )
+    except Exception as e:
+        print(f"[PDF Engine] Error generating inspection checklist PDF: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"PDF Generation Error: {str(e)}")
+
+    insp_dir = os.path.join(static_dir, "pdf", "inspections")
+    os.makedirs(insp_dir, exist_ok=True)
+    fname = f"Inspection_{clean_type.capitalize()}_{bk_id}.pdf"
+    file_path = os.path.join(insp_dir, fname)
+    try:
+        with open(file_path, "wb") as f:
+            f.write(pdf_bytes)
+    except Exception as io_err:
+        print(f"[PDF Engine] Storage write note: {io_err}")
+
+    pdf_url = f"/static/pdf/inspections/{fname}"
+
+    if is_checkout:
+        target["checkout_pdf_url"] = pdf_url
+    else:
+        target["checkin_pdf_url"] = pdf_url
+    store.async_sync_booking(target)
+
+    return {
+        "success": True,
+        "booking_id": bk_id,
+        "inspection_type": clean_type,
+        "pdf_url": pdf_url,
+        "checkout_pdf_url": target.get("checkout_pdf_url"),
+        "checkin_pdf_url": target.get("checkin_pdf_url")
+    }
 
 @app.post("/api/bookings/{bk_id}/extend")
 async def extend_booking(bk_id: str, payload: Dict[str, Any]):
@@ -1986,8 +2061,32 @@ async def update_payment_slip(bk_id: str, payload: Dict[str, Any]):
     if "google_drive_link" in payload:
         target["google_drive_link"] = str(payload.get("google_drive_link") or "").strip()
 
+    try:
+        cust, car = _resolve_cust_and_car(target)
+        pdf_bytes = pdf_engine.generate_inspection_checklist_pdf(
+            template_path="Sawasdee Pre-Rental Inspection.pdf",
+            booking_info=target,
+            customer_info=cust,
+            car_info=car,
+            inspection_type="checkout",
+            payload={
+                "odometer": mileage,
+                "fuel_level": fuel,
+                "notes": notes,
+                "staff_name": target.get("worker_delivery", "Staff")
+            }
+        )
+        insp_dir = os.path.join(static_dir, "pdf", "inspections")
+        os.makedirs(insp_dir, exist_ok=True)
+        fname = f"Inspection_Checkout_{bk_id}.pdf"
+        with open(os.path.join(insp_dir, fname), "wb") as f:
+            f.write(pdf_bytes)
+        target["checkout_pdf_url"] = f"/static/pdf/inspections/{fname}"
+    except Exception as gen_err:
+        print(f"[PDF Engine] Auto-generate checkout inspection error: {gen_err}")
+
     store.async_sync_booking(target)
-    return {"success": True, "booking": target}
+    return {"success": True, "booking": target, "checkout_pdf_url": target.get("checkout_pdf_url")}
 
 # -------------------------------------------------------------------------
 # DISPATCH & RETURN WORK ORDERS
@@ -3516,6 +3615,56 @@ async def get_deposit_receipt_pdf(bk_id: str):
         io.BytesIO(pdf_bytes),
         media_type="application/pdf",
         headers={"Content-Disposition": f"inline; filename=Deposit_Receipt_{bk_id}.pdf"}
+    )
+
+@app.get("/api/pdf/inspection/{bk_id}")
+async def get_inspection_pdf(bk_id: str, type: str = "checkout", download: int = 0):
+    target = next((b for b in store.bookings if b.get("booking_id") == bk_id), None)
+    if not target:
+        target = next((cj for cj in store.completed_jobs if cj.get("booking_id") == bk_id), None)
+    if not target:
+        raise HTTPException(status_code=404, detail="?????????????????")
+
+    cust, car = _resolve_cust_and_car(target)
+    is_checkout = str(type).lower().strip() in ("checkout", "dispatch", "out")
+    clean_type = "checkout" if is_checkout else "checkin"
+
+    insp_dir = os.path.join(static_dir, "pdf", "inspections")
+    fname = f"Inspection_{clean_type.capitalize()}_{bk_id}.pdf"
+    file_path = os.path.join(insp_dir, fname)
+
+    if os.path.exists(file_path):
+        with open(file_path, "rb") as f:
+            pdf_bytes = f.read()
+    else:
+        pdf_bytes = pdf_engine.generate_inspection_checklist_pdf(
+            template_path="Sawasdee Pre-Rental Inspection.pdf",
+            booking_info=target,
+            customer_info=cust,
+            car_info=car,
+            inspection_type=clean_type,
+            payload=target
+        )
+        try:
+            os.makedirs(insp_dir, exist_ok=True)
+            with open(file_path, "wb") as f:
+                f.write(pdf_bytes)
+        except Exception:
+            pass
+
+    pdf_url = f"/static/pdf/inspections/{fname}"
+    if is_checkout and not target.get("checkout_pdf_url"):
+        target["checkout_pdf_url"] = pdf_url
+        store.async_sync_booking(target)
+    elif not is_checkout and not target.get("checkin_pdf_url"):
+        target["checkin_pdf_url"] = pdf_url
+        store.async_sync_booking(target)
+
+    disp = "attachment" if download else "inline"
+    return StreamingResponse(
+        io.BytesIO(pdf_bytes),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"{disp}; filename={fname}"}
     )
 
 @app.get("/api/pdf/job/{bk_id}")
