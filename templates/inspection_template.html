@@ -349,6 +349,18 @@
       border-top: 0.5px dotted #94A3B8;
       padding-top: 1px;
     }
+    
+    .sig-solid-line {
+      border-bottom: 1.5px solid #0F172A;
+      width: 82%;
+      margin: 4px auto 3px auto;
+    }
+    .sig-text-name {
+      font-size: 9px;
+      font-weight: 700;
+      color: #1E293B;
+      line-height: 24px;
+    }
     .sig-main-title {
       font-size: 8.5px;
       font-weight: 800;
@@ -534,14 +546,16 @@
 
         <!-- Right: Car Diagram -->
         <td class="diagram-box" style="width: 64%;">
-          <table class="diagram-top-bar">
+          <table class="diagram-top-bar" style="width: 100%; border-collapse: collapse; margin-bottom: 4px;">
             <tr>
-              <td class="diagram-heading">
-                {% if is_page_checkout %}Damage Out / ตำหนิรถรับออก{% else %}Damage In / ตำหนิรถรับคืน{% endif %}
-              </td>
-              <td style="text-align:right;">
-                <span class="legend-x">X = Dent (รอยบุบ)</span>
-                <span class="legend-d">D = Scratch (รอยขีดข่วน)</span>
+              <td style="text-align: center; padding: 2px 0 1px 0;">
+                <div class="diagram-heading" style="font-size: 9.5px; font-weight: 800; color: #0F172A; text-align: center;">
+                  {% if is_page_checkout %}Damage Out / ตำหนิรถรับออก{% else %}Damage In / ตำหนิรถรับคืน{% endif %}
+                </div>
+                <div style="text-align: center; margin-top: 2px;">
+                  <span class="legend-x" style="font-size: 7.5px; font-weight: 700; color: #DC2626; margin-right: 14px;">X = Dent (รอยบุบ)</span>
+                  <span class="legend-d" style="font-size: 7.5px; font-weight: 700; color: #2563EB;">D = Scratch (รอยขีดข่วน)</span>
+                </div>
               </td>
             </tr>
           </table>
@@ -588,9 +602,11 @@
           <div class="sig-img-slot">
             {% if staff_signature and staff_signature.startswith("data:image") %}
               <img src="{{ staff_signature }}" alt="Staff Signature" />
+            {% else %}
+              <span class="sig-text-name">{{ staff_name or inspector_name or "" }}</span>
             {% endif %}
           </div>
-          <div class="sig-name-line">{{ inspector_name or staff_name or "...................................................." }}</div>
+          <div class="sig-solid-line"></div>
           <div class="sig-main-title">STAFF SIGNATURE</div>
           <div class="sig-thai-desc">{% if is_page_checkout %}ผู้ตรวจส่งมอบรถ{% else %}ผู้ตรวจรับรถคืน{% endif %}</div>
         </td>
@@ -598,9 +614,11 @@
           <div class="sig-img-slot">
             {% if customer_signature and customer_signature.startswith("data:image") %}
               <img src="{{ customer_signature }}" alt="Customer Signature" />
+            {% else %}
+              <span class="sig-text-name">{{ customer_name or "" }}</span>
             {% endif %}
           </div>
-          <div class="sig-name-line">{{ customer_name or "...................................................." }}</div>
+          <div class="sig-solid-line"></div>
           <div class="sig-main-title">CUSTOMER SIGNATURE</div>
           <div class="sig-thai-desc">{% if is_page_checkout %}ผู้เช่า (ตอนรับรถ){% else %}ผู้เช่า (ตอนคืนรถ){% endif %}</div>
         </td>

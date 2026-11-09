@@ -1663,6 +1663,42 @@ async def update_booking_contract_pdf(bk_id: str, payload: Dict[str, Any]):
     store.async_sync_booking(target)
     return {"success": True, "booking_id": bk_id, "contract_pdf_url": target["contract_pdf_url"]}
 
+def _update_car_mileage_on_return(car_id: Any, return_mileage: Any, dispatch_mileage: Any = None) -> float:
+    """
+    Validates and automatically updates vehicle mileage upon check-in completion.
+    Ensures return mileage is not less than dispatch mileage.
+    Updates store.cars[car_id]['mileage'] and syncs to database.
+    """
+    if not return_mileage:
+        return 0.0
+    try:
+        clean_ret = float(str(return_mileage).replace(",", "").replace("km", "").strip())
+    except (ValueError, TypeError):
+        return 0.0
+
+    if dispatch_mileage:
+        try:
+            clean_disp = float(str(dispatch_mileage).replace(",", "").replace("km", "").strip())
+            if clean_disp > 0 and clean_ret < clean_disp:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"⚠️ เลขไมล์ตอนรับคืน ({int(clean_ret):,} km) ต้องไม่น้อยกว่าเลขไมล์ตอนส่งมอบ ({int(clean_disp):,} km)"
+                )
+        except HTTPException:
+            raise
+        except Exception:
+            pass
+
+    c_key = str(car_id or "").strip()
+    if c_key and c_key in store.cars:
+        car_obj = store.cars[c_key]
+        fmt_km = f"{int(clean_ret):,}" if clean_ret.is_integer() else f"{clean_ret:,.1f}"
+        car_obj["mileage"] = fmt_km
+        if "current_mileage" in car_obj:
+            car_obj["current_mileage"] = fmt_km
+        store.async_sync_car(c_key, car_obj)
+    return clean_ret
+
 @app.post("/api/bookings/{bk_id}/generate-inspection-pdf")
 async def generate_booking_inspection_pdf(bk_id: str, payload: Optional[Dict[str, Any]] = None):
     """
@@ -1697,6 +1733,11 @@ async def generate_booking_inspection_pdf(bk_id: str, payload: Optional[Dict[str
         merged_payload["odometer_out" if is_checkout else "odometer_in"] = str(odo_val).strip()
         target["odometer_out" if is_checkout else "odometer_in"] = str(odo_val).strip()
         target["dispatch_mileage" if is_checkout else "return_mileage"] = str(odo_val).strip()
+        # Auto-update car mileage on check-in with validation
+        if not is_checkout and str(odo_val).strip() not in ("", "-"):
+            disp_km = target.get("odometer_out") or target.get("dispatch_mileage")
+            c_target_id = target.get("car_id") or (car.get("plate") if car else None)
+            _update_car_mileage_on_return(c_target_id, odo_val, disp_km)
 
     # 2. Fuel Level
     fuel_val = (
@@ -2224,6 +2265,8 @@ async def assign_worker(bk_id: str, payload: Dict[str, Any]):
         target["loc_return"] = location
         target["end_time"] = time_val
         if odometer is not None and str(odometer).strip() != "":
+            disp_km = target.get("odometer_out") or target.get("dispatch_mileage")
+            _update_car_mileage_on_return(target.get("car_id"), odometer, disp_km)
             target["odometer_in"] = str(odometer).strip()
             target["return_mileage"] = str(odometer).strip()
         if fuel_level is not None and str(fuel_level).strip() != "":
@@ -2495,6 +2538,10 @@ async def close_return(bk_id: str, payload: Dict[str, Any]):
     action = payload.get("action", "end_contract")
     fuel = payload.get("fuel_level", "⛽ เต็มถัง (Full - 8/8) [100%]")
     mileage = payload.get("mileage", "")
+    target_bk = next((b for b in store.bookings if b.get("booking_id") == bk_id), {})
+    disp_km = target_bk.get("odometer_out") or target_bk.get("dispatch_mileage")
+    if mileage:
+        _update_car_mileage_on_return(target_bk.get("car_id"), mileage, disp_km)
     notes = payload.get("notes", "ตรวจสภาพรถยนต์ตอนรับคืนเรียบร้อยดี")
     photos = payload.get("photos", [])
     late_fee = float(payload.get("late_fee", 0.0))
@@ -3910,3 +3957,13 @@ async def list_work_order_logs(car_id: Optional[str] = None, booking_id: Optiona
     if booking_id:
         logs = [l for l in logs if l.get("booking_id") == booking_id]
     return logs[:limit]
+
+@app.post("/api/inspections/checkin")
+@app.post("/api/inspections/{bk_id}/checkin")
+async def complete_inspection_checkin_direct(bk_id: Optional[str] = None, payload: Optional[Dict[str, Any]] = None):
+    """Dedicated endpoint for direct check-in inspection mileage update & PDF completion."""
+    payload = payload or {}
+    b_id = bk_id or payload.get("booking_id")
+    if not b_id:
+        raise HTTPException(status_code=400, detail="booking_id is required")
+    return await generate_booking_inspection_pdf(b_id, {**payload, "inspection_type": "checkin"})

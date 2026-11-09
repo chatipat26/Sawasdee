@@ -849,23 +849,29 @@ def _draw_inspection_page(can, page_type, b_info, c_info, car_info, data, is_act
             print(f"[PDF Engine] Inspection Car Diagram overlay note: {diag_err}")
 
     # 6. Staff & Customer Signatures
+    # Always guarantee solid horizontal signature lines above the signature titles
+    can.setStrokeColor(colors.HexColor('#0F172A'))
+    can.setLineWidth(1.2)
+    can.line(75, 85, 260, 85)
+    can.line(334, 85, 519, 85)
+
     staff_sig = data.get("staff_signature")
     if staff_sig:
         try:
             if str(staff_sig).startswith("data:image") or len(str(staff_sig)) > 200:
                 s_b64 = str(staff_sig).split(",", 1)[1] if "," in str(staff_sig) else str(staff_sig)
                 s_img = ImageReader(io.BytesIO(base64.b64decode(s_b64)))
-                can.drawImage(s_img, 70, 65, width=190, height=45, mask='auto', preserveAspectRatio=True)
+                can.drawImage(s_img, 85, 88, width=165, height=42, mask='auto', preserveAspectRatio=True)
             else:
-                can.setFont(FONT_BOLD, 10)
+                can.setFont(FONT_BOLD, 9.5)
                 can.setFillColor(colors.HexColor('#1E293B'))
-                can.drawCentredString(165, 93, str(staff_sig))
+                can.drawCentredString(167.5, 92, str(staff_sig))
         except Exception as sig_err:
             print(f"[PDF Engine] Staff signature overlay note: {sig_err}")
     else:
         can.setFont(FONT_REGULAR, 9)
         can.setFillColor(colors.HexColor('#64748B'))
-        can.drawCentredString(165, 93, staff_str)
+        can.drawCentredString(167.5, 92, staff_str)
 
     cust_sig = data.get("customer_signature")
     cust_name = str(c_info.get("full_name") or b_info.get("customer") or "Customer")
@@ -874,17 +880,17 @@ def _draw_inspection_page(can, page_type, b_info, c_info, car_info, data, is_act
             if str(cust_sig).startswith("data:image") or len(str(cust_sig)) > 200:
                 c_b64 = str(cust_sig).split(",", 1)[1] if "," in str(cust_sig) else str(cust_sig)
                 c_img = ImageReader(io.BytesIO(base64.b64decode(c_b64)))
-                can.drawImage(c_img, 330, 65, width=190, height=45, mask='auto', preserveAspectRatio=True)
+                can.drawImage(c_img, 344, 88, width=165, height=42, mask='auto', preserveAspectRatio=True)
             else:
-                can.setFont(FONT_BOLD, 10)
+                can.setFont(FONT_BOLD, 9.5)
                 can.setFillColor(colors.HexColor('#1E293B'))
-                can.drawCentredString(425, 93, str(cust_sig))
+                can.drawCentredString(426.5, 92, str(cust_sig))
         except Exception as sig_err:
             print(f"[PDF Engine] Customer signature overlay note: {sig_err}")
     else:
         can.setFont(FONT_REGULAR, 9)
         can.setFillColor(colors.HexColor('#64748B'))
-        can.drawCentredString(425, 93, cust_name)
+        can.drawCentredString(426.5, 92, cust_name)
 
 
 
@@ -1025,24 +1031,23 @@ def _generate_fallback_inspection_pdf(booking_info=None, customer_info=None, car
     can.drawString(42, 354, "5. COVERAGE: Waiver does not cover tires/glass.")
     can.drawString(42, 342, "6. RETURNING: Return in received condition.")
 
-    # Damage Section Heading & Legend
-    can.setFont(FONT_BOLD, 8.5)
+    # Damage Section Heading & Legend (Centered)
+    can.setFont(FONT_BOLD, 9)
     can.setFillColor(colors.HexColor('#0F172A'))
-    can.drawString(195, 418, "Damage Out / ตำหนิรถรับออก" if is_checkout else "Damage In / ตำหนิรถรับคืน")
+    can.drawCentredString(367.5, 423, "Damage Out / ตำหนิรถรับออก" if is_checkout else "Damage In / ตำหนิรถรับคืน")
     can.setFont(FONT_BOLD, 7.5)
     can.setFillColor(colors.HexColor('#DC2626'))
-    can.drawRightString(460, 418, "X = Dent (รอยบุบ)")
+    can.drawCentredString(330, 411, "X = Dent (รอยบุบ)")
     can.setFillColor(colors.HexColor('#2563EB'))
-    can.drawRightString(545, 418, "D = Scratch (รอยขีดข่วน)")
+    can.drawCentredString(415, 411, "D = Scratch (รอยขีดข่วน)")
 
-    # Diagram Views Labels & Images
-    can.setFont(FONT_BOLD, 7)
+    # Diagram Views Labels & Images (4 Views only: FRONT/REAR on Left, LEFT/RIGHT on Right)
+    can.setFont(FONT_BOLD, 7.5)
     can.setFillColor(colors.HexColor('#475569'))
-    can.drawCentredString(220, 404, "FRONT")
-    can.drawCentredString(220, 334, "REAR")
-    can.drawCentredString(315, 404, "TOP VIEW")
-    can.drawCentredString(460, 404, "LEFT")
-    can.drawCentredString(460, 334, "RIGHT")
+    can.drawCentredString(260, 396, "FRONT")
+    can.drawCentredString(260, 318, "REAR")
+    can.drawCentredString(448, 396, "LEFT")
+    can.drawCentredString(448, 318, "RIGHT")
 
     # Draw Car Vector/Images if available
     img_dir = os.path.join(BASE_DIR, "static", "img", "car_diagram")
@@ -1051,27 +1056,23 @@ def _generate_fallback_inspection_pdf(booking_info=None, customer_info=None, car
         try:
             f_img = os.path.join(img_dir, "car_front.png")
             if os.path.exists(f_img):
-                can.drawImage(ImageReader(f_img), 195, 345, width=50, height=48, mask='auto', preserveAspectRatio=True)
+                can.drawImage(ImageReader(f_img), 222, 332, width=76, height=58, mask='auto', preserveAspectRatio=True)
             r_img = os.path.join(img_dir, "car_rear.png")
             if os.path.exists(r_img):
-                can.drawImage(ImageReader(r_img), 195, 275, width=50, height=48, mask='auto', preserveAspectRatio=True)
-            t_img = os.path.join(img_dir, "car_top.png")
-            if os.path.exists(t_img):
-                can.drawImage(ImageReader(t_img), 280, 270, width=70, height=130, mask='auto', preserveAspectRatio=True)
+                can.drawImage(ImageReader(r_img), 222, 254, width=76, height=58, mask='auto', preserveAspectRatio=True)
             l_img = os.path.join(img_dir, "car_left.png")
             if os.path.exists(l_img):
-                can.drawImage(ImageReader(l_img), 400, 345, width=120, height=48, mask='auto', preserveAspectRatio=True)
+                can.drawImage(ImageReader(l_img), 370, 332, width=156, height=58, mask='auto', preserveAspectRatio=True)
             rt_img = os.path.join(img_dir, "car_right.png")
             if os.path.exists(rt_img):
-                can.drawImage(ImageReader(rt_img), 400, 275, width=120, height=48, mask='auto', preserveAspectRatio=True)
+                can.drawImage(ImageReader(rt_img), 370, 254, width=156, height=58, mask='auto', preserveAspectRatio=True)
         except Exception as img_err:
             print(f"[PDF Engine] Fallback car diagram draw note: {img_err}")
     else:
-        can.rect(195, 350, 50, 48)
-        can.rect(195, 280, 50, 48)
-        can.roundRect(280, 270, 70, 128, 8)
-        can.rect(400, 350, 120, 48)
-        can.rect(400, 280, 120, 48)
+        can.rect(222, 332, 76, 58)
+        can.rect(222, 254, 76, 58)
+        can.rect(370, 332, 156, 58)
+        can.rect(370, 254, 156, 58)
 
     # 4. Acknowledgment Statement
     can.setFont(FONT_REGULAR, 6.2)
@@ -1083,25 +1084,30 @@ def _generate_fallback_inspection_pdf(booking_info=None, customer_info=None, car
     can.drawString(42, 150, ack_t[:170])
     can.drawString(42, 142, ack_t[170:])
 
-    # 5. Signature Boxes
+    # 5. Signature Boxes (with solid horizontal signature lines)
     can.setStrokeColor(colors.HexColor('#0F172A'))
     can.setLineWidth(0.8)
     can.rect(45, 52, 245, 82)
     can.rect(304, 52, 245, 82)
 
-    can.setFont(FONT_BOLD, 7.5)
-    can.setFillColor(colors.HexColor('#0F172A'))
-    can.drawCentredString(167.5, 67, "STAFF SIGNATURE")
-    can.setFont(FONT_REGULAR, 6.5)
-    can.setFillColor(colors.HexColor('#64748B'))
-    can.drawCentredString(167.5, 57, "ผู้ตรวจส่งมอบรถ" if is_checkout else "ผู้ตรวจรับรถคืน")
+    # Solid horizontal signature lines
+    can.setLineWidth(1.2)
+    can.line(75, 85, 260, 85)
+    can.line(334, 85, 519, 85)
 
     can.setFont(FONT_BOLD, 7.5)
     can.setFillColor(colors.HexColor('#0F172A'))
-    can.drawCentredString(426.5, 67, "CUSTOMER SIGNATURE")
+    can.drawCentredString(167.5, 71, "STAFF SIGNATURE")
     can.setFont(FONT_REGULAR, 6.5)
     can.setFillColor(colors.HexColor('#64748B'))
-    can.drawCentredString(426.5, 57, "ผู้เช่า (ตอนรับรถ)" if is_checkout else "ผู้เช่า (ตอนคืนรถ)")
+    can.drawCentredString(167.5, 60, "ผู้ตรวจส่งมอบรถ" if is_checkout else "ผู้ตรวจรับรถคืน")
+
+    can.setFont(FONT_BOLD, 7.5)
+    can.setFillColor(colors.HexColor('#0F172A'))
+    can.drawCentredString(426.5, 71, "CUSTOMER SIGNATURE")
+    can.setFont(FONT_REGULAR, 6.5)
+    can.setFillColor(colors.HexColor('#64748B'))
+    can.drawCentredString(426.5, 60, "ผู้เช่า (ตอนรับรถ)" if is_checkout else "ผู้เช่า (ตอนคืนรถ)")
 
     # Footer
     can.setFont(FONT_REGULAR, 7)

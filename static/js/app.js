@@ -2465,7 +2465,7 @@ class App {
                 <span class="car-code-title">${carCode}</span>
                 <svg class="car-code-book-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
               </button>
-              <div class="car-cat-subtag">${catTag}</div>
+              <!-- <div class="car-cat-subtag">${catTag}</div> -->
             </div>
             ${plateHtml}
           </div>
@@ -2504,7 +2504,7 @@ class App {
                 <span class="car-code-title">${cCode}</span>
                 <svg class="car-code-book-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
               </button>
-              <div class="car-cat-subtag">${cCat}</div>
+              <!-- <div class="car-cat-subtag">${cCat}</div> -->
             </div>
             <div class="thai-plate-badge" role="button" title="${isEn ? 'Details' : 'ดูรายละเอียด'}" onclick="app.openCarDetailsModal('${sp}')">
               <div class="thai-plate-text"><div class="thai-plate-num">${(c && c.plate) || ''}</div><div class="thai-plate-prov">${(c && c.province) || 'กรุงเทพมหานคร'}</div></div>
@@ -6526,6 +6526,10 @@ class App {
         })
       });
       const genData = await genRes.json();
+      if (!genRes.ok) {
+        this.showToast(genData.detail || "เกิดข้อผิดพลาดในการบันทึกเลขไมล์", "error");
+        return;
+      }
       if (genData.success && genData.pdf_url) {
         genPdfUrl = genData.pdf_url;
         if (bObj) {
