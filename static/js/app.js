@@ -1986,7 +1986,7 @@ class App {
     const rawMonth = parseFloat(c.price_month) > 0 ? parseFloat(c.price_month) : parseFloat(c.monthly_rate || 0);
     const priceWeek = rawWeek > 0 ? rawWeek : (priceDay * 6);
     const priceMonth = rawMonth > 0 ? rawMonth : (priceDay * 20);
-    return { priceDay, priceWeek, priceMonth };
+    return { priceDay, priceWeek, priceMonth, day: priceDay, week: priceWeek, month: priceMonth };
   }
 
   calculateCarRentalPrice(car, days, contractType = "รายวัน") {
@@ -2573,9 +2573,9 @@ class App {
     const safePlate = String(c.plate || "").replace(/'/g, "\\'");
     const rates = this.getCarRates(c);
     const dur = this.calcDuration ? this.calcDuration() : { days: 1, hours: 0, text: "1 วัน" };
-    const priceDay = rates.day || 1000;
-    const priceWeek = rates.week || 6000;
-    const priceMonth = rates.month || 20000;
+    const priceDay = rates.priceDay || rates.day || 1000;
+    const priceWeek = rates.priceWeek || rates.week || 6000;
+    const priceMonth = rates.priceMonth || rates.month || 20000;
     const autoType = dur.days >= 30 ? (isEn ? "Monthly" : "รายเดือน") : (dur.days >= 7 ? (isEn ? "Weekly" : "รายสัปดาห์") : (isEn ? "Daily" : "รายวัน"));
 
     let totalPrice = priceDay * Math.max(1, dur.days || 1);
