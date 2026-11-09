@@ -4408,6 +4408,11 @@ class App {
       const photosPrevEl = document.getElementById("assign-disp-photos-preview");
 
       if (odoEl) odoEl.value = b.odometer_out || "";
+      const savedDispCats = b.inspection_categories_out || b.inspection_categories;
+      ['petrol', 'cleanliness', 'tires', 'interior', 'underhood'].forEach(k => {
+        const el = document.getElementById("assign-disp-chk-" + k);
+        if (el) el.checked = savedDispCats ? (savedDispCats[k] !== false) : true;
+      });
       if (fuelEl && b.fuel_out) fuelEl.value = b.fuel_out;
       if (notesEl) notesEl.value = b.inspection_notes_out || "";
       if (photosUrlEl) photosUrlEl.value = b.inspection_photos_out || "";
@@ -4540,6 +4545,11 @@ class App {
       const badgeEl = document.getElementById("assign-ret-compare-badge");
 
       if (odoEl) odoEl.value = b.odometer_in || "";
+      const savedRetCats = b.inspection_categories_in || b.inspection_categories;
+      ['petrol', 'cleanliness', 'tires', 'interior', 'underhood'].forEach(k => {
+        const el = document.getElementById("assign-ret-chk-" + k);
+        if (el) el.checked = savedRetCats ? (savedRetCats[k] !== false) : true;
+      });
       if (fuelEl && b.fuel_in) fuelEl.value = b.fuel_in;
       if (notesEl) notesEl.value = b.inspection_notes_in || "";
       if (photosUrlEl) photosUrlEl.value = b.inspection_photos_in || "";
@@ -4744,6 +4754,13 @@ class App {
           odometer: document.getElementById(isDisp ? "assign-disp-odometer" : "assign-ret-odometer")?.value || "",
           fuel_level: document.getElementById(isDisp ? "assign-disp-fuel" : "assign-ret-fuel")?.value || "",
           inspection_notes: document.getElementById(isDisp ? "assign-disp-notes" : "assign-ret-notes")?.value || "",
+          inspection_categories: {
+            petrol: Boolean(document.getElementById(isDisp ? "assign-disp-chk-petrol" : "assign-ret-chk-petrol")?.checked),
+            cleanliness: Boolean(document.getElementById(isDisp ? "assign-disp-chk-cleanliness" : "assign-ret-chk-cleanliness")?.checked),
+            tires: Boolean(document.getElementById(isDisp ? "assign-disp-chk-tires" : "assign-ret-chk-tires")?.checked),
+            interior: Boolean(document.getElementById(isDisp ? "assign-disp-chk-interior" : "assign-ret-chk-interior")?.checked),
+            underhood: Boolean(document.getElementById(isDisp ? "assign-disp-chk-underhood" : "assign-ret-chk-underhood")?.checked)
+          },
           inspection_photos: (isDisp ? (this.assignDispPhotos || []) : (this.assignRetPhotos || [])).length > 0
             ? (isDisp ? this.assignDispPhotos : this.assignRetPhotos).join(",")
             : (document.getElementById(isDisp ? "assign-disp-photos-url" : "assign-ret-photos-url")?.value || "")

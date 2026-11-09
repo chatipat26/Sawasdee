@@ -562,6 +562,34 @@
                       </select>
                     </div>
                   </div>
+                                    <!-- Pre-Rental Inspection Categories Checkboxes (Dispatch) -->
+                  <div class="form-group" style="margin-bottom:10px;">
+                    <label style="font-size:12px; font-weight:700; color:#334155; margin-bottom:5px; display:block;">
+                      📋 หมวดหมู่การตรวจสภาพรถ (Pre-Rental Inspection Categories):
+                    </label>
+                    <div style="display:grid; grid-template-columns: 1fr; gap:6px; background:#FFFFFF; border:1px solid #CBD5E1; border-radius:6px; padding:10px 12px;">
+                      <label style="display:flex; align-items:center; gap:8px; font-size:12px; color:#1E293B; cursor:pointer; margin:0;">
+                        <input type="checkbox" id="assign-disp-chk-petrol" value="petrol" style="width:16px; height:16px; accent-color:#EA580C; cursor:pointer;" checked>
+                        <span>⛽ <b>หมวด Petrol</b> (ระดับน้ำมันและชนิดน้ำมัน)</span>
+                      </label>
+                      <label style="display:flex; align-items:center; gap:8px; font-size:12px; color:#1E293B; cursor:pointer; margin:0;">
+                        <input type="checkbox" id="assign-disp-chk-cleanliness" value="cleanliness" style="width:16px; height:16px; accent-color:#EA580C; cursor:pointer;" checked>
+                        <span>✨ <b>หมวด Cleanliness</b> (ความสะอาดภายนอกและภายใน)</span>
+                      </label>
+                      <label style="display:flex; align-items:center; gap:8px; font-size:12px; color:#1E293B; cursor:pointer; margin:0;">
+                        <input type="checkbox" id="assign-disp-chk-tires" value="tires" style="width:16px; height:16px; accent-color:#EA580C; cursor:pointer;" checked>
+                        <span>🛞 <b>หมวด Tires</b> (สภาพยางและยางอะไหล่)</span>
+                      </label>
+                      <label style="display:flex; align-items:center; gap:8px; font-size:12px; color:#1E293B; cursor:pointer; margin:0;">
+                        <input type="checkbox" id="assign-disp-chk-interior" value="interior" style="width:16px; height:16px; accent-color:#EA580C; cursor:pointer;" checked>
+                        <span>🎛️ <b>หมวด Interior & Controls</b> (ระบบภายใน แอร์ วิทยุ เบรค)</span>
+                      </label>
+                      <label style="display:flex; align-items:center; gap:8px; font-size:12px; color:#1E293B; cursor:pointer; margin:0;">
+                        <input type="checkbox" id="assign-disp-chk-underhood" value="underhood" style="width:16px; height:16px; accent-color:#EA580C; cursor:pointer;" checked>
+                        <span>🔧 <b>หมวด Under Hood & Equipment</b> (เครื่องยนต์ หม้อน้ำ และอุปกรณ์เสริม)</span>
+                      </label>
+                    </div>
+                  </div>
                   <div class="form-group" style="margin-bottom:10px;">
                     <label style="font-size:12px; font-weight:700; color:#334155;">📝 บันทึกตำหนิ / รอยขีดข่วนเดิมรอบคัน:</label>
                     <textarea id="assign-disp-notes" class="form-control" rows="2" placeholder="เช่น กันชนหน้ามีรอยสะเก็ดหินเล็กน้อย, ล้อแม็กหน้าซ้ายมีรอยเบียดฟุตบาทเล็กน้อย"></textarea>
@@ -661,6 +689,34 @@
                         <option value="ไฟเตือนน้ำมันโชว์ (Empty / Low Fuel)">⚠️ ไฟเตือนน้ำมันโชว์ (Empty / Low Fuel)</option>
                       </select>
                       <small id="assign-ret-fuel-diff" style="font-size:11px; color:#64748B;"></small>
+                    </div>
+                  </div>
+                                    <!-- Pre-Rental Inspection Categories Checkboxes (Return) -->
+                  <div class="form-group" style="margin-bottom:10px;">
+                    <label style="font-size:12px; font-weight:700; color:#334155; margin-bottom:5px; display:block;">
+                      📋 หมวดหมู่การตรวจสภาพรถ (Pre-Rental Inspection Categories):
+                    </label>
+                    <div style="display:grid; grid-template-columns: 1fr; gap:6px; background:#FFFFFF; border:1px solid #FDE68A; border-radius:6px; padding:10px 12px;">
+                      <label style="display:flex; align-items:center; gap:8px; font-size:12px; color:#1E293B; cursor:pointer; margin:0;">
+                        <input type="checkbox" id="assign-ret-chk-petrol" value="petrol" style="width:16px; height:16px; accent-color:#EA580C; cursor:pointer;" checked>
+                        <span>⛽ <b>หมวด Petrol</b> (ระดับน้ำมันและชนิดน้ำมัน)</span>
+                      </label>
+                      <label style="display:flex; align-items:center; gap:8px; font-size:12px; color:#1E293B; cursor:pointer; margin:0;">
+                        <input type="checkbox" id="assign-ret-chk-cleanliness" value="cleanliness" style="width:16px; height:16px; accent-color:#EA580C; cursor:pointer;" checked>
+                        <span>✨ <b>หมวด Cleanliness</b> (ความสะอาดภายนอกและภายใน)</span>
+                      </label>
+                      <label style="display:flex; align-items:center; gap:8px; font-size:12px; color:#1E293B; cursor:pointer; margin:0;">
+                        <input type="checkbox" id="assign-ret-chk-tires" value="tires" style="width:16px; height:16px; accent-color:#EA580C; cursor:pointer;" checked>
+                        <span>🛞 <b>หมวด Tires</b> (สภาพยางและยางอะไหล่)</span>
+                      </label>
+                      <label style="display:flex; align-items:center; gap:8px; font-size:12px; color:#1E293B; cursor:pointer; margin:0;">
+                        <input type="checkbox" id="assign-ret-chk-interior" value="interior" style="width:16px; height:16px; accent-color:#EA580C; cursor:pointer;" checked>
+                        <span>🎛️ <b>หมวด Interior & Controls</b> (ระบบภายใน แอร์ วิทยุ เบรค)</span>
+                      </label>
+                      <label style="display:flex; align-items:center; gap:8px; font-size:12px; color:#1E293B; cursor:pointer; margin:0;">
+                        <input type="checkbox" id="assign-ret-chk-underhood" value="underhood" style="width:16px; height:16px; accent-color:#EA580C; cursor:pointer;" checked>
+                        <span>🔧 <b>หมวด Under Hood & Equipment</b> (เครื่องยนต์ หม้อน้ำ และอุปกรณ์เสริม)</span>
+                      </label>
                     </div>
                   </div>
                   <div class="form-group" style="margin-bottom:10px;">

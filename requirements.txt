@@ -8,3 +8,5 @@ pandas
 pypdf
 reportlab
 sqlalchemy
+jinja2
+pillow

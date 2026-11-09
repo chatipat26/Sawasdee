@@ -667,6 +667,11 @@ def _draw_inspection_page(can, page_type, b_info, c_info, car_info, data, is_act
     from reportlab.lib.utils import ImageReader
     import base64
 
+    b_info = b_info or {}
+    c_info = c_info or {}
+    car_info = car_info or {}
+    data = data or {}
+
     # 1. Header
     b_id = str(b_info.get("booking_id") or "-")
     plate = str(car_info.get("plate") or b_info.get("car_id") or "-")
@@ -813,27 +818,101 @@ def _draw_inspection_page(can, page_type, b_info, c_info, car_info, data, is_act
         can.drawCentredString(425, 93, cust_name)
 
 
+
+def _generate_fallback_inspection_pdf(booking_info=None, customer_info=None, car_info=None, is_checkout=True, payload=None):
+    """
+    Bulletproof standalone PDF generator that draws the full Sawasdee Pre-Rental
+    Inspection checklist with 4-view car diagram using ReportLab Canvas.
+    Guarantees an HTTP 200 PDF output even if the background PDF template is absent.
+    """
+    pdf_buffer = io.BytesIO()
+    can = canvas.Canvas(pdf_buffer, pagesize=(594.96, 841.92))
+    page_type = "checkout" if is_checkout else "checkin"
+
+    # Outer form border
+    can.setStrokeColor(colors.HexColor('#0F172A'))
+    can.setLineWidth(1.2)
+    can.rect(28, 28, 538.96, 785.92)
+
+    # Header Box & Title
+    can.setFont(FONT_BOLD, 15)
+    can.setFillColor(colors.HexColor('#0F172A'))
+    can.drawString(40, 788, "SAWASDEE CAR RENT CO., LTD.")
+    can.setFont(FONT_REGULAR, 7.5)
+    can.setFillColor(colors.HexColor('#64748B'))
+    can.drawString(40, 776, "199/21 Sukhumvit 31 Alley (Sawasdee), Khlong Tan Nuea, Vadhana, Bangkok 10110 | +66 81 346 6888")
+
+    can.setFont(FONT_BOLD, 10.5)
+    can.setFillColor(colors.HexColor('#0F172A'))
+    can.drawRightString(554, 788, "PRE-RENTAL INSPECTION (CHECK OUT)" if is_checkout else "PRE-RENTAL INSPECTION (CHECK IN)")
+
+    # Section borders
+    can.setStrokeColor(colors.HexColor('#CBD5E1'))
+    can.setLineWidth(0.8)
+    can.rect(36, 680, 523, 46)
+    can.rect(36, 440, 160, 230)
+    can.rect(202, 440, 175, 230)
+    can.rect(383, 440, 176, 230)
+    can.rect(36, 170, 145, 260)
+    can.rect(186, 170, 373, 260)
+    can.rect(36, 45, 523, 115)
+
+    # Category Section Headings
+    can.setFont(FONT_BOLD, 9)
+    can.setFillColor(colors.HexColor('#0F172A'))
+    can.drawString(42, 658, "Fuel Level (ระดับน้ำมัน)")
+    can.drawString(42, 595, "Cleanliness (ความสะอาด)")
+    can.drawString(42, 500, "Tires (สภาพยาง)")
+    can.drawString(208, 658, "Interior & Controls (ระบบภายใน)")
+    can.drawString(389, 658, "Under Hood & Equipment (เครื่องยนต์)")
+
+    # Remarks Heading
+    can.drawString(42, 418, "Remark / ข้อกำหนด:")
+    can.setFont(FONT_REGULAR, 7)
+    can.setFillColor(colors.HexColor('#475569'))
+    can.drawString(42, 402, "1. TRAFFIC LAW: Renter responsible")
+    can.drawString(42, 390, "2. SMOKING: 3,000 THB fine")
+    can.drawString(42, 378, "3. KEY LOST: Charge actual cost")
+    can.drawString(42, 366, "4. CLEAN UP: 1,000 THB improper usage")
+    can.drawString(42, 354, "5. COVERAGE: Waiver ex. tires/glass")
+    can.drawString(42, 342, "6. RETURN: Same condition")
+
+    # Diagram Section Schematic Outlines
+    can.setFont(FONT_BOLD, 7)
+    can.setFillColor(colors.HexColor('#475569'))
+    can.drawString(205, 412, "FRONT")
+    can.rect(195, 360, 50, 48)
+    can.drawString(205, 342, "REAR")
+    can.rect(195, 290, 50, 48)
+    can.drawString(300, 412, "TOP VIEW")
+    can.roundRect(280, 280, 70, 128, 8)
+    can.drawString(440, 412, "LEFT")
+    can.rect(400, 360, 120, 48)
+    can.drawString(440, 342, "RIGHT")
+    can.rect(400, 290, 120, 48)
+
+    # Legend
+    can.setFont(FONT_BOLD, 8)
+    can.setFillColor(colors.HexColor('#DC2626'))
+    can.drawString(200, 180, "X = Dent (รอยบุบ)")
+    can.setFillColor(colors.HexColor('#2563EB'))
+    can.drawString(300, 180, "D = Scratch (รอยขีดข่วน)")
+
+    # Overlay all dynamic data
+    _draw_inspection_page(can, page_type, booking_info or {}, customer_info or {}, car_info or {}, payload or {}, is_active=True)
+
+    can.save()
+    pdf_buffer.seek(0)
+    return pdf_buffer.getvalue()
+
+
 def generate_inspection_checklist_pdf(template_path="Sawasdee Pre-Rental Inspection.pdf", booking_info=None, customer_info=None, car_info=None, inspection_type="checkout", payload=None):
     """
     Generate official Sawasdee Pre-Rental Inspection Checklist PDF by overlaying data
     onto Sawasdee Pre-Rental Inspection.pdf (Page 1 = Check Out, Page 2 = Check In).
     Supports Base64 marked car diagram, signatures, fuel level, and condition notes.
+    Wrapped in bulletproof exception handling with automatic fallback to prevent 500 errors.
     """
-    candidate_paths = [
-        template_path,
-        os.path.join(BASE_DIR, template_path or ""),
-        os.path.join(os.getcwd(), template_path or ""),
-        os.path.join(BASE_DIR, "Sawasdee Pre-Rental Inspection.pdf"),
-        os.path.join(os.getcwd(), "Sawasdee Pre-Rental Inspection.pdf"),
-        os.path.abspath("Sawasdee Pre-Rental Inspection.pdf"),
-        os.path.join(os.path.dirname(os.path.abspath(__file__)), "Sawasdee Pre-Rental Inspection.pdf"),
-    ]
-    resolved_path = None
-    for p in candidate_paths:
-        if p and os.path.exists(p) and os.path.isfile(p):
-            resolved_path = os.path.abspath(p)
-            break
-
     booking_info = booking_info or {}
     customer_info = customer_info or {}
     car_info = car_info or {}
@@ -841,57 +920,89 @@ def generate_inspection_checklist_pdf(template_path="Sawasdee Pre-Rental Inspect
     insp_type = str(inspection_type or "checkout").lower().strip()
     is_checkout = insp_type in ("checkout", "dispatch", "out")
 
+    # Search for template dynamically
+    resolved_path = None
+    target_names = [template_path, "Sawasdee Pre-Rental Inspection.pdf", "sawasdee pre-rental inspection.pdf", "inspection_template.pdf"]
+    search_dirs = [BASE_DIR, os.getcwd(), os.path.dirname(os.path.abspath(__file__)), "."]
+    for d in search_dirs:
+        if not d or not os.path.exists(d):
+            continue
+        for name in target_names:
+            if not name:
+                continue
+            p = os.path.join(d, name) if not os.path.isabs(name) else name
+            if os.path.exists(p) and os.path.isfile(p):
+                resolved_path = os.path.abspath(p)
+                break
+        if resolved_path:
+            break
+        # Case-insensitive filename search in directory
+        try:
+            for f in os.listdir(d):
+                fl = f.lower()
+                if "sawasdee" in fl and "inspection" in fl and fl.endswith(".pdf"):
+                    resolved_path = os.path.abspath(os.path.join(d, f))
+                    break
+        except Exception:
+            pass
+        if resolved_path:
+            break
+
     if not resolved_path:
         return _generate_fallback_inspection_pdf(booking_info, customer_info, car_info, is_checkout=is_checkout, payload=payload)
 
-    reader = PdfReader(resolved_path)
-    writer = PdfWriter()
+    try:
+        reader = PdfReader(resolved_path)
+        writer = PdfWriter()
 
-    # Determine if Page 0 (Check Out) should be populated
-    page0_data = payload if is_checkout else {
-        "odometer": booking_info.get("dispatch_mileage"),
-        "fuel_level": booking_info.get("dispatch_fuel"),
-        "notes": booking_info.get("dispatch_notes"),
-        "staff_name": booking_info.get("worker_delivery"),
-        "datetime_str": f"{format_date_dmy(booking_info.get('dispatch_date') or booking_info.get('start_date'))} {booking_info.get('start_time') or ''}".strip()
-    }
-    has_page0_data = is_checkout or bool(booking_info.get("dispatch_closed") or booking_info.get("dispatch_mileage"))
+        # Determine if Page 0 (Check Out) should be populated
+        page0_data = payload if is_checkout else {
+            "odometer": booking_info.get("dispatch_mileage"),
+            "fuel_level": booking_info.get("dispatch_fuel"),
+            "notes": booking_info.get("dispatch_notes"),
+            "staff_name": booking_info.get("worker_delivery"),
+            "datetime_str": f"{format_date_dmy(booking_info.get('dispatch_date') or booking_info.get('start_date'))} {booking_info.get('start_time') or ''}".strip()
+        }
+        has_page0_data = is_checkout or bool(booking_info.get("dispatch_closed") or booking_info.get("dispatch_mileage"))
 
-    # Determine if Page 1 (Check In) should be populated
-    page1_data = payload if not is_checkout else {
-        "odometer": booking_info.get("return_mileage"),
-        "fuel_level": booking_info.get("return_fuel"),
-        "notes": booking_info.get("return_notes"),
-        "staff_name": booking_info.get("worker_return"),
-        "datetime_str": f"{format_date_dmy(booking_info.get('return_date') or booking_info.get('end_date'))} {booking_info.get('end_time') or ''}".strip()
-    }
-    has_page1_data = (not is_checkout) or bool(booking_info.get("return_closed") or booking_info.get("return_mileage"))
+        # Determine if Page 1 (Check In) should be populated
+        page1_data = payload if not is_checkout else {
+            "odometer": booking_info.get("return_mileage"),
+            "fuel_level": booking_info.get("return_fuel"),
+            "notes": booking_info.get("return_notes"),
+            "staff_name": booking_info.get("worker_return"),
+            "datetime_str": f"{format_date_dmy(booking_info.get('return_date') or booking_info.get('end_date'))} {booking_info.get('end_time') or ''}".strip()
+        }
+        has_page1_data = (not is_checkout) or bool(booking_info.get("return_closed") or booking_info.get("return_mileage"))
 
-    # Process Page 0 (Check Out)
-    page0 = reader.pages[0]
-    if has_page0_data:
-        packet0 = io.BytesIO()
-        can0 = canvas.Canvas(packet0, pagesize=(594.96, 841.92))
-        _draw_inspection_page(can0, "checkout", booking_info, customer_info, car_info, page0_data, is_active=is_checkout)
-        can0.save()
-        packet0.seek(0)
-        overlay0 = PdfReader(packet0)
-        page0.merge_page(overlay0.pages[0])
-    writer.add_page(page0)
+        # Process Page 0 (Check Out)
+        page0 = reader.pages[0]
+        if has_page0_data:
+            packet0 = io.BytesIO()
+            can0 = canvas.Canvas(packet0, pagesize=(594.96, 841.92))
+            _draw_inspection_page(can0, "checkout", booking_info, customer_info, car_info, page0_data, is_active=is_checkout)
+            can0.save()
+            packet0.seek(0)
+            overlay0 = PdfReader(packet0)
+            page0.merge_page(overlay0.pages[0])
+        writer.add_page(page0)
 
-    # Process Page 1 (Check In) if template has 2 pages
-    if len(reader.pages) > 1:
-        page1 = reader.pages[1]
-        if has_page1_data:
-            packet1 = io.BytesIO()
-            can1 = canvas.Canvas(packet1, pagesize=(594.96, 841.92))
-            _draw_inspection_page(can1, "checkin", booking_info, customer_info, car_info, page1_data, is_active=(not is_checkout))
-            can1.save()
-            packet1.seek(0)
-            overlay1 = PdfReader(packet1)
-            page1.merge_page(overlay1.pages[0])
-        writer.add_page(page1)
+        # Process Page 1 (Check In) if template has 2 pages
+        if len(reader.pages) > 1:
+            page1 = reader.pages[1]
+            if has_page1_data:
+                packet1 = io.BytesIO()
+                can1 = canvas.Canvas(packet1, pagesize=(594.96, 841.92))
+                _draw_inspection_page(can1, "checkin", booking_info, customer_info, car_info, page1_data, is_active=(not is_checkout))
+                can1.save()
+                packet1.seek(0)
+                overlay1 = PdfReader(packet1)
+                page1.merge_page(overlay1.pages[0])
+            writer.add_page(page1)
 
-    out_buf = io.BytesIO()
-    writer.write(out_buf)
-    return out_buf.getvalue()
+        out_buf = io.BytesIO()
+        writer.write(out_buf)
+        return out_buf.getvalue()
+    except Exception as overlay_err:
+        print(f"[PDF Engine] Overlay on PDF template failed: {overlay_err}, falling back to canvas drawing")
+        return _generate_fallback_inspection_pdf(booking_info, customer_info, car_info, is_checkout=is_checkout, payload=payload)

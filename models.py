@@ -156,6 +156,9 @@ class Booking(Base):
     contract_pdf_url = Column(Text, nullable=True)
     checkout_pdf_url = Column(String(500), nullable=True)
     checkin_pdf_url = Column(String(500), nullable=True)
+    inspection_categories = Column(JSON, nullable=True)
+    inspection_categories_out = Column(JSON, nullable=True)
+    inspection_categories_in = Column(JSON, nullable=True)
     created_by = Column(String(100), default="admin")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 

@@ -2140,6 +2140,10 @@ async def assign_worker(bk_id: str, payload: Dict[str, Any]):
             target["fuel_out"] = str(fuel_level).strip()
         if inspection_notes is not None:
             target["inspection_notes_out"] = str(inspection_notes).strip()
+        insp_cats = payload.get("inspection_categories")
+        if insp_cats is not None:
+            target["inspection_categories_out"] = insp_cats
+            target["inspection_categories"] = insp_cats
         if inspection_photos is not None and str(inspection_photos).strip() != "":
             target["inspection_photos_out"] = str(inspection_photos).strip()
         if action_type == "handover_now":
@@ -2161,6 +2165,10 @@ async def assign_worker(bk_id: str, payload: Dict[str, Any]):
             target["fuel_in"] = str(fuel_level).strip()
         if inspection_notes is not None:
             target["inspection_notes_in"] = str(inspection_notes).strip()
+        insp_cats = payload.get("inspection_categories")
+        if insp_cats is not None:
+            target["inspection_categories_in"] = insp_cats
+            target["inspection_categories"] = insp_cats
         if inspection_photos is not None and str(inspection_photos).strip() != "":
             target["inspection_photos_in"] = str(inspection_photos).strip()
         if action_type == "complete_now":
@@ -3679,7 +3687,11 @@ async def get_job_pdf(bk_id: str, type: Optional[str] = None):
     job_type = str(type).lower() if type else ("Return" if target.get("return_closed") else "Dispatch")
     worker = target.get("worker_return") if job_type == "Return" else target.get("worker_delivery")
     loc = target.get("loc_return") if job_type == "Return" else target.get("loc_delivery")
-    pdf_bytes = pdf_engine.generate_job_pdf(target, cust, car, job_type, worker, loc, inspection_data=target)
+    try:
+        pdf_bytes = pdf_engine.generate_job_pdf(target, cust, car, job_type, worker, loc, inspection_data=target)
+    except Exception as pdf_err:
+        print(f"[API] Warning: generate_job_pdf failed: {pdf_err}, using emergency fallback generator")
+        pdf_bytes = pdf_engine._generate_fallback_inspection_pdf(target, cust, car, is_checkout=(job_type != "return"), payload=target)
     return StreamingResponse(
         io.BytesIO(pdf_bytes),
         media_type="application/pdf",

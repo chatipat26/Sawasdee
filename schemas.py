@@ -220,6 +220,9 @@ class BookingBase(BaseModel):
     contract_pdf_url: Optional[str] = None
     checkout_pdf_url: Optional[str] = None
     checkin_pdf_url: Optional[str] = None
+    inspection_categories: Optional[Union[dict, list, str]] = None
+    inspection_categories_out: Optional[Union[dict, list, str]] = None
+    inspection_categories_in: Optional[Union[dict, list, str]] = None
     created_by: Optional[str] = "admin"
     created_at: Optional[Union[datetime, str]] = None
 
