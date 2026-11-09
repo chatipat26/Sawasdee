@@ -7,3 +7,5 @@ data_users.json
 
 .streamlit/
 data_work_order_logs.json
+
+scratch/

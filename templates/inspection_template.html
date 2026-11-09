@@ -183,25 +183,20 @@
       min-width: 11px;
       min-height: 11px;
       border: 1.2px solid #0F172A;
-      display: inline-block;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
       text-align: center;
-      line-height: 11px;
-      font-size: 9.5px;
+      font-size: 9px;
       font-weight: 900;
+      line-height: 1;
       background: #FFFFFF;
       box-sizing: border-box;
       vertical-align: middle;
     }
     .cb.checked {
       color: #1E40AF;
-    }
-    .cb.checked::after {
-      content: "\2713";
-      display: block;
-      color: #1E40AF;
-      font-weight: 900;
-      font-size: 10px;
-      line-height: 10px;
+      border-color: #1E40AF;
     }
     .checked-row td {
       font-weight: 800;
@@ -399,6 +394,7 @@
 
 {% macro render_inspection_page(page_type) %}
   {% set is_page_checkout = (page_type == 'checkout') %}
+  {% set page_has_data = is_page_checkout or (has_checkin and is_checkin) or (km_in and km_in != '-' and km_in != '') %}
   <div class="page-container">
     
     <!-- 1. Header: Company & Title -->
@@ -439,15 +435,15 @@
       <tr>
         <td style="width: 38%;">
           <span class="info-label">{% if is_page_checkout %}Date/Time Out:{% else %}Date/Time In:{% endif %}</span>
-          <span class="info-val">{% if is_page_checkout %}{{ dt_out or inspection_datetime or date_time or "-" }}{% else %}{{ dt_in or inspection_datetime or date_time or "-" }}{% endif %}</span>
+          <span class="info-val">{% if is_page_checkout %}{{ dt_out or inspection_datetime or date_time or "-" }}{% else %}{{ (dt_in if page_has_data else "-") or "-" }}{% endif %}</span>
         </td>
         <td style="width: 28%;">
           <span class="info-label">{% if is_page_checkout %}Kilometer Out:{% else %}Kilometer In:{% endif %}</span>
-          <span class="info-val">{% if is_page_checkout %}{{ km_out or mileage or "-" }}{% else %}{{ km_in or mileage or "-" }}{% endif %}</span>
+          <span class="info-val">{% if is_page_checkout %}{{ km_out or mileage or "-" }}{% else %}{{ (km_in if page_has_data else "-") or "-" }}{% endif %}</span>
         </td>
         <td style="width: 34%;">
           <span class="info-label">{% if is_page_checkout %}Car Prepared By:{% else %}Car Inspected By:{% endif %}</span>
-          <span class="info-val">{% if is_page_checkout %}{{ staff_out or inspector_name or staff_name or "-" }}{% else %}{{ staff_in or inspector_name or staff_name or "-" }}{% endif %}</span>
+          <span class="info-val">{% if is_page_checkout %}{{ staff_out or inspector_name or staff_name or "-" }}{% else %}{{ (staff_in if page_has_data else "-") or "-" }}{% endif %}</span>
         </td>
       </tr>
     </table>
@@ -464,11 +460,11 @@
             <div class="box-title">Fuel Level (ระดับน้ำมัน)</div>
             <table class="fuel-table">
               <tr>
-                <td><span class="cb {{ 'checked' if is_fuel_e else '' }}"></span><br/>E</td>
-                <td><span class="cb {{ 'checked' if is_fuel_14 else '' }}"></span><br/>1/4</td>
-                <td><span class="cb {{ 'checked' if is_fuel_12 else '' }}"></span><br/>1/2</td>
-                <td><span class="cb {{ 'checked' if is_fuel_34 else '' }}"></span><br/>3/4</td>
-                <td><span class="cb {{ 'checked' if is_fuel_f else '' }}"></span><br/>F (เต็ม)</td>
+                <td><span class="cb {{ 'checked' if (page_has_data and is_fuel_e) else '' }}">{% if page_has_data and is_fuel_e %}&#10003;{% endif %}</span><br/>E</td>
+                <td><span class="cb {{ 'checked' if (page_has_data and is_fuel_14) else '' }}">{% if page_has_data and is_fuel_14 %}&#10003;{% endif %}</span><br/>1/4</td>
+                <td><span class="cb {{ 'checked' if (page_has_data and is_fuel_12) else '' }}">{% if page_has_data and is_fuel_12 %}&#10003;{% endif %}</span><br/>1/2</td>
+                <td><span class="cb {{ 'checked' if (page_has_data and is_fuel_34) else '' }}">{% if page_has_data and is_fuel_34 %}&#10003;{% endif %}</span><br/>3/4</td>
+                <td><span class="cb {{ 'checked' if (page_has_data and is_fuel_f) else '' }}">{% if page_has_data and is_fuel_f %}&#10003;{% endif %}</span><br/>F (เต็ม)</td>
               </tr>
             </table>
           </div>
@@ -477,10 +473,10 @@
           <div class="box-card">
             <div class="box-title">Cleanliness (ความสะอาด)</div>
             <table class="items-table">
-              <tr><td class="cb-cell"><span class="cb checked"></span></td><td>Ext. & Int. Body (ภายนอก/ใน)</td></tr>
-              <tr><td class="cb-cell"><span class="cb checked"></span></td><td>Mats & Carpet (ผ้ายาง/พรม)</td></tr>
-              <tr><td class="cb-cell"><span class="cb checked"></span></td><td>Windshield (กระจก)</td></tr>
-              <tr class="checked-row"><td class="cb-cell"><span class="cb checked"></span></td><td>CHECKED (ตรวจเรียบร้อย)</td></tr>
+              <tr><td class="cb-cell"><span class="cb {{ 'checked' if page_has_data else '' }}">{% if page_has_data %}&#10003;{% endif %}</span></td><td>Ext. & Int. Body (ภายนอก/ใน)</td></tr>
+              <tr><td class="cb-cell"><span class="cb {{ 'checked' if page_has_data else '' }}">{% if page_has_data %}&#10003;{% endif %}</span></td><td>Mats & Carpet (ผ้ายาง/พรม)</td></tr>
+              <tr><td class="cb-cell"><span class="cb {{ 'checked' if page_has_data else '' }}">{% if page_has_data %}&#10003;{% endif %}</span></td><td>Windshield (กระจก)</td></tr>
+              <tr class="checked-row"><td class="cb-cell"><span class="cb {{ 'checked' if page_has_data else '' }}">{% if page_has_data %}&#10003;{% endif %}</span></td><td>CHECKED (ตรวจเรียบร้อย)</td></tr>
             </table>
           </div>
 
@@ -488,9 +484,9 @@
           <div class="box-card" style="margin-bottom:0;">
             <div class="box-title">Tires (ยาง)</div>
             <table class="items-table">
-              <tr><td class="cb-cell"><span class="cb checked"></span></td><td>Pressure & Cond. (สภาพ/ลมยาง)</td></tr>
-              <tr><td class="cb-cell"><span class="cb checked"></span></td><td>Spare Tire & Tools (ยางอะไหล่)</td></tr>
-              <tr class="checked-row"><td class="cb-cell"><span class="cb checked"></span></td><td>CHECKED (ตรวจเรียบร้อย)</td></tr>
+              <tr><td class="cb-cell"><span class="cb {{ 'checked' if page_has_data else '' }}">{% if page_has_data %}&#10003;{% endif %}</span></td><td>Pressure & Cond. (สภาพ/ลมยาง)</td></tr>
+              <tr><td class="cb-cell"><span class="cb {{ 'checked' if page_has_data else '' }}">{% if page_has_data %}&#10003;{% endif %}</span></td><td>Spare Tire & Tools (ยางอะไหล่)</td></tr>
+              <tr class="checked-row"><td class="cb-cell"><span class="cb {{ 'checked' if page_has_data else '' }}">{% if page_has_data %}&#10003;{% endif %}</span></td><td>CHECKED (ตรวจเรียบร้อย)</td></tr>
             </table>
           </div>
 
@@ -501,15 +497,15 @@
           <div class="box-card" style="height: 100%; margin-bottom:0;">
             <div class="box-title">Interior & Controls (ระบบภายใน)</div>
             <table class="items-table">
-              <tr><td class="cb-cell"><span class="cb checked"></span></td><td>Driving Controls (เบรค/คันเร่ง/เกียร์)</td></tr>
-              <tr><td class="cb-cell"><span class="cb checked"></span></td><td>A/C & Audio (แอร์/วิทยุ)</td></tr>
-              <tr><td class="cb-cell"><span class="cb checked"></span></td><td>Wipers & Horn (ปัดน้ำฝน/แตร)</td></tr>
-              <tr><td class="cb-cell"><span class="cb checked"></span></td><td>Seats & Mirrors (เบาะ/กระจกมองข้าง)</td></tr>
-              <tr><td class="cb-cell"><span class="cb checked"></span></td><td>Meters & Lights (มาตรวัด/ไฟ)</td></tr>
-              <tr><td class="cb-cell"><span class="cb checked"></span></td><td>Lighter / USB (ที่จุดบุหรี่/USB)</td></tr>
-              <tr><td class="cb-cell"><span class="cb checked"></span></td><td>Manual & Docs (คู่มือ/ทะเบียน/พ.ร.บ.)</td></tr>
-              <tr><td class="cb-cell"><span class="cb checked"></span></td><td>Accident Report Form (ใบรายงานฯ)</td></tr>
-              <tr class="checked-row"><td class="cb-cell"><span class="cb checked"></span></td><td>CHECKED (ตรวจเรียบร้อย)</td></tr>
+              <tr><td class="cb-cell"><span class="cb {{ 'checked' if page_has_data else '' }}">{% if page_has_data %}&#10003;{% endif %}</span></td><td>Driving Controls (เบรค/คันเร่ง/เกียร์)</td></tr>
+              <tr><td class="cb-cell"><span class="cb {{ 'checked' if page_has_data else '' }}">{% if page_has_data %}&#10003;{% endif %}</span></td><td>A/C & Audio (แอร์/วิทยุ)</td></tr>
+              <tr><td class="cb-cell"><span class="cb {{ 'checked' if page_has_data else '' }}">{% if page_has_data %}&#10003;{% endif %}</span></td><td>Wipers & Horn (ปัดน้ำฝน/แตร)</td></tr>
+              <tr><td class="cb-cell"><span class="cb {{ 'checked' if page_has_data else '' }}">{% if page_has_data %}&#10003;{% endif %}</span></td><td>Seats & Mirrors (เบาะ/กระจกมองข้าง)</td></tr>
+              <tr><td class="cb-cell"><span class="cb {{ 'checked' if page_has_data else '' }}">{% if page_has_data %}&#10003;{% endif %}</span></td><td>Meters & Lights (มาตรวัด/ไฟ)</td></tr>
+              <tr><td class="cb-cell"><span class="cb {{ 'checked' if page_has_data else '' }}">{% if page_has_data %}&#10003;{% endif %}</span></td><td>Lighter / USB (ที่จุดบุหรี่/USB)</td></tr>
+              <tr><td class="cb-cell"><span class="cb {{ 'checked' if page_has_data else '' }}">{% if page_has_data %}&#10003;{% endif %}</span></td><td>Manual & Docs (คู่มือ/ทะเบียน/พ.ร.บ.)</td></tr>
+              <tr><td class="cb-cell"><span class="cb {{ 'checked' if page_has_data else '' }}">{% if page_has_data %}&#10003;{% endif %}</span></td><td>Accident Report Form (ใบรายงานฯ)</td></tr>
+              <tr class="checked-row"><td class="cb-cell"><span class="cb {{ 'checked' if page_has_data else '' }}">{% if page_has_data %}&#10003;{% endif %}</span></td><td>CHECKED (ตรวจเรียบร้อย)</td></tr>
             </table>
           </div>
         </td>
@@ -519,12 +515,12 @@
           <div class="box-card" style="height: 100%; margin-bottom:0;">
             <div class="box-title">Under Hood & Ext. (เครื่อง/ภายนอก)</div>
             <table class="items-table">
-              <tr><td class="cb-cell"><span class="cb checked"></span></td><td>Motor Oil & Fluids (น้ำมันเครื่อง/เกียร์)</td></tr>
-              <tr><td class="cb-cell"><span class="cb checked"></span></td><td>Radiator & Washer (หม้อน้ำ/ฉีดกระจก)</td></tr>
-              <tr><td class="cb-cell"><span class="cb checked"></span></td><td>Battery & Belts (แบตเตอรี่/สายพาน)</td></tr>
-              <tr><td class="cb-cell"><span class="cb checked"></span></td><td>Hood & Doors Lock (ฝากระโปรง/ล็อค)</td></tr>
-              <tr><td class="cb-cell"><span class="cb checked"></span></td><td>Reg. Plate & Tax (ป้ายทะเบียน/ภาษี)</td></tr>
-              <tr class="checked-row" style="padding-top: 35px;"><td class="cb-cell"><span class="cb checked"></span></td><td>CHECKED (ตรวจเรียบร้อย)</td></tr>
+              <tr><td class="cb-cell"><span class="cb {{ 'checked' if page_has_data else '' }}">{% if page_has_data %}&#10003;{% endif %}</span></td><td>Motor Oil & Fluids (น้ำมันเครื่อง/เกียร์)</td></tr>
+              <tr><td class="cb-cell"><span class="cb {{ 'checked' if page_has_data else '' }}">{% if page_has_data %}&#10003;{% endif %}</span></td><td>Radiator & Washer (หม้อน้ำ/ฉีดกระจก)</td></tr>
+              <tr><td class="cb-cell"><span class="cb {{ 'checked' if page_has_data else '' }}">{% if page_has_data %}&#10003;{% endif %}</span></td><td>Battery & Belts (แบตเตอรี่/สายพาน)</td></tr>
+              <tr><td class="cb-cell"><span class="cb {{ 'checked' if page_has_data else '' }}">{% if page_has_data %}&#10003;{% endif %}</span></td><td>Hood & Doors Lock (ฝากระโปรง/ล็อค)</td></tr>
+              <tr><td class="cb-cell"><span class="cb {{ 'checked' if page_has_data else '' }}">{% if page_has_data %}&#10003;{% endif %}</span></td><td>Reg. Plate & Tax (ป้ายทะเบียน/ภาษี)</td></tr>
+              <tr class="checked-row" style="padding-top: 35px;"><td class="cb-cell"><span class="cb {{ 'checked' if page_has_data else '' }}">{% if page_has_data %}&#10003;{% endif %}</span></td><td>CHECKED (ตรวจเรียบร้อย)</td></tr>
             </table>
           </div>
         </td>
@@ -610,10 +606,10 @@
       <tr>
         <td class="sig-cell">
           <div class="sig-img-slot">
-            {% if staff_signature and staff_signature.startswith("data:image") %}
+            {% if page_has_data and staff_signature and staff_signature.startswith("data:image") %}
               <img src="{{ staff_signature }}" alt="Staff Signature" />
-            {% else %}
-              <span class="sig-text-name">{{ staff_name or inspector_name or "" }}</span>
+            {% elif page_has_data %}
+              <span class="sig-text-name">{% if is_page_checkout %}{{ staff_out or staff_name or inspector_name or "" }}{% else %}{{ staff_in or staff_name or inspector_name or "" }}{% endif %}</span>
             {% endif %}
           </div>
           <div class="sig-solid-line"></div>
@@ -622,9 +618,9 @@
         </td>
         <td class="sig-cell">
           <div class="sig-img-slot">
-            {% if customer_signature and customer_signature.startswith("data:image") %}
+            {% if page_has_data and customer_signature and customer_signature.startswith("data:image") %}
               <img src="{{ customer_signature }}" alt="Customer Signature" />
-            {% else %}
+            {% elif page_has_data %}
               <span class="sig-text-name">{{ customer_name or "" }}</span>
             {% endif %}
           </div>

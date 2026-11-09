@@ -1,0 +1,2 @@
+# Ensure PDF binary files are never modified by CRLF line ending normalization
+*.pdf binary
