@@ -47,6 +47,14 @@ class App {
     this.selectedVehicle = null;
     this.isModalOpen = false;
 
+    // Dashboard Tables Collapsible Accordion State
+    this.isTableCollapsed = {
+      "expander-shift-closing": false,
+      "expander-fleet": false,
+      "expander-monthly-expenses": false,
+      "expander-completed": true
+    };
+
     this.init();
   }
 
@@ -1141,7 +1149,7 @@ class App {
       if (isOpen) {
         indicator.textContent = isEn ? "▲ Click to collapse" : "▲ คลิกเพื่อพับเก็บ";
       } else {
-        indicator.textContent = isEn ? "▼ Click to expand" : "▼ คลิกเพื่อแสดงเนื้อหา";
+        indicator.textContent = isEn ? "▼ Click to expand" : "▼ คลิกเพื่อกางดูข้อมูล";
       }
     });
 
@@ -5743,8 +5751,7 @@ class App {
             <a href="/api/pdf/deposit-receipt/${b.booking_id}" target="_blank" class="btn btn-sm btn-secondary" title="${isEn ? 'Deposit Receipt PDF' : 'ใบเสร็จมัดจำ (Deposit Receipt PDF)'}">🛡️</a>
             <a href="/api/pdf/receipt/${b.booking_id}" target="_blank" class="btn btn-sm btn-secondary" title="${isEn ? 'Rental Receipt PDF' : 'ใบเสร็จค่าเช่า (Rental Receipt PDF)'}">🧾</a>
             <a href="${b.checkout_pdf_url || b.checkin_pdf_url || `/api/pdf/job/${b.booking_id}`}" target="_blank" class="btn btn-sm btn-secondary" style="${(b.checkout_pdf_url || b.checkin_pdf_url) ? 'background:#EFF6FF; border-color:#93C5FD; color:#1D4ED8; font-weight:700;' : ''}" title="${isEn ? 'Inspection Job Sheet' : 'ใบงานตรวจสภาพรถ (Job Sheet)'}">📋</a>
-            <a href="${b.checkout_pdf_url || `/api/pdf/inspection/${b.booking_id}?type=checkout`}" onclick="event.preventDefault(); app.openInspectionPdf('${b.booking_id}', 'checkout');" target="_blank" class="btn btn-sm btn-secondary" style="color:#2563EB; font-weight:700;" title="${isEn ? 'Print Check-Out Inspection PDF (Delivery)' : 'พิมพ์ใบตรวจสภาพส่งมอบรถ (Check-Out)'}">📤</a>
-            <a href="${b.checkin_pdf_url || `/api/pdf/inspection/${b.booking_id}?type=checkin`}" onclick="event.preventDefault(); app.openInspectionPdf('${b.booking_id}', 'checkin');" target="_blank" class="btn btn-sm btn-secondary" style="color:#059669; font-weight:700;" title="${isEn ? 'Print Check-In Inspection PDF (Return)' : 'พิมพ์ใบตรวจสภาพรับรถคืน (Check-In)'}">📥</a>
+            <a href="${b.checkin_pdf_url || b.checkout_pdf_url || `/api/pdf/inspection/${b.booking_id}`}" onclick="event.preventDefault(); app.openInspectionPdf('${b.booking_id}');" target="_blank" class="btn btn-sm btn-secondary" style="color:#2563EB; font-weight:700;" title="${isEn ? 'Print Vehicle Inspection PDF (Check-Out & Check-In)' : 'พิมพ์ใบตรวจสภาพรถ (Check-Out & Check-In)'}">🖨️</a>
             <button onclick="app.deleteBooking('${b.booking_id}')" class="btn btn-sm btn-danger" title="${isEn ? 'Delete Booking' : 'ลบรายการจอง'}">🗑️</button>
           </td>
         </tr>
@@ -5752,12 +5759,13 @@ class App {
     }).join("");
   }
 
-  openInspectionPdf(bkId, type = "checkout") {
-    const isCheckout = (type === "checkout");
+  openInspectionPdf(bkId, type = null) {
     const b = (this.bookings || []).find(x => x.booking_id === bkId) || {};
-    const url = isCheckout 
-      ? (b.checkout_pdf_url || `/api/pdf/inspection/${bkId}?type=checkout`)
-      : (b.checkin_pdf_url || `/api/pdf/inspection/${bkId}?type=checkin`);
+    const isReturned = b.return_closed || b.status === "เสร็จสิ้น" || !!b.return_mileage;
+    const reqType = type || (isReturned ? "checkin" : "checkout");
+    const url = (reqType === "checkin" && b.checkin_pdf_url)
+      ? b.checkin_pdf_url
+      : (b.checkout_pdf_url || b.checkin_pdf_url || `/api/pdf/inspection/${bkId}?type=${reqType}`);
     window.open(url, '_blank');
   }
 
@@ -8352,6 +8360,11 @@ ${e.message}`);
     this.showToast(`🚘 ข้ามไปยังข้อมูลรถยนต์ทะเบียน ${plate}`, "info");
   }
 
+  isSectionCollapsed(cardId) {
+    if (!this.isTableCollapsed) return false;
+    return !!this.isTableCollapsed[cardId];
+  }
+
   toggleExpander(cardId) {
     const card = document.getElementById(cardId);
     if (!card) return;
@@ -8360,11 +8373,26 @@ ${e.message}`);
     const indicator = card.querySelector(".expander-indicator span");
     const isEn = (this.currentLang === "EN");
 
-    const isVisible = body && body.style.display !== "none";
-    if (isVisible) {
+    if (!this.isTableCollapsed) {
+      this.isTableCollapsed = {
+        "expander-shift-closing": false,
+        "expander-fleet": false,
+        "expander-monthly-expenses": false,
+        "expander-completed": true
+      };
+    }
+
+    const currentCollapsed = (typeof this.isTableCollapsed[cardId] === "boolean")
+      ? this.isTableCollapsed[cardId]
+      : (body ? body.style.display === "none" : false);
+
+    const newCollapsed = !currentCollapsed;
+    this.isTableCollapsed[cardId] = newCollapsed;
+
+    if (newCollapsed) {
       if (body) body.style.display = "none";
       if (header) header.classList.remove("open");
-      if (indicator) indicator.textContent = isEn ? "▼ Click to expand" : "▼ คลิกเพื่อแสดงเนื้อหา";
+      if (indicator) indicator.textContent = isEn ? "▼ Click to expand" : "▼ คลิกเพื่อกางดูข้อมูล";
     } else {
       if (body) body.style.display = "block";
       if (header) header.classList.add("open");

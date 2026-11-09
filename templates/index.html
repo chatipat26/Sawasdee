@@ -1374,13 +1374,13 @@
 
         <!-- Collapsible Table: Shift Closing & Financial Breakdown Table (ตารางสรุปยอดปิดกะและการเงิน) -->
         <div class="expander-card" id="expander-shift-closing" style="margin-bottom:20px;">
-          <div class="expander-header open" onclick="app.toggleExpander('expander-shift-closing')" style="background:linear-gradient(135deg, #FFF7ED 0%, #FFFFFF 100%); border-bottom:1px solid #FED7AA;">
+          <div class="expander-header open" onclick="app.toggleExpander('expander-shift-closing')" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault(); this.click();}" title="คลิกเพื่อพับ/กาง" style="background:linear-gradient(135deg, #FFF7ED 0%, #FFFFFF 100%); border-bottom:1px solid #FED7AA;">
             <div class="expander-title" style="display:flex; align-items:center; gap:8px;">
               <span style="font-size:16px;">📊</span>
               <span id="title-expander-shift" style="color:#C2410C; font-weight:800;">ตารางสรุปยอดปิดกะและการเงิน (Shift Closing & Revenue Summary)</span>
             </div>
             <div class="expander-indicator">
-              <span id="indicator-expander-shift" style="color:#EA580C; font-size:12px; font-weight:700;">คลิกเพื่อย่อ/ขยาย</span>
+              <span id="indicator-expander-shift" style="color:#EA580C; font-size:12px; font-weight:700;">▲ คลิกเพื่อพับเก็บ</span>
             </div>
           </div>
           <div class="expander-body" id="body-expander-shift-closing" style="display:block; padding:16px;">
@@ -1462,12 +1462,12 @@
 
         <!-- Collapsible Table 1: Fleet Status Table -->
         <div class="expander-card" id="expander-fleet">
-          <div class="expander-header open" onclick="app.toggleExpander('expander-fleet')">
+          <div class="expander-header open" onclick="app.toggleExpander('expander-fleet')" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault(); this.click();}" title="คลิกเพื่อพับ/กาง">
             <div class="expander-title">
               <span id="title-expander-fleet">Fleet Database Overview</span>
             </div>
             <div class="expander-indicator">
-              <span id="indicator-expander-fleet">Click to collapse</span>
+              <span id="indicator-expander-fleet">▲ คลิกเพื่อพับเก็บ</span>
             </div>
           </div>
           <div class="expander-body" id="body-expander-fleet" style="display:block;">
@@ -1522,12 +1522,12 @@
 
         <!-- Collapsible Table: Unified Monthly Expenses Tracker (ภาษี / พ.ร.บ. / ประกัน / ค่างวด) -->
         <div class="expander-card" id="expander-monthly-expenses">
-          <div class="expander-header open" onclick="app.toggleExpander('expander-monthly-expenses')">
+          <div class="expander-header open" onclick="app.toggleExpander('expander-monthly-expenses')" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault(); this.click();}" title="คลิกเพื่อพับ/กาง">
             <div class="expander-title">
               <span id="title-expander-expenses">📋 สรุปค่าใช้จ่ายประจำเดือน (ภาษี / พ.ร.บ. / ประกัน / ค่างวด)</span>
             </div>
             <div class="expander-indicator">
-              <span id="indicator-expander-monthly-expenses">คลิกเพื่อย่อ/ขยาย</span>
+              <span id="indicator-expander-monthly-expenses">▲ คลิกเพื่อพับเก็บ</span>
             </div>
           </div>
           <div class="expander-body" id="body-expander-monthly-expenses" style="display:block;">
@@ -1579,15 +1579,15 @@
 
         <!-- Collapsible Table 2: Completed Jobs Archive & Monthly Report -->
         <div class="expander-card" id="expander-completed">
-          <div class="expander-header open" onclick="app.toggleExpander('expander-completed')">
+          <div class="expander-header" onclick="app.toggleExpander('expander-completed')" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault(); this.click();}" title="คลิกเพื่อพับ/กาง">
             <div class="expander-title">
-              <span id="title-expander-completed">Completed Jobs Archive & Monthly Reports</span>
+              <span id="title-expander-completed">คลังประวัติงานเสร็จสิ้น & รีพอร์ตรายเดือน (Completed Jobs Archive)</span>
             </div>
             <div class="expander-indicator">
-              <span id="indicator-expander-completed">Click to collapse</span>
+              <span id="indicator-expander-completed">▼ คลิกเพื่อกางดูข้อมูล</span>
             </div>
           </div>
-          <div class="expander-body" id="body-expander-completed" style="display:block;">
+          <div class="expander-body" id="body-expander-completed" style="display:none;">
             <!-- Filters: Month & Company (matching app.py) -->
             <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:14px; flex-wrap:wrap; gap:12px;">
               <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end;">
