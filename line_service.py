@@ -237,11 +237,9 @@ def notify_line_work_order(booking_obj, job_type="Dispatch", worker_name="", loc
 
 def notify_line_maintenance(record: dict):
     """
-    แจ้งเตือนเมื่อออกใบงานซ่อมบำรุง / ต่อทะเบียน-ประกัน:
-    ยิงตรงหา 'เจ้าของงาน (assigned_worker)' เท่านั้น!
+    Disabled per system rule: Only 1st and 16th vehicle document expiry alerts are pushed to LINE.
     """
-    if not record:
-        return
+    return False
     try:
         mnt_id = record.get("id", "-")
         car_plate = record.get("car_id", "-")
@@ -302,54 +300,9 @@ def notify_line_maintenance(record: dict):
 
 def notify_line_close_maintenance(record: dict, car: dict = None):
     """
-    แจ้งเตือนเมื่อตรวจรับรถ / ปิดงานซ่อมบำรุง และบันทึกค่าใช้จ่ายจริง:
-    ยิงตรงเข้า 'แอดมิน (Admin)' เท่านั้น!
+    Disabled per system rule: Only 1st and 16th vehicle document expiry alerts are pushed to LINE.
     """
-    if not record:
-        return
-    try:
-        mnt_id = record.get("id", "-")
-        car_plate = record.get("car_id", "-")
-        car_brand = str(record.get("car_brand", "")).strip()
-        car_model = str(record.get("car_model", "")).strip()
-        car_name = f"{car_brand} {car_model}".strip()
-        car_display = f"{car_name} (ทะเบียน {car_plate})" if car_name else f"ทะเบียน {car_plate}"
-
-        order_type = record.get("order_type", "ซ่อมบำรุงทั่วไป / เช็คระยะ")
-        is_renewal = any(k in str(order_type) for k in ["ต่อทะเบียน", "พ.ร.บ.", "พรบ", "ประกัน", "ภาษี"])
-        title = "🏁 เสร็จสิ้น: ปิดงานต่อทะเบียน/ประกัน (บันทึกค่าใช้จ่าย)" if is_renewal else "🏁 เสร็จสิ้น: ปิดงานซ่อมบำรุง (บันทึกค่าใช้จ่าย)"
-
-        actual_cost = float(record.get("actual_cost") or record.get("cost") or 0)
-        cost_str = f"{actual_cost:,.2f} บาท"
-        worker = record.get("assigned_worker") or "-"
-        garage = record.get("service_center") or "-"
-        notes = record.get("completion_notes") or "ตรวจรับรถเรียบร้อย สภาพสมบูรณ์พร้อมใช้งาน"
-
-        lines = [
-            f"✅ {title}",
-            "────────────────────",
-            f"📋 เลขที่ใบงาน: {mnt_id}",
-            f"🚗 ทะเบียนรถ: {car_display}",
-            f"🏢 อู่/ศูนย์บริการ: {garage}",
-            f"👤 ผู้รับผิดชอบ/ตรวจรับ: {worker}",
-            f"💸 ค่าใช้จ่ายจริง: ฿{cost_str}",
-            f"📝 ผลการตรวจรับ/ส่งงาน: {notes}"
-        ]
-        if record.get("new_act_expiry"):
-            lines.append(f"📅 วันหมดอายุ พ.ร.บ. ใหม่: {record['new_act_expiry']}")
-        if record.get("new_ins_expiry"):
-            lines.append(f"📑 วันหมดอายุ ประกันภัย ใหม่: {record['new_ins_expiry']}")
-        if record.get("policy_no"):
-            lines.append(f"📄 เลขที่กรมธรรม์/ใบเสร็จ: {record['policy_no']}")
-        lines.extend([
-            "🟢 สถานะรถยนต์: ปลดกลับเป็น 'ว่างพร้อมใช้งาน'",
-            "────────────────────",
-            "ระบบบริหารจัดการ SawasdeeRental (แจ้งเฉพาะแอดมิน)"
-        ])
-        # ยิงเข้าเพียงแอดมินเท่านั้น!
-        send_line_to_admin_async("\n".join(lines))
-    except Exception as e:
-        print(f"Error notifying LINE close maintenance: {e}")
+    return False
 
 
 def notify_line_deposit(
@@ -362,82 +315,16 @@ def notify_line_deposit(
     is_settle_only: bool = False
 ):
     """
-    แจ้งเตือนเมื่อบันทึกรับเงินมัดจำ / ชำระค่าเช่า:
-    ยิงตรงเข้า 'แอดมิน (Admin)' เท่านั้น!
+    Disabled per system rule: Only 1st and 16th vehicle document expiry alerts are pushed to LINE.
     """
-    if not booking_obj:
-        return
-    try:
-        bk_id = booking_obj.get("booking_id", "-")
-        car_plate = booking_obj.get("car_id", "-")
-        cust_name = booking_obj.get("customer", "-")
-
-        if is_settle_only:
-            title = "💰 แจ้งเตือน: บันทึกรับชำระค่าเช่าคงเหลือ"
-            amount_label = "ยอดชำระค่าเช่า"
-        elif also_rent:
-            title = "💳 แจ้งเตือน: บันทึกรับเงินมัดจำ & ชำระค่าเช่า"
-            amount_label = "ยอดเงินมัดจำ"
-        else:
-            title = "💳 แจ้งเตือน: บันทึกรับเงินมัดจำประกันสัญญา"
-            amount_label = "ยอดเงินมัดจำ"
-
-        lines = [
-            f"🔔 {title}",
-            "────────────────────",
-            f"📋 เลขที่การจอง: {bk_id}",
-            f"🚗 ทะเบียนรถ: {car_plate}",
-            f"👤 ลูกค้า: {cust_name}",
-            f"💵 {amount_label}: ฿{float(amount):,.2f}",
-            f"💳 ช่องทางชำระ: {method}"
-        ]
-        if ref:
-            lines.append(f"🧾 เลขที่ Ref / สลิป: {ref}")
-        if also_rent and not is_settle_only:
-            net_p = float(booking_obj.get("net_price", 0.0))
-            lines.append(f"💰 ชำระค่าเช่าสุทธิ: ฿{net_p:,.2f} (ชำระเต็มจำนวน)")
-        if slip_url:
-            lines.append("📎 หลักฐานการโอน: แนบรูปสลิปเรียบร้อยแล้ว")
-        lines.extend([
-            "────────────────────",
-            "ระบบบริหารจัดการ SawasdeeRental (แจ้งเฉพาะแอดมิน)"
-        ])
-        # ยิงเข้าเพียงแอดมินเท่านั้น!
-        send_line_to_admin_async("\n".join(lines))
-    except Exception as e:
-        print(f"Error notifying LINE deposit: {e}")
+    return False
 
 
 def notify_line_expense(expense_obj: dict):
     """
-    แจ้งเตือนเมื่อบันทึกค่าใช้จ่าย (รายจ่าย):
-    ยิงตรงเข้า 'แอดมิน (Admin)' เท่านั้น!
+    Disabled per system rule: Only 1st and 16th vehicle document expiry alerts are pushed to LINE.
     """
-    if not expense_obj:
-        return
-    try:
-        cat = expense_obj.get("category", "ค่าใช้จ่ายทั่วไป")
-        amt = float(expense_obj.get("amount", 0.0) or 0.0)
-        ref = expense_obj.get("ref", "-")
-        comp = expense_obj.get("company", "-")
-        detail = expense_obj.get("detail", "-")
-        d_str = _fmt_dmy(expense_obj.get("date"))
-
-        lines = [
-            "💸 แจ้งเตือน: บันทึกรายการค่าใช้จ่าย (Expense)",
-            "────────────────────",
-            f"📂 หมวดหมู่: {cat}",
-            f"💰 จำนวนเงิน: ฿{amt:,.2f}",
-            f"📋 อ้างอิง/ทะเบียน: {ref}",
-            f"🏢 บริษัท: {comp}",
-            f"📅 วันที่: {d_str}",
-            f"📝 รายละเอียด: {detail}",
-            "────────────────────",
-            "ระบบบริหารจัดการ SawasdeeRental (แจ้งเฉพาะแอดมิน)"
-        ]
-        send_line_to_admin_async("\n".join(lines))
-    except Exception as e:
-        print(f"Error notifying LINE expense: {e}")
+    return False
 
 
 def check_and_send_expiry_alerts(cars_dict=None, target_days=(30, 31, 7, 0), recipient_mode: str = None):

@@ -350,14 +350,18 @@ async def login(payload: Dict[str, Any]):
     if not user_rec:
         raise HTTPException(status_code=401, detail="ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง")
 
-    is_pending = (user_rec.get("status") == "pending")
-    if is_pending:
-        return {
-            "success": False,
-            "is_pending": True,
-            "detail": "บัญชีของคุณอยู่ระหว่างรอการอนุมัติจากผู้ดูแลระบบ (Admin)",
-            "user": user_rec
-        }
+    user_status = str(user_rec.get("status", "")).strip().lower()
+    is_approved = user_rec.get("is_approved")
+    if user_status in ["suspended", "ระงับ", "inactive", "rejected"]:
+        raise HTTPException(
+            status_code=403,
+            detail="บัญชีนี้ถูกระงับการใช้งาน กรุณาติดต่อผู้ดูแลระบบ"
+        )
+    if user_status in ["pending", "รออนุมัติ", "รอดำเนินการ"] or is_approved is False:
+        raise HTTPException(
+            status_code=403,
+            detail="บัญชีของคุณกำลังรอการอนุมัติจากแอดมิน"
+        )
 
     canon_un = user_rec.get("username", un)
     if canon_un not in store.users:
@@ -430,6 +434,7 @@ async def approve_user(username: str):
     if username not in store.users:
         raise HTTPException(status_code=404, detail="ไม่พบผู้ใช้นี้")
     store.users[username]["status"] = "approved"
+    store.users[username]["is_approved"] = True
     store.async_sync_user(username, store.users[username])
     return {"success": True}
 
@@ -437,7 +442,8 @@ async def approve_user(username: str):
 async def reject_user(username: str):
     if username not in store.users:
         raise HTTPException(status_code=404, detail="ไม่พบผู้ใช้นี้")
-    store.users[username]["status"] = "pending"
+    store.users[username]["status"] = "suspended"
+    store.users[username]["is_approved"] = False
     store.async_sync_user(username, store.users[username])
     return {"success": True}
 
@@ -2974,11 +2980,11 @@ async def create_maintenance(payload: Dict[str, Any]):
         
     store.async_sync_maintenance(record)
     
-    # Notify via LINE with all required maintenance details
-    try:
-        notify_line_maintenance(record)
-    except Exception as e:
-        print(f"Error notifying line maintenance: {e}")
+    # Notify via LINE disabled per system rule: Only 1st & 16th expiry alerts are sent
+    # try:
+    #     notify_line_maintenance(record)
+    # except Exception as e:
+    #     pass
 
     # Log to universal work_order_logs
     try:
@@ -3043,11 +3049,11 @@ async def close_maintenance(mnt_id: str, payload: Dict[str, Any]):
     if not closed:
         raise HTTPException(status_code=404, detail="ไม่พบใบงานซ่อมบำรุงที่ต้องการปิดงาน")
         
-    # Notify via LINE that maintenance / renewal is closed
-    try:
-        notify_line_close_maintenance(closed, store.cars.get(closed.get("car_id")))
-    except Exception as e:
-        print(f"Error notifying line close maintenance: {e}")
+    # Notify via LINE disabled per system rule: Only 1st & 16th expiry alerts are sent
+    # try:
+    #     notify_line_close_maintenance(closed, store.cars.get(closed.get("car_id")))
+    # except Exception as e:
+    #     pass
 
     # Log to universal work_order_logs
     try:

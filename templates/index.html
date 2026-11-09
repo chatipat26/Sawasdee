@@ -1125,10 +1125,12 @@
             <div>
               <label id="mnt-lbl-status" style="font-size:11px; font-weight:700; color:#475569; display:block; margin-bottom:3px;">Filter Status:</label>
               <select id="mnt-filter-status" class="form-control" onchange="app.renderMaintenanceRecords()" style="font-size:12px; padding:7px 10px;">
-                <option value="ทั้งหมด" id="opt-mnt-status-all">All</option>
-                <option value="กำลังซ่อมบำรุง" id="opt-mnt-status-repairing">In Repair</option>
-                <option value="รอดำเนินการ" id="opt-mnt-status-pending">Pending</option>
-                <option value="เสร็จสิ้น" id="opt-mnt-status-done">Completed</option>
+                <option value="ทั้งหมด" id="opt-mnt-status-all">รอดำเนินการ / กำลังซ่อม (Active)</option>
+                <option value="กำลังซ่อมบำรุง" id="opt-mnt-status-repairing">กำลังซ่อมบำรุง</option>
+                <option value="รอดำเนินการ" id="opt-mnt-status-pending">รอดำเนินการ</option>
+                <option value="กำลังต่อภาษี/ประกัน" id="opt-mnt-status-renewing">กำลังต่อภาษี/ประกัน</option>
+                <option value="เสร็จสิ้น" id="opt-mnt-status-done">เสร็จสิ้น (Completed)</option>
+                <option value="all_with_completed">ดูทั้งหมด (รวมเสร็จสิ้น)</option>
               </select>
             </div>
             <div>

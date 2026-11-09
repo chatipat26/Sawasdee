@@ -2233,6 +2233,14 @@ class App {
     if (typeof this.renderFleetOverviewTable === "function") this.renderFleetOverviewTable();
   }
 
+  renderExpiringAlerts() {
+    if (typeof this.renderFleetOverviewTable === "function") this.renderFleetOverviewTable();
+  }
+
+  renderUnifiedExpensesTable() {
+    if (typeof this.loadMonthlyExpenses === "function") this.loadMonthlyExpenses();
+  }
+
   // --- Rendering: Fleet Cards ---
   renderFleetCards() {
     const container = document.getElementById("fleet-cards-container");
@@ -8904,6 +8912,9 @@ ${e.message}`);
       if (!res.ok) {
         throw new Error(data.detail || "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง");
       }
+      if (data.is_pending || data.success === false) {
+        throw new Error(data.detail || "บัญชีของคุณกำลังรอการอนุมัติจากแอดมิน");
+      }
 
       this.user = data.user;
       sessionStorage.setItem("sawasdee_user", JSON.stringify(this.user));
@@ -9102,10 +9113,14 @@ ${e.message}`);
     const elRen = document.getElementById("mnt-kpi-renewals");
     if (elRen) elRen.innerHTML = `${renewals} <span style="font-size:13px; font-weight:500; color:#64748B;">${jobUnit}</span>`;
 
-    // Filter records
+    // Filter records (Target Mission 3: Hide completed tasks from active view by default)
     const filtered = allRecords.filter(m => {
       if (carFilter !== "ทั้งหมด" && m.car_id !== carFilter) return false;
-      if (statusFilter !== "ทั้งหมด" && m.status !== statusFilter) return false;
+      if (statusFilter === "ทั้งหมด" || statusFilter === "All" || !statusFilter) {
+        if (m.status === "เสร็จสิ้น" || m.status === "Completed") return false;
+      } else if (statusFilter !== "all_with_completed") {
+        if (m.status !== statusFilter) return false;
+      }
       if (typeFilter !== "ทั้งหมด") {
         if (!String(m.order_type || "").includes(typeFilter)) return false;
       }
@@ -9715,8 +9730,8 @@ ${e.message}`);
           if (typeof this.renderFleetCards === "function") this.renderFleetCards();
           if (typeof this.renderFleetOverviewTable === "function") this.renderFleetOverviewTable();
         }
-        this.renderExpiringAlerts();
-        this.renderUnifiedExpensesTable();
+        if (typeof this.renderExpiringAlerts === "function") this.renderExpiringAlerts();
+        if (typeof this.renderUnifiedExpensesTable === "function") this.renderUnifiedExpensesTable();
         await this.loadBackOfficeJobs();
         await this.loadDashboardKPIs();
         this.renderFleetOverviewTable();
