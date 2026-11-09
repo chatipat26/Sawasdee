@@ -630,6 +630,9 @@ class DataStore:
                             _pair(merged_c, 'prb_expire_date', 'act_expiry')
                             _pair(merged_c, 'insurance_expire_date', 'ins_expiry')
                             _pair(merged_c, 'insurance_company', 'ins_company')
+                            _pair(merged_c, 'ins_policy_no', 'insurance_policy_no')
+                            _pair(merged_c, 'ins_policy_no', 'policy_no')
+                            _pair(merged_c, 'insurance_policy_no', 'policy_no')
                             _pair(merged_c, 'car_owner', 'owner')
                             _pair(merged_c, 'car_owner', 'owner_name')
                             _pair(merged_c, 'owner', 'owner_name')
@@ -907,14 +910,16 @@ class DataStore:
             'owner', 'owner_name', 'reg_year', 'registration_year', 'tax_expiry', 'ins_company',
             'act_price', 'ins_premium', 'insurance_policy_no', 'policy_no', 'act_status',
             'ins_status', 'payment_status', 'installment_due_date',
-            'next_engine_oil_date', 'next_engine_oil_mileage'
+            'next_engine_oil_date', 'next_engine_oil_mileage',
+            'act_policy_no', 'ins_policy_no', 'ins_category', 'ins_coverage_amount', 'ins_type', 'ins_class'
         }
         ALL_CAR_COLS = CAR_DB_COLS | {
             'next_service', 'tire_change', 'hp_contract_no', 'hp_installment',
             'next_engine_oil_date', 'next_engine_oil_mileage',
             'next_tire_change_date', 'next_tire_change_mileage',
             'tax_paid', 'prb_paid', 'act_paid', 'insurance_paid', 'ins_paid', 'installment_paid',
-            'tax_paid_date', 'prb_paid_date', 'insurance_paid_date', 'installment_paid_date'
+            'tax_paid_date', 'prb_paid_date', 'insurance_paid_date', 'installment_paid_date',
+            'act_policy_no', 'ins_policy_no', 'ins_category', 'ins_coverage_amount', 'ins_type', 'ins_class'
         }
         with self.lock:
             existing = dict(self.cars.get(plate, {}))
@@ -942,6 +947,8 @@ class DataStore:
             _pair_sync(existing, 'prb_expire_date', 'act_expiry')
             _pair_sync(existing, 'insurance_expire_date', 'ins_expiry')
             _pair_sync(existing, 'insurance_company', 'ins_company')
+            _pair_sync(existing, 'ins_policy_no', 'insurance_policy_no')
+            _pair_sync(existing, 'ins_policy_no', 'policy_no')
             _pair_sync(existing, 'insurance_policy_no', 'policy_no')
             _pair_sync(existing, 'car_owner', 'owner')
             _pair_sync(existing, 'car_owner', 'owner_name')

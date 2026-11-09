@@ -870,6 +870,28 @@ async def create_or_update_car(payload: Union[VehicleCreate, Dict[str, Any]], pl
     fin_comp_val = str(payload.get("finance_company") or "-").strip() or "-"
     payload["finance_company"] = fin_comp_val
 
+    # Comprehensive Insurance & ACT Policy Details
+    act_pol = str(payload.get("act_policy_no") or "-").strip() or "-"
+    payload["act_policy_no"] = act_pol
+
+    ins_pol = str(payload.get("ins_policy_no") or payload.get("insurance_policy_no") or payload.get("policy_no") or "-").strip() or "-"
+    payload["ins_policy_no"] = ins_pol
+    payload["insurance_policy_no"] = ins_pol
+    payload["policy_no"] = ins_pol
+
+    payload["ins_category"] = str(payload.get("ins_category") or "-").strip() or "-"
+    payload["ins_type"] = str(payload.get("ins_type") or "-").strip() or "-"
+    payload["ins_class"] = str(payload.get("ins_class") or "-").strip() or "-"
+
+    raw_cov = payload.get("ins_coverage_amount")
+    if raw_cov is not None and str(raw_cov).strip() != "":
+        try:
+            payload["ins_coverage_amount"] = float(str(raw_cov).replace(",", "").strip())
+        except Exception:
+            payload["ins_coverage_amount"] = 0.0
+    else:
+        payload["ins_coverage_amount"] = 0.0
+
     # TARGET MISSION 2: Auto-log renewal history into maintenance_records when expiry dates change
     existing_car = store.cars.get(plate) or (store.cars.get(original_plate) if original_plate else None)
     if existing_car:

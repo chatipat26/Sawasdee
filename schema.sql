@@ -51,6 +51,14 @@ CREATE TABLE IF NOT EXISTS public.cars (
     finance_company VARCHAR(150),
     notes TEXT,
     image_url TEXT,
+    act_policy_no VARCHAR(100),
+    ins_policy_no VARCHAR(100),
+    ins_category VARCHAR(100),
+    ins_coverage_amount NUMERIC DEFAULT 0,
+    ins_type VARCHAR(100),
+    ins_class VARCHAR(50),
+    insurance_policy_no VARCHAR(100),
+    policy_no VARCHAR(100),
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -241,6 +249,14 @@ ALTER TABLE cars ADD COLUMN IF NOT EXISTS payment_due_date VARCHAR(50);
 ALTER TABLE cars ADD COLUMN IF NOT EXISTS finance_company VARCHAR(150);
 ALTER TABLE cars ADD COLUMN IF NOT EXISTS notes TEXT;
 ALTER TABLE cars ADD COLUMN IF NOT EXISTS image_url TEXT;
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS act_policy_no VARCHAR(100);
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS ins_policy_no VARCHAR(100);
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS ins_category VARCHAR(100);
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS ins_coverage_amount NUMERIC DEFAULT 0;
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS ins_type VARCHAR(100);
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS ins_class VARCHAR(50);
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS insurance_policy_no VARCHAR(100);
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS policy_no VARCHAR(100);
 
 -- 2. อัปเดตตารางลูกค้า (customers)
 ALTER TABLE customers ADD COLUMN IF NOT EXISTS full_name VARCHAR(150);

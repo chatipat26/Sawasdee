@@ -2620,6 +2620,16 @@ class App {
       ? '฿' + insVal.toLocaleString(undefined, {minimumFractionDigits: (insVal % 1 === 0 ? 0 : 2), maximumFractionDigits: 2})
       : '-';
 
+    const coverageVal = (c.ins_coverage_amount !== undefined && c.ins_coverage_amount !== null && c.ins_coverage_amount !== '' && Number(c.ins_coverage_amount) > 0)
+      ? Number(c.ins_coverage_amount)
+      : null;
+    const coverageFormatted = (coverageVal !== null && !isNaN(coverageVal) && coverageVal > 0)
+      ? '฿' + coverageVal.toLocaleString(undefined, {minimumFractionDigits: (coverageVal % 1 === 0 ? 0 : 2), maximumFractionDigits: 2})
+      : '-';
+
+    const insPolicyDisplay = (c.ins_policy_no && c.ins_policy_no !== '-') ? c.ins_policy_no : (c.insurance_policy_no || c.policy_no || '-');
+    const actPolicyDisplay = (c.act_policy_no && c.act_policy_no !== '-') ? c.act_policy_no : '-';
+
     const regYearDisplay = (c.register_year && c.register_year !== '-') ? c.register_year : (c.reg_year || '-');
     const insCompanyDisplay = (c.insurance_company && c.insurance_company !== '-') ? c.insurance_company : (c.ins_company || c.insurance_brand || '-');
     const financeCompanyDisplay = (c.finance_company && c.finance_company !== '-') ? c.finance_company : (c.is_debt_free ? (isEn ? 'Debt Free' : 'ปลอดภาระ') : '-');
@@ -2746,21 +2756,29 @@ class App {
         <!-- Bottom-Left: ข้อมูลกรมธรรม์ประกันภัย -->
         <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:8px; padding:12px;">
           <div style="font-size:12px; font-weight:700; color:#334155; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
-            <span>${isEn ? 'Insurance Policy' : 'ข้อมูลกรมธรรม์ประกันภัย'}</span>
+            <span>🛡️</span>
+            <span>${isEn ? 'Comprehensive Insurance Policy' : 'ข้อมูลกรมธรรม์ประกันภัย'}</span>
           </div>
           <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px; font-size:11.5px;">
             <div><b style="color:#64748B;">${isEn ? 'Company:' : 'บริษัทประกัน:'}</b> ${insCompanyDisplay}</div>
+            <div><b style="color:#64748B;">${isEn ? 'Policy No:' : 'เลขกรมธรรม์:'}</b> <code style="font-size:11px;">${insPolicyDisplay}</code></div>
+            <div><b style="color:#64748B;">${isEn ? 'Class:' : 'ชั้นความคุ้มครอง:'}</b> <span style="font-weight:700; color:#0369A1;">${c.ins_class || '-'}</span></div>
+            <div><b style="color:#64748B;">${isEn ? 'Category:' : 'หมวดประกัน:'}</b> ${c.ins_category || '-'}</div>
+            <div><b style="color:#64748B;">${isEn ? 'Coverage Amount:' : 'ทุนประกัน:'}</b> <span style="font-weight:700; color:#059669;">${coverageFormatted}</span></div>
+            <div><b style="color:#64748B;">${isEn ? 'Type:' : 'ประเภทประกัน:'}</b> ${c.ins_type || '-'}</div>
             <div><b style="color:#64748B;">${isEn ? 'Expiry:' : 'วันหมดอายุ:'}</b> <span style="color:#DC2626; font-weight:700;">${c.ins_expiry || c.insurance_expire_date || '-'}</span></div>
             <div><b style="color:#64748B;">${isEn ? 'Premium:' : 'เบี้ยประกัน:'}</b> <span style="font-weight:700; color:#0F172A;">${insFormatted}</span></div>
           </div>
         </div>
 
-        <!-- Bottom-Right: ข้อมูล พ.ร.บ. และภาษี (Moved from top-right) -->
+        <!-- Bottom-Right: ข้อมูล พ.ร.บ. และภาษี -->
         <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:8px; padding:12px;">
           <div style="font-size:12px; font-weight:700; color:#334155; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
+            <span>📄</span>
             <span>${isEn ? 'ACT & Tax Registration' : 'ข้อมูล พ.ร.บ. และภาษี'}</span>
           </div>
           <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px; font-size:11.5px;">
+            <div style="grid-column: span 2;"><b style="color:#64748B;">${isEn ? 'ACT Policy No:' : 'เลข พ.ร.บ.:'}</b> <code style="font-size:11px;">${actPolicyDisplay}</code></div>
             <div><b style="color:#64748B;">${isEn ? 'ACT Expiry:' : 'หมดอายุ พ.ร.บ.:'}</b> <span style="color:#DC2626; font-weight:700;">${c.act_expiry || c.prb_expire_date || '-'}</span></div>
             <div><b style="color:#64748B;">${isEn ? 'Tax Expiry:' : 'หมดอายุภาษี:'}</b> <span style="color:#DC2626; font-weight:700;">${c.tax_expiry || c.tax_expire_date || '-'}</span></div>
             <div><b style="color:#64748B;">${isEn ? 'PRB Price:' : 'ราคา พ.ร.บ.:'}</b> <span style="font-weight:700; color:#0F172A;">${prbFormatted}</span></div>
@@ -3158,8 +3176,14 @@ class App {
     setVal("edit-car-vin", car.vin || car.chassis_no || "-");
     setVal("edit-car-tax", this.dmyToYmd(car.tax_expire_date || car.tax_expiry));
     setVal("edit-car-act", this.dmyToYmd(car.prb_expire_date || car.act_expiry));
+    setVal("edit-car-act-policy-no", car.act_policy_no && car.act_policy_no !== "-" ? car.act_policy_no : "");
     setVal("edit-car-ins", this.dmyToYmd(car.insurance_expire_date || car.ins_expiry));
     setVal("edit-car-ins-comp", car.insurance_company || car.ins_company || "-");
+    setVal("edit-car-ins-policy-no", (car.ins_policy_no && car.ins_policy_no !== "-") ? car.ins_policy_no : ((car.insurance_policy_no && car.insurance_policy_no !== "-") ? car.insurance_policy_no : (car.policy_no && car.policy_no !== "-" ? car.policy_no : "")));
+    setVal("edit-car-ins-class", car.ins_class || "-");
+    setVal("edit-car-ins-category", (car.ins_category && car.ins_category !== "-") ? car.ins_category : "");
+    setVal("edit-car-ins-coverage-amount", (car.ins_coverage_amount !== undefined && car.ins_coverage_amount !== null && Number(car.ins_coverage_amount) > 0) ? car.ins_coverage_amount : "");
+    setVal("edit-car-ins-type", (car.ins_type && car.ins_type !== "-") ? car.ins_type : "");
     setVal("edit-car-owner", car.car_owner || car.owner || "-");
     setVal("edit-car-beneficiary", car.beneficiary || car.owner_company || car.company || "-");
     setVal("edit-car-reg-year", car.register_year || car.reg_year || "-");
@@ -3489,8 +3513,16 @@ class App {
       tax_expiry: this.ymdToDmy(getVal("edit-car-tax", "tax_expire_date", getVal("edit-car-tax", "tax_expiry", ""))) || "-",
       prb_expire_date: this.ymdToDmy(getVal("edit-car-act", "prb_expire_date", getVal("edit-car-act", "act_expiry", ""))) || "-",
       act_expiry: this.ymdToDmy(getVal("edit-car-act", "prb_expire_date", getVal("edit-car-act", "act_expiry", ""))) || "-",
+      act_policy_no: String(getVal("edit-car-act-policy-no", "act_policy_no", "-")).trim() || "-",
       insurance_expire_date: this.ymdToDmy(getVal("edit-car-ins", "insurance_expire_date", getVal("edit-car-ins", "ins_expiry", ""))) || "-",
       ins_expiry: this.ymdToDmy(getVal("edit-car-ins", "insurance_expire_date", getVal("edit-car-ins", "ins_expiry", ""))) || "-",
+      ins_policy_no: String(getVal("edit-car-ins-policy-no", "ins_policy_no", getVal("edit-car-ins-policy-no", "insurance_policy_no", getVal("edit-car-ins-policy-no", "policy_no", "-")))).trim() || "-",
+      insurance_policy_no: String(getVal("edit-car-ins-policy-no", "ins_policy_no", getVal("edit-car-ins-policy-no", "insurance_policy_no", getVal("edit-car-ins-policy-no", "policy_no", "-")))).trim() || "-",
+      policy_no: String(getVal("edit-car-ins-policy-no", "ins_policy_no", getVal("edit-car-ins-policy-no", "insurance_policy_no", getVal("edit-car-ins-policy-no", "policy_no", "-")))).trim() || "-",
+      ins_class: String(getVal("edit-car-ins-class", "ins_class", "-")).trim() || "-",
+      ins_category: String(getVal("edit-car-ins-category", "ins_category", "-")).trim() || "-",
+      ins_coverage_amount: parseFloat(getVal("edit-car-ins-coverage-amount", "ins_coverage_amount", "0")) || 0.0,
+      ins_type: String(getVal("edit-car-ins-type", "ins_type", "-")).trim() || "-",
       insurance_company: insCompVal,
       ins_company: insCompVal,
       car_owner: String(getVal("edit-car-owner", "car_owner", getVal("edit-car-owner", "owner", "-"))).trim(),

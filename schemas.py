@@ -41,7 +41,17 @@ class VehicleBase(BaseModel):
     notes: Optional[str] = ""
     image_url: Optional[str] = ""
 
+    # Comprehensive Insurance & ACT Policy Fields
+    act_policy_no: Optional[str] = "-"
+    ins_policy_no: Optional[str] = "-"
+    ins_category: Optional[str] = "-"
+    ins_coverage_amount: Optional[float] = 0.0
+    ins_type: Optional[str] = "-"
+    ins_class: Optional[str] = "-"
+
     # Backward compatibility / Frontend payload aliases
+    insurance_policy_no: Optional[str] = "-"
+    policy_no: Optional[str] = "-"
     reg_year: Optional[str] = "-"
     registration_year: Optional[str] = "-"
     owner_name: Optional[str] = "-"

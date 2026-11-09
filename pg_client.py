@@ -360,6 +360,16 @@ class PgClient:
                 cur.execute("ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS act_expiry VARCHAR(50);")
                 cur.execute("ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS ins_expiry VARCHAR(50);")
                 cur.execute("ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS ins_company VARCHAR(150);")
+                cur.execute("ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS act_policy_no VARCHAR(100);")
+                cur.execute("ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS ins_policy_no VARCHAR(100);")
+                cur.execute("ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS ins_category VARCHAR(100);")
+                cur.execute("ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS ins_coverage_amount NUMERIC DEFAULT 0;")
+                cur.execute("ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS ins_type VARCHAR(100);")
+                cur.execute("ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS ins_class VARCHAR(50);")
+                try:
+                    cur.execute("UPDATE public.cars SET ins_policy_no = COALESCE(NULLIF(ins_policy_no, ''), NULLIF(insurance_policy_no, ''), policy_no) WHERE (ins_policy_no IS NULL OR ins_policy_no = '' OR ins_policy_no = '-') AND (insurance_policy_no IS NOT NULL OR policy_no IS NOT NULL);")
+                except Exception:
+                    pass
             print("PostgreSQL maintenance_logs table and car columns ensured.")
         except Exception as e:
             print(f"Maintenance logs migration note: {e}")

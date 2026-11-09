@@ -2348,17 +2348,81 @@
             <input type="date" id="edit-car-act" class="form-control" onchange="app.updateCarFormField('prb_expire_date', this.value)">
           </div>
           <div class="form-group">
-            <label id="lbl-modal-car-ins">Insurance Expiry Date</label>
-            <input type="date" id="edit-car-ins" class="form-control" onchange="app.updateCarFormField('insurance_expire_date', this.value)">
+            <label id="lbl-modal-car-act-policy">เลข พ.ร.บ. (ACT Policy No.)</label>
+            <input type="text" id="edit-car-act-policy-no" class="form-control" placeholder="เลขกรมธรรม์ พ.ร.บ." oninput="app.updateCarFormField('act_policy_no', this.value)">
           </div>
         </div>
 
-        <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:12px; margin-bottom:12px;">
-          <div class="form-group">
-            <label id="lbl-modal-car-ins-comp">Insurance Company</label>
-            <input type="text" id="edit-car-ins-comp" class="form-control" list="car-ins-comps-list" placeholder="ชื่อบริษัทประกันภัย" oninput="app.updateCarFormField('ins_company', this.value)">
-            <datalist id="car-ins-comps-list"></datalist>
+        <!-- Section: ข้อมูลกรมธรรม์ประกันภัยภาคสมัครใจ (Comprehensive Insurance) -->
+        <div style="background:#F8FAFC; border:1px solid #CBD5E1; border-radius:8px; padding:12px; margin-bottom:12px;">
+          <div style="font-size:12px; font-weight:800; color:#1E293B; margin-bottom:10px; display:flex; align-items:center; gap:6px;">
+            <span>🛡️</span>
+            <span>ข้อมูลกรมธรรม์ประกันภัยภาคสมัครใจ (Comprehensive Insurance)</span>
           </div>
+
+          <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; margin-bottom:10px;">
+            <div class="form-group">
+              <label id="lbl-modal-car-ins-comp">Insurance Company (บริษัทประกัน)</label>
+              <input type="text" id="edit-car-ins-comp" class="form-control" list="car-ins-comps-list" placeholder="ชื่อบริษัทประกันภัย" oninput="app.updateCarFormField('ins_company', this.value)">
+              <datalist id="car-ins-comps-list"></datalist>
+            </div>
+            <div class="form-group">
+              <label id="lbl-modal-car-ins-policy-no">เลขกรมธรรม์ประกันภัย (Policy No.)</label>
+              <input type="text" id="edit-car-ins-policy-no" class="form-control" placeholder="เลขกรมธรรม์ประกันภัย" oninput="app.updateCarFormField('ins_policy_no', this.value)">
+            </div>
+            <div class="form-group">
+              <label id="lbl-modal-car-ins-class">ชั้นความคุ้มครอง (Class)</label>
+              <select id="edit-car-ins-class" class="form-control" onchange="app.updateCarFormField('ins_class', this.value)">
+                <option value="-">- เลือกชั้นความคุ้มครอง -</option>
+                <option value="ชั้น 1">ชั้น 1</option>
+                <option value="ชั้น 2+">ชั้น 2+</option>
+                <option value="ชั้น 2">ชั้น 2</option>
+                <option value="ชั้น 3+">ชั้น 3+</option>
+                <option value="ชั้น 3">ชั้น 3</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:12px; margin-bottom:10px;">
+            <div class="form-group">
+              <label id="lbl-modal-car-ins-category">หมวดประกัน (Category)</label>
+              <input type="text" id="edit-car-ins-category" class="form-control" list="car-ins-categories-list" placeholder="เช่น ซ่อมห้าง / ซ่อมอู่" oninput="app.updateCarFormField('ins_category', this.value)">
+              <datalist id="car-ins-categories-list">
+                <option value="ซ่อมห้าง (ศูนย์บริการ)">
+                <option value="ซ่อมอู่ (อู่ในเครือ)">
+              </datalist>
+            </div>
+            <div class="form-group">
+              <label id="lbl-modal-car-ins-coverage">ทุนประกัน / วงเงินเอาประกัน (บาท)</label>
+              <input type="number" id="edit-car-ins-coverage-amount" class="form-control" min="0" step="10000" placeholder="0.00" oninput="app.updateCarFormField('ins_coverage_amount', this.value)">
+            </div>
+            <div class="form-group">
+              <label id="lbl-modal-car-ins-type">ประเภทประกัน (Type)</label>
+              <input type="text" id="edit-car-ins-type" class="form-control" list="car-ins-types-list" placeholder="เช่น ไม่ระบุผู้ขับขี่" oninput="app.updateCarFormField('ins_type', this.value)">
+              <datalist id="car-ins-types-list">
+                <option value="ไม่ระบุผู้ขับขี่">
+                <option value="ระบุผู้ขับขี่">
+              </datalist>
+            </div>
+            <div class="form-group">
+              <label id="lbl-modal-car-ins">Insurance Expiry (วันหมดอายุประกัน)</label>
+              <input type="date" id="edit-car-ins" class="form-control" onchange="app.updateCarFormField('insurance_expire_date', this.value)">
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+            <div class="form-group">
+              <label id="lbl-modal-car-prb-price">ราคา พ.ร.บ. (บาท)</label>
+              <input type="number" id="edit-car-prb-price" class="form-control" min="0" step="10" placeholder="0.00" oninput="app.updateCarFormField('prb_price', this.value)">
+            </div>
+            <div class="form-group">
+              <label id="lbl-modal-car-ins-premium">เบี้ยประกัน (บาท)</label>
+              <input type="number" id="edit-car-ins-premium" class="form-control" min="0" step="100" placeholder="0.00" oninput="app.updateCarFormField('insurance_premium', this.value)">
+            </div>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; margin-bottom:12px;">
           <div class="form-group">
             <label id="lbl-modal-car-owner">Vehicle Owner</label>
             <input type="text" id="edit-car-owner" class="form-control" list="car-owners-list" placeholder="ชื่อผู้ถือกรรมสิทธิ์" oninput="app.updateCarFormField('owner', this.value)">
@@ -2373,17 +2437,6 @@
             <label id="lbl-modal-car-reg-year">Registration Year (B.E./A.D.)</label>
             <input type="text" id="edit-car-reg-year" class="form-control" list="car-reg-years-list" placeholder="2567" oninput="app.updateCarFormField('reg_year', this.value)">
             <datalist id="car-reg-years-list"></datalist>
-          </div>
-        </div>
-
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:12px;">
-          <div class="form-group">
-            <label id="lbl-modal-car-prb-price">ราคา พ.ร.บ. (บาท)</label>
-            <input type="number" id="edit-car-prb-price" class="form-control" min="0" step="10" placeholder="0.00" oninput="app.updateCarFormField('prb_price', this.value)">
-          </div>
-          <div class="form-group">
-            <label id="lbl-modal-car-ins-premium">เบี้ยประกัน (บาท)</label>
-            <input type="number" id="edit-car-ins-premium" class="form-control" min="0" step="100" placeholder="0.00" oninput="app.updateCarFormField('insurance_premium', this.value)">
           </div>
         </div>
 
