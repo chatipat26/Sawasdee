@@ -51,34 +51,53 @@ class App {
   }
 
   async init() {
-    // Safety splash dismiss fallback: never leave splash hanging beyond 2 seconds
-    setTimeout(() => {
+    const dismissSplash = () => {
       const splash = document.getElementById("app-splash-screen");
-      if (splash && !splash.classList.contains("fade-out")) {
-        splash.classList.add("fade-out");
-      }
-    }, 2000);
-
-    this.initGlobalEnterKeyNavigation();
-    this.initLanguage();
-    this.setupDatePickers();
-    this.updateAuthUI();
-
-    const splash = document.getElementById("app-splash-screen");
-    const splashStatus = document.getElementById("app-splash-status");
-
-    if (this.user) {
-      if (splashStatus) splashStatus.textContent = "กำลังโหลดข้อมูลระบบ...";
-      await this.fetchInitialData();
-      this.startLiveSyncPoller();
       if (splash) {
-        setTimeout(() => splash.classList.add("fade-out"), 250);
+        if (!splash.classList.contains("fade-out")) {
+          splash.classList.add("fade-out");
+        }
+        setTimeout(() => {
+          if (splash) splash.style.display = "none";
+        }, 500);
       }
-    } else {
-      // Always stop at login screen when entering without active session
-      if (splash) {
-        setTimeout(() => splash.classList.add("fade-out"), 300);
+    };
+
+    // Absolute fallback: never leave splash hanging beyond 2.5 seconds under any circumstance
+    const fallbackTimer = setTimeout(() => {
+      dismissSplash();
+    }, 2500);
+
+    try {
+      try { this.initGlobalEnterKeyNavigation(); } catch (e) { console.warn("EnterKeyNav err:", e); }
+      try { this.initLanguage(); } catch (e) { console.warn("InitLang err:", e); }
+      try { this.setupDatePickers(); } catch (e) { console.warn("DatePickers err:", e); }
+      try { this.updateAuthUI(); } catch (e) { console.warn("UpdateAuthUI err:", e); }
+
+      const splashStatus = document.getElementById("app-splash-status");
+
+      if (this.user) {
+        if (splashStatus) splashStatus.textContent = "กำลังโหลดข้อมูลระบบ...";
+        try {
+          // Timeout fetchInitialData so slow API never freezes the app on splash
+          await Promise.race([
+            this.fetchInitialData(),
+            new Promise(res => setTimeout(res, 3500))
+          ]);
+        } catch (fetchErr) {
+          console.error("fetchInitialData err:", fetchErr);
+        }
+        try { this.startLiveSyncPoller(); } catch (pollErr) { console.warn("startLiveSyncPoller err:", pollErr); }
+        clearTimeout(fallbackTimer);
+        setTimeout(dismissSplash, 250);
+      } else {
+        clearTimeout(fallbackTimer);
+        setTimeout(dismissSplash, 300);
       }
+    } catch (fatalErr) {
+      console.error("App init fatal error:", fatalErr);
+      clearTimeout(fallbackTimer);
+      dismissSplash();
     }
   }
 
@@ -5890,7 +5909,7 @@ class App {
       };
       canvas.addEventListener("click", addMark);
     }
-  },
+  }
 
   setDamageTool(tool) {
     this.currentDamageTool = tool;
@@ -5909,12 +5928,12 @@ class App {
         btnDent.style.borderColor = "#FCA5A5";
       }
     }
-  },
+  }
 
   clearDamageCanvas() {
     this.damageMarks = [];
     this.redrawDamageCanvas();
-  },
+  }
 
   redrawDamageCanvas() {
     const canvas = document.getElementById("insp-car-diagram-canvas");
@@ -5989,13 +6008,13 @@ class App {
         ctx.stroke();
       }
     });
-  },
+  }
 
   getCarDiagramBase64() {
     const canvas = document.getElementById("insp-car-diagram-canvas");
     if (!canvas) return null;
     return canvas.toDataURL("image/png");
-  },
+  }
 
   openHandoverModal(bkId, jobType) {
     const b = (this.bookings || []).find(x => x.booking_id === bkId);

@@ -27,6 +27,19 @@
       <div id="app-splash-status" class="app-splash-status">กำลังเริ่มต้นระบบความปลอดภัย...</div>
     </div>
   </div>
+  <!-- Fail-safe Watchdog: Guarantees splash screen is dismissed even if scripts/CDNs/network lag -->
+  <script>
+    (function() {
+      var splashTimer = setTimeout(function() {
+        var splash = document.getElementById("app-splash-screen");
+        if (splash && splash.style.display !== "none") {
+          splash.classList.add("fade-out");
+          setTimeout(function() { if (splash) splash.style.display = "none"; }, 500);
+        }
+      }, 2500);
+      window.dismissSplashWatchdog = function() { clearTimeout(splashTimer); };
+    })();
+  </script>
 
   <!-- ========================================================================= -->
   <!-- 1. AUTHENTICATION GATE SCREEN (LOGIN SCREEN)                              -->
@@ -2847,7 +2860,7 @@
   <div class="toast-container" id="toast-container"></div>
 
   <!-- Scripts with cache busting -->
-  <script src="/static/js/app.js?v=13.6"></script>
+  <script src="/static/js/app.js?v=13.7"></script>
 
   <!-- ===================================================================== -->
   <!-- MODAL: ACTIVE RENTALS / CARS WITH CUSTOMERS (POPUP FOR CARD 1) -->
