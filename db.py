@@ -911,7 +911,7 @@ class DataStore:
             'act_price', 'ins_premium', 'insurance_policy_no', 'policy_no', 'act_status',
             'ins_status', 'payment_status', 'installment_due_date',
             'next_engine_oil_date', 'next_engine_oil_mileage',
-            'act_policy_no', 'ins_policy_no', 'ins_category', 'ins_coverage_amount', 'ins_type', 'ins_class'
+            'act_policy_no', 'act_company', 'ins_policy_no', 'ins_category', 'ins_coverage_amount', 'ins_type', 'ins_class'
         }
         ALL_CAR_COLS = CAR_DB_COLS | {
             'next_service', 'tire_change', 'hp_contract_no', 'hp_installment',
@@ -919,7 +919,7 @@ class DataStore:
             'next_tire_change_date', 'next_tire_change_mileage',
             'tax_paid', 'prb_paid', 'act_paid', 'insurance_paid', 'ins_paid', 'installment_paid',
             'tax_paid_date', 'prb_paid_date', 'insurance_paid_date', 'installment_paid_date',
-            'act_policy_no', 'ins_policy_no', 'ins_category', 'ins_coverage_amount', 'ins_type', 'ins_class'
+            'act_policy_no', 'act_company', 'ins_policy_no', 'ins_category', 'ins_coverage_amount', 'ins_type', 'ins_class'
         }
         with self.lock:
             existing = dict(self.cars.get(plate, {}))
@@ -1869,15 +1869,22 @@ class DataStore:
             self.async_sync_booking(target)
             self.async_sync_completed_job(archived_item)
 
-            if not any(f.get("ref") == booking_id and f.get("category") == "ค่าเช่ารถ" for f in self.financial_records):
+            # Target Mission 2: Auto-log rental income to financial_records upon booking completion
+            has_logged_income = any(
+                (f.get("ref") == booking_id and (f.get("category") == "ค่าเช่ารถ" or f.get("type") in ["income", "รายรับ"]))
+                or (booking_id in str(f.get("description", "")) and "ค่าเช่า" in str(f.get("category", "")))
+                for f in self.financial_records
+            )
+            if not has_logged_income:
                 f_item = {
-                    "company": b_comp,
-                    "type": "รายรับ",
+                    "company": b_comp or "บจก.สวัสดี เรนทัล (Sawasdee Rental)",
+                    "type": "income",
                     "category": "ค่าเช่ารถ",
-                    "amount": net_p,
+                    "amount": float(net_p),
                     "ref": booking_id,
-                    "date": datetime.now().strftime("%Y-%m-%d"),
-                    "detail": f"ค่าเช่าปิดงาน {target['car_id']} - {b_car.get('model', '')}"
+                    "date": str(end_d or datetime.now().strftime("%Y-%m-%d")),
+                    "description": f"รายได้ค่าเช่ารถ รหัสการจอง [{booking_id}] - ทะเบียน [{target.get('car_id', '-')}]",
+                    "detail": f"รายได้ค่าเช่ารถ รหัสการจอง [{booking_id}] - ทะเบียน [{target.get('car_id', '-')}]"
                 }
                 self.async_sync_financial(f_item)
 

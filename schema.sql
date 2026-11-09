@@ -52,6 +52,7 @@ CREATE TABLE IF NOT EXISTS public.cars (
     notes TEXT,
     image_url TEXT,
     act_policy_no VARCHAR(100),
+    act_company VARCHAR(150),
     ins_policy_no VARCHAR(100),
     ins_category VARCHAR(100),
     ins_coverage_amount NUMERIC DEFAULT 0,
@@ -177,6 +178,7 @@ CREATE TABLE IF NOT EXISTS public.financial_records (
     ref VARCHAR(100),
     date DATE,
     detail TEXT,
+    description TEXT,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -250,6 +252,7 @@ ALTER TABLE cars ADD COLUMN IF NOT EXISTS finance_company VARCHAR(150);
 ALTER TABLE cars ADD COLUMN IF NOT EXISTS notes TEXT;
 ALTER TABLE cars ADD COLUMN IF NOT EXISTS image_url TEXT;
 ALTER TABLE cars ADD COLUMN IF NOT EXISTS act_policy_no VARCHAR(100);
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS act_company VARCHAR(150);
 ALTER TABLE cars ADD COLUMN IF NOT EXISTS ins_policy_no VARCHAR(100);
 ALTER TABLE cars ADD COLUMN IF NOT EXISTS ins_category VARCHAR(100);
 ALTER TABLE cars ADD COLUMN IF NOT EXISTS ins_coverage_amount NUMERIC DEFAULT 0;
@@ -297,3 +300,8 @@ ALTER TABLE public.work_order_logs ADD COLUMN IF NOT EXISTS cost NUMERIC DEFAULT
 ALTER TABLE public.work_order_logs ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;
 CREATE INDEX IF NOT EXISTS idx_work_order_logs_booking_id ON public.work_order_logs(booking_id);
 CREATE INDEX IF NOT EXISTS idx_work_order_logs_car_id ON public.work_order_logs(car_id);
+
+ALTER TABLE financial_records ADD COLUMN IF NOT EXISTS description TEXT;
+ALTER TABLE financial_records ADD COLUMN IF NOT EXISTS detail TEXT;
+ALTER TABLE financial_records ADD COLUMN IF NOT EXISTS ref VARCHAR(100);
+ALTER TABLE financial_records ADD COLUMN IF NOT EXISTS company VARCHAR(150);

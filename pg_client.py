@@ -366,6 +366,26 @@ class PgClient:
                 cur.execute("ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS ins_coverage_amount NUMERIC DEFAULT 0;")
                 cur.execute("ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS ins_type VARCHAR(100);")
                 cur.execute("ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS ins_class VARCHAR(50);")
+                cur.execute("ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS act_company VARCHAR(150);")
+                # Ensure financial_records table and columns
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS public.financial_records (
+                        id BIGSERIAL PRIMARY KEY,
+                        company VARCHAR(150),
+                        type VARCHAR(50),
+                        category VARCHAR(150),
+                        amount NUMERIC DEFAULT 0,
+                        ref VARCHAR(100),
+                        date DATE,
+                        detail TEXT,
+                        description TEXT,
+                        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+                    );
+                """)
+                cur.execute("ALTER TABLE IF EXISTS public.financial_records ADD COLUMN IF NOT EXISTS description TEXT;")
+                cur.execute("ALTER TABLE IF EXISTS public.financial_records ADD COLUMN IF NOT EXISTS detail TEXT;")
+                cur.execute("ALTER TABLE IF EXISTS public.financial_records ADD COLUMN IF NOT EXISTS ref VARCHAR(100);")
+                cur.execute("ALTER TABLE IF EXISTS public.financial_records ADD COLUMN IF NOT EXISTS company VARCHAR(150);")
                 try:
                     cur.execute("UPDATE public.cars SET ins_policy_no = COALESCE(NULLIF(ins_policy_no, ''), NULLIF(insurance_policy_no, ''), policy_no) WHERE (ins_policy_no IS NULL OR ins_policy_no = '' OR ins_policy_no = '-') AND (insurance_policy_no IS NOT NULL OR policy_no IS NOT NULL);")
                 except Exception:

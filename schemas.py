@@ -43,6 +43,7 @@ class VehicleBase(BaseModel):
 
     # Comprehensive Insurance & ACT Policy Fields
     act_policy_no: Optional[str] = "-"
+    act_company: Optional[str] = "-"
     ins_policy_no: Optional[str] = "-"
     ins_category: Optional[str] = "-"
     ins_coverage_amount: Optional[float] = 0.0

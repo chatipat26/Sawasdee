@@ -2331,7 +2331,7 @@
           </div>
         </div>
 
-        <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:12px; margin-bottom:12px;">
+        <div style="display:grid; grid-template-columns: repeat(5, 1fr); gap:12px; margin-bottom:12px;">
           <div class="form-group">
             <label id="lbl-modal-car-vin">VIN / Chassis Number*</label>
             <input type="text" id="edit-car-vin" class="form-control" placeholder="-" oninput="app.updateCarFormField('vin', this.value); app.checkDuplicateChassis(this.value);">
@@ -2350,6 +2350,19 @@
           <div class="form-group">
             <label id="lbl-modal-car-act-policy">เลข พ.ร.บ. (ACT Policy No.)</label>
             <input type="text" id="edit-car-act-policy-no" class="form-control" placeholder="เลขกรมธรรม์ พ.ร.บ." oninput="app.updateCarFormField('act_policy_no', this.value)">
+          </div>
+          <div class="form-group">
+            <label id="lbl-modal-car-act-comp">บริษัท พ.ร.บ. (ACT Company)</label>
+            <input type="text" id="edit-car-act-comp" class="form-control" list="car-act-comps-list" placeholder="ชื่อบริษัท พ.ร.บ." oninput="app.updateCarFormField('act_company', this.value)">
+            <datalist id="car-act-comps-list">
+              <option value="บมจ.วิริยะประกันภัย">
+              <option value="บมจ.คุ้มภัยโตเกียวมารีนประกันภัย (ประเทศไทย)">
+              <option value="บมจ.ทิพยประกันภัย">
+              <option value="บมจ.เมืองไทยประกันภัย">
+              <option value="บมจ.กรุงเทพประกันภัย">
+              <option value="บมจ.ไทยวิวัฒน์ประกันภัย">
+              <option value="บริษัท กลางคุ้มครองผู้ประสบภัยจากรถ จำกัด">
+            </datalist>
           </div>
         </div>
 

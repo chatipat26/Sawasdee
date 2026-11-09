@@ -873,6 +873,8 @@ async def create_or_update_car(payload: Union[VehicleCreate, Dict[str, Any]], pl
     # Comprehensive Insurance & ACT Policy Details
     act_pol = str(payload.get("act_policy_no") or "-").strip() or "-"
     payload["act_policy_no"] = act_pol
+    act_comp = str(payload.get("act_company") or "-").strip() or "-"
+    payload["act_company"] = act_comp
 
     ins_pol = str(payload.get("ins_policy_no") or payload.get("insurance_policy_no") or payload.get("policy_no") or "-").strip() or "-"
     payload["ins_policy_no"] = ins_pol
@@ -1766,6 +1768,77 @@ async def create_booking(payload: Dict[str, Any]):
     # Work order LINE notification retired per system rule
     return {"success": True, "booking_id": bk_id, "booking": booking}
 
+def record_booking_completion_income(target_bk: dict) -> bool:
+    """
+    TARGET MISSION 2: Auto-log rental income into financial_records upon booking completion for dashboard analytics.
+    Ensures idempotency (no duplicate entries) and safe transaction recording.
+    """
+    if not target_bk:
+        return False
+    bid = str(target_bk.get("booking_id") or "").strip()
+    if not bid:
+        return False
+
+    # Prevent double-logging if already recorded in memory
+    has_income = any(
+        (str(f.get("ref", "")).strip() == bid and (str(f.get("category", "")).strip() == "ค่าเช่ารถ" or str(f.get("type", "")).strip().lower() in ["income", "รายรับ"]))
+        or (bid in str(f.get("description", "")) and "ค่าเช่า" in str(f.get("category", "")))
+        for f in getattr(store, "financial_records", [])
+    )
+    if has_income:
+        return False
+
+    plate = str(target_bk.get("car_id") or "-").strip()
+    raw_net = target_bk.get("net_price") if target_bk.get("net_price") is not None else (target_bk.get("total_price") or target_bk.get("rental_rate") or 0.0)
+    try:
+        net_p = float(raw_net or 0.0)
+    except Exception:
+        net_p = 0.0
+
+    ret_date = target_bk.get("return_date") or target_bk.get("end_date") or now_th().date().isoformat()
+    if isinstance(ret_date, (datetime, date)):
+        c_date = ret_date.strftime("%Y-%m-%d")
+    else:
+        c_date = str(ret_date).split("T")[0].split(" ")[0].strip() or now_th().date().isoformat()
+
+    comp = str(target_bk.get("company") or (store.cars.get(plate) or {}).get("company") or "บจก.สวัสดี เรนทัล (Sawasdee Rental)").strip()
+    desc_str = f"รายได้ค่าเช่ารถ รหัสการจอง [{bid}] - ทะเบียน [{plate}]"
+
+    f_item = {
+        "company": comp,
+        "type": "income",
+        "category": "ค่าเช่ารถ",
+        "amount": round(net_p, 2),
+        "ref": bid,
+        "date": c_date,
+        "description": desc_str,
+        "detail": desc_str
+    }
+
+    # Direct DB execution with transaction/error handling
+    sb = get_db_client()
+    if sb:
+        try:
+            existing_db = sb.table("financial_records").select("id, category, type").eq("ref", bid).execute()
+            if existing_db and existing_db.data and len(existing_db.data) > 0:
+                has_db_income = any(
+                    (str(r.get("category", "")) == "ค่าเช่ารถ" or str(r.get("type", "")).lower() in ["income", "รายรับ"])
+                    for r in existing_db.data
+                )
+                if has_db_income:
+                    return False
+
+            row = dict(f_item)
+            sb.table("financial_records").insert(row).execute()
+            print(f"[Financial] Inserted completion revenue for booking {bid}: ฿{net_p:,.2f}")
+        except Exception as e:
+            print(f"[Financial Error] Failed to insert completion revenue to financial_records: {e}")
+
+    with store.lock:
+        store.financial_records.insert(0, f_item)
+
+    return True
+
 @app.put("/api/bookings/{bk_id}")
 async def update_booking(bk_id: str, payload: Dict[str, Any]):
     target = next((b for b in store.bookings if b.get("booking_id") == bk_id), None)
@@ -1820,6 +1893,7 @@ async def update_booking(bk_id: str, payload: Dict[str, Any]):
         target["dispatch_closed"] = True
         target["return_closed"] = True
         release_car_after_booking(target.get("car_id"), bk_id)
+        record_booking_completion_income(target)
 
     store.async_sync_booking(target)
 
@@ -2794,6 +2868,7 @@ async def close_return(bk_id: str, payload: Dict[str, Any]):
     # Log to universal work_order_logs for Return
     try:
         target = next((b for b in store.bookings if b.get("booking_id") == bk_id), {})
+        record_booking_completion_income(target)
         desc_text = f"ตรวจรับรถคืน ({condition})"
         if damage_desc:
             desc_text += f" ความเสียหาย: {damage_desc}"
@@ -3749,7 +3824,7 @@ def compute_dashboard_statistics():
                 if b.get("rental_paid") or b.get("is_fully_paid") or str(b.get("status")) in ["กำลังเช่า", "รอรับคืน"]:
                     rev_m += float(b.get("net_price") or b.get("rental_rate") or 0.0)
         for f in getattr(store, "financial_records", []):
-            if f.get("type") == "รายรับ":
+            if f.get("type") in ["รายรับ", "income", "Income"]:
                 f_d = to_date(f.get("date") or f.get("created_at"))
                 if f_d and f_d.year == y and f_d.month == m:
                     f_ref = f.get("ref")

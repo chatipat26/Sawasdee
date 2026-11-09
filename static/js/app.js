@@ -2778,7 +2778,8 @@ class App {
             <span>${isEn ? 'ACT & Tax Registration' : 'ข้อมูล พ.ร.บ. และภาษี'}</span>
           </div>
           <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px; font-size:11.5px;">
-            <div style="grid-column: span 2;"><b style="color:#64748B;">${isEn ? 'ACT Policy No:' : 'เลข พ.ร.บ.:'}</b> <code style="font-size:11px;">${actPolicyDisplay}</code></div>
+            <div><b style="color:#64748B;">${isEn ? 'ACT Company:' : 'บริษัท พ.ร.บ.:'}</b> ${c.act_company && c.act_company !== '-' ? c.act_company : '-'}</div>
+            <div><b style="color:#64748B;">${isEn ? 'ACT Policy No:' : 'เลข พ.ร.บ.:'}</b> <code style="font-size:11px;">${actPolicyDisplay}</code></div>
             <div><b style="color:#64748B;">${isEn ? 'ACT Expiry:' : 'หมดอายุ พ.ร.บ.:'}</b> <span style="color:#DC2626; font-weight:700;">${c.act_expiry || c.prb_expire_date || '-'}</span></div>
             <div><b style="color:#64748B;">${isEn ? 'Tax Expiry:' : 'หมดอายุภาษี:'}</b> <span style="color:#DC2626; font-weight:700;">${c.tax_expiry || c.tax_expire_date || '-'}</span></div>
             <div><b style="color:#64748B;">${isEn ? 'PRB Price:' : 'ราคา พ.ร.บ.:'}</b> <span style="font-weight:700; color:#0F172A;">${prbFormatted}</span></div>
@@ -3066,6 +3067,7 @@ class App {
       tax_expire_date: this.dmyToYmd(car.tax_expire_date || car.tax_expiry),
       act_expiry: this.dmyToYmd(car.prb_expire_date || car.act_expiry),
       prb_expire_date: this.dmyToYmd(car.prb_expire_date || car.act_expiry),
+      act_company: (car.act_company && car.act_company !== "-") ? car.act_company : "-",
       ins_expiry: this.dmyToYmd(car.insurance_expire_date || car.ins_expiry),
       insurance_expire_date: this.dmyToYmd(car.insurance_expire_date || car.ins_expiry),
       ins_company: insCompInit,
@@ -3177,6 +3179,7 @@ class App {
     setVal("edit-car-tax", this.dmyToYmd(car.tax_expire_date || car.tax_expiry));
     setVal("edit-car-act", this.dmyToYmd(car.prb_expire_date || car.act_expiry));
     setVal("edit-car-act-policy-no", car.act_policy_no && car.act_policy_no !== "-" ? car.act_policy_no : "");
+    setVal("edit-car-act-comp", car.act_company && car.act_company !== "-" ? car.act_company : "");
     setVal("edit-car-ins", this.dmyToYmd(car.insurance_expire_date || car.ins_expiry));
     setVal("edit-car-ins-comp", car.insurance_company || car.ins_company || "-");
     setVal("edit-car-ins-policy-no", (car.ins_policy_no && car.ins_policy_no !== "-") ? car.ins_policy_no : ((car.insurance_policy_no && car.insurance_policy_no !== "-") ? car.insurance_policy_no : (car.policy_no && car.policy_no !== "-" ? car.policy_no : "")));
@@ -3514,6 +3517,7 @@ class App {
       prb_expire_date: this.ymdToDmy(getVal("edit-car-act", "prb_expire_date", getVal("edit-car-act", "act_expiry", ""))) || "-",
       act_expiry: this.ymdToDmy(getVal("edit-car-act", "prb_expire_date", getVal("edit-car-act", "act_expiry", ""))) || "-",
       act_policy_no: String(getVal("edit-car-act-policy-no", "act_policy_no", "-")).trim() || "-",
+      act_company: String(getVal("edit-car-act-comp", "act_company", "-")).trim() || "-",
       insurance_expire_date: this.ymdToDmy(getVal("edit-car-ins", "insurance_expire_date", getVal("edit-car-ins", "ins_expiry", ""))) || "-",
       ins_expiry: this.ymdToDmy(getVal("edit-car-ins", "insurance_expire_date", getVal("edit-car-ins", "ins_expiry", ""))) || "-",
       ins_policy_no: String(getVal("edit-car-ins-policy-no", "ins_policy_no", getVal("edit-car-ins-policy-no", "insurance_policy_no", getVal("edit-car-ins-policy-no", "policy_no", "-")))).trim() || "-",
@@ -5596,7 +5600,7 @@ class App {
     const filtered = (this.bookings || []).filter(b => {
       // 1. Status Filter (Target Mission 3: Hide "เสร็จสิ้น" / Completed from active pipeline by default)
       if (stFilter === "ทั้งหมด" || stFilter === "All" || !stFilter) {
-        if (b.status === "เสร็จสิ้น") return false;
+        if (b.status === "เสร็จสิ้น" || b.status === "Completed" || b.status === "completed") return false;
       } else if (stFilter !== "all_with_completed") {
         if (b.status !== stFilter) return false;
       }
