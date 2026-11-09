@@ -394,94 +394,119 @@ def generate_receipt_bytes(receipt_no, booking_info, customer_info, car_info, am
     return pdf_buffer.getvalue()
 
 def generate_job_pdf(booking_info, customer_info, car_info, job_type="Dispatch", worker=None, loc=None, inspection_data=None):
-    """Generate vehicle inspection checklist & job sheet PDF"""
-    pdf_buffer = io.BytesIO()
-    doc = SimpleDocTemplate(pdf_buffer, pagesize=A4, rightMargin=36, leftMargin=36, topMargin=36, bottomMargin=36)
-    elements = []
-    styles = getSampleStyleSheet()
-    title_style = ParagraphStyle('TitleStyle', parent=styles['Heading1'], fontSize=16, leading=20, textColor=colors.HexColor('#1F2937'), alignment=1, fontName=FONT_BOLD)
-    sub_style = ParagraphStyle('SubStyle', parent=styles['Normal'], fontSize=9.5, leading=14, textColor=colors.HexColor('#555555'), alignment=1, fontName=FONT_REGULAR)
-    
-    insp = inspection_data or {}
-    fuel_val = insp.get("fuel_level") or booking_info.get("return_fuel") or booking_info.get("dispatch_fuel") or "เต็มถัง (100%)"
-    mile_val = insp.get("mileage") or booking_info.get("return_mileage") or booking_info.get("dispatch_mileage") or (car_info.get("mileage", "-") if car_info else "-")
-    notes_val = insp.get("inspection_notes") or booking_info.get("return_notes") or booking_info.get("dispatch_notes") or "ตรวจสภาพปกติ เรียบร้อยดี"
-    
+    """
+    Generate vehicle inspection checklist & job sheet PDF using the official
+    Sawasdee Pre-Rental Inspection template with 4-view car diagram.
+    """
+    insp_type = "checkin" if str(job_type).lower() in ("return", "checkin", "in") else "checkout"
+    payload = dict(inspection_data or {})
+    if worker and not payload.get("inspector_name"):
+        payload["inspector_name"] = worker
+        payload["staff_name"] = worker
+    if loc and not payload.get("location"):
+        payload["location"] = loc
+
+    return generate_inspection_checklist_pdf(
+        template_path="Sawasdee Pre-Rental Inspection.pdf",
+        booking_info=booking_info,
+        customer_info=customer_info,
+        car_info=car_info,
+        inspection_type=insp_type,
+        payload=payload
+    )
+
+def render_inspection_html(booking_info=None, customer_info=None, car_info=None, job_type="Dispatch", worker=None, loc=None, inspection_data=None):
+    """
+    Render official Sawasdee Pre-Rental Inspection HTML with 4-view/5-view car diagram.
+    Loads templates/inspection_template.html or falls back to internal template.
+    """
+    booking_info = booking_info or {}
+    customer_info = customer_info or {}
+    car_info = car_info or {}
+    data = dict(inspection_data or {})
+
+    b_id = booking_info.get("booking_id", "-")
+    plate = car_info.get("plate") or booking_info.get("car_id", "-")
+    model = f"{car_info.get('brand', '')} {car_info.get('model', '')}".strip() or booking_info.get("car_brand_model", "-")
+    c_name = customer_info.get("full_name") or booking_info.get("customer", "-")
+    c_phone = customer_info.get("phone") or booking_info.get("phone", "-")
+    w_name = worker or data.get("inspector_name") or data.get("staff_name") or booking_info.get("worker_return" if str(job_type).lower() in ("return", "checkin") else "worker_delivery") or "Staff"
+    l_name = loc or data.get("location") or booking_info.get("loc_return" if str(job_type).lower() in ("return", "checkin") else "loc_delivery") or "-"
+
+    is_chk_out = str(job_type).lower() in ("dispatch", "checkout", "out")
+    is_chk_in = not is_chk_out
+
     th_now = now_th()
-    doc_title = "VEHICLE INSPECTION CHECKLIST (ใบตรวจสภาพรถยนต์ & ลิสต์เช็ครถ)"
-    elements.append(Paragraph("SAWASDEE CAR RENTAL CO., LTD.", title_style))
-    elements.append(Paragraph(doc_title, title_style))
-    elements.append(Paragraph(f"Booking Ref: <b>{booking_info.get('booking_id', '-')}</b> | วันที่บันทึก: {th_now.strftime('%d/%m/%Y %H:%M')} น.", sub_style))
-    elements.append(Spacer(1, 16))
-    
-    c_name = customer_info.get("full_name", "-") if customer_info else "-"
-    car_name = f"{car_info.get('brand', '')} {car_info.get('model', '')} ({car_info.get('plate', '')})" if car_info else "-"
-    w_val = worker if worker and worker.strip() else (booking_info.get("worker_return") or booking_info.get("worker_delivery") or "-")
-    l_val = loc if loc and loc.strip() else (booking_info.get("loc_return") or booking_info.get("loc_delivery") or "-")
-    
-    s_t_job = booking_info.get('start_time') or th_now.strftime('%H:%M')
-    e_t_job = booking_info.get('end_time') or th_now.strftime('%H:%M')
-    data = [
-        ["Customer Name (ลูกค้า):", c_name], ["Vehicle (รถยนต์):", car_name],
-        ["Rental Period (ระยะเวลาเช่า):", f"{format_date_dmy(booking_info.get('start_date'))} ({s_t_job} น.) - {format_date_dmy(booking_info.get('end_date'))} ({e_t_job} น.)"],
-        ["Assigned Staff (พนักงานส่ง/รับรถ):", w_val], ["Location (สถานที่นัดหมาย):", l_val],
-        ["Fuel Level (ระดับน้ำมัน):", str(fuel_val)], ["Mileage (เลขไมล์สะสม):", f"{mile_val} km"]
-    ]
-    t = Table(data, colWidths=[160, 340])
-    t.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#FFFFFF')),
-        ('TEXTCOLOR', (0,0), (-1,-1), colors.HexColor('#2D2D2D')),
-        ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#E0D5C7')),
-        ('FONTNAME', (0,0), (-1,-1), FONT_REGULAR),
-        ('FONTSIZE', (0,0), (-1,-1), 9.5),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 6),
-        ('TOPPADDING', (0,0), (-1,-1), 6),
-        ('FONTNAME', (0,0), (0,-1), FONT_BOLD)
-    ]))
-    elements.append(t)
-    elements.append(Spacer(1, 14))
-    
-    chk_title = Paragraph("<b>VEHICLE HANDOVER & INSPECTION CHECKLIST (รายการตรวจสภาพรถยนต์ & ลิสต์เช็ครถ)</b>", ParagraphStyle('ChkTitle', parent=styles['Normal'], fontSize=10, leading=14, textColor=colors.HexColor('#1F2937'), fontName=FONT_BOLD))
-    elements.append(chk_title)
-    elements.append(Spacer(1, 6))
-    
-    chk_data = [
-        ["No.", "Inspection Item (รายการตรวจเช็ค)", "Condition (สภาพ)", "Status (ผลการตรวจ)"],
-        ["1", "Fuel Gauge (ระดับน้ำมันเชื้อเพลิง)", str(fuel_val), "[ / ] Pass (ผ่าน)"],
-        ["2", "Exterior Body & Paint (สภาพตัวถังและสี)", "Clean / No new dents (สมบูรณ์ ไม่มีรอยขีดข่วนใหม่)", "[ / ] Pass (ผ่าน)"],
-        ["3", "Tires & Pressure (สภาพยางและลมยาง)", "Good condition (พร้อมใช้งาน 4 เส้น)", "[ / ] Pass (ผ่าน)"],
-        ["4", "Spare Tire & Tools (ยางอะไหล่และแม่แรง)", "Complete set (ครบชุดประจำรถ)", "[ / ] Pass (ผ่าน)"],
-        ["5", "Documents (สำเนา พรบ./ประกันภัย/ภาษี)", "Complete in vehicle (ครบถ้วนในรถ)", "[ / ] Pass (ผ่าน)"],
-        ["6", "Cleanliness & Sanitize (ความสะอาด)", "Interior sanitized (สะอาดเรียบร้อย)", "[ / ] Pass (ผ่าน)"],
-        ["7", "Inspection Notes (หมายเหตุสภาพรถ)", str(notes_val)[:45] if len(str(notes_val)) > 45 else str(notes_val), "[ / ] Verified"]
-    ]
-    chk_table = Table(chk_data, colWidths=[25, 205, 180, 90])
-    chk_table.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#F3EDE4')),
-        ('TEXTCOLOR', (0,0), (-1,-1), colors.HexColor('#2D2D2D')),
-        ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#E0D5C7')),
-        ('FONTNAME', (0,0), (-1,-1), FONT_REGULAR),
-        ('FONTSIZE', (0,0), (-1,-1), 8.5),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 4),
-        ('TOPPADDING', (0,0), (-1,-1), 4),
-        ('FONTNAME', (0,0), (-1,0), FONT_BOLD),
-        ('ALIGN', (0,0), (0,-1), 'CENTER'),
-        ('ALIGN', (3,0), (3,-1), 'CENTER'),
-    ]))
-    elements.append(chk_table)
-    elements.append(Spacer(1, 24))
-    
-    sig_data = [["____________________________________", "____________________________________"], ["Staff Signature (ลายเซ็นพนักงาน)", "Customer Signature (ลายเซ็นลูกค้า)"]]
-    sig_table = Table(sig_data, colWidths=[250, 250])
-    sig_table.setStyle(TableStyle([
-        ('ALIGN', (0,0), (-1,-1), 'CENTER'),
-        ('FONTNAME', (0,0), (-1,-1), FONT_REGULAR),
-        ('FONTSIZE', (0,0), (-1,-1), 9)
-    ]))
-    elements.append(sig_table)
-    
-    doc.build(elements)
-    return pdf_buffer.getvalue()
+    if is_chk_out:
+        dt_val = data.get("datetime_str") or f"{format_date_dmy(booking_info.get('dispatch_date') or booking_info.get('start_date') or th_now.date())} {booking_info.get('start_time') or th_now.strftime('%H:%M')}"
+        mile_val = data.get("odometer") or data.get("mileage") or booking_info.get("dispatch_mileage") or car_info.get("mileage", "-")
+        fuel_val = str(data.get("fuel_level") or booking_info.get("dispatch_fuel") or "เต็มถัง (100%)")
+        heading = "PRE-RENTAL INSPECTION (CHECK OUT)"
+    else:
+        dt_val = data.get("datetime_str") or f"{format_date_dmy(booking_info.get('return_date') or booking_info.get('end_date') or th_now.date())} {booking_info.get('end_time') or th_now.strftime('%H:%M')}"
+        mile_val = data.get("odometer") or data.get("mileage") or booking_info.get("return_mileage") or car_info.get("mileage", "-")
+        fuel_val = str(data.get("fuel_level") or booking_info.get("return_fuel") or "เต็มถัง (100%)")
+        heading = "PRE-RENTAL INSPECTION (CHECK IN)"
+
+    # Determine fuel check
+    fuel_lower = fuel_val.lower()
+    is_fuel_e = any(k in fuel_lower for k in ["e", "หมด", "empty", "1/8", "low", "เกลี้ยง"])
+    is_fuel_14 = any(k in fuel_lower for k in ["1/4", "25%", "2/8", "หนึ่งส่วนสี่"])
+    is_fuel_12 = any(k in fuel_lower for k in ["1/2", "50%", "ครึ่ง", "4/8", "half"])
+    is_fuel_34 = any(k in fuel_lower for k in ["3/4", "75%", "6/8", "7/8", "เกือบเต็ม", "สามส่วนสี่"])
+    is_fuel_f = not (is_fuel_e or is_fuel_14 or is_fuel_12 or is_fuel_34)
+
+    notes_val = data.get("inspection_notes") or data.get("notes") or data.get("damage_desc") or (booking_info.get("dispatch_notes") if is_chk_out else booking_info.get("return_notes")) or ""
+
+    diag_url = data.get("car_diagram_image_url") or data.get("car_diagram") or data.get("diagram_base64") or ""
+    if diag_url and not diag_url.startswith("http") and not diag_url.startswith("data:"):
+        diag_url = f"data:image/png;base64,{diag_url}"
+
+    staff_sig = data.get("staff_signature") or ""
+    cust_sig = data.get("customer_signature") or ""
+
+    ctx = {
+        "rental_agreement_no": b_id,
+        "booking_id": b_id,
+        "vehicle_reg": plate,
+        "car_plate": plate,
+        "vehicle_model": model,
+        "car_brand_model": model,
+        "customer_name": c_name,
+        "customer_phone": c_phone,
+        "inspector_name": w_name,
+        "staff_name": w_name,
+        "location": l_name,
+        "inspection_datetime": dt_val,
+        "date_time": dt_val,
+        "mileage": f"{mile_val} km" if mile_val != "-" and not str(mile_val).endswith("km") else str(mile_val),
+        "odometer": mile_val,
+        "fuel_level": fuel_val,
+        "is_fuel_e": is_fuel_e,
+        "is_fuel_14": is_fuel_14,
+        "is_fuel_12": is_fuel_12,
+        "is_fuel_34": is_fuel_34,
+        "is_fuel_f": is_fuel_f,
+        "inspection_notes": notes_val,
+        "car_diagram_image_url": diag_url,
+        "staff_signature": staff_sig,
+        "customer_signature": cust_sig,
+        "is_checkout": is_chk_out,
+        "is_checkin": is_chk_in,
+        "inspection_heading": heading,
+    }
+
+    tmpl_path = os.path.join(BASE_DIR, "templates", "inspection_template.html")
+    if os.path.exists(tmpl_path):
+        with open(tmpl_path, "r", encoding="utf-8") as f:
+            template_str = f.read()
+    else:
+        template_str = INSPECTION_HTML_TEMPLATE
+
+    from jinja2 import Template
+    tmpl = Template(template_str)
+    return tmpl.render(**ctx)
+
 
 def generate_maintenance_job_pdf(maintenance_record, car_info=None):
     """Generate professional fleet maintenance & service work order PDF"""
@@ -680,13 +705,14 @@ def _draw_inspection_page(can, page_type, b_info, c_info, car_info, data, is_act
         "F": 179.5
     }
     target_fuel_key = "F"
-    if any(k in fuel for k in ["E", "???????", "empty", "Empty", "1/8", "Low", "low"]):
+    fuel_lower = fuel.lower()
+    if any(k in fuel_lower for k in ["e", "หมด", "empty", "1/8", "low", "เกลี้ยง"]):
         target_fuel_key = "E"
-    elif any(k in fuel for k in ["1/4", "25%", "2/8"]):
+    elif any(k in fuel_lower for k in ["1/4", "25%", "2/8", "หนึ่งส่วนสี่"]):
         target_fuel_key = "1/4"
-    elif any(k in fuel for k in ["1/2", "50%", "?????", "4/8"]):
+    elif any(k in fuel_lower for k in ["1/2", "50%", "ครึ่ง", "4/8", "half"]):
         target_fuel_key = "1/2"
-    elif any(k in fuel for k in ["3/4", "75%", "6/8", "7/8", "?????????"]):
+    elif any(k in fuel_lower for k in ["3/4", "75%", "6/8", "7/8", "เกือบเต็ม", "สามส่วนสี่"]):
         target_fuel_key = "3/4"
     else:
         target_fuel_key = "F"
@@ -724,7 +750,7 @@ def _draw_inspection_page(can, page_type, b_info, c_info, car_info, data, is_act
     notes_val = str(data.get("notes") or data.get("inspection_notes") or data.get("damage_desc") or (b_info.get("dispatch_notes") if page_type == "checkout" else b_info.get("return_notes")) or "").strip()
     if notes_val:
         can.setFont(FONT_REGULAR, 7.5)
-        can.setFillColor(colors.HexColor('#DC2626') if page_type == 'checkin' and '???????' in notes_val else colors.HexColor('#1E293B'))
+        can.setFillColor(colors.HexColor('#DC2626') if page_type == 'checkin' and any(k in notes_val.lower() for k in ['รอย', 'บุบ', 'ขีดข่วน', 'damage', 'dent', 'scratch']) else colors.HexColor('#1E293B'))
         # Draw notes neatly inside remark box
         words = notes_val
         line1 = words[:38]
@@ -816,8 +842,7 @@ def generate_inspection_checklist_pdf(template_path="Sawasdee Pre-Rental Inspect
     is_checkout = insp_type in ("checkout", "dispatch", "out")
 
     if not resolved_path:
-        # Fallback to reportlab flowables if template is somehow missing
-        return generate_job_pdf(booking_info, customer_info, car_info, job_type="Dispatch" if is_checkout else "Return", inspection_data=payload)
+        return _generate_fallback_inspection_pdf(booking_info, customer_info, car_info, is_checkout=is_checkout, payload=payload)
 
     reader = PdfReader(resolved_path)
     writer = PdfWriter()

@@ -1674,7 +1674,7 @@ async def generate_booking_inspection_pdf(bk_id: str, payload: Optional[Dict[str
     if not target:
         target = next((cj for cj in store.completed_jobs if cj.get("booking_id") == bk_id), None)
     if not target:
-        raise HTTPException(status_code=404, detail="?????????????????")
+        raise HTTPException(status_code=404, detail="ไม่พบข้อมูลการจอง")
 
     cust, car = _resolve_cust_and_car(target)
     insp_type = str(payload.get("inspection_type") or ("checkout" if not target.get("return_closed") else "checkin")).lower().strip()
@@ -1685,7 +1685,7 @@ async def generate_booking_inspection_pdf(bk_id: str, payload: Optional[Dict[str
     if not merged_payload.get("odometer") and not merged_payload.get("mileage"):
         merged_payload["odometer"] = target.get("dispatch_mileage" if is_checkout else "return_mileage") or car.get("mileage")
     if not merged_payload.get("fuel_level"):
-        merged_payload["fuel_level"] = target.get("dispatch_fuel" if is_checkout else "return_fuel") or "??????? (100%)"
+        merged_payload["fuel_level"] = target.get("dispatch_fuel" if is_checkout else "return_fuel") or "เต็มถัง (100%)"
     if not merged_payload.get("notes") and not merged_payload.get("inspection_notes"):
         merged_payload["notes"] = target.get("dispatch_notes" if is_checkout else "return_notes")
     if not merged_payload.get("staff_name") and not merged_payload.get("inspector_name"):
@@ -3668,7 +3668,7 @@ async def get_inspection_pdf(bk_id: str, type: str = "checkout", download: int =
     )
 
 @app.get("/api/pdf/job/{bk_id}")
-async def get_job_pdf(bk_id: str):
+async def get_job_pdf(bk_id: str, type: Optional[str] = None):
     target = next((b for b in store.bookings if b.get("booking_id") == bk_id), None)
     if not target:
         target = next((cj for cj in store.completed_jobs if cj.get("booking_id") == bk_id), None)
@@ -3676,12 +3676,30 @@ async def get_job_pdf(bk_id: str):
         raise HTTPException(status_code=404, detail="ไม่พบข้อมูลการจอง")
 
     cust, car = _resolve_cust_and_car(target)
-    pdf_bytes = pdf_engine.generate_job_pdf(target, cust, car, "Return", target.get("worker_return"), target.get("loc_return"), inspection_data=target)
+    job_type = str(type).lower() if type else ("Return" if target.get("return_closed") else "Dispatch")
+    worker = target.get("worker_return") if job_type == "Return" else target.get("worker_delivery")
+    loc = target.get("loc_return") if job_type == "Return" else target.get("loc_delivery")
+    pdf_bytes = pdf_engine.generate_job_pdf(target, cust, car, job_type, worker, loc, inspection_data=target)
     return StreamingResponse(
         io.BytesIO(pdf_bytes),
         media_type="application/pdf",
         headers={"Content-Disposition": f"inline; filename=Inspection_Checklist_{bk_id}.pdf"}
     )
+
+@app.get("/api/html/inspection/{bk_id}", response_class=HTMLResponse)
+async def get_inspection_html(bk_id: str, type: Optional[str] = None):
+    target = next((b for b in store.bookings if b.get("booking_id") == bk_id), None)
+    if not target:
+        target = next((cj for cj in store.completed_jobs if cj.get("booking_id") == bk_id), None)
+    if not target:
+        raise HTTPException(status_code=404, detail="ไม่พบข้อมูลการจอง")
+
+    cust, car = _resolve_cust_and_car(target)
+    job_type = str(type).lower() if type else ("Return" if target.get("return_closed") else "Dispatch")
+    worker = target.get("worker_return") if job_type == "Return" else target.get("worker_delivery")
+    loc = target.get("loc_return") if job_type == "Return" else target.get("loc_delivery")
+    html_content = pdf_engine.render_inspection_html(target, cust, car, job_type, worker, loc, inspection_data=target)
+    return HTMLResponse(content=html_content)
 
 # -------------------------------------------------------------------------
 # LINE MESSAGING (DIRECT PUSH & AUTO-LINK WEBHOOK)
