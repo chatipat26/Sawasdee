@@ -433,8 +433,10 @@ def render_inspection_html(booking_info=None, customer_info=None, car_info=None,
     w_name = worker or data.get("inspector_name") or data.get("staff_name") or booking_info.get("worker_return" if str(job_type).lower() in ("return", "checkin") else "worker_delivery") or "Staff"
     l_name = loc or data.get("location") or booking_info.get("loc_return" if str(job_type).lower() in ("return", "checkin") else "loc_delivery") or "-"
 
-    is_chk_out = str(job_type).lower() in ("dispatch", "checkout", "out")
-    is_chk_in = not is_chk_out
+    jt_lower = str(job_type or "dispatch").lower().strip()
+    is_chk_both = jt_lower in ("both", "all", "full", "two_pages")
+    is_chk_out = is_chk_both or jt_lower in ("dispatch", "checkout", "out")
+    is_chk_in = is_chk_both or jt_lower in ("return", "checkin", "in")
 
     th_now = now_th()
     if is_chk_out:
@@ -493,6 +495,7 @@ def render_inspection_html(booking_info=None, customer_info=None, car_info=None,
         "customer_signature": cust_sig,
         "is_checkout": is_chk_out,
         "is_checkin": is_chk_in,
+        "show_both_pages": is_chk_both,
         "inspection_heading": heading,
     }
 
@@ -501,7 +504,7 @@ def render_inspection_html(booking_info=None, customer_info=None, car_info=None,
         with open(tmpl_path, "r", encoding="utf-8") as f:
             template_str = f.read()
     else:
-        template_str = INSPECTION_HTML_TEMPLATE
+        template_str = locals().get("INSPECTION_HTML_TEMPLATE", "")
 
     from jinja2 import Template
     tmpl = Template(template_str)
