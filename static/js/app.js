@@ -2627,8 +2627,9 @@ class App {
       ? '฿' + coverageVal.toLocaleString(undefined, {minimumFractionDigits: (coverageVal % 1 === 0 ? 0 : 2), maximumFractionDigits: 2})
       : '-';
 
-    const insPolicyDisplay = (c.ins_policy_no && c.ins_policy_no !== '-') ? c.ins_policy_no : (c.insurance_policy_no || c.policy_no || '-');
+    const insPolicyDisplay = (c.ins_policy_no && c.ins_policy_no !== '-') ? c.ins_policy_no : ((c.insurance_policy_no && c.insurance_policy_no !== '-') ? c.insurance_policy_no : (c.policy_no && c.policy_no !== '-' ? c.policy_no : '-'));
     const actPolicyDisplay = (c.act_policy_no && c.act_policy_no !== '-') ? c.act_policy_no : '-';
+    const actCompanyDisplay = (c.act_company && c.act_company !== '-') ? c.act_company : '-';
 
     const regYearDisplay = (c.register_year && c.register_year !== '-') ? c.register_year : (c.reg_year || '-');
     const insCompanyDisplay = (c.insurance_company && c.insurance_company !== '-') ? c.insurance_company : (c.ins_company || c.insurance_brand || '-');
@@ -2778,11 +2779,11 @@ class App {
             <span>${isEn ? 'ACT & Tax Registration' : 'ข้อมูล พ.ร.บ. และภาษี'}</span>
           </div>
           <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px; font-size:11.5px;">
-            <div><b style="color:#64748B;">${isEn ? 'ACT Company:' : 'บริษัท พ.ร.บ.:'}</b> ${c.act_company && c.act_company !== '-' ? c.act_company : '-'}</div>
+            <div><b style="color:#64748B;">${isEn ? 'ACT Company:' : 'บริษัท พ.ร.บ.:'}</b> ${actCompanyDisplay}</div>
             <div><b style="color:#64748B;">${isEn ? 'ACT Policy No:' : 'เลข พ.ร.บ.:'}</b> <code style="font-size:11px;">${actPolicyDisplay}</code></div>
             <div><b style="color:#64748B;">${isEn ? 'ACT Expiry:' : 'หมดอายุ พ.ร.บ.:'}</b> <span style="color:#DC2626; font-weight:700;">${c.act_expiry || c.prb_expire_date || '-'}</span></div>
             <div><b style="color:#64748B;">${isEn ? 'Tax Expiry:' : 'หมดอายุภาษี:'}</b> <span style="color:#DC2626; font-weight:700;">${c.tax_expiry || c.tax_expire_date || '-'}</span></div>
-            <div><b style="color:#64748B;">${isEn ? 'PRB Price:' : 'ราคา พ.ร.บ.:'}</b> <span style="font-weight:700; color:#0F172A;">${prbFormatted}</span></div>
+            <div style="grid-column: span 2;"><b style="color:#64748B;">${isEn ? 'PRB Price:' : 'ราคา พ.ร.บ.:'}</b> <span style="font-weight:700; color:#0F172A;">${prbFormatted}</span></div>
           </div>
         </div>
       </div>
@@ -2989,7 +2990,15 @@ class App {
   updateCarFormField(field, val) {
     if (!this.carFormData) this.carFormData = {};
     this.carFormData[field] = val;
-    if (field === 'reg_year' || field === 'register_year') {
+    if (field === 'act_policy_no') {
+      this.carFormData.act_policy_no = val;
+    } else if (field === 'act_company') {
+      this.carFormData.act_company = val;
+    } else if (field === 'ins_policy_no' || field === 'insurance_policy_no') {
+      this.carFormData.ins_policy_no = val;
+      this.carFormData.insurance_policy_no = val;
+      this.carFormData.policy_no = val;
+    } else if (field === 'reg_year' || field === 'register_year') {
       this.carFormData.register_year = val;
       this.carFormData.reg_year = val;
     } else if (field === 'ins_company' || field === 'insurance_company') {
@@ -3067,7 +3076,15 @@ class App {
       tax_expire_date: this.dmyToYmd(car.tax_expire_date || car.tax_expiry),
       act_expiry: this.dmyToYmd(car.prb_expire_date || car.act_expiry),
       prb_expire_date: this.dmyToYmd(car.prb_expire_date || car.act_expiry),
-      act_company: (car.act_company && car.act_company !== "-") ? car.act_company : "-",
+      act_policy_no: (car.act_policy_no && car.act_policy_no !== "-") ? car.act_policy_no : "",
+      act_company: (car.act_company && car.act_company !== "-") ? car.act_company : "",
+      ins_policy_no: (car.ins_policy_no && car.ins_policy_no !== "-") ? car.ins_policy_no : ((car.insurance_policy_no && car.insurance_policy_no !== "-") ? car.insurance_policy_no : (car.policy_no && car.policy_no !== "-" ? car.policy_no : "")),
+      insurance_policy_no: (car.ins_policy_no && car.ins_policy_no !== "-") ? car.ins_policy_no : ((car.insurance_policy_no && car.insurance_policy_no !== "-") ? car.insurance_policy_no : (car.policy_no && car.policy_no !== "-" ? car.policy_no : "")),
+      policy_no: (car.ins_policy_no && car.ins_policy_no !== "-") ? car.ins_policy_no : ((car.insurance_policy_no && car.insurance_policy_no !== "-") ? car.insurance_policy_no : (car.policy_no && car.policy_no !== "-" ? car.policy_no : "")),
+      ins_class: (car.ins_class && car.ins_class !== "-") ? car.ins_class : "-",
+      ins_category: (car.ins_category && car.ins_category !== "-") ? car.ins_category : "",
+      ins_coverage_amount: (car.ins_coverage_amount !== undefined && car.ins_coverage_amount !== null && Number(car.ins_coverage_amount) > 0) ? car.ins_coverage_amount : "",
+      ins_type: (car.ins_type && car.ins_type !== "-") ? car.ins_type : "",
       ins_expiry: this.dmyToYmd(car.insurance_expire_date || car.ins_expiry),
       insurance_expire_date: this.dmyToYmd(car.insurance_expire_date || car.ins_expiry),
       ins_company: insCompInit,
@@ -3178,9 +3195,14 @@ class App {
     setVal("edit-car-vin", car.vin || car.chassis_no || "-");
     setVal("edit-car-tax", this.dmyToYmd(car.tax_expire_date || car.tax_expiry));
     setVal("edit-car-act", this.dmyToYmd(car.prb_expire_date || car.act_expiry));
-    setVal("edit-car-act-policy-no", car.act_policy_no && car.act_policy_no !== "-" ? car.act_policy_no : "");
-    setVal("edit-car-act-comp", car.act_company && car.act_company !== "-" ? car.act_company : "");
+    setVal("edit-car-act-policy-no", (car.act_policy_no && car.act_policy_no !== "-") ? car.act_policy_no : "");
+    setVal("edit-car-act-comp", (car.act_company && car.act_company !== "-") ? car.act_company : "");
     setVal("edit-car-ins", this.dmyToYmd(car.insurance_expire_date || car.ins_expiry));
+    setVal("edit-car-ins-policy-no", (car.ins_policy_no && car.ins_policy_no !== "-") ? car.ins_policy_no : ((car.insurance_policy_no && car.insurance_policy_no !== "-") ? car.insurance_policy_no : (car.policy_no && car.policy_no !== "-" ? car.policy_no : "")));
+    setVal("edit-car-ins-class", car.ins_class || "-");
+    setVal("edit-car-ins-category", (car.ins_category && car.ins_category !== "-") ? car.ins_category : "");
+    setVal("edit-car-ins-coverage-amount", (car.ins_coverage_amount !== undefined && car.ins_coverage_amount !== null && Number(car.ins_coverage_amount) > 0) ? car.ins_coverage_amount : "");
+    setVal("edit-car-ins-type", (car.ins_type && car.ins_type !== "-") ? car.ins_type : "");
     setVal("edit-car-ins-comp", car.insurance_company || car.ins_company || "-");
     setVal("edit-car-ins-policy-no", (car.ins_policy_no && car.ins_policy_no !== "-") ? car.ins_policy_no : ((car.insurance_policy_no && car.insurance_policy_no !== "-") ? car.insurance_policy_no : (car.policy_no && car.policy_no !== "-" ? car.policy_no : "")));
     setVal("edit-car-ins-class", car.ins_class || "-");

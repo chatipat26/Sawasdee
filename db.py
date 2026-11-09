@@ -902,7 +902,7 @@ class DataStore:
             'last_service_date', 'next_service_date', 'next_service_mileage',
             'car_status', 'is_debt_free', 'installment_amount', 'total_installments', 'current_installment',
             'payment_due_date', 'finance_company', 'notes', 'image_url',
-            'tax_status', 'prb_status', 'insurance_status', 'installment_status'
+            'tax_status', 'prb_status', 'insurance_status', 'installment_status', 'act_policy_no', 'act_company', 'ins_policy_no', 'ins_company', 'ins_category', 'ins_coverage_amount', 'ins_type', 'ins_class'
         }
         CAR_DB_COLS = STANDARD_34_COLS | {
             'engine_cc', 'fuel_type', 'company', 'price_day', 'price_week', 'price_month',
@@ -989,7 +989,7 @@ class DataStore:
             except Exception as e:
                 print(f"sb_sync_car error: {e}")
                 try:
-                    fallback_payload = {k: v for k, v in sb_payload.items() if k in STANDARD_34_COLS}
+                    fallback_payload = {k: v for k, v in sb_payload.items() if k in CAR_DB_COLS}
                     sb.table("cars").upsert(fallback_payload).execute()
                 except Exception as e2:
                     print(f"sb_sync_car fallback error: {e2}")

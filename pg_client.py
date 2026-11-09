@@ -274,10 +274,37 @@ class PgClient:
                             "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS current_installment INTEGER DEFAULT 0;",
                             "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS payment_due_date VARCHAR(50);",
                             "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS notes TEXT;",
-                            "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS image_url TEXT;"
+                            "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS image_url TEXT;",
+                            "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS act_policy_no VARCHAR(100);",
+                            "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS act_company VARCHAR(150);",
+                            "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS ins_policy_no VARCHAR(100);",
+                            "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS ins_company VARCHAR(150);",
+                            "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS ins_category VARCHAR(100);",
+                            "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS ins_coverage_amount NUMERIC DEFAULT 0;",
+                            "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS ins_type VARCHAR(100);",
+                            "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS ins_class VARCHAR(50);",
+                            "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS insurance_policy_no VARCHAR(100);",
+                            "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS policy_no VARCHAR(100);",
+                            "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS tax_expiry VARCHAR(50);",
+                            "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS act_expiry VARCHAR(50);",
+                            "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS ins_expiry VARCHAR(50);",
+                            "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS engine_cc VARCHAR(50);",
+                            "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS fuel_type VARCHAR(50);",
+                            "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS company VARCHAR(150);",
+                            "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS price_day NUMERIC DEFAULT 0;",
+                            "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS price_week NUMERIC DEFAULT 0;",
+                            "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS price_month NUMERIC DEFAULT 0;",
+                            "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS status VARCHAR(50);",
+                            "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS chassis_no VARCHAR(100);",
+                            "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS owner VARCHAR(150);",
+                            "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS owner_name VARCHAR(150);",
+                            "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS reg_year VARCHAR(50);",
+                            "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS act_price NUMERIC DEFAULT 0;",
+                            "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS ins_premium NUMERIC DEFAULT 0;"
                         ]
                         for m_sql in car_migrations:
                             cur.execute(m_sql)
+                        self._cols_cache = {}
                         cur.execute("ALTER TABLE IF EXISTS public.bookings ADD COLUMN IF NOT EXISTS payment_type VARCHAR(50);")
                         cur.execute("ALTER TABLE IF EXISTS public.bookings ADD COLUMN IF NOT EXISTS google_drive_link TEXT;")
                         cur.execute("ALTER TABLE IF EXISTS public.bookings ADD COLUMN IF NOT EXISTS contract_pdf_url TEXT;")
