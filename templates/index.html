@@ -882,8 +882,8 @@
                   <option value="current">📅 เดือนปัจจุบัน</option>
                   <option value="all">📅 ดูทั้งหมด (All Time)</option>
                 </select>
-                <select id="bks-status-filter" class="form-control" style="width:150px;" onchange="app.renderBookingsTable()">
-                  <option id="opt-bks-status-all" value="ทั้งหมด">สถานะ: ทั้งหมด</option>
+                <select id="bks-status-filter" class="form-control" style="width:180px;" onchange="app.renderBookingsTable()">
+                  <option id="opt-bks-status-all" value="ทั้งหมด">สถานะ: งานกำลังดำเนินการ</option>
                   <option id="opt-bks-status-dep" value="รอชำระมัดจำ">รอชำระมัดจำ</option>
                   <option id="opt-bks-status-disp-wait" value="รอส่งมอบ">รอส่งมอบ</option>
                   <option id="opt-bks-status-disp-prep" value="เตรียมส่งมอบ">เตรียมส่งมอบ</option>
@@ -891,6 +891,7 @@
                   <option id="opt-bks-status-ret-prep" value="เตรียมรับคืน">เตรียมรับคืน</option>
                   <option id="opt-bks-status-done" value="เสร็จสิ้น">เสร็จสิ้น</option>
                   <option id="opt-bks-status-cancel" value="ยกเลิก">ยกเลิก</option>
+                  <option value="all_with_completed">สถานะ: ทั้งหมด (รวมเสร็จสิ้น)</option>
                 </select>
               </div>
             </div>

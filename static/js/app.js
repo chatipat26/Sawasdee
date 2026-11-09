@@ -561,7 +561,7 @@ class App {
     const lblBksStat = document.getElementById("lbl-bks-filter-status");
     if (lblBksStat) lblBksStat.textContent = isEn ? "Status:" : "สถานะ:";
     const optBksAll = document.getElementById("opt-bks-status-all");
-    if (optBksAll) optBksAll.textContent = isEn ? "All" : "ทั้งหมด";
+    if (optBksAll) optBksAll.textContent = isEn ? "Status: Active Pipeline" : "สถานะ: งานกำลังดำเนินการ";
     const optBksDep = document.getElementById("opt-bks-status-dep");
     if (optBksDep) optBksDep.textContent = isEn ? "Waiting for Deposit" : "รอมัดจำ";
     const optBksDispWait = document.getElementById("opt-bks-status-disp-wait");
@@ -5545,8 +5545,12 @@ class App {
     this.updateBookingMonthOptions(curYm);
 
     const filtered = (this.bookings || []).filter(b => {
-      // 1. Status Filter
-      if (stFilter !== "ทั้งหมด" && stFilter !== "All" && b.status !== stFilter) return false;
+      // 1. Status Filter (Target Mission 3: Hide "เสร็จสิ้น" / Completed from active pipeline by default)
+      if (stFilter === "ทั้งหมด" || stFilter === "All" || !stFilter) {
+        if (b.status === "เสร็จสิ้น") return false;
+      } else if (stFilter !== "all_with_completed") {
+        if (b.status !== stFilter) return false;
+      }
 
       // 2. Keyword Filter
       if (kw) {
@@ -5657,15 +5661,23 @@ class App {
             <a href="${b.contract_pdf_url || `/api/pdf/contract/${b.booking_id}`}" target="_blank" class="btn btn-sm btn-secondary" title="${isEn ? 'Rental Agreement PDF' : 'สัญญาเช่า (Rental Agreement PDF)'}">📝</a>
             <a href="/api/pdf/deposit-receipt/${b.booking_id}" target="_blank" class="btn btn-sm btn-secondary" title="${isEn ? 'Deposit Receipt PDF' : 'ใบเสร็จมัดจำ (Deposit Receipt PDF)'}">🛡️</a>
             <a href="/api/pdf/receipt/${b.booking_id}" target="_blank" class="btn btn-sm btn-secondary" title="${isEn ? 'Rental Receipt PDF' : 'ใบเสร็จค่าเช่า (Rental Receipt PDF)'}">🧾</a>
-            <a href="${b.checkout_pdf_url || b.checkin_pdf_url || `/api/pdf/job/${b.booking_id}`}" target="_blank" class="btn btn-sm btn-secondary" style="${(b.checkout_pdf_url || b.checkin_pdf_url) ? 'background:#EFF6FF; border-color:#93C5FD; color:#1D4ED8; font-weight:700;' : ''}" title="${isEn ? 'Inspection Checklist PDF' : 'ใบตรวจสภาพรถ (Checklist PDF)'}">📋</a>
-            ${(b.checkout_pdf_url || b.checkin_pdf_url) ? `
-              <a href="${b.checkout_pdf_url || b.checkin_pdf_url}" target="_blank" class="btn btn-sm" style="font-size:11px; padding:2px 6px; font-weight:700; white-space:nowrap; text-decoration:none; border-radius:4px; color:#2563EB; border:1px solid #93C5FD; background:#F8FAFC;" title="${isEn ? 'Print Inspection PDF' : 'พิมพ์ใบตรวจสภาพรถ (Print Inspection PDF)'}">🖨️ ${isEn ? 'Inspection' : 'ใบตรวจสภาพ'}</a>
-            ` : ''}
+            <a href="${b.checkout_pdf_url || b.checkin_pdf_url || `/api/pdf/job/${b.booking_id}`}" target="_blank" class="btn btn-sm btn-secondary" style="${(b.checkout_pdf_url || b.checkin_pdf_url) ? 'background:#EFF6FF; border-color:#93C5FD; color:#1D4ED8; font-weight:700;' : ''}" title="${isEn ? 'Inspection Job Sheet' : 'ใบงานตรวจสภาพรถ (Job Sheet)'}">📋</a>
+            <a href="${b.checkout_pdf_url || `/api/pdf/inspection/${b.booking_id}?type=checkout`}" onclick="event.preventDefault(); app.openInspectionPdf('${b.booking_id}', 'checkout');" target="_blank" class="btn btn-sm btn-secondary" style="color:#2563EB; font-weight:700;" title="${isEn ? 'Print Check-Out Inspection PDF (Delivery)' : 'พิมพ์ใบตรวจสภาพส่งมอบรถ (Check-Out)'}">📤</a>
+            <a href="${b.checkin_pdf_url || `/api/pdf/inspection/${b.booking_id}?type=checkin`}" onclick="event.preventDefault(); app.openInspectionPdf('${b.booking_id}', 'checkin');" target="_blank" class="btn btn-sm btn-secondary" style="color:#059669; font-weight:700;" title="${isEn ? 'Print Check-In Inspection PDF (Return)' : 'พิมพ์ใบตรวจสภาพรับรถคืน (Check-In)'}">📥</a>
             <button onclick="app.deleteBooking('${b.booking_id}')" class="btn btn-sm btn-danger" title="${isEn ? 'Delete Booking' : 'ลบรายการจอง'}">🗑️</button>
           </td>
         </tr>
       `;
     }).join("");
+  }
+
+  openInspectionPdf(bkId, type = "checkout") {
+    const isCheckout = (type === "checkout");
+    const b = (this.bookings || []).find(x => x.booking_id === bkId) || {};
+    const url = isCheckout 
+      ? (b.checkout_pdf_url || `/api/pdf/inspection/${bkId}?type=checkout`)
+      : (b.checkin_pdf_url || `/api/pdf/inspection/${bkId}?type=checkin`);
+    window.open(url, '_blank');
   }
 
   async deleteBooking(bkId) {
