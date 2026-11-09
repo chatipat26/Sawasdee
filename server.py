@@ -844,10 +844,18 @@ async def create_or_update_car(payload: Union[VehicleCreate, Dict[str, Any]], pl
         payload["insurance_premium"] = 0.0
         payload["ins_premium"] = 0.0
 
-    # Sanitize register_year & insurance_company & finance_company
-    reg_year_val = str(payload.get("register_year") or payload.get("reg_year") or "-").strip() or "-"
+    # Sanitize register_year, owner_name, beneficiary, insurance_company & finance_company
+    reg_year_val = str(payload.get("registration_year") or payload.get("register_year") or payload.get("reg_year") or "-").strip() or "-"
+    payload["registration_year"] = reg_year_val
     payload["register_year"] = reg_year_val
     payload["reg_year"] = reg_year_val
+
+    owner_val = str(payload.get("owner_name") or payload.get("car_owner") or payload.get("owner") or "-").strip() or "-"
+    payload["owner_name"] = owner_val
+    payload["car_owner"] = owner_val
+    payload["owner"] = owner_val
+
+    payload["beneficiary"] = str(payload.get("beneficiary") or "-").strip() or "-"
 
     ins_comp_val = str(payload.get("insurance_company") or payload.get("ins_company") or "-").strip() or "-"
     payload["insurance_company"] = ins_comp_val
@@ -855,6 +863,162 @@ async def create_or_update_car(payload: Union[VehicleCreate, Dict[str, Any]], pl
 
     fin_comp_val = str(payload.get("finance_company") or "-").strip() or "-"
     payload["finance_company"] = fin_comp_val
+
+    # TARGET MISSION 2: Auto-log renewal history into maintenance_records when expiry dates change
+    existing_car = store.cars.get(plate) or (store.cars.get(original_plate) if original_plate else None)
+    if existing_car:
+        def _clean_d(val):
+            return str(val or "").strip()
+
+        old_tax = _clean_d(existing_car.get("tax_expire_date") or existing_car.get("tax_expiry"))
+        new_tax = _clean_d(payload.get("tax_expire_date") or payload.get("tax_expiry"))
+
+        old_act = _clean_d(existing_car.get("prb_expire_date") or existing_car.get("act_expiry"))
+        new_act = _clean_d(payload.get("prb_expire_date") or payload.get("act_expiry"))
+
+        old_ins = _clean_d(existing_car.get("insurance_expire_date") or existing_car.get("ins_expiry"))
+        new_ins = _clean_d(payload.get("insurance_expire_date") or payload.get("ins_expiry"))
+
+        now_t = now_th()
+        worker = str(payload.get("recorded_by") or payload.get("assigned_worker") or "admin")
+
+        # 1. Insurance Renewal Log
+        if new_ins and new_ins != "-" and new_ins != old_ins:
+            ins_cost = float(payload.get("insurance_premium", 0) or 0)
+            ins_co = str(payload.get("insurance_company") or existing_car.get("insurance_company") or "-")
+            rec_id = f"MNT{now_t.strftime('%y%m%d%H%M%S')}"
+            renewal_rec = {
+                "id": rec_id,
+                "car_id": plate,
+                "car_brand": payload.get("brand") or existing_car.get("brand", ""),
+                "car_model": payload.get("model") or existing_car.get("model", ""),
+                "car_color": payload.get("color") or existing_car.get("color", ""),
+                "order_type": "ต่อประกันภัยรถยนต์",
+                "service_items": f"1. ต่ออายุกรมธรรม์ประกันภัย ถึง {new_ins}\n2. บริษัทประกัน: {ins_co}\n3. เบี้ยประกัน: ฿{ins_cost:,.2f}",
+                "cost": ins_cost,
+                "actual_cost": ins_cost,
+                "service_center": ins_co if ins_co != "-" else "ศูนย์บริการมาตรฐาน",
+                "service_center_phone": "-",
+                "service_location": "-",
+                "assigned_worker": worker,
+                "schedule_date": now_t.date().isoformat(),
+                "schedule_time": now_t.strftime("%H:%M"),
+                "expected_finish_date": now_t.date().isoformat(),
+                "expected_finish_time": now_t.strftime("%H:%M"),
+                "status": "เสร็จสิ้น",
+                "current_mileage": str(payload.get("mileage") or existing_car.get("mileage") or "-"),
+                "notes": f"บันทึกประวัติต่ออายุประกันภัยรถยนต์ ทะเบียน {plate} (หมดอายุใหม่: {new_ins})",
+                "completion_notes": f"ต่อประกันเรียบร้อย สิ้นสุด {new_ins}",
+                "update_car_status": False,
+                "created_by": worker,
+                "created_at": now_t.strftime("%Y-%m-%d %H:%M:%S"),
+                "completed_at": now_t.strftime("%Y-%m-%d %H:%M:%S"),
+                "new_ins_expiry": new_ins,
+                "insurance_company": ins_co
+            }
+            store.async_sync_maintenance(renewal_rec)
+            try:
+                store.log_work_order(
+                    car_id=plate,
+                    booking_id=rec_id,
+                    work_type="Renew Tax",
+                    description=f"ต่อประกันภัยรถยนต์: {ins_co} สิ้นสุด {new_ins}. เบี้ย: ฿{ins_cost:,.2f}",
+                    cost=ins_cost,
+                    staff_id=worker
+                )
+            except Exception as e:
+                print(f"Error logging work order for car insurance renewal: {e}")
+
+        # 2. ACT / PRB Renewal Log
+        if new_act and new_act != "-" and new_act != old_act:
+            act_cost = float(payload.get("prb_price", 0) or 0)
+            time.sleep(0.01)
+            rec_id = f"MNT{now_th().strftime('%y%m%d%H%M%S')}"
+            renewal_rec = {
+                "id": rec_id,
+                "car_id": plate,
+                "car_brand": payload.get("brand") or existing_car.get("brand", ""),
+                "car_model": payload.get("model") or existing_car.get("model", ""),
+                "car_color": payload.get("color") or existing_car.get("color", ""),
+                "order_type": "ต่อทะเบียน / พ.ร.บ.",
+                "service_items": f"1. ต่ออายุ พ.ร.บ. คุ้มครองผู้ประสบภัยจากรถ ถึง {new_act}\n2. ราคา พ.ร.บ.: ฿{act_cost:,.2f}",
+                "cost": act_cost,
+                "actual_cost": act_cost,
+                "service_center": "สำนักงานขนส่ง / ตัวแทน พ.ร.บ.",
+                "service_center_phone": "-",
+                "service_location": "-",
+                "assigned_worker": worker,
+                "schedule_date": now_t.date().isoformat(),
+                "schedule_time": now_t.strftime("%H:%M"),
+                "expected_finish_date": now_t.date().isoformat(),
+                "expected_finish_time": now_t.strftime("%H:%M"),
+                "status": "เสร็จสิ้น",
+                "current_mileage": str(payload.get("mileage") or existing_car.get("mileage") or "-"),
+                "notes": f"บันทึกประวัติต่อ พ.ร.บ. ทะเบียน {plate} (หมดอายุใหม่: {new_act})",
+                "completion_notes": f"ต่อ พ.ร.บ. เรียบร้อย สิ้นสุด {new_act}",
+                "update_car_status": False,
+                "created_by": worker,
+                "created_at": now_t.strftime("%Y-%m-%d %H:%M:%S"),
+                "completed_at": now_t.strftime("%Y-%m-%d %H:%M:%S"),
+                "new_act_expiry": new_act
+            }
+            store.async_sync_maintenance(renewal_rec)
+            try:
+                store.log_work_order(
+                    car_id=plate,
+                    booking_id=rec_id,
+                    work_type="Renew Tax",
+                    description=f"ต่อ พ.ร.บ. รถยนต์: สิ้นสุด {new_act}. ค่า พ.ร.บ.: ฿{act_cost:,.2f}",
+                    cost=act_cost,
+                    staff_id=worker
+                )
+            except Exception as e:
+                print(f"Error logging work order for car PRB renewal: {e}")
+
+        # 3. Tax Renewal Log
+        if new_tax and new_tax != "-" and new_tax != old_tax:
+            time.sleep(0.01)
+            rec_id = f"MNT{now_th().strftime('%y%m%d%H%M%S')}"
+            renewal_rec = {
+                "id": rec_id,
+                "car_id": plate,
+                "car_brand": payload.get("brand") or existing_car.get("brand", ""),
+                "car_model": payload.get("model") or existing_car.get("model", ""),
+                "car_color": payload.get("color") or existing_car.get("color", ""),
+                "order_type": "ต่อภาษีประจำปี",
+                "service_items": f"1. ตรวจสภาพรถยนต์ ตรอ.\n2. ชำระภาษีรถยนต์ประจำปี สิ้นสุด {new_tax}",
+                "cost": 0.0,
+                "actual_cost": 0.0,
+                "service_center": "สำนักงานขนส่งทางบก",
+                "service_center_phone": "-",
+                "service_location": "-",
+                "assigned_worker": worker,
+                "schedule_date": now_t.date().isoformat(),
+                "schedule_time": now_t.strftime("%H:%M"),
+                "expected_finish_date": now_t.date().isoformat(),
+                "expected_finish_time": now_t.strftime("%H:%M"),
+                "status": "เสร็จสิ้น",
+                "current_mileage": str(payload.get("mileage") or existing_car.get("mileage") or "-"),
+                "notes": f"บันทึกประวัติต่อภาษีรถยนต์ประจำปี ทะเบียน {plate} (หมดอายุใหม่: {new_tax})",
+                "completion_notes": f"ต่อภาษีเรียบร้อย สิ้นสุด {new_tax}",
+                "update_car_status": False,
+                "created_by": worker,
+                "created_at": now_t.strftime("%Y-%m-%d %H:%M:%S"),
+                "completed_at": now_t.strftime("%Y-%m-%d %H:%M:%S"),
+                "new_tax_expiry": new_tax
+            }
+            store.async_sync_maintenance(renewal_rec)
+            try:
+                store.log_work_order(
+                    car_id=plate,
+                    booking_id=rec_id,
+                    work_type="Renew Tax",
+                    description=f"ต่อภาษีรถยนต์ประจำปี: สิ้นสุด {new_tax}",
+                    cost=0.0,
+                    staff_id=worker
+                )
+            except Exception as e:
+                print(f"Error logging work order for car tax renewal: {e}")
 
     payload["plate"] = plate
     store.async_sync_car(plate, payload)

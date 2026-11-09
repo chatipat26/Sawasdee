@@ -2228,6 +2228,11 @@ class App {
     }
   }
 
+  renderCars() {
+    if (typeof this.renderFleetCards === "function") this.renderFleetCards();
+    if (typeof this.renderFleetOverviewTable === "function") this.renderFleetOverviewTable();
+  }
+
   // --- Rendering: Fleet Cards ---
   renderFleetCards() {
     const container = document.getElementById("fleet-cards-container");
@@ -2709,7 +2714,9 @@ class App {
             <div><b style="color:#64748B;">${isEn ? 'Engine CC:' : 'ขนาด CC:'}</b> ${c.engine_cc || c.cc_ev || '-'}</div>
             <div><b style="color:#64748B;">${isEn ? 'Mileage:' : 'เลขไมล์:'}</b> ${Number(String(c.mileage || '0').replace(/,/g, '')).toLocaleString()} km</div>
             <div style="grid-column: span 2;"><b style="color:#64748B;">${isEn ? 'VIN (Chassis):' : 'เลขตัวถัง:'}</b> <code>${c.chassis_no || c.vin || '-'}</code></div>
-            <div style="grid-column: span 2;"><b style="color:#64748B;">${isEn ? 'Owner / Company:' : 'ผู้ถือกรรมสิทธิ์:'}</b> ${c.company || c.owner_company || c.owner || c.car_owner || '-'}</div>
+            <div><b style="color:#64748B;">${isEn ? 'Owner:' : 'เจ้าของรถ:'}</b> ${c.car_owner || c.owner || c.owner_name || '-'}</div>
+            <div><b style="color:#64748B;">${isEn ? 'Beneficiary:' : 'ผู้รับผลประโยชน์:'}</b> ${c.beneficiary || '-'}</div>
+            <div style="grid-column: span 2;"><b style="color:#64748B;">${isEn ? 'Possessor / Company:' : 'ผู้ถือกรรมสิทธิ์:'}</b> ${c.company || c.owner_company || '-'}</div>
           </div>
         </div>
 
@@ -3480,8 +3487,10 @@ class App {
       ins_company: insCompVal,
       car_owner: String(getVal("edit-car-owner", "car_owner", getVal("edit-car-owner", "owner", "-"))).trim(),
       owner: String(getVal("edit-car-owner", "car_owner", getVal("edit-car-owner", "owner", "-"))).trim(),
+      owner_name: String(getVal("edit-car-owner", "car_owner", getVal("edit-car-owner", "owner", "-"))).trim(),
       beneficiary: String(getVal("edit-car-beneficiary", "beneficiary", "-")).trim(),
       register_year: regYearVal,
+      registration_year: regYearVal,
       reg_year: regYearVal,
       prb_price: prbPrice,
       act_price: prbPrice,
@@ -9700,7 +9709,12 @@ ${e.message}`);
         this.showToast(successMsg, "success");
         await this.loadMaintenanceRecords();
         await this.loadCars();
-        this.renderCars();
+        if (typeof this.renderCars === "function") {
+          this.renderCars();
+        } else {
+          if (typeof this.renderFleetCards === "function") this.renderFleetCards();
+          if (typeof this.renderFleetOverviewTable === "function") this.renderFleetOverviewTable();
+        }
         this.renderExpiringAlerts();
         this.renderUnifiedExpensesTable();
         await this.loadBackOfficeJobs();

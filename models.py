@@ -29,6 +29,8 @@ class Vehicle(Base):
     register_year = Column(String(50), default="-")
     prb_price = Column(Numeric, default=0.0)
     insurance_premium = Column(Numeric, default=0.0)
+    owner_name = Column(String(150), default="-")
+    registration_year = Column(String(50), default="-")
     last_service_date = Column(String(50), default="-")
     next_service_date = Column(String(50), default="-")
     next_service_mileage = Column(Numeric, default=0.0)
@@ -163,3 +165,38 @@ class Booking(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
+
+
+class MaintenanceRecord(Base):
+    __tablename__ = "maintenance_records"
+
+    id = Column(String(50), primary_key=True, index=True)
+    car_id = Column(String(50), nullable=False, index=True)
+    car_brand = Column(String(100), nullable=True)
+    car_model = Column(String(100), nullable=True)
+    car_color = Column(String(50), nullable=True)
+    order_type = Column(String(100), nullable=True)
+    service_items = Column(Text, nullable=True)
+    cost = Column(Numeric, default=0.0)
+    actual_cost = Column(Numeric, default=0.0)
+    service_center = Column(String(150), nullable=True)
+    service_center_phone = Column(String(50), nullable=True)
+    service_location = Column(String(150), nullable=True)
+    assigned_worker = Column(String(100), nullable=True)
+    schedule_date = Column(Date, nullable=True)
+    schedule_time = Column(String(50), nullable=True)
+    expected_finish_date = Column(Date, nullable=True)
+    expected_finish_time = Column(String(50), nullable=True)
+    status = Column(String(50), default="รอดำเนินการ", index=True)
+    current_mileage = Column(String(50), nullable=True)
+    notes = Column(Text, nullable=True)
+    completion_notes = Column(Text, nullable=True)
+    update_car_status = Column(Boolean, default=True)
+    created_by = Column(String(100), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+    new_act_expiry = Column(String(50), nullable=True)
+    new_ins_expiry = Column(String(50), nullable=True)
+    new_tax_expiry = Column(String(50), nullable=True)
+    insurance_company = Column(String(150), nullable=True)
+    policy_no = Column(String(100), nullable=True)

@@ -43,6 +43,8 @@ class VehicleBase(BaseModel):
 
     # Backward compatibility / Frontend payload aliases
     reg_year: Optional[str] = "-"
+    registration_year: Optional[str] = "-"
+    owner_name: Optional[str] = "-"
     ins_company: Optional[str] = "-"
     act_price: Optional[float] = 0.0
     ins_premium: Optional[float] = 0.0

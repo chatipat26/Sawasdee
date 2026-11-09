@@ -631,7 +631,11 @@ class DataStore:
                             _pair(merged_c, 'insurance_expire_date', 'ins_expiry')
                             _pair(merged_c, 'insurance_company', 'ins_company')
                             _pair(merged_c, 'car_owner', 'owner')
+                            _pair(merged_c, 'car_owner', 'owner_name')
+                            _pair(merged_c, 'owner', 'owner_name')
                             _pair(merged_c, 'register_year', 'reg_year')
+                            _pair(merged_c, 'register_year', 'registration_year')
+                            _pair(merged_c, 'reg_year', 'registration_year')
                             _pair(merged_c, 'car_status', 'status')
                             _pair(merged_c, 'image_url', 'image')
                             _pair(merged_c, 'prb_price', 'act_price')
@@ -900,9 +904,10 @@ class DataStore:
         CAR_DB_COLS = STANDARD_34_COLS | {
             'engine_cc', 'fuel_type', 'company', 'price_day', 'price_week', 'price_month',
             'status', 'chassis_no', 'act_expiry', 'ins_expiry', 'image', 'created_at',
-            'owner', 'reg_year', 'tax_expiry', 'ins_company', 'act_price', 'ins_premium',
-            'insurance_policy_no', 'policy_no', 'act_status', 'ins_status', 'payment_status',
-            'installment_due_date'
+            'owner', 'owner_name', 'reg_year', 'registration_year', 'tax_expiry', 'ins_company',
+            'act_price', 'ins_premium', 'insurance_policy_no', 'policy_no', 'act_status',
+            'ins_status', 'payment_status', 'installment_due_date',
+            'next_engine_oil_date', 'next_engine_oil_mileage'
         }
         ALL_CAR_COLS = CAR_DB_COLS | {
             'next_service', 'tire_change', 'hp_contract_no', 'hp_installment',
@@ -939,7 +944,11 @@ class DataStore:
             _pair_sync(existing, 'insurance_company', 'ins_company')
             _pair_sync(existing, 'insurance_policy_no', 'policy_no')
             _pair_sync(existing, 'car_owner', 'owner')
+            _pair_sync(existing, 'car_owner', 'owner_name')
+            _pair_sync(existing, 'owner', 'owner_name')
             _pair_sync(existing, 'register_year', 'reg_year')
+            _pair_sync(existing, 'register_year', 'registration_year')
+            _pair_sync(existing, 'reg_year', 'registration_year')
             _pair_sync(existing, 'car_status', 'status')
             _pair_sync(existing, 'image_url', 'image')
             _pair_sync(existing, 'prb_price', 'act_price')
@@ -1205,9 +1214,28 @@ class DataStore:
             sb = get_db_client()
             if not sb: return
             try:
-                sb.table("maintenance_records").upsert(m_dict).execute()
+                MAINTENANCE_RECORDS_DB_COLS = {
+                    'id', 'car_id', 'car_brand', 'car_model', 'car_color',
+                    'order_type', 'service_items', 'cost', 'actual_cost',
+                    'service_center', 'service_center_phone', 'service_location',
+                    'assigned_worker', 'schedule_date', 'schedule_time',
+                    'expected_finish_date', 'expected_finish_time', 'status',
+                    'current_mileage', 'notes', 'completion_notes',
+                    'update_car_status', 'created_by', 'created_at', 'completed_at',
+                    'new_act_expiry', 'new_ins_expiry', 'new_tax_expiry',
+                    'insurance_company', 'policy_no'
+                }
+                db_cols = None
+                if hasattr(sb, "run"):
+                    from psycopg import sql as _sql
+                    col_rows = sb.run([(_sql.SQL(
+                        "SELECT column_name FROM information_schema.columns "
+                        "WHERE table_schema = 'public' AND table_name = 'maintenance_records'"), [])])
+                    db_cols = {r["column_name"] for r in col_rows} or None
+                payload_to_save = {k: v for k, v in m_dict.items() if (db_cols is None and k in MAINTENANCE_RECORDS_DB_COLS) or (db_cols is not None and k in db_cols)}
+                sb.table("maintenance_records").upsert(payload_to_save).execute()
             except Exception as e:
-                pass
+                print(f"sb_sync_maintenance error: {e}")
         threading.Thread(target=_task, daemon=True).start()
 
     def hard_delete_work_order(self, order_id, car_id=None):
