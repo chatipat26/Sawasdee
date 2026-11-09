@@ -42,6 +42,7 @@ class VehicleBase(BaseModel):
     image_url: Optional[str] = ""
 
     # Comprehensive Insurance & ACT Policy Fields
+    engine_no: Optional[str] = "-"
     act_policy_no: Optional[str] = "-"
     act_company: Optional[str] = "-"
     ins_policy_no: Optional[str] = "-"

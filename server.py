@@ -870,16 +870,21 @@ async def create_or_update_car(payload: Union[VehicleCreate, Dict[str, Any]], pl
     fin_comp_val = str(payload.get("finance_company") or "-").strip() or "-"
     payload["finance_company"] = fin_comp_val
 
-    # Comprehensive Insurance & ACT Policy Details
+    # Vehicle Identification Numbers
+    engine_no_val = str(payload.get("engine_no") or "-").strip() or "-"
+    payload["engine_no"] = engine_no_val
+
+    # Comprehensive Insurance & ACT Policy Details (STRICT SEPARATION)
     act_pol = str(payload.get("act_policy_no") or "-").strip() or "-"
     payload["act_policy_no"] = act_pol
     act_comp = str(payload.get("act_company") or "-").strip() or "-"
     payload["act_company"] = act_comp
 
-    ins_pol = str(payload.get("ins_policy_no") or payload.get("insurance_policy_no") or payload.get("policy_no") or "-").strip() or "-"
+    ins_pol = str(payload.get("ins_policy_no") or payload.get("insurance_policy_no") or "-").strip() or "-"
     payload["ins_policy_no"] = ins_pol
     payload["insurance_policy_no"] = ins_pol
     payload["policy_no"] = ins_pol
+
 
     payload["ins_category"] = str(payload.get("ins_category") or "-").strip() or "-"
     payload["ins_type"] = str(payload.get("ins_type") or "-").strip() or "-"
@@ -1050,9 +1055,42 @@ async def create_or_update_car(payload: Union[VehicleCreate, Dict[str, Any]], pl
             except Exception as e:
                 print(f"Error logging work order for car tax renewal: {e}")
 
+    # TARGET MISSION 3: Auto-log to insurance_records table for historical policy tracking
+    ins_company_val = str(payload.get("ins_company") or payload.get("insurance_company") or "-").strip() or "-"
+    ins_expiry_val = str(payload.get("insurance_expire_date") or payload.get("ins_expiry") or "-").strip() or "-"
+    if ins_pol != "-" or ins_company_val != "-" or (ins_expiry_val != "-" and ins_expiry_val != ""):
+        clean_p = re.sub(r'[^a-zA-Z0-9]', '', plate)
+        ins_rec_id = f"INS{now_th().strftime('%y%m%d%H%M%S')}_{clean_p}"
+        ins_rec = {
+            "id": ins_rec_id,
+            "car_id": plate,
+            "ins_company": ins_company_val,
+            "ins_policy_no": ins_pol,
+            "ins_class": str(payload.get("ins_class") or "-"),
+            "ins_category": str(payload.get("ins_category") or "-"),
+            "ins_type": str(payload.get("ins_type") or "-"),
+            "ins_coverage_amount": float(payload.get("ins_coverage_amount") or 0.0),
+            "ins_premium": float(payload.get("insurance_premium") or payload.get("ins_premium") or 0.0),
+            "expiry_date": ins_expiry_val,
+            "notes": f"บันทึกประวัติกรมธรรม์ประกันภัย ทะเบียน {plate}",
+            "created_by": str(payload.get("recorded_by") or payload.get("assigned_worker") or "admin"),
+            "created_at": now_th().strftime("%Y-%m-%d %H:%M:%S")
+        }
+        store.async_sync_insurance_record(ins_rec)
+
     payload["plate"] = plate
     store.async_sync_car(plate, payload)
     return {"success": True, "car": store.cars.get(plate, payload)}
+
+@app.get("/api/cars/{plate:path}/insurance-records")
+async def get_car_insurance_records(plate: str):
+    clean_plate = urllib.parse.unquote(plate).strip()
+    norm = re.sub(r"[\s\-\.]+", "", clean_plate).lower()
+    matched = [
+        r for r in getattr(store, "insurance_records", [])
+        if str(r.get("car_id", "")).strip() == clean_plate or re.sub(r"[\s\-\.]+", "", str(r.get("car_id", ""))).lower() == norm
+    ]
+    return {"success": True, "plate": clean_plate, "records": matched}
 
 @app.get("/api/hp-leasing")
 async def get_hp_leasing_data():

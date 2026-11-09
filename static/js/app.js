@@ -2732,7 +2732,8 @@ class App {
             <div><b style="color:#64748B;">${isEn ? 'Fuel:' : 'เชื้อเพลิง:'}</b> ${c.fuel_type || c.fuel_system || '-'}</div>
             <div><b style="color:#64748B;">${isEn ? 'Engine CC:' : 'ขนาด CC:'}</b> ${c.engine_cc || c.cc_ev || '-'}</div>
             <div><b style="color:#64748B;">${isEn ? 'Mileage:' : 'เลขไมล์:'}</b> ${Number(String(c.mileage || '0').replace(/,/g, '')).toLocaleString()} km</div>
-            <div style="grid-column: span 2;"><b style="color:#64748B;">${isEn ? 'VIN (Chassis):' : 'เลขตัวถัง:'}</b> <code>${c.chassis_no || c.vin || '-'}</code></div>
+            <div><b style="color:#64748B;">${isEn ? 'VIN (Chassis):' : 'เลขตัวถัง:'}</b> <code>${c.chassis_no || c.vin || '-'}</code></div>
+            <div><b style="color:#64748B;">${isEn ? 'Engine No:' : 'เลขเครื่องยนต์:'}</b> <code>${c.engine_no || '-'}</code></div>
             <div><b style="color:#64748B;">${isEn ? 'Owner:' : 'เจ้าของรถ:'}</b> ${c.car_owner || c.owner || c.owner_name || '-'}</div>
             <div><b style="color:#64748B;">${isEn ? 'Beneficiary:' : 'ผู้รับผลประโยชน์:'}</b> ${c.beneficiary || '-'}</div>
             <div style="grid-column: span 2;"><b style="color:#64748B;">${isEn ? 'Possessor / Company:' : 'ผู้ถือกรรมสิทธิ์:'}</b> ${c.company || c.owner_company || '-'}</div>
@@ -2990,7 +2991,9 @@ class App {
   updateCarFormField(field, val) {
     if (!this.carFormData) this.carFormData = {};
     this.carFormData[field] = val;
-    if (field === 'act_policy_no') {
+    if (field === 'engine_no') {
+      this.carFormData.engine_no = val;
+    } else if (field === 'act_policy_no') {
       this.carFormData.act_policy_no = val;
     } else if (field === 'act_company') {
       this.carFormData.act_company = val;
@@ -3072,6 +3075,7 @@ class App {
       monthly_rate: car.monthly_rate !== undefined ? car.monthly_rate : (car.price_month !== undefined ? car.price_month : 20000),
       chassis_no: car.vin || car.chassis_no || "-",
       vin: car.vin || car.chassis_no || "-",
+      engine_no: (car.engine_no && car.engine_no !== "-") ? car.engine_no : "",
       tax_expiry: this.dmyToYmd(car.tax_expire_date || car.tax_expiry),
       tax_expire_date: this.dmyToYmd(car.tax_expire_date || car.tax_expiry),
       act_expiry: this.dmyToYmd(car.prb_expire_date || car.act_expiry),
@@ -3193,6 +3197,7 @@ class App {
     setVal("edit-car-pweek", car.weekly_rate !== undefined && car.weekly_rate !== null ? car.weekly_rate : (car.price_week !== undefined ? car.price_week : 6000));
     setVal("edit-car-pmonth", car.monthly_rate !== undefined && car.monthly_rate !== null ? car.monthly_rate : (car.price_month !== undefined ? car.price_month : 20000));
     setVal("edit-car-vin", car.vin || car.chassis_no || "-");
+    setVal("edit-car-engine-no", (car.engine_no && car.engine_no !== "-") ? car.engine_no : "");
     setVal("edit-car-tax", this.dmyToYmd(car.tax_expire_date || car.tax_expiry));
     setVal("edit-car-act", this.dmyToYmd(car.prb_expire_date || car.act_expiry));
     setVal("edit-car-act-policy-no", (car.act_policy_no && car.act_policy_no !== "-") ? car.act_policy_no : "");
@@ -3534,6 +3539,7 @@ class App {
       price_month: parseInt(getVal("edit-car-pmonth", "monthly_rate", getVal("edit-car-pmonth", "price_month", 20000)) || "20000", 10),
       vin: vinVal,
       chassis_no: vinVal,
+      engine_no: String(getVal("edit-car-engine-no", "engine_no", "-")).trim() || "-",
       tax_expire_date: this.ymdToDmy(getVal("edit-car-tax", "tax_expire_date", getVal("edit-car-tax", "tax_expiry", ""))) || "-",
       tax_expiry: this.ymdToDmy(getVal("edit-car-tax", "tax_expire_date", getVal("edit-car-tax", "tax_expiry", ""))) || "-",
       prb_expire_date: this.ymdToDmy(getVal("edit-car-act", "prb_expire_date", getVal("edit-car-act", "act_expiry", ""))) || "-",

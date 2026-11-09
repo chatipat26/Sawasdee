@@ -303,6 +303,7 @@ class DataStore:
         self.bookings = []
         self.completed_jobs = []
         self.financial_records = []
+        self.insurance_records = []
         self.users = {k: dict(v) for k, v in DEFAULT_USERS.items()}
         self.cars_file = os.path.join(BASE_DIR, "data_cars.json")
         self.users_file = os.path.join(BASE_DIR, "data_users.json")
@@ -773,6 +774,15 @@ class DataStore:
             except Exception:
                 pass
 
+            # 9. Insurance Records
+            try:
+                ins_res = sb.table("insurance_records").select("*").order("created_at", desc=True).execute()
+                if ins_res.data is not None:
+                    with self.lock:
+                        self.insurance_records = ins_res.data
+            except Exception as e:
+                pass
+
             # 9. Work Order Logs
             try:
                 wol_res = sb.table("work_order_logs").select("*").order("created_at", desc=True).limit(500).execute()
@@ -892,6 +902,18 @@ class DataStore:
                 print(f"sb_delete_booking error: {e}")
         threading.Thread(target=_task, daemon=True).start()
 
+    def async_sync_insurance_record(self, record):
+        with self.lock:
+            self.insurance_records.insert(0, record)
+        def _task():
+            sb = get_db_client()
+            if not sb: return
+            try:
+                sb.table("insurance_records").upsert(record).execute()
+            except Exception as e:
+                print(f"sb_sync_insurance_record error: {e}")
+        threading.Thread(target=_task, daemon=True).start()
+
     def async_sync_car(self, plate, car_dict):
         STANDARD_34_COLS = {
             'plate', 'brand', 'model', 'car_group', 'fuel_system', 'cc_ev',
@@ -902,7 +924,7 @@ class DataStore:
             'last_service_date', 'next_service_date', 'next_service_mileage',
             'car_status', 'is_debt_free', 'installment_amount', 'total_installments', 'current_installment',
             'payment_due_date', 'finance_company', 'notes', 'image_url',
-            'tax_status', 'prb_status', 'insurance_status', 'installment_status', 'act_policy_no', 'act_company', 'ins_policy_no', 'ins_company', 'ins_category', 'ins_coverage_amount', 'ins_type', 'ins_class'
+            'tax_status', 'prb_status', 'insurance_status', 'installment_status', 'act_policy_no', 'act_company', 'ins_policy_no', 'ins_company', 'ins_category', 'ins_coverage_amount', 'ins_type', 'ins_class', 'engine_no'
         }
         CAR_DB_COLS = STANDARD_34_COLS | {
             'engine_cc', 'fuel_type', 'company', 'price_day', 'price_week', 'price_month',
@@ -911,7 +933,7 @@ class DataStore:
             'act_price', 'ins_premium', 'insurance_policy_no', 'policy_no', 'act_status',
             'ins_status', 'payment_status', 'installment_due_date',
             'next_engine_oil_date', 'next_engine_oil_mileage',
-            'act_policy_no', 'act_company', 'ins_policy_no', 'ins_category', 'ins_coverage_amount', 'ins_type', 'ins_class'
+            'act_policy_no', 'act_company', 'ins_policy_no', 'ins_category', 'ins_coverage_amount', 'ins_type', 'ins_class', 'engine_no'
         }
         ALL_CAR_COLS = CAR_DB_COLS | {
             'next_service', 'tire_change', 'hp_contract_no', 'hp_installment',
@@ -919,7 +941,7 @@ class DataStore:
             'next_tire_change_date', 'next_tire_change_mileage',
             'tax_paid', 'prb_paid', 'act_paid', 'insurance_paid', 'ins_paid', 'installment_paid',
             'tax_paid_date', 'prb_paid_date', 'insurance_paid_date', 'installment_paid_date',
-            'act_policy_no', 'act_company', 'ins_policy_no', 'ins_category', 'ins_coverage_amount', 'ins_type', 'ins_class'
+            'act_policy_no', 'act_company', 'ins_policy_no', 'ins_category', 'ins_coverage_amount', 'ins_type', 'ins_class', 'engine_no'
         }
         with self.lock:
             existing = dict(self.cars.get(plate, {}))

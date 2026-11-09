@@ -58,6 +58,7 @@ CREATE TABLE IF NOT EXISTS public.cars (
     ins_coverage_amount NUMERIC DEFAULT 0,
     ins_type VARCHAR(100),
     ins_class VARCHAR(50),
+    engine_no VARCHAR(100),
     insurance_policy_no VARCHAR(100),
     policy_no VARCHAR(100),
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
@@ -305,3 +306,24 @@ ALTER TABLE financial_records ADD COLUMN IF NOT EXISTS description TEXT;
 ALTER TABLE financial_records ADD COLUMN IF NOT EXISTS detail TEXT;
 ALTER TABLE financial_records ADD COLUMN IF NOT EXISTS ref VARCHAR(100);
 ALTER TABLE financial_records ADD COLUMN IF NOT EXISTS company VARCHAR(150);
+
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS engine_no VARCHAR(100);
+
+-- 9. Insurance Records Table (Historical Policy Logs)
+CREATE TABLE IF NOT EXISTS public.insurance_records (
+    id VARCHAR(100) PRIMARY KEY,
+    car_id VARCHAR(50) NOT NULL,
+    ins_company VARCHAR(150),
+    ins_policy_no VARCHAR(100),
+    ins_class VARCHAR(50),
+    ins_category VARCHAR(100),
+    ins_type VARCHAR(100),
+    ins_coverage_amount NUMERIC DEFAULT 0,
+    ins_premium NUMERIC DEFAULT 0,
+    expiry_date VARCHAR(50),
+    notes TEXT,
+    created_by VARCHAR(100),
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_insurance_records_car_id ON public.insurance_records(car_id);
+CREATE INDEX IF NOT EXISTS idx_insurance_records_expiry ON public.insurance_records(expiry_date);

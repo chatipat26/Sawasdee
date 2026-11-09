@@ -300,7 +300,8 @@ class PgClient:
                             "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS owner_name VARCHAR(150);",
                             "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS reg_year VARCHAR(50);",
                             "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS act_price NUMERIC DEFAULT 0;",
-                            "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS ins_premium NUMERIC DEFAULT 0;"
+                            "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS ins_premium NUMERIC DEFAULT 0;",
+                            "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS engine_no VARCHAR(100);"
                         ]
                         for m_sql in car_migrations:
                             cur.execute(m_sql)
@@ -320,7 +321,35 @@ class PgClient:
                 self._migrate_bookings()
                 self._migrate_work_order_logs()
                 self._migrate_maintenance_logs()
+                self._migrate_insurance_records()
         return self._conn
+
+    def _migrate_insurance_records(self):
+        try:
+            with self._conn.cursor() as cur:
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS public.insurance_records (
+                        id VARCHAR(100) PRIMARY KEY,
+                        car_id VARCHAR(50) NOT NULL,
+                        ins_company VARCHAR(150),
+                        ins_policy_no VARCHAR(100),
+                        ins_class VARCHAR(50),
+                        ins_category VARCHAR(100),
+                        ins_type VARCHAR(100),
+                        ins_coverage_amount NUMERIC DEFAULT 0,
+                        ins_premium NUMERIC DEFAULT 0,
+                        expiry_date VARCHAR(50),
+                        notes TEXT,
+                        created_by VARCHAR(100),
+                        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+                    );
+                    CREATE INDEX IF NOT EXISTS idx_insurance_records_car_id ON public.insurance_records(car_id);
+                    CREATE INDEX IF NOT EXISTS idx_insurance_records_expiry ON public.insurance_records(expiry_date);
+                """)
+            print("PostgreSQL insurance_records table ensured.")
+        except Exception as e:
+            print(f"Insurance records migration note: {e}")
+
     def _migrate_bookings(self):
         try:
             with self._conn.cursor() as cur:

@@ -2337,13 +2337,17 @@
             <span>ข้อมูลตัวถัง ภาษี และ พ.ร.บ. (Vehicle VIN, Tax & ACT)</span>
           </div>
 
-          <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; margin-bottom:10px;">
+          <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:12px; margin-bottom:10px;">
             <div class="form-group">
               <label id="lbl-modal-car-vin">เลขตัวถัง (VIN / Chassis Number)*</label>
               <input type="text" id="edit-car-vin" class="form-control" placeholder="-" oninput="app.updateCarFormField('vin', this.value); app.checkDuplicateChassis(this.value);">
               <div id="edit-car-vin-warn" style="display:none; font-size:11px; color:#DC2626; font-weight:600; margin-top:4px;">
                 ⚠️ เลขตัวถังนี้ซ้ำกับรถคันอื่นในระบบ
               </div>
+            </div>
+            <div class="form-group">
+              <label id="lbl-modal-car-engine-no">เลขเครื่องยนต์ (Engine No.)</label>
+              <input type="text" id="edit-car-engine-no" class="form-control" placeholder="เลขเครื่องยนต์" oninput="app.updateCarFormField('engine_no', this.value)">
             </div>
             <div class="form-group">
               <label id="lbl-modal-car-tax">วันหมดอายุ ภาษี (Tax Expiry Date)</label>
