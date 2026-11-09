@@ -663,9 +663,25 @@ def generate_maintenance_job_pdf(maintenance_record, car_info=None):
 # SAWASDEE PRE-RENTAL INSPECTION PDF GENERATOR (CHECK-OUT & CHECK-IN)
 # =========================================================================
 
+def _draw_check_mark(can, x, y, size=6.8, color='#1E40AF'):
+    """Draw a clean, crisp vector checkmark [✓] inside a checkbox at (x, y)"""
+    can.saveState()
+    can.setStrokeColor(colors.HexColor(color))
+    can.setLineWidth(1.4)
+    can.setLineCap(1)  # Round cap
+    can.setLineJoin(1) # Round join
+    p = can.beginPath()
+    p.moveTo(x + 1.2, y + 2.8)
+    p.lineTo(x + 2.7, y + 1.2)
+    p.lineTo(x + 5.8, y + 5.8)
+    can.drawPath(p, stroke=1, fill=0)
+    can.restoreState()
+
+
 def _draw_inspection_page(can, page_type, b_info, c_info, car_info, data, is_active=True):
     from reportlab.lib.utils import ImageReader
     import base64
+    import json
 
     b_info = b_info or {}
     c_info = c_info or {}
@@ -680,12 +696,21 @@ def _draw_inspection_page(can, page_type, b_info, c_info, car_info, data, is_act
     th_now = now_th()
     if page_type == "checkout":
         dt_str = data.get("datetime_str") or f"{format_date_dmy(b_info.get('dispatch_date') or b_info.get('start_date') or th_now.date())} {b_info.get('start_time') or th_now.strftime('%H:%M')}"
-        km_str = str(data.get("odometer") or data.get("mileage") or b_info.get("dispatch_mileage") or car_info.get("mileage") or "-")
+        raw_km = data.get("odometer_out") or data.get("odometer") or data.get("mileage") or b_info.get("odometer_out") or b_info.get("dispatch_mileage") or car_info.get("mileage")
         staff_str = str(data.get("staff_name") or data.get("inspector_name") or b_info.get("worker_delivery") or "Staff")
     else:
         dt_str = data.get("datetime_str") or f"{format_date_dmy(b_info.get('return_date') or b_info.get('end_date') or th_now.date())} {b_info.get('end_time') or th_now.strftime('%H:%M')}"
-        km_str = str(data.get("odometer") or data.get("mileage") or b_info.get("return_mileage") or car_info.get("mileage") or "-")
+        raw_km = data.get("odometer_in") or data.get("odometer") or data.get("mileage") or b_info.get("odometer_in") or b_info.get("return_mileage") or car_info.get("mileage")
         staff_str = str(data.get("staff_name") or data.get("inspector_name") or b_info.get("worker_return") or "Staff")
+
+    if raw_km is not None and str(raw_km).strip() not in ("", "-"):
+        km_clean = str(raw_km).replace(",", "").replace("km", "").strip()
+        try:
+            km_str = f"{int(float(km_clean)):,} km"
+        except Exception:
+            km_str = f"{raw_km} km" if not str(raw_km).endswith("km") else str(raw_km)
+    else:
+        km_str = "-"
 
     can.setFont(FONT_BOLD, 9.5)
     can.setFillColor(colors.HexColor('#1E293B'))
@@ -697,21 +722,27 @@ def _draw_inspection_page(can, page_type, b_info, c_info, car_info, data, is_act
 
     # Date/Time, Kilometer, Prepared / Inspected By
     can.drawString(135, 693.5, dt_str)
-    can.drawString(275, 693.5, f"{km_str} km" if km_str != "-" and not km_str.endswith("km") else km_str)
+    can.drawString(275, 693.5, km_str)
     can.drawString(445, 693.5, staff_str)
 
     # 2. Fuel Gauge Selection
-    fuel = str(data.get("fuel_level") or (b_info.get("dispatch_fuel") if page_type == "checkout" else b_info.get("return_fuel")) or "F").strip()
+    fuel = str(
+        data.get("fuel_out" if page_type == "checkout" else "fuel_in") or
+        data.get("fuel_level") or
+        b_info.get("fuel_out" if page_type == "checkout" else "fuel_in") or
+        (b_info.get("dispatch_fuel") if page_type == "checkout" else b_info.get("return_fuel")) or
+        "F"
+    ).strip()
     fuel_x_map = {
-        "E": 54.0,
-        "1/4": 80.5,
-        "1/2": 113.5,
-        "3/4": 146.5,
-        "F": 179.5
+        "E": 52.1,
+        "1/4": 79.1,
+        "1/2": 112.1,
+        "3/4": 144.4,
+        "F": 177.4
     }
     target_fuel_key = "F"
     fuel_lower = fuel.lower()
-    if any(k in fuel_lower for k in ["e", "หมด", "empty", "1/8", "low", "เกลี้ยง"]):
+    if any(k in fuel_lower for k in ["e", "หมด", "empty", "1/8", "low", "เกลี้ยง", "reserve", "ไฟเตือน"]):
         target_fuel_key = "E"
     elif any(k in fuel_lower for k in ["1/4", "25%", "2/8", "หนึ่งส่วนสี่"]):
         target_fuel_key = "1/4"
@@ -722,48 +753,83 @@ def _draw_inspection_page(can, page_type, b_info, c_info, car_info, data, is_act
     else:
         target_fuel_key = "F"
 
-    can.setFont("Helvetica-Bold", 11)
-    can.setFillColor(colors.HexColor('#0F172A'))
-    fx = fuel_x_map.get(target_fuel_key, 179.5)
-    can.drawString(fx, 638, "X")
+    fx = fuel_x_map.get(target_fuel_key, 177.4)
+    _draw_check_mark(can, fx, 636.8)
 
-    # 3. Checklists
-    can.setFont("Helvetica-Bold", 10.5)
-    can.setFillColor(colors.HexColor('#1E40AF')) # Crisp blue mark
-    
+    # 3. Category Checkboxes
+    cats = (
+        data.get("inspection_categories") or
+        data.get("inspection_categories_out" if page_type == "checkout" else "inspection_categories_in") or
+        b_info.get("inspection_categories_out" if page_type == "checkout" else "inspection_categories_in") or
+        b_info.get("inspection_categories")
+    )
+    if isinstance(cats, str):
+        try:
+            cats = json.loads(cats)
+        except Exception:
+            cats = {}
+    if not isinstance(cats, dict):
+        cats = {}
+
+    def is_cat_checked(key):
+        if not cats:
+            return True
+        val = cats.get(key)
+        return val is True or val == "true" or val == 1 or val == "1" or val is None
+
     # Cleanliness
-    clean_items = [576.5, 563.5, 550.5, 538.0]
-    for cy in clean_items:
-        can.drawString(53.5, cy, "X")
+    if is_cat_checked("cleanliness"):
+        for cx, cy in [(52.1, 577.5), (52.1, 564.8), (52.1, 551.3), (52.1, 538.5)]:
+            _draw_check_mark(can, cx, cy)
 
     # Tires
-    tire_items = [482.0, 469.0, 456.0]
-    for ty in tire_items:
-        can.drawString(53.5, ty, "X")
+    if is_cat_checked("tires"):
+        for tx, ty in [(52.1, 483.0), (52.1, 470.3), (52.1, 456.8)]:
+            _draw_check_mark(can, tx, ty)
 
     # Interior & Controls
-    int_items = [623.5, 610.0, 597.5, 584.0, 560.5, 547.5, 534.5, 511.0, 493.5]
-    for iy in int_items:
-        can.drawString(224.5, iy, "X")
+    if is_cat_checked("interior"):
+        for ix, iy in [
+            (223.1, 624.0), (223.1, 610.5), (223.1, 597.8), (223.1, 584.3),
+            (223.1, 561.0), (223.1, 548.3), (223.1, 534.8), (223.1, 511.5), (223.1, 493.5)
+        ]:
+            _draw_check_mark(can, ix, iy)
 
     # Under Hood & Ext.
-    hood_items = [623.5, 600.5, 577.5, 564.0, 540.5, 527.0]
-    for hy in hood_items:
-        can.drawString(395.5, hy, "X")
+    if is_cat_checked("underhood"):
+        for hx, hy in [
+            (394.1, 624.0), (394.1, 600.8), (394.1, 577.5), (394.1, 564.0),
+            (394.1, 540.8), (394.1, 527.3)
+        ]:
+            _draw_check_mark(can, hx, hy)
 
-    # 4. Remarks / Notes
-    notes_val = str(data.get("notes") or data.get("inspection_notes") or data.get("damage_desc") or (b_info.get("dispatch_notes") if page_type == "checkout" else b_info.get("return_notes")) or "").strip()
+    # 4. Remarks / Notes / Damage Notes
+    notes_val = str(
+        data.get("remarks") or
+        data.get("notes") or
+        data.get("inspection_notes") or
+        data.get("damage_notes") or
+        data.get("damage_desc") or
+        (b_info.get("inspection_notes_out") if page_type == "checkout" else b_info.get("inspection_notes_in")) or
+        (b_info.get("dispatch_notes") if page_type == "checkout" else b_info.get("return_notes")) or
+        b_info.get("remarks") or
+        ""
+    ).strip()
+
     if notes_val:
-        can.setFont(FONT_REGULAR, 7.5)
-        can.setFillColor(colors.HexColor('#DC2626') if page_type == 'checkin' and any(k in notes_val.lower() for k in ['รอย', 'บุบ', 'ขีดข่วน', 'damage', 'dent', 'scratch']) else colors.HexColor('#1E293B'))
-        # Draw notes neatly inside remark box
+        can.setFont(FONT_BOLD, 7.5)
+        can.setFillColor(colors.HexColor('#DC2626') if any(k in notes_val.lower() for k in ['รอย', 'บุบ', 'ขีดข่วน', 'damage', 'dent', 'scratch']) else colors.HexColor('#1E293B'))
+        can.drawString(53, 230, "บันทึกตำหนิ / Remarks:")
+        can.setFont(FONT_REGULAR, 7)
         words = notes_val
-        line1 = words[:38]
-        line2 = words[38:76]
-        line3 = words[76:114]
-        if line1: can.drawString(50, 205, f"Note: {line1}")
-        if line2: can.drawString(50, 195, line2)
-        if line3: can.drawString(50, 185, line3)
+        lines = []
+        while words:
+            lines.append(words[:32])
+            words = words[32:]
+        y_pos = 218
+        for line in lines[:4]:
+            can.drawString(53, y_pos, line)
+            y_pos -= 11
 
     # 5. Car Diagram with Marked Defects (Base64 Image Overlay)
     car_diag_b64 = data.get("car_diagram") or data.get("diagram_base64")
@@ -922,7 +988,7 @@ def generate_inspection_checklist_pdf(template_path="Sawasdee Pre-Rental Inspect
 
     # Search for template dynamically
     resolved_path = None
-    target_names = [template_path, "Sawasdee Pre-Rental Inspection.pdf", "sawasdee pre-rental inspection.pdf", "inspection_template.pdf"]
+    target_names = [template_path, "car_inspection_updated.pdf", "Sawasdee Pre-Rental Inspection.pdf", "sawasdee pre-rental inspection.pdf", "inspection_template.pdf"]
     search_dirs = [BASE_DIR, os.getcwd(), os.path.dirname(os.path.abspath(__file__)), "."]
     for d in search_dirs:
         if not d or not os.path.exists(d):
@@ -957,23 +1023,33 @@ def generate_inspection_checklist_pdf(template_path="Sawasdee Pre-Rental Inspect
 
         # Determine if Page 0 (Check Out) should be populated
         page0_data = payload if is_checkout else {
-            "odometer": booking_info.get("dispatch_mileage"),
-            "fuel_level": booking_info.get("dispatch_fuel"),
-            "notes": booking_info.get("dispatch_notes"),
+            "odometer": booking_info.get("odometer_out") or booking_info.get("dispatch_mileage"),
+            "odometer_out": booking_info.get("odometer_out") or booking_info.get("dispatch_mileage"),
+            "fuel_level": booking_info.get("fuel_out") or booking_info.get("dispatch_fuel"),
+            "fuel_out": booking_info.get("fuel_out") or booking_info.get("dispatch_fuel"),
+            "notes": booking_info.get("inspection_notes_out") or booking_info.get("dispatch_notes"),
+            "remarks": booking_info.get("inspection_notes_out") or booking_info.get("dispatch_notes") or booking_info.get("remarks"),
+            "damage_notes": booking_info.get("inspection_notes_out") or booking_info.get("dispatch_notes"),
             "staff_name": booking_info.get("worker_delivery"),
+            "inspection_categories": booking_info.get("inspection_categories_out") or booking_info.get("inspection_categories"),
             "datetime_str": f"{format_date_dmy(booking_info.get('dispatch_date') or booking_info.get('start_date'))} {booking_info.get('start_time') or ''}".strip()
         }
-        has_page0_data = is_checkout or bool(booking_info.get("dispatch_closed") or booking_info.get("dispatch_mileage"))
+        has_page0_data = is_checkout or bool(booking_info.get("dispatch_closed") or booking_info.get("dispatch_mileage") or booking_info.get("odometer_out"))
 
         # Determine if Page 1 (Check In) should be populated
         page1_data = payload if not is_checkout else {
-            "odometer": booking_info.get("return_mileage"),
-            "fuel_level": booking_info.get("return_fuel"),
-            "notes": booking_info.get("return_notes"),
+            "odometer": booking_info.get("odometer_in") or booking_info.get("return_mileage"),
+            "odometer_in": booking_info.get("odometer_in") or booking_info.get("return_mileage"),
+            "fuel_level": booking_info.get("fuel_in") or booking_info.get("return_fuel"),
+            "fuel_in": booking_info.get("fuel_in") or booking_info.get("return_fuel"),
+            "notes": booking_info.get("inspection_notes_in") or booking_info.get("return_notes"),
+            "remarks": booking_info.get("inspection_notes_in") or booking_info.get("return_notes") or booking_info.get("remarks"),
+            "damage_notes": booking_info.get("inspection_notes_in") or booking_info.get("return_notes"),
             "staff_name": booking_info.get("worker_return"),
+            "inspection_categories": booking_info.get("inspection_categories_in") or booking_info.get("inspection_categories"),
             "datetime_str": f"{format_date_dmy(booking_info.get('return_date') or booking_info.get('end_date'))} {booking_info.get('end_time') or ''}".strip()
         }
-        has_page1_data = (not is_checkout) or bool(booking_info.get("return_closed") or booking_info.get("return_mileage"))
+        has_page1_data = (not is_checkout) or bool(booking_info.get("return_closed") or booking_info.get("return_mileage") or booking_info.get("odometer_in"))
 
         # Process Page 0 (Check Out)
         page0 = reader.pages[0]

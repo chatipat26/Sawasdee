@@ -621,7 +621,7 @@
                   <button type="button" id="btn-assign-disp-sched" onclick="app.submitAssign('Dispatch', 'prepare')" class="btn btn-primary" style="width:100%; font-weight:700; background:#EA580C; border-color:#EA580C; padding:10px 16px; font-size:14px;" title="บันทึกนัดหมายส่งมอบรถยนต์และไปหน้าจัดทำสัญญา">
                     📅 นัดหมายส่งมอบ ➔
                   </button>
-                  <a id="btn-assign-disp-print-pdf" href="#" target="_blank" class="btn btn-secondary" style="display:none; width:100%; font-weight:700; margin-top:8px; text-align:center; text-decoration:none; background:#EFF6FF; color:#1E40AF; border-color:#BFDBFE; padding:9px 16px;">
+                  <a id="btn-assign-disp-print-pdf" href="#" onclick="app.printInspectionForm('Dispatch'); return false;" class="btn btn-secondary" style="display:none; width:100%; font-weight:700; margin-top:8px; text-align:center; text-decoration:none; background:#EFF6FF; color:#1E40AF; border-color:#BFDBFE; padding:9px 16px;">
                     🖨️ พิมพ์ใบตรวจสภาพรถส่งมอบ (Print Inspection Out PDF)
                   </a>
 
@@ -754,7 +754,7 @@
                     🏁 รับคืนแล้ว (เสร็จสิ้น) ➔
                   </button>
                 </div>
-                <a id="btn-assign-ret-print-pdf" href="#" target="_blank" class="btn btn-secondary" style="display:none; width:100%; font-weight:700; margin-top:8px; text-align:center; text-decoration:none; background:#EFF6FF; color:#1E40AF; border-color:#BFDBFE; padding:9px 16px;">
+                <a id="btn-assign-ret-print-pdf" href="#" onclick="app.printInspectionForm('Return'); return false;" class="btn btn-secondary" style="display:none; width:100%; font-weight:700; margin-top:8px; text-align:center; text-decoration:none; background:#EFF6FF; color:#1E40AF; border-color:#BFDBFE; padding:9px 16px;">
                   🖨️ พิมพ์ใบตรวจสภาพรถรับคืน (Print Inspection In PDF)
                 </a>
 

@@ -1683,18 +1683,76 @@ async def generate_booking_inspection_pdf(bk_id: str, payload: Optional[Dict[str
     clean_type = "checkout" if is_checkout else "checkin"
 
     merged_payload = dict(payload)
-    if not merged_payload.get("odometer") and not merged_payload.get("mileage"):
-        merged_payload["odometer"] = target.get("dispatch_mileage" if is_checkout else "return_mileage") or car.get("mileage")
-    if not merged_payload.get("fuel_level"):
-        merged_payload["fuel_level"] = target.get("dispatch_fuel" if is_checkout else "return_fuel") or "เต็มถัง (100%)"
-    if not merged_payload.get("notes") and not merged_payload.get("inspection_notes"):
-        merged_payload["notes"] = target.get("dispatch_notes" if is_checkout else "return_notes")
+    # 1. Odometer
+    odo_val = (
+        merged_payload.get("odometer") or
+        merged_payload.get("odometer_out" if is_checkout else "odometer_in") or
+        merged_payload.get("mileage") or
+        target.get("odometer_out" if is_checkout else "odometer_in") or
+        target.get("dispatch_mileage" if is_checkout else "return_mileage") or
+        car.get("mileage")
+    )
+    if odo_val is not None:
+        merged_payload["odometer"] = str(odo_val).strip()
+        merged_payload["odometer_out" if is_checkout else "odometer_in"] = str(odo_val).strip()
+        target["odometer_out" if is_checkout else "odometer_in"] = str(odo_val).strip()
+        target["dispatch_mileage" if is_checkout else "return_mileage"] = str(odo_val).strip()
+
+    # 2. Fuel Level
+    fuel_val = (
+        merged_payload.get("fuel_level") or
+        merged_payload.get("fuel_out" if is_checkout else "fuel_in") or
+        target.get("fuel_out" if is_checkout else "fuel_in") or
+        target.get("dispatch_fuel" if is_checkout else "return_fuel") or
+        "เต็มถัง (Full - 8/8) [100%]"
+    )
+    if fuel_val is not None:
+        merged_payload["fuel_level"] = str(fuel_val).strip()
+        merged_payload["fuel_out" if is_checkout else "fuel_in"] = str(fuel_val).strip()
+        target["fuel_out" if is_checkout else "fuel_in"] = str(fuel_val).strip()
+        target["dispatch_fuel" if is_checkout else "return_fuel"] = str(fuel_val).strip()
+
+    # 3. Notes / Remarks / Damage
+    notes_val = (
+        merged_payload.get("remarks") or
+        merged_payload.get("notes") or
+        merged_payload.get("inspection_notes") or
+        merged_payload.get("damage_notes") or
+        merged_payload.get("damage_desc") or
+        merged_payload.get("inspection_notes_out" if is_checkout else "inspection_notes_in") or
+        target.get("inspection_notes_out" if is_checkout else "inspection_notes_in") or
+        target.get("dispatch_notes" if is_checkout else "return_notes") or
+        target.get("remarks")
+    )
+    if notes_val is not None:
+        notes_str = str(notes_val).strip()
+        merged_payload["notes"] = notes_str
+        merged_payload["remarks"] = notes_str
+        merged_payload["inspection_notes"] = notes_str
+        merged_payload["inspection_notes_out" if is_checkout else "inspection_notes_in"] = notes_str
+        target["inspection_notes_out" if is_checkout else "inspection_notes_in"] = notes_str
+        target["dispatch_notes" if is_checkout else "return_notes"] = notes_str
+        target["remarks"] = notes_str
+
+    # 4. Checkbox categories
+    cats_val = (
+        merged_payload.get("inspection_categories") or
+        merged_payload.get("inspection_categories_out" if is_checkout else "inspection_categories_in") or
+        target.get("inspection_categories_out" if is_checkout else "inspection_categories_in") or
+        target.get("inspection_categories")
+    )
+    if cats_val is not None:
+        merged_payload["inspection_categories"] = cats_val
+        merged_payload["inspection_categories_out" if is_checkout else "inspection_categories_in"] = cats_val
+        target["inspection_categories_out" if is_checkout else "inspection_categories_in"] = cats_val
+        target["inspection_categories"] = cats_val
+
     if not merged_payload.get("staff_name") and not merged_payload.get("inspector_name"):
         merged_payload["staff_name"] = target.get("worker_delivery" if is_checkout else "worker_return") or "Staff"
 
     try:
         pdf_bytes = pdf_engine.generate_inspection_checklist_pdf(
-            template_path="Sawasdee Pre-Rental Inspection.pdf",
+            template_path="car_inspection_updated.pdf",
             booking_info=target,
             customer_info=cust,
             car_info=car,
@@ -2137,16 +2195,21 @@ async def assign_worker(bk_id: str, payload: Dict[str, Any]):
         target["start_time"] = time_val
         if odometer is not None and str(odometer).strip() != "":
             target["odometer_out"] = str(odometer).strip()
+            target["dispatch_mileage"] = str(odometer).strip()
         if fuel_level is not None and str(fuel_level).strip() != "":
             target["fuel_out"] = str(fuel_level).strip()
+            target["dispatch_fuel"] = str(fuel_level).strip()
         if inspection_notes is not None:
             target["inspection_notes_out"] = str(inspection_notes).strip()
-        insp_cats = payload.get("inspection_categories")
+            target["dispatch_notes"] = str(inspection_notes).strip()
+            target["remarks"] = str(inspection_notes).strip()
+        insp_cats = payload.get("inspection_categories") or payload.get("inspection_categories_out")
         if insp_cats is not None:
             target["inspection_categories_out"] = insp_cats
             target["inspection_categories"] = insp_cats
         if inspection_photos is not None and str(inspection_photos).strip() != "":
             target["inspection_photos_out"] = str(inspection_photos).strip()
+            target["dispatch_photos"] = str(inspection_photos).strip()
         if action_type == "handover_now":
             target["status"] = "กำลังเช่า"
             target["dispatch_closed"] = True
@@ -2162,22 +2225,65 @@ async def assign_worker(bk_id: str, payload: Dict[str, Any]):
         target["end_time"] = time_val
         if odometer is not None and str(odometer).strip() != "":
             target["odometer_in"] = str(odometer).strip()
+            target["return_mileage"] = str(odometer).strip()
         if fuel_level is not None and str(fuel_level).strip() != "":
             target["fuel_in"] = str(fuel_level).strip()
+            target["return_fuel"] = str(fuel_level).strip()
         if inspection_notes is not None:
             target["inspection_notes_in"] = str(inspection_notes).strip()
-        insp_cats = payload.get("inspection_categories")
+            target["return_notes"] = str(inspection_notes).strip()
+            target["remarks"] = str(inspection_notes).strip()
+        insp_cats = payload.get("inspection_categories") or payload.get("inspection_categories_in")
         if insp_cats is not None:
             target["inspection_categories_in"] = insp_cats
             target["inspection_categories"] = insp_cats
         if inspection_photos is not None and str(inspection_photos).strip() != "":
             target["inspection_photos_in"] = str(inspection_photos).strip()
+            target["return_photos"] = str(inspection_photos).strip()
         if action_type == "complete_now":
             target["status"] = "เสร็จสิ้น"
             target["return_closed"] = True
             release_car_after_booking(target.get("car_id"), bk_id)
         elif target.get("status") == "กำลังเช่า":
             target["status"] = "เตรียมรับคืน"
+
+    # Auto-generate or update official inspection checklist PDF
+    try:
+        cust, car = _resolve_cust_and_car(target)
+        is_checkout = (job_type == "Dispatch")
+        clean_type = "checkout" if is_checkout else "checkin"
+        current_insp_payload = {
+            "odometer": target.get("odometer_out" if is_checkout else "odometer_in"),
+            "odometer_out": target.get("odometer_out"),
+            "odometer_in": target.get("odometer_in"),
+            "fuel_level": target.get("fuel_out" if is_checkout else "fuel_in"),
+            "fuel_out": target.get("fuel_out"),
+            "fuel_in": target.get("fuel_in"),
+            "notes": target.get("inspection_notes_out" if is_checkout else "inspection_notes_in"),
+            "remarks": target.get("remarks") or target.get("inspection_notes_out" if is_checkout else "inspection_notes_in"),
+            "inspection_notes": target.get("inspection_notes_out" if is_checkout else "inspection_notes_in"),
+            "inspection_categories": target.get("inspection_categories_out" if is_checkout else "inspection_categories_in"),
+            "staff_name": worker or target.get("worker_delivery" if is_checkout else "worker_return") or "Staff"
+        }
+        pdf_bytes = pdf_engine.generate_inspection_checklist_pdf(
+            template_path="car_inspection_updated.pdf",
+            booking_info=target,
+            customer_info=cust,
+            car_info=car,
+            inspection_type=clean_type,
+            payload=current_insp_payload
+        )
+        insp_dir = os.path.join(static_dir, "pdf", "inspections")
+        os.makedirs(insp_dir, exist_ok=True)
+        fname = f"Inspection_{clean_type.capitalize()}_{bk_id}.pdf"
+        with open(os.path.join(insp_dir, fname), "wb") as f:
+            f.write(pdf_bytes)
+        if is_checkout:
+            target["checkout_pdf_url"] = f"/static/pdf/inspections/{fname}"
+        else:
+            target["checkin_pdf_url"] = f"/static/pdf/inspections/{fname}"
+    except Exception as auto_pdf_err:
+        print(f"[PDF Engine] Auto inspection update in assign: {auto_pdf_err}")
 
     store.async_sync_booking(target)
 
@@ -3642,24 +3748,20 @@ async def get_inspection_pdf(bk_id: str, type: str = "checkout", download: int =
     fname = f"Inspection_{clean_type.capitalize()}_{bk_id}.pdf"
     file_path = os.path.join(insp_dir, fname)
 
-    if os.path.exists(file_path):
-        with open(file_path, "rb") as f:
-            pdf_bytes = f.read()
-    else:
-        pdf_bytes = pdf_engine.generate_inspection_checklist_pdf(
-            template_path="Sawasdee Pre-Rental Inspection.pdf",
-            booking_info=target,
-            customer_info=cust,
-            car_info=car,
-            inspection_type=clean_type,
-            payload=target
-        )
-        try:
-            os.makedirs(insp_dir, exist_ok=True)
-            with open(file_path, "wb") as f:
-                f.write(pdf_bytes)
-        except Exception:
-            pass
+    pdf_bytes = pdf_engine.generate_inspection_checklist_pdf(
+        template_path="car_inspection_updated.pdf",
+        booking_info=target,
+        customer_info=cust,
+        car_info=car,
+        inspection_type=clean_type,
+        payload=target
+    )
+    try:
+        os.makedirs(insp_dir, exist_ok=True)
+        with open(file_path, "wb") as f:
+            f.write(pdf_bytes)
+    except Exception:
+        pass
 
     pdf_url = f"/static/pdf/inspections/{fname}"
     if is_checkout and not target.get("checkout_pdf_url"):

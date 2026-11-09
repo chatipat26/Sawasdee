@@ -220,6 +220,16 @@ class BookingBase(BaseModel):
     contract_pdf_url: Optional[str] = None
     checkout_pdf_url: Optional[str] = None
     checkin_pdf_url: Optional[str] = None
+    odometer_out: Optional[str] = None
+    odometer_in: Optional[str] = None
+    fuel_out: Optional[str] = None
+    fuel_in: Optional[str] = None
+    inspection_notes_out: Optional[str] = None
+    inspection_notes_in: Optional[str] = None
+    inspection_photos_out: Optional[str] = None
+    inspection_photos_in: Optional[str] = None
+    remarks: Optional[str] = None
+    damage_notes: Optional[str] = None
     inspection_categories: Optional[Union[dict, list, str]] = None
     inspection_categories_out: Optional[Union[dict, list, str]] = None
     inspection_categories_in: Optional[Union[dict, list, str]] = None
@@ -265,3 +275,30 @@ class BookingUpdate(BookingBase):
 
 class BookingResponse(BookingBase):
     pass
+
+
+class InspectionPayload(BaseModel):
+    inspection_type: Optional[str] = "checkout"
+    odometer: Optional[Union[str, int, float]] = None
+    odometer_out: Optional[Union[str, int, float]] = None
+    odometer_in: Optional[Union[str, int, float]] = None
+    fuel_level: Optional[str] = None
+    fuel_out: Optional[str] = None
+    fuel_in: Optional[str] = None
+    notes: Optional[str] = None
+    remarks: Optional[str] = None
+    damage_notes: Optional[str] = None
+    damage_desc: Optional[str] = None
+    inspection_notes: Optional[str] = None
+    inspection_notes_out: Optional[str] = None
+    inspection_notes_in: Optional[str] = None
+    car_diagram: Optional[str] = None
+    staff_name: Optional[str] = None
+    inspector_name: Optional[str] = None
+    customer_signature: Optional[str] = None
+    staff_signature: Optional[str] = None
+    inspection_categories: Optional[Union[dict, list, str]] = None
+    inspection_categories_out: Optional[Union[dict, list, str]] = None
+    inspection_categories_in: Optional[Union[dict, list, str]] = None
+
+    model_config = ConfigDict(extra="allow", populate_by_name=True)

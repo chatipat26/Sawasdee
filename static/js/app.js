@@ -4388,12 +4388,12 @@ class App {
     if (b) {
       const dispPrintBtn = document.getElementById("btn-assign-disp-print-pdf");
       if (dispPrintBtn) {
-        if (b.checkout_pdf_url) {
-          dispPrintBtn.href = b.checkout_pdf_url;
-          dispPrintBtn.style.display = "block";
-        } else {
-          dispPrintBtn.style.display = "none";
-        }
+        dispPrintBtn.href = b.checkout_pdf_url || `/api/pdf/inspection/${bkId}?type=checkout`;
+        dispPrintBtn.style.display = "block";
+        dispPrintBtn.onclick = (e) => {
+          e.preventDefault();
+          this.printInspectionForm('Dispatch');
+        };
       }
       const sDateEl = document.getElementById("assign-disp-start-date");
       const eDateEl = document.getElementById("assign-disp-end-date");
@@ -4426,14 +4426,14 @@ class App {
       const photosUrlEl = document.getElementById("assign-disp-photos-url");
       const photosPrevEl = document.getElementById("assign-disp-photos-preview");
 
-      if (odoEl) odoEl.value = b.odometer_out || "";
+      if (odoEl) odoEl.value = b.odometer_out || b.dispatch_mileage || "";
       const savedDispCats = b.inspection_categories_out || b.inspection_categories;
       ['petrol', 'cleanliness', 'tires', 'interior', 'underhood'].forEach(k => {
         const el = document.getElementById("assign-disp-chk-" + k);
         if (el) el.checked = savedDispCats ? (savedDispCats[k] !== false) : true;
       });
-      if (fuelEl && b.fuel_out) fuelEl.value = b.fuel_out;
-      if (notesEl) notesEl.value = b.inspection_notes_out || "";
+      if (fuelEl) fuelEl.value = b.fuel_out || b.dispatch_fuel || fuelEl.value;
+      if (notesEl) notesEl.value = b.inspection_notes_out || b.dispatch_notes || b.remarks || "";
       if (photosUrlEl) photosUrlEl.value = b.inspection_photos_out || "";
       this.assignDispPhotos = b.inspection_photos_out ? b.inspection_photos_out.split(",").map(x => x.trim()).filter(Boolean) : [];
       if (photosPrevEl) {
@@ -4524,12 +4524,12 @@ class App {
     if (b) {
       const retPrintBtn = document.getElementById("btn-assign-ret-print-pdf");
       if (retPrintBtn) {
-        if (b.checkin_pdf_url) {
-          retPrintBtn.href = b.checkin_pdf_url;
-          retPrintBtn.style.display = "block";
-        } else {
-          retPrintBtn.style.display = "none";
-        }
+        retPrintBtn.href = b.checkin_pdf_url || `/api/pdf/inspection/${bkId}?type=checkin`;
+        retPrintBtn.style.display = "block";
+        retPrintBtn.onclick = (e) => {
+          e.preventDefault();
+          this.printInspectionForm('Return');
+        };
       }
       const sDateEl = document.getElementById("assign-ret-start-date");
       const eDateEl = document.getElementById("assign-ret-end-date");
@@ -4563,14 +4563,14 @@ class App {
       const photosPrevEl = document.getElementById("assign-ret-photos-preview");
       const badgeEl = document.getElementById("assign-ret-compare-badge");
 
-      if (odoEl) odoEl.value = b.odometer_in || "";
+      if (odoEl) odoEl.value = b.odometer_in || b.return_mileage || "";
       const savedRetCats = b.inspection_categories_in || b.inspection_categories;
       ['petrol', 'cleanliness', 'tires', 'interior', 'underhood'].forEach(k => {
         const el = document.getElementById("assign-ret-chk-" + k);
         if (el) el.checked = savedRetCats ? (savedRetCats[k] !== false) : true;
       });
-      if (fuelEl && b.fuel_in) fuelEl.value = b.fuel_in;
-      if (notesEl) notesEl.value = b.inspection_notes_in || "";
+      if (fuelEl) fuelEl.value = b.fuel_in || b.return_fuel || fuelEl.value;
+      if (notesEl) notesEl.value = b.inspection_notes_in || b.return_notes || b.remarks || "";
       if (photosUrlEl) photosUrlEl.value = b.inspection_photos_in || "";
       this.assignRetPhotos = b.inspection_photos_in ? b.inspection_photos_in.split(",").map(x => x.trim()).filter(Boolean) : [];
       if (photosPrevEl) {
@@ -4770,9 +4770,17 @@ class App {
           start_date: sDate,
           end_date: eDate,
           appointment_datetime: apptDatetime,
-          odometer: document.getElementById(isDisp ? "assign-disp-odometer" : "assign-ret-odometer")?.value || "",
-          fuel_level: document.getElementById(isDisp ? "assign-disp-fuel" : "assign-ret-fuel")?.value || "",
-          inspection_notes: document.getElementById(isDisp ? "assign-disp-notes" : "assign-ret-notes")?.value || "",
+          odometer: (document.getElementById(isDisp ? "assign-disp-odometer" : "assign-ret-odometer")?.value || "").trim(),
+          odometer_out: isDisp ? (document.getElementById("assign-disp-odometer")?.value || "").trim() : undefined,
+          odometer_in: !isDisp ? (document.getElementById("assign-ret-odometer")?.value || "").trim() : undefined,
+          fuel_level: (document.getElementById(isDisp ? "assign-disp-fuel" : "assign-ret-fuel")?.value || "").trim(),
+          fuel_out: isDisp ? (document.getElementById("assign-disp-fuel")?.value || "").trim() : undefined,
+          fuel_in: !isDisp ? (document.getElementById("assign-ret-fuel")?.value || "").trim() : undefined,
+          inspection_notes: (document.getElementById(isDisp ? "assign-disp-notes" : "assign-ret-notes")?.value || "").trim(),
+          inspection_notes_out: isDisp ? (document.getElementById("assign-disp-notes")?.value || "").trim() : undefined,
+          inspection_notes_in: !isDisp ? (document.getElementById("assign-ret-notes")?.value || "").trim() : undefined,
+          remarks: (document.getElementById(isDisp ? "assign-disp-notes" : "assign-ret-notes")?.value || "").trim(),
+          damage_notes: (document.getElementById(isDisp ? "assign-disp-notes" : "assign-ret-notes")?.value || "").trim(),
           inspection_categories: {
             petrol: Boolean(document.getElementById(isDisp ? "assign-disp-chk-petrol" : "assign-ret-chk-petrol")?.checked),
             cleanliness: Boolean(document.getElementById(isDisp ? "assign-disp-chk-cleanliness" : "assign-ret-chk-cleanliness")?.checked),
@@ -4780,6 +4788,20 @@ class App {
             interior: Boolean(document.getElementById(isDisp ? "assign-disp-chk-interior" : "assign-ret-chk-interior")?.checked),
             underhood: Boolean(document.getElementById(isDisp ? "assign-disp-chk-underhood" : "assign-ret-chk-underhood")?.checked)
           },
+          inspection_categories_out: isDisp ? {
+            petrol: Boolean(document.getElementById("assign-disp-chk-petrol")?.checked),
+            cleanliness: Boolean(document.getElementById("assign-disp-chk-cleanliness")?.checked),
+            tires: Boolean(document.getElementById("assign-disp-chk-tires")?.checked),
+            interior: Boolean(document.getElementById("assign-disp-chk-interior")?.checked),
+            underhood: Boolean(document.getElementById("assign-disp-chk-underhood")?.checked)
+          } : undefined,
+          inspection_categories_in: !isDisp ? {
+            petrol: Boolean(document.getElementById("assign-ret-chk-petrol")?.checked),
+            cleanliness: Boolean(document.getElementById("assign-ret-chk-cleanliness")?.checked),
+            tires: Boolean(document.getElementById("assign-ret-chk-tires")?.checked),
+            interior: Boolean(document.getElementById("assign-ret-chk-interior")?.checked),
+            underhood: Boolean(document.getElementById("assign-ret-chk-underhood")?.checked)
+          } : undefined,
           inspection_photos: (isDisp ? (this.assignDispPhotos || []) : (this.assignRetPhotos || [])).length > 0
             ? (isDisp ? this.assignDispPhotos : this.assignRetPhotos).join(",")
             : (document.getElementById(isDisp ? "assign-disp-photos-url" : "assign-ret-photos-url")?.value || "")
@@ -4832,6 +4854,70 @@ class App {
     } catch (e) {
       alert(e.message);
       this.showToast("เกิดข้อผิดพลาด: " + e.message, "danger");
+    }
+  }
+
+  async printInspectionForm(jobType) {
+    const isEn = (this.currentLang === "EN");
+    const isDisp = jobType === "Dispatch";
+    const bkId = document.getElementById(isDisp ? "assign-disp-bk" : "assign-ret-bk")?.value;
+    if (!bkId) {
+      alert(isEn ? "Please select a booking first." : "กรุณาเลือกรหัสการจองก่อนพิมพ์ใบตรวจสภาพรถ");
+      return;
+    }
+
+    const odoVal = (document.getElementById(isDisp ? "assign-disp-odometer" : "assign-ret-odometer")?.value || "").trim();
+    const fuelVal = (document.getElementById(isDisp ? "assign-disp-fuel" : "assign-ret-fuel")?.value || "").trim();
+    const notesVal = (document.getElementById(isDisp ? "assign-disp-notes" : "assign-ret-notes")?.value || "").trim();
+    const catsObj = {
+      petrol: Boolean(document.getElementById(isDisp ? "assign-disp-chk-petrol" : "assign-ret-chk-petrol")?.checked),
+      cleanliness: Boolean(document.getElementById(isDisp ? "assign-disp-chk-cleanliness" : "assign-ret-chk-cleanliness")?.checked),
+      tires: Boolean(document.getElementById(isDisp ? "assign-disp-chk-tires" : "assign-ret-chk-tires")?.checked),
+      interior: Boolean(document.getElementById(isDisp ? "assign-disp-chk-interior" : "assign-ret-chk-interior")?.checked),
+      underhood: Boolean(document.getElementById(isDisp ? "assign-disp-chk-underhood" : "assign-ret-chk-underhood")?.checked)
+    };
+
+    const bObj = (this.bookings || []).find(x => x.booking_id === bkId) || {};
+    const workerVal = document.getElementById(isDisp ? "assign-disp-worker" : "assign-ret-worker")?.value;
+    const staffName = workerVal || (isDisp ? bObj.worker_delivery : bObj.worker_return) || "Staff";
+
+    try {
+      this.showToast(isEn ? "Generating Inspection PDF..." : "กำลังสร้างเอกสารใบตรวจสภาพรถ...", "info");
+      const res = await fetch(`/api/bookings/${bkId}/generate-inspection-pdf`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          inspection_type: isDisp ? "checkout" : "checkin",
+          odometer: odoVal,
+          odometer_out: isDisp ? odoVal : undefined,
+          odometer_in: !isDisp ? odoVal : undefined,
+          fuel_level: fuelVal,
+          fuel_out: isDisp ? fuelVal : undefined,
+          fuel_in: !isDisp ? fuelVal : undefined,
+          notes: notesVal,
+          remarks: notesVal,
+          damage_notes: notesVal,
+          inspection_notes: notesVal,
+          inspection_notes_out: isDisp ? notesVal : undefined,
+          inspection_notes_in: !isDisp ? notesVal : undefined,
+          inspection_categories: catsObj,
+          inspection_categories_out: isDisp ? catsObj : undefined,
+          inspection_categories_in: !isDisp ? catsObj : undefined,
+          staff_name: staffName,
+          customer_signature: bObj.customer || "Customer"
+        })
+      });
+      const data = await res.json();
+      if (data.success && data.pdf_url) {
+        if (isDisp) bObj.checkout_pdf_url = data.pdf_url;
+        else bObj.checkin_pdf_url = data.pdf_url;
+        window.open(data.pdf_url + '?t=' + Date.now(), '_blank');
+      } else {
+        throw new Error(data.detail || "สร้าง PDF ไม่สำเร็จ");
+      }
+    } catch (e) {
+      console.error(e);
+      this.showToast("เกิดข้อผิดพลาดในการพิมพ์ใบตรวจสภาพ: " + e.message, "danger");
     }
   }
 
@@ -6422,10 +6508,19 @@ class App {
         body: JSON.stringify({
           inspection_type: jobType === "Dispatch" ? "checkout" : "checkin",
           odometer: mileage,
+          odometer_out: jobType === "Dispatch" ? mileage : undefined,
+          odometer_in: jobType !== "Dispatch" ? mileage : undefined,
           fuel_level: fuel,
+          fuel_out: jobType === "Dispatch" ? fuel : undefined,
+          fuel_in: jobType !== "Dispatch" ? fuel : undefined,
           notes: notes,
+          remarks: notes,
+          damage_notes: notes,
           damage_desc: damageDesc,
           car_diagram: diagramBase64,
+          inspection_categories: bObj?.inspection_categories || (jobType === "Dispatch" ? bObj?.inspection_categories_out : bObj?.inspection_categories_in) || {
+            petrol: true, cleanliness: true, tires: true, interior: true, underhood: true
+          },
           staff_name: (jobType === "Dispatch" ? bObj?.worker_delivery : bObj?.worker_return) || "Staff",
           customer_signature: bObj?.customer || "Customer"
         })
