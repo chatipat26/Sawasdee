@@ -5481,6 +5481,51 @@ class App {
   }
 
   // --- Tab 5: Bookings Table ---
+  updateBookingMonthOptions(curYm) {
+    const sel = document.getElementById("bks-month-filter");
+    if (!sel) return;
+    const bkCount = (this.bookings || []).length;
+    if (sel.dataset.initializedCount === String(bkCount) && sel.options.length > 2) return;
+
+    const isEn = (this.currentLang === "EN");
+    const thaiMonths = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
+    const enMonths = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+    const monthsSet = new Set();
+    monthsSet.add(curYm);
+    (this.bookings || []).forEach(b => {
+      const d = b.start_date || b.end_date || b.created_at;
+      if (d && typeof d === "string") {
+        const ym = d.substring(0, 7);
+        if (/^\d{4}-\d{2}$/.test(ym)) {
+          monthsSet.add(ym);
+        }
+      }
+    });
+
+    const sortedMonths = Array.from(monthsSet).sort().reverse();
+    const currentVal = sel.value || "current";
+
+    const [curY, curM] = curYm.split("-");
+    const curMIdx = parseInt(curM, 10) - 1;
+    const curThYear = parseInt(curY, 10) + 543;
+    const curLabel = isEn ? `Current Month (${enMonths[curMIdx]} ${curY})` : `เดือนปัจจุบัน (${thaiMonths[curMIdx]} ${curThYear})`;
+
+    let html = `<option value="current">📅 ${curLabel}</option>`;
+    sortedMonths.forEach(ym => {
+      const [y, m] = ym.split("-");
+      const mIdx = parseInt(m, 10) - 1;
+      const thYear = parseInt(y, 10) + 543;
+      const label = isEn ? `${enMonths[mIdx]} ${y}` : `${thaiMonths[mIdx]} ${thYear} (${ym})`;
+      html += `<option value="${ym}">${label}</option>`;
+    });
+    html += `<option value="all">📅 ${isEn ? 'All Time (No Filter)' : 'ดูทั้งหมด (All Time)'}</option>`;
+
+    sel.innerHTML = html;
+    sel.value = currentVal;
+    sel.dataset.initializedCount = String(bkCount);
+  }
+
   renderBookingsTable() {
     const tbody = document.getElementById("bookings-table-body");
     if (!tbody) return;
@@ -5488,13 +5533,53 @@ class App {
     const kw = (document.getElementById("bks-search-input")?.value || "").toLowerCase().trim();
     const isEn = (this.currentLang === "EN");
     const stFilter = document.getElementById("bks-status-filter")?.value || "ทั้งหมด";
+    const monthFilter = document.getElementById("bks-month-filter")?.value || "current";
 
-    const filtered = this.bookings.filter(b => {
+    // Current year-month in YYYY-MM format
+    const now = new Date();
+    const curYear = now.getFullYear();
+    const curMonth = String(now.getMonth() + 1).padStart(2, "0");
+    const curYm = `${curYear}-${curMonth}`;
+
+    // Dynamically update dropdown options for historical months
+    this.updateBookingMonthOptions(curYm);
+
+    const filtered = (this.bookings || []).filter(b => {
+      // 1. Status Filter
       if (stFilter !== "ทั้งหมด" && stFilter !== "All" && b.status !== stFilter) return false;
+
+      // 2. Keyword Filter
       if (kw) {
         const s = `${b.booking_id} ${b.car_id} ${b.customer} ${b.status}`.toLowerCase();
         if (!s.includes(kw)) return false;
       }
+
+      // 3. Month Filter (Default: Current Month, reset view every month, keep DB intact)
+      if (monthFilter !== "all") {
+        const targetYm = (monthFilter === "current") ? curYm : monthFilter;
+        const bStart = b.start_date ? String(b.start_date).split("T")[0] : "";
+        const bEnd = b.end_date ? String(b.end_date).split("T")[0] : "";
+        const bCreated = b.created_at ? String(b.created_at).split("T")[0] : "";
+
+        const inStart = bStart.startsWith(targetYm);
+        const inEnd = bEnd.startsWith(targetYm);
+        const inCreated = bCreated.startsWith(targetYm);
+
+        // Also check if rental period spans across the month
+        let spansMonth = false;
+        if (bStart && bEnd && targetYm.length === 7) {
+          const mStart = `${targetYm}-01`;
+          const mEnd = `${targetYm}-31`;
+          if (bStart <= mEnd && bEnd >= mStart) {
+            spansMonth = true;
+          }
+        }
+
+        if (!inStart && !inEnd && !inCreated && !spansMonth) {
+          return false;
+        }
+      }
+
       return true;
     });
 

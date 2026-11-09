@@ -2164,7 +2164,7 @@ async def update_payment_slip(bk_id: str, payload: Dict[str, Any]):
     try:
         cust, car = _resolve_cust_and_car(target)
         pdf_bytes = pdf_engine.generate_inspection_checklist_pdf(
-            template_path="Sawasdee Pre-Rental Inspection.pdf",
+            template_path="car_inspection_updated.pdf",
             booking_info=target,
             customer_info=cust,
             car_info=car,

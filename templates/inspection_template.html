@@ -5,8 +5,8 @@
   <title>Pre-Rental Inspection - Sawasdee Car Rental</title>
   <style>
     @page {
-      size: A4 portrait;
-      margin: 8mm 10mm 6mm 10mm;
+      size: A4;
+      margin: 8mm 10mm;
     }
     @media print {
       html, body {
@@ -104,11 +104,21 @@
       border-collapse: collapse;
       margin-bottom: 6px;
     }
+    .info-table {
+      width: 100%;
+      border: 1px solid #0F172A;
+      border-collapse: collapse;
+      table-layout: fixed;
+      margin-bottom: 6px;
+    }
     .info-table td {
       border: 1px solid #0F172A;
-      padding: 3.5px 7px;
-      font-size: 9.5px;
+      padding: 3.5px 6px;
+      font-size: 9.2px;
       vertical-align: middle;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
     .info-label {
       font-weight: 700;
@@ -410,34 +420,34 @@
       </tr>
     </table>
 
-    <!-- 2. Booking Info Box -->
+    <!-- 2. Booking Info Box (Fixed 3-Column Grid without Overlap) -->
     <table class="info-table">
       <tr>
         <td style="width: 38%;">
           <span class="info-label">Rental Agreement No:</span>
           <span class="info-val">{{ rental_agreement_no or booking_id or "-" }}</span>
         </td>
-        <td style="width: 32%;">
+        <td style="width: 28%;">
           <span class="info-label">REG No:</span>
           <span class="info-val val-highlight">{{ vehicle_reg or car_plate or "-" }}</span>
         </td>
-        <td style="width: 30%;">
+        <td style="width: 34%;">
           <span class="info-label">MVA:</span>
           <span class="info-val">{{ vehicle_model or car_brand_model or "-" }}</span>
         </td>
       </tr>
       <tr>
-        <td>
+        <td style="width: 38%;">
           <span class="info-label">{% if is_page_checkout %}Date/Time Out:{% else %}Date/Time In:{% endif %}</span>
-          <span class="info-val">{{ inspection_datetime or date_time or "-" }}</span>
+          <span class="info-val">{% if is_page_checkout %}{{ dt_out or inspection_datetime or date_time or "-" }}{% else %}{{ dt_in or inspection_datetime or date_time or "-" }}{% endif %}</span>
         </td>
-        <td>
+        <td style="width: 28%;">
           <span class="info-label">{% if is_page_checkout %}Kilometer Out:{% else %}Kilometer In:{% endif %}</span>
-          <span class="info-val">{{ mileage or "-" }}</span>
+          <span class="info-val">{% if is_page_checkout %}{{ km_out or mileage or "-" }}{% else %}{{ km_in or mileage or "-" }}{% endif %}</span>
         </td>
-        <td>
+        <td style="width: 34%;">
           <span class="info-label">{% if is_page_checkout %}Car Prepared By:{% else %}Car Inspected By:{% endif %}</span>
-          <span class="info-val">{{ inspector_name or staff_name or "-" }}</span>
+          <span class="info-val">{% if is_page_checkout %}{{ staff_out or inspector_name or staff_name or "-" }}{% else %}{{ staff_in or inspector_name or staff_name or "-" }}{% endif %}</span>
         </td>
       </tr>
     </table>
@@ -634,14 +644,14 @@
   </div>
 {% endmacro %}
 
-{% if show_both_pages or (is_checkout and is_checkin) %}
+{% if is_checkin and not is_checkout and not show_both_pages %}
+  {{ render_inspection_page('checkin') }}
+{% elif is_checkout and not is_checkin and not show_both_pages %}
   {{ render_inspection_page('checkout') }}
-  <div style="page-break-after: always; break-after: page;"></div>
-  {{ render_inspection_page('checkin') }}
-{% elif is_checkin and not is_checkout %}
-  {{ render_inspection_page('checkin') }}
 {% else %}
   {{ render_inspection_page('checkout') }}
+  <div style="page-break-after: always; break-after: page; height:0; margin:0; padding:0;"></div>
+  {{ render_inspection_page('checkin') }}
 {% endif %}
 
 </body>

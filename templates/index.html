@@ -876,9 +876,13 @@
               <div class="card-title" id="title-tab5" style="margin:0;">
                 <span>📋</span> แผงควบคุมคิวการจอง & รายการทั้งหมด (Master Bookings List)
               </div>
-              <div style="display:flex; gap:10px;">
-                <input type="text" id="bks-search-input" class="form-control" placeholder="🔍 ค้นหารหัส, ลูกค้า, ทะเบียน..." style="width:220px;" oninput="app.renderBookingsTable()">
-                <select id="bks-status-filter" class="form-control" style="width:160px;" onchange="app.renderBookingsTable()">
+              <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                <input type="text" id="bks-search-input" class="form-control" placeholder="🔍 ค้นหารหัส, ลูกค้า, ทะเบียน..." style="width:210px;" oninput="app.renderBookingsTable()">
+                <select id="bks-month-filter" class="form-control" style="width:170px;" onchange="app.renderBookingsTable()">
+                  <option value="current">📅 เดือนปัจจุบัน</option>
+                  <option value="all">📅 ดูทั้งหมด (All Time)</option>
+                </select>
+                <select id="bks-status-filter" class="form-control" style="width:150px;" onchange="app.renderBookingsTable()">
                   <option id="opt-bks-status-all" value="ทั้งหมด">สถานะ: ทั้งหมด</option>
                   <option id="opt-bks-status-dep" value="รอชำระมัดจำ">รอชำระมัดจำ</option>
                   <option id="opt-bks-status-disp-wait" value="รอส่งมอบ">รอส่งมอบ</option>
