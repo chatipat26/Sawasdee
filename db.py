@@ -335,6 +335,10 @@ class DataStore:
         self.maintenance_logs = []
         self.load_local_maintenance_logs()
 
+        self.insurance_records_file = os.path.join(BASE_DIR, "data_insurance_records.json")
+        self.insurance_records = []
+        self.load_local_insurance_records()
+
     def load_local_users(self):
         merged = {k: dict(v) for k, v in DEFAULT_USERS.items()}
         try:
@@ -779,6 +783,7 @@ class DataStore:
                 if ins_res.data is not None:
                     with self.lock:
                         self.insurance_records = ins_res.data
+                    self.save_local_insurance_records()
             except Exception as e:
                 pass
 
@@ -904,6 +909,7 @@ class DataStore:
     def async_sync_insurance_record(self, record):
         with self.lock:
             self.insurance_records.insert(0, record)
+            self.save_local_insurance_records()
         def _task():
             sb = get_db_client()
             if not sb: return
@@ -923,7 +929,8 @@ class DataStore:
             'last_service_date', 'next_service_date', 'next_service_mileage',
             'car_status', 'is_debt_free', 'installment_amount', 'total_installments', 'current_installment',
             'payment_due_date', 'finance_company', 'notes', 'image_url',
-            'tax_status', 'prb_status', 'insurance_status', 'installment_status', 'act_policy_no', 'act_company', 'ins_policy_no', 'ins_company', 'ins_category', 'ins_coverage_amount', 'ins_type', 'ins_class', 'engine_no'
+            'tax_status', 'prb_status', 'insurance_status', 'installment_status', 'act_policy_no', 'act_company', 'ins_policy_no', 'ins_company', 'ins_category', 'ins_coverage_amount', 'ins_type', 'ins_class', 'engine_no',
+            'img_front', 'img_left', 'img_rear', 'img_right', 'ins_doc_url'
         }
         CAR_DB_COLS = STANDARD_34_COLS | {
             'engine_cc', 'fuel_type', 'company', 'price_day', 'price_week', 'price_month',
@@ -932,7 +939,8 @@ class DataStore:
             'act_price', 'ins_premium', 'insurance_policy_no', 'policy_no', 'act_status',
             'ins_status', 'payment_status', 'installment_due_date',
             'next_engine_oil_date', 'next_engine_oil_mileage',
-            'act_policy_no', 'act_company', 'ins_policy_no', 'ins_category', 'ins_coverage_amount', 'ins_type', 'ins_class', 'engine_no'
+            'act_policy_no', 'act_company', 'ins_policy_no', 'ins_category', 'ins_coverage_amount', 'ins_type', 'ins_class', 'engine_no',
+            'img_front', 'img_left', 'img_rear', 'img_right', 'ins_doc_url'
         }
         ALL_CAR_COLS = CAR_DB_COLS | {
             'next_service', 'tire_change', 'hp_contract_no', 'hp_installment',
@@ -940,7 +948,8 @@ class DataStore:
             'next_tire_change_date', 'next_tire_change_mileage',
             'tax_paid', 'prb_paid', 'act_paid', 'insurance_paid', 'ins_paid', 'installment_paid',
             'tax_paid_date', 'prb_paid_date', 'insurance_paid_date', 'installment_paid_date',
-            'act_policy_no', 'act_company', 'ins_policy_no', 'ins_category', 'ins_coverage_amount', 'ins_type', 'ins_class', 'engine_no'
+            'act_policy_no', 'act_company', 'ins_policy_no', 'ins_category', 'ins_coverage_amount', 'ins_type', 'ins_class', 'engine_no',
+            'img_front', 'img_left', 'img_rear', 'img_right', 'ins_doc_url'
         }
         with self.lock:
             existing = dict(self.cars.get(plate, {}))
@@ -1477,6 +1486,24 @@ class DataStore:
         except Exception as e:
             print(f"Error saving maintenance logs: {e}")
 
+    def load_local_insurance_records(self):
+        try:
+            if os.path.exists(self.insurance_records_file):
+                with open(self.insurance_records_file, "r", encoding="utf-8") as f:
+                    self.insurance_records = json.load(f)
+                return
+        except Exception as e:
+            print(f"Error loading insurance records: {e}")
+        self.insurance_records = []
+        self.save_local_insurance_records()
+
+    def save_local_insurance_records(self):
+        try:
+            with open(self.insurance_records_file, "w", encoding="utf-8") as f:
+                json.dump(self.insurance_records, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            print(f"Error saving insurance records: {e}")
+
     def log_maintenance(self, car_id, date=None, expense_type="ซ่อมบำรุง", description="", cost=0.0, recorded_by="admin"):
         log_id = f"ML{datetime.now().strftime('%y%m%d%H%M%S%f')[:15]}"
         d_val = str(date or datetime.now().strftime("%Y-%m-%d")).strip()
@@ -1523,9 +1550,14 @@ class DataStore:
         history = []
         seen_ids = set()
 
-        # 1. maintenance_logs (newest persistent logs)
+        # 1. maintenance_logs (newest persistent logs - strictly general maintenance & repairs)
         for ml in self.maintenance_logs:
             if normalize_plate_str(ml.get("car_id")) == p_clean:
+                # Target Mission 3: Exclude insurance/renewal records from general maintenance history
+                m_type = str(ml.get("expense_type") or "").lower()
+                m_desc = str(ml.get("description") or "").lower()
+                if any(k in m_type or k in m_desc for k in ["ต่อประกัน", "ต่อ พ.ร.บ.", "ต่อพรบ", "ต่อทะเบียน", "ต่อภาษี", "กรมธรรม์"]):
+                    continue
                 m_id = str(ml.get("id") or "")
                 if m_id and m_id not in seen_ids:
                     seen_ids.add(m_id)
@@ -1685,14 +1717,44 @@ class DataStore:
             if completion_notes: desc_items.append(f"บันทึก: {completion_notes}")
             full_desc = f"{o_type} - {' | '.join(desc_items)}" if desc_items else o_type
 
-            self.log_maintenance(
-                car_id=car_plate,
-                date=today_str,
-                expense_type=o_type,
-                description=full_desc,
-                cost=final_cost,
-                recorded_by=recorded_by
-            )
+            # TARGET MISSION 3: Strict Maintenance Routing
+            # IF "ต่ออายุ พ.ร.บ." หรือ "ต่อประกันภัย" / "ภาษี" -> INSERT INTO insurance_records (and already in maintenance_records)
+            # IF "ซ่อมบำรุง" หรือ "ค่าใช้จ่ายทั่วไป" -> INSERT INTO maintenance_logs
+            is_renewal_order = any(k in str(o_type).lower() for k in ["ต่ออายุ", "ต่อทะเบียน", "พ.ร.บ.", "พรบ", "ประกัน", "ภาษี", "act", "insurance", "tax", "กรมธรรม์"]) or any(k in str(rec.get("service_items", "")).lower() for k in ["ต่ออายุ", "ต่อทะเบียน", "พ.ร.บ.", "พรบ", "ประกัน", "ภาษี", "act", "insurance", "tax", "กรมธรรม์"])
+
+            if is_renewal_order:
+                ins_company_val = insurance_company or rec.get("insurance_company") or (self.cars.get(car_plate) or {}).get("ins_company") or "-"
+                ins_pol_val = policy_no or rec.get("policy_no") or (self.cars.get(car_plate) or {}).get("ins_policy_no") or (self.cars.get(car_plate) or {}).get("act_policy_no") or "-"
+                ins_expiry_val = new_ins_expiry or new_act_expiry or new_tax_expiry or "-"
+                ins_doc_url_val = rec.get("ins_doc_url") or (self.cars.get(car_plate) or {}).get("ins_doc_url") or None
+                clean_p = re.sub(r'[^a-zA-Z0-9]', '', str(car_plate))
+                ins_rec_id = f"INS{datetime.now().strftime('%y%m%d%H%M%S')}_{clean_p}"
+                ins_rec = {
+                    "id": ins_rec_id,
+                    "car_id": car_plate,
+                    "ins_company": ins_company_val,
+                    "ins_policy_no": ins_pol_val,
+                    "ins_class": str((self.cars.get(car_plate) or {}).get("ins_class") or "-"),
+                    "ins_category": str((self.cars.get(car_plate) or {}).get("ins_category") or "-"),
+                    "ins_type": str(o_type),
+                    "ins_coverage_amount": float((self.cars.get(car_plate) or {}).get("ins_coverage_amount") or 0.0),
+                    "ins_premium": final_cost,
+                    "expiry_date": ins_expiry_val,
+                    "ins_doc_url": ins_doc_url_val,
+                    "notes": full_desc,
+                    "created_by": recorded_by,
+                    "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                }
+                self.async_sync_insurance_record(ins_rec)
+            else:
+                self.log_maintenance(
+                    car_id=car_plate,
+                    date=today_str,
+                    expense_type=o_type,
+                    description=full_desc,
+                    cost=final_cost,
+                    recorded_by=recorded_by
+                )
                 
             # Record financial expense
             final_cost = float(rec.get("actual_cost") or rec.get("cost", 0))

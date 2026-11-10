@@ -61,6 +61,11 @@ CREATE TABLE IF NOT EXISTS public.cars (
     engine_no VARCHAR(100),
     insurance_policy_no VARCHAR(100),
     policy_no VARCHAR(100),
+    img_front TEXT,
+    img_left TEXT,
+    img_rear TEXT,
+    img_right TEXT,
+    ins_doc_url TEXT,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -321,9 +326,18 @@ CREATE TABLE IF NOT EXISTS public.insurance_records (
     ins_coverage_amount NUMERIC DEFAULT 0,
     ins_premium NUMERIC DEFAULT 0,
     expiry_date VARCHAR(50),
+    ins_doc_url TEXT,
     notes TEXT,
     created_by VARCHAR(100),
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_insurance_records_car_id ON public.insurance_records(car_id);
 CREATE INDEX IF NOT EXISTS idx_insurance_records_expiry ON public.insurance_records(expiry_date);
+
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS img_front TEXT;
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS img_left TEXT;
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS img_rear TEXT;
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS img_right TEXT;
+ALTER TABLE cars ADD COLUMN IF NOT EXISTS ins_doc_url TEXT;
+ALTER TABLE insurance_records ADD COLUMN IF NOT EXISTS ins_doc_url TEXT;
+ALTER TABLE maintenance_records ADD COLUMN IF NOT EXISTS ins_doc_url TEXT;

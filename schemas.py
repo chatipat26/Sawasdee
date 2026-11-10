@@ -50,6 +50,11 @@ class VehicleBase(BaseModel):
     ins_coverage_amount: Optional[float] = 0.0
     ins_type: Optional[str] = "-"
     ins_class: Optional[str] = "-"
+    ins_doc_url: Optional[str] = None
+    img_front: Optional[str] = None
+    img_left: Optional[str] = None
+    img_rear: Optional[str] = None
+    img_right: Optional[str] = None
 
     # Backward compatibility / Frontend payload aliases
     insurance_policy_no: Optional[str] = "-"

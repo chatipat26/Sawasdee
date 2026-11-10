@@ -2570,6 +2570,17 @@ class App {
     this.setSelectedVehicle(null);
   }
 
+  convertDriveUrl(url) {
+    if (!url || typeof url !== "string") return "";
+    const u = url.trim();
+    if (!u || u === "-" || u === "null" || u === "undefined") return "";
+    const m1 = u.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+    if (m1) return `https://lh3.googleusercontent.com/d/${m1[1]}`;
+    const m2 = u.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+    if (m2) return `https://lh3.googleusercontent.com/d/${m2[1]}`;
+    return u;
+  }
+
   openCarDetailsModal(plateOrEl) {
     const isEn = (this.currentLang === "EN");
     let plate = plateOrEl;
@@ -2684,11 +2695,34 @@ class App {
     bodyEl.innerHTML = `
       <!-- Top Row: Photo & Pricing Summary -->
       <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-bottom:16px;">
-        <!-- Photo Box -->
-        <div style="position:relative; border-radius:10px; overflow:hidden; border:1px solid #E2E8F0; background:#0F172A; min-height:190px; display:flex; align-items:center; justify-content:center;">
-          ${carImg ? `<img src="${carImg}" alt="${c.brand || ''} ${c.model || ''}" style="width:100%; height:190px; object-fit:cover; display:block;">` : `<div style="color:#94A3B8; font-size:13px; font-weight:600; text-align:center; padding:20px;">${isEn ? 'No Vehicle Photo' : 'ยังไม่มีรูปภาพรถยนต์'}</div>`}
-          <button type="button" onclick="app.triggerCarPhotoUpload('${safePlate}')" class="btn btn-sm" style="position:absolute; bottom:10px; right:10px; background:rgba(255,255,255,0.95); border:1px solid #CBD5E1; border-radius:20px; padding:4px 12px; font-size:11.5px; font-weight:700; cursor:pointer; box-shadow:0 2px 4px rgba(0,0,0,0.15);">
-            ${isEn ? 'Upload Photo' : 'อัปโหลดรูปรถ'}
+        <!-- Photo Box: 4-Angle Images Grid (TARGET MISSION 2) -->
+        <div style="position:relative; border-radius:10px; overflow:hidden; border:1px solid #E2E8F0; background:#0F172A; min-height:190px; padding:6px; display:flex; flex-direction:column; justify-content:center;">
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px; height:100%;">
+            ${[
+              { key: "front", label: isEn ? "Front" : "ด้านหน้า", url: c.img_front || (!c.img_left && !c.img_rear && !c.img_right ? carImg : "") },
+              { key: "left", label: isEn ? "Left" : "ด้านซ้าย", url: c.img_left },
+              { key: "rear", label: isEn ? "Rear" : "ด้านหลัง", url: c.img_rear },
+              { key: "right", label: isEn ? "Right" : "ด้านขวา", url: c.img_right }
+            ].map(angle => {
+              const directSrc = this.convertDriveUrl(angle.url);
+              return `
+                <div style="position:relative; background:#1E293B; border-radius:6px; overflow:hidden; border:1px solid #334155; height:88px; display:flex; align-items:center; justify-content:center;">
+                  <span style="position:absolute; top:3px; left:4px; background:rgba(15,23,42,0.85); color:#F8FAFC; font-size:9.5px; font-weight:700; padding:1px 5px; border-radius:3px; z-index:2; border:1px solid rgba(255,255,255,0.15);">
+                    ${angle.label}
+                  </span>
+                  ${directSrc ? `
+                    <img src="${directSrc}" alt="${angle.label}" onclick="window.open('${angle.url || directSrc}', '_blank')" style="width:100%; height:100%; object-fit:cover; cursor:pointer;" title="${isEn ? 'Click to open image in new tab' : 'คลิกเพื่อดูรูปขนาดเต็มในแท็บใหม่'}">
+                  ` : `
+                    <div style="color:#64748B; font-size:10.5px; font-weight:600; text-align:center; padding:4px;">
+                      ${isEn ? 'No Photo' : 'ยังไม่มีรูป'}
+                    </div>
+                  `}
+                </div>
+              `;
+            }).join("")}
+          </div>
+          <button type="button" onclick="app.closeModal('modal-car-details'); app.openEditCarModal('${safePlate}')" class="btn btn-sm" style="position:absolute; bottom:10px; right:10px; background:rgba(255,255,255,0.92); border:1px solid #CBD5E1; border-radius:16px; padding:3px 10px; font-size:11px; font-weight:700; cursor:pointer; box-shadow:0 2px 4px rgba(0,0,0,0.2); z-index:3;">
+            📷 ${isEn ? 'Edit 4-Angle Photos' : 'ใส่รูปรถ 4 มุม'}
           </button>
         </div>
 
@@ -2778,6 +2812,15 @@ class App {
             <div><b style="color:#64748B;">${isEn ? 'Type:' : 'ประเภทประกัน:'}</b> ${c.ins_type || '-'}</div>
             <div><b style="color:#64748B;">${isEn ? 'Expiry:' : 'วันหมดอายุ:'}</b> <span style="color:#DC2626; font-weight:700;">${c.ins_expiry || c.insurance_expire_date || '-'}</span></div>
             <div><b style="color:#64748B;">${isEn ? 'Premium:' : 'เบี้ยประกัน:'}</b> <span style="font-weight:700; color:#0F172A;">${insFormatted}</span></div>
+            <div style="grid-column: span 2; margin-top:4px;">
+              ${c.ins_doc_url ? `
+                <a href="${c.ins_doc_url}" target="_blank" rel="noopener noreferrer" class="btn btn-sm" style="display:inline-flex; align-items:center; gap:6px; background:#EFF6FF; border:1.5px solid #3B82F6; color:#1D4ED8; font-weight:700; font-size:11.5px; padding:4px 10px; border-radius:6px; text-decoration:none;">
+                  📄 ${isEn ? 'View Insurance Policy (Drive)' : 'ดูรูป/เอกสารกรมธรรม์ (Drive) ↗'}
+                </a>
+              ` : `
+                <span style="font-size:11px; color:#94A3B8;">${isEn ? 'No policy document attached' : 'ยังไม่มีลิงก์เอกสารกรมธรรม์'}</span>
+              `}
+            </div>
           </div>
         </div>
 
@@ -2803,6 +2846,38 @@ class App {
           <b>${isEn ? 'Notes / Remarks:' : 'หมายเหตุ:'}</b> ${c.notes}
         </div>
       ` : ''}
+
+      <!-- Insurance Policy & Renewal History (TARGET MISSION 3: Strict Separation) -->
+      <div style="background:#FFFFFF; border:1.5px solid #CBD5E1; border-radius:10px; padding:14px; margin-bottom:16px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-wrap:wrap; gap:8px;">
+          <div style="font-size:13px; font-weight:800; color:#1E293B; display:flex; align-items:center; gap:6px;">
+            <span>🛡️</span>
+            <span>${isEn ? 'Insurance Policy & Renewal History' : 'ประวัติกรมธรรม์ & การต่ออายุย้อนหลัง'}</span>
+          </div>
+          <span style="font-size:11px; color:#64748B; font-weight:600;">
+            ${isEn ? 'Separated from maintenance logs' : 'แยกจากประวัติซ่อมบำรุง'}
+          </span>
+        </div>
+
+        <div class="table-responsive" style="max-height:160px; overflow-y:auto; border:1px solid #E2E8F0; border-radius:6px;">
+          <table class="custom-table" style="margin:0; font-size:11.5px;">
+            <thead style="position:sticky; top:0; background:#F8FAFC; z-index:1;">
+              <tr>
+                <th style="padding:6px 8px;">${isEn ? 'Expiry Date' : 'วันหมดอายุ'}</th>
+                <th style="padding:6px 8px;">${isEn ? 'Company / Type' : 'บริษัท / ประเภท'}</th>
+                <th style="padding:6px 8px;">${isEn ? 'Policy No' : 'เลขกรมธรรม์'}</th>
+                <th style="padding:6px 8px; text-align:right;">${isEn ? 'Premium (฿)' : 'เบี้ยประกัน (฿)'}</th>
+                <th style="padding:6px 8px; text-align:center;">${isEn ? 'Document' : 'เอกสาร'}</th>
+              </tr>
+            </thead>
+            <tbody id="car-details-ins-tbody">
+              <tr>
+                <td colspan="5" style="text-align:center; color:#94A3B8; padding:12px;">${isEn ? 'Loading insurance records...' : 'กำลังโหลดประวัติกรมธรรม์...'}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
 
 
       <!-- Maintenance Tracker & ROI Section (MISSION 2) -->
@@ -2892,6 +2967,7 @@ class App {
 
     this.openModal("modal-car-details");
     this.loadCarMaintenances(cleanPlate);
+    this.loadCarInsuranceRecords(cleanPlate);
   }
 
   // --- Quick Car Photo Upload & Edit Car Modal ---
@@ -3236,6 +3312,11 @@ class App {
     setVal("edit-car-next-srv-mileage", srvMileageVal);
     setVal("edit-car-notes", car.notes || "");
     setVal("edit-car-status", car.car_status || car.status || "ว่างพร้อมใช้งาน");
+    setVal("edit-car-ins-doc-url", car.ins_doc_url || "");
+    setVal("edit-car-img-front", car.img_front || "");
+    setVal("edit-car-img-left", car.img_left || "");
+    setVal("edit-car-img-rear", car.img_rear || "");
+    setVal("edit-car-img-right", car.img_right || "");
 
     const isDebtFree = car.is_debt_free !== undefined ? Boolean(car.is_debt_free) : (!car.installment_amount);
     const debtFreeEl = document.getElementById("edit-car-debt-free");
@@ -3583,6 +3664,11 @@ class App {
       next_engine_oil_mileage: nextSrvMileage,
       next_service: dmyNextSrvDate !== "-" ? dmyNextSrvDate : (nextSrvMileage > 0 ? String(nextSrvMileage) : "-"),
       notes: String(getVal("edit-car-notes", "notes", "")).trim(),
+      ins_doc_url: String(getVal("edit-car-ins-doc-url", "ins_doc_url", "")).trim(),
+      img_front: String(getVal("edit-car-img-front", "img_front", "")).trim(),
+      img_left: String(getVal("edit-car-img-left", "img_left", "")).trim(),
+      img_rear: String(getVal("edit-car-img-rear", "img_rear", "")).trim(),
+      img_right: String(getVal("edit-car-img-right", "img_right", "")).trim(),
       car_status: getVal("edit-car-status", "car_status", getVal("edit-car-status", "status", "ว่างพร้อมใช้งาน")),
       status: getVal("edit-car-status", "car_status", getVal("edit-car-status", "status", "ว่างพร้อมใช้งาน")),
       image_url: imgUrl,
@@ -5751,7 +5837,6 @@ class App {
             <a href="/api/pdf/deposit-receipt/${b.booking_id}" target="_blank" class="btn btn-sm btn-secondary" title="${isEn ? 'Deposit Receipt PDF' : 'ใบเสร็จมัดจำ (Deposit Receipt PDF)'}">🛡️</a>
             <a href="/api/pdf/receipt/${b.booking_id}" target="_blank" class="btn btn-sm btn-secondary" title="${isEn ? 'Rental Receipt PDF' : 'ใบเสร็จค่าเช่า (Rental Receipt PDF)'}">🧾</a>
             <a href="${b.checkout_pdf_url || b.checkin_pdf_url || `/api/pdf/job/${b.booking_id}`}" target="_blank" class="btn btn-sm btn-secondary" style="${(b.checkout_pdf_url || b.checkin_pdf_url) ? 'background:#EFF6FF; border-color:#93C5FD; color:#1D4ED8; font-weight:700;' : ''}" title="${isEn ? 'Inspection Job Sheet' : 'ใบงานตรวจสภาพรถ (Job Sheet)'}">📋</a>
-            <a href="${b.checkin_pdf_url || b.checkout_pdf_url || `/api/pdf/inspection/${b.booking_id}`}" onclick="event.preventDefault(); app.openInspectionPdf('${b.booking_id}');" target="_blank" class="btn btn-sm btn-secondary" style="color:#2563EB; font-weight:700;" title="${isEn ? 'Print Vehicle Inspection PDF (Check-Out & Check-In)' : 'พิมพ์ใบตรวจสภาพรถ (Check-Out & Check-In)'}">🖨️</a>
             <button onclick="app.deleteBooking('${b.booking_id}')" class="btn btn-sm btn-danger" title="${isEn ? 'Delete Booking' : 'ลบรายการจอง'}">🗑️</button>
           </td>
         </tr>
@@ -10573,6 +10658,50 @@ ${e.message}`);
   // =========================================================================
   // MISSION 2: VEHICLE MAINTENANCE TRACKER & ROI METHODS
   // =========================================================================
+  async loadCarInsuranceRecords(plate) {
+    const isEn = (this.currentLang === "EN");
+    const cleanPlate = String(plate || "").trim();
+    if (!cleanPlate) return;
+    const tbody = document.getElementById("car-details-ins-tbody");
+    if (!tbody) return;
+
+    try {
+      const res = await fetch(`/api/cars/${encodeURIComponent(cleanPlate)}/insurance-records`);
+      if (!res.ok) throw new Error("Failed to load insurance records");
+      const data = await res.json();
+      const records = data.records || [];
+
+      if (!records.length) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#94A3B8; padding:12px;">${isEn ? 'No insurance records found for this vehicle' : 'ยังไม่มีประวัติการต่อประกัน/พ.ร.บ. สำหรับรถคันนี้'}</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = records.map(r => {
+        const exp = r.expiry_date || "-";
+        const comp = r.insurance_company || "-";
+        const cat = r.ins_category || r.ins_type || r.type || "";
+        const polNo = r.policy_no || "-";
+        const prem = Number(r.premium || 0);
+        const premStr = prem > 0 ? "฿" + prem.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : "-";
+        const docUrl = r.ins_doc_url || "";
+        const docBtn = docUrl ? `<a href="${docUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-sm" style="padding:1px 8px; font-size:10.5px; background:#EFF6FF; border:1px solid #3B82F6; color:#1D4ED8; font-weight:700; text-decoration:none;">📄 เปิดดู ↗</a>` : `<span style="color:#94A3B8;">-</span>`;
+
+        return `
+          <tr>
+            <td style="padding:6px 8px; font-weight:700; color:#DC2626;">${exp}</td>
+            <td style="padding:6px 8px;">${comp} ${cat ? `<span style="color:#64748B; font-size:10.5px;">(${cat})</span>` : ''}</td>
+            <td style="padding:6px 8px;"><code>${polNo}</code></td>
+            <td style="padding:6px 8px; text-align:right; font-weight:700; color:#0F172A;">${premStr}</td>
+            <td style="padding:6px 8px; text-align:center;">${docBtn}</td>
+          </tr>
+        `;
+      }).join("");
+    } catch (err) {
+      console.warn("loadCarInsuranceRecords error:", err);
+      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#EF4444; padding:12px;">${isEn ? 'Failed to load insurance records' : 'โหลดข้อมูลประวัติกรมธรรม์ไม่สำเร็จ'}</td></tr>`;
+    }
+  }
+
   async loadCarMaintenances(plate) {
     const isEn = (this.currentLang === "EN");
     const cleanPlate = String(plate || "").trim();

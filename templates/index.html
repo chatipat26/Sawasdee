@@ -2446,10 +2446,14 @@
             </div>
           </div>
 
-          <div style="display:grid; grid-template-columns: 1fr; gap:12px;">
-            <div class="form-group" style="max-width:320px;">
+          <div style="display:grid; grid-template-columns: 240px 1fr; gap:12px; align-items:flex-end;">
+            <div class="form-group">
               <label id="lbl-modal-car-ins-premium">เบี้ยประกัน (บาท)</label>
               <input type="number" id="edit-car-ins-premium" class="form-control" min="0" step="100" placeholder="0.00" oninput="app.updateCarFormField('insurance_premium', this.value)">
+            </div>
+            <div class="form-group">
+              <label id="lbl-modal-car-ins-doc"><span style="color:#2563EB;">🔗</span> ลิงก์เอกสารกรมธรรม์ (Google Drive Link)</label>
+              <input type="text" id="edit-car-ins-doc-url" class="form-control" placeholder="https://drive.google.com/file/d/.../view" oninput="app.updateCarFormField('ins_doc_url', this.value)">
             </div>
           </div>
         </div>
@@ -2540,6 +2544,35 @@
         <div class="form-group" style="margin-bottom:14px;">
           <label id="lbl-modal-car-notes">Additional Notes & Info</label>
           <input type="text" id="edit-car-notes" class="form-control" placeholder="หมายเหตุเพิ่มเติม (ถ้ามี)" oninput="app.updateCarFormField('notes', this.value)">
+        </div>
+
+        <!-- 4-Angle Car Images Links (Google Drive) -->
+        <div style="background:#F8FAFC; border:1px solid #CBD5E1; border-radius:10px; padding:14px; margin-bottom:14px;">
+          <div style="font-size:12.5px; font-weight:800; color:#1E293B; margin-bottom:10px; display:flex; align-items:center; gap:6px;">
+            <span>📸</span>
+            <span>รูปรถยนต์ 4 มุม (ลิงก์ Google Drive)</span>
+          </div>
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+            <div class="form-group">
+              <label id="lbl-modal-car-img-front">🚘 1. ด้านหน้า (Front View)</label>
+              <input type="text" id="edit-car-img-front" class="form-control" placeholder="https://drive.google.com/file/d/.../view" oninput="app.updateCarFormField('img_front', this.value)">
+            </div>
+            <div class="form-group">
+              <label id="lbl-modal-car-img-left">🚘 2. ด้านซ้าย (Left View)</label>
+              <input type="text" id="edit-car-img-left" class="form-control" placeholder="https://drive.google.com/file/d/.../view" oninput="app.updateCarFormField('img_left', this.value)">
+            </div>
+            <div class="form-group">
+              <label id="lbl-modal-car-img-rear">🚘 3. ด้านหลัง (Rear View)</label>
+              <input type="text" id="edit-car-img-rear" class="form-control" placeholder="https://drive.google.com/file/d/.../view" oninput="app.updateCarFormField('img_rear', this.value)">
+            </div>
+            <div class="form-group">
+              <label id="lbl-modal-car-img-right">🚘 4. ด้านขวา (Right View)</label>
+              <input type="text" id="edit-car-img-right" class="form-control" placeholder="https://drive.google.com/file/d/.../view" oninput="app.updateCarFormField('img_right', this.value)">
+            </div>
+          </div>
+          <small style="color:#64748B; font-size:11px; margin-top:6px; display:block;">
+            💡 สามารถนำลิงก์แชร์จาก Google Drive มาวางได้โดยตรง ระบบจะแปลงเป็นรูปภาพให้โดยอัตโนมัติ
+          </small>
         </div>
 
         <!-- Car Photo Preview & Upload (Positioned at bottom before save button) -->

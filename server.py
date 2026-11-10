@@ -1075,6 +1075,7 @@ async def create_or_update_car(payload: Union[VehicleCreate, Dict[str, Any]], pl
             "ins_coverage_amount": float(payload.get("ins_coverage_amount") or 0.0),
             "ins_premium": float(payload.get("insurance_premium") or payload.get("ins_premium") or 0.0),
             "expiry_date": ins_expiry_val,
+            "ins_doc_url": payload.get("ins_doc_url") or None,
             "notes": f"บันทึกประวัติกรมธรรม์ประกันภัย ทะเบียน {plate}",
             "created_by": str(payload.get("recorded_by") or payload.get("assigned_worker") or "admin"),
             "created_at": now_th().strftime("%Y-%m-%d %H:%M:%S")
@@ -1444,17 +1445,42 @@ async def pay_monthly_expense(payload: Dict[str, Any]):
         except Exception as e_fin:
             print(f"sync_financial error: {e_fin}")
 
-        try:
-            store.log_maintenance(
-                car_id=car_key,
-                date=pay_date.isoformat(),
-                expense_type=item_title,
-                description=f"ชำระ {item_title} ทะเบียน {car_key}{due_note}",
-                cost=exp_cost,
-                recorded_by="admin"
-            )
-        except Exception as e_ml:
-            print(f"log_maintenance error: {e_ml}")
+        # TARGET MISSION 3: Strict Routing - renewal/insurance goes to insurance_records, NOT maintenance_logs
+        is_renewal_exp = any(k in item_title.lower() for k in ["ต่ออายุ", "ต่อทะเบียน", "พ.ร.บ.", "พรบ", "ประกัน", "ภาษี", "act", "insurance", "tax"])
+        if is_renewal_exp:
+            ins_rec_id = f"INS{now_th().strftime('%y%m%d%H%M%S')}_{re.sub(r'[^a-zA-Z0-9]', '', car_key)}"
+            ins_rec = {
+                "id": ins_rec_id,
+                "car_id": car_key,
+                "ins_company": car.get("ins_company") or car.get("act_company") or "-",
+                "ins_policy_no": car.get("ins_policy_no") or car.get("act_policy_no") or "-",
+                "ins_class": str(car.get("ins_class") or "-"),
+                "ins_category": str(car.get("ins_category") or "-"),
+                "ins_type": item_title,
+                "ins_coverage_amount": float(car.get("ins_coverage_amount") or 0.0),
+                "ins_premium": exp_cost,
+                "expiry_date": new_date.strftime("%d/%m/%Y") if new_date else "-",
+                "ins_doc_url": car.get("ins_doc_url") or None,
+                "notes": f"ชำระ {item_title} ทะเบียน {car_key}{due_note}",
+                "created_by": "admin",
+                "created_at": now_th().strftime("%Y-%m-%d %H:%M:%S")
+            }
+            try:
+                store.async_sync_insurance_record(ins_rec)
+            except Exception as e_ins:
+                print(f"async_sync_insurance_record error: {e_ins}")
+        else:
+            try:
+                store.log_maintenance(
+                    car_id=car_key,
+                    date=pay_date.isoformat(),
+                    expense_type=item_title,
+                    description=f"ชำระ {item_title} ทะเบียน {car_key}{due_note}",
+                    cost=exp_cost,
+                    recorded_by="admin"
+                )
+            except Exception as e_ml:
+                print(f"log_maintenance error: {e_ml}")
 
         return {
             "success": True,
@@ -3565,19 +3591,44 @@ async def add_car_maintenance(plate: str, payload: Dict[str, Any]):
         "cost": cost_val,
         "created_at": datetime.now().isoformat()
     }
-    saved = store.async_add_vehicle_maintenance(record)
-    # Also log to persistent maintenance_logs
-    try:
-        store.log_maintenance(
-            car_id=clean_plate,
-            date=m_date,
-            expense_type="ซ่อมบำรุง",
-            description=desc,
-            cost=cost_val,
-            recorded_by="admin"
-        )
-    except Exception:
-        pass
+    # TARGET MISSION 3: Strict Routing - renewal/insurance goes to insurance_records, NOT maintenance_logs
+    is_renewal_quick = any(k in desc.lower() for k in ["ต่ออายุ", "ต่อทะเบียน", "พ.ร.บ.", "พรบ", "ประกัน", "ภาษี", "act", "insurance", "tax", "กรมธรรม์"])
+    if is_renewal_quick:
+        ins_rec_id = f"INS{now_th().strftime('%y%m%d%H%M%S')}_{re.sub(r'[^a-zA-Z0-9]', '', clean_plate)}"
+        ins_rec = {
+            "id": ins_rec_id,
+            "car_id": clean_plate,
+            "ins_company": (store.cars.get(clean_plate) or {}).get("ins_company") or "-",
+            "ins_policy_no": (store.cars.get(clean_plate) or {}).get("ins_policy_no") or "-",
+            "ins_class": str((store.cars.get(clean_plate) or {}).get("ins_class") or "-"),
+            "ins_category": str((store.cars.get(clean_plate) or {}).get("ins_category") or "-"),
+            "ins_type": "ต่ออายุ พ.ร.บ./ประกันภัย",
+            "ins_coverage_amount": float((store.cars.get(clean_plate) or {}).get("ins_coverage_amount") or 0.0),
+            "ins_premium": cost_val,
+            "expiry_date": m_date,
+            "ins_doc_url": (store.cars.get(clean_plate) or {}).get("ins_doc_url") or None,
+            "notes": desc,
+            "created_by": "admin",
+            "created_at": datetime.now().isoformat()
+        }
+        try:
+            store.async_sync_insurance_record(ins_rec)
+        except Exception as e_ins:
+            print(f"async_sync_insurance_record quick error: {e_ins}")
+        saved = ins_rec
+    else:
+        saved = store.async_add_vehicle_maintenance(record)
+        try:
+            store.log_maintenance(
+                car_id=clean_plate,
+                date=m_date,
+                expense_type="ซ่อมบำรุง",
+                description=desc,
+                cost=cost_val,
+                recorded_by="admin"
+            )
+        except Exception:
+            pass
 
     roi_data = store.get_car_financial_roi(clean_plate)
     records = store.get_combined_maintenance_history(clean_plate)

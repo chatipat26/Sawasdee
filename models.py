@@ -43,6 +43,11 @@ class Vehicle(Base):
     payment_due_date = Column(String(50), default="-")
     notes = Column(Text, default="")
     image_url = Column(Text, default="")
+    img_front = Column(Text, nullable=True)
+    img_left = Column(Text, nullable=True)
+    img_rear = Column(Text, nullable=True)
+    img_right = Column(Text, nullable=True)
+    ins_doc_url = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
@@ -200,3 +205,23 @@ class MaintenanceRecord(Base):
     new_tax_expiry = Column(String(50), nullable=True)
     insurance_company = Column(String(150), nullable=True)
     policy_no = Column(String(100), nullable=True)
+    ins_doc_url = Column(Text, nullable=True)
+
+
+class InsuranceRecord(Base):
+    __tablename__ = "insurance_records"
+
+    id = Column(String(100), primary_key=True, index=True)
+    car_id = Column(String(50), nullable=False, index=True)
+    ins_company = Column(String(150), nullable=True)
+    ins_policy_no = Column(String(100), nullable=True)
+    ins_class = Column(String(50), nullable=True)
+    ins_category = Column(String(100), nullable=True)
+    ins_type = Column(String(100), nullable=True)
+    ins_coverage_amount = Column(Numeric, default=0.0)
+    ins_premium = Column(Numeric, default=0.0)
+    expiry_date = Column(String(50), nullable=True)
+    ins_doc_url = Column(Text, nullable=True)
+    notes = Column(Text, nullable=True)
+    created_by = Column(String(100), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())

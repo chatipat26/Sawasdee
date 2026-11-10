@@ -339,12 +339,14 @@ class PgClient:
                         ins_coverage_amount NUMERIC DEFAULT 0,
                         ins_premium NUMERIC DEFAULT 0,
                         expiry_date VARCHAR(50),
+                        ins_doc_url TEXT,
                         notes TEXT,
                         created_by VARCHAR(100),
                         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
                     );
                     CREATE INDEX IF NOT EXISTS idx_insurance_records_car_id ON public.insurance_records(car_id);
                     CREATE INDEX IF NOT EXISTS idx_insurance_records_expiry ON public.insurance_records(expiry_date);
+                    ALTER TABLE IF EXISTS public.insurance_records ADD COLUMN IF NOT EXISTS ins_doc_url TEXT;
                 """)
             print("PostgreSQL insurance_records table ensured.")
         except Exception as e:
@@ -423,6 +425,13 @@ class PgClient:
                 cur.execute("ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS ins_type VARCHAR(100);")
                 cur.execute("ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS ins_class VARCHAR(50);")
                 cur.execute("ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS act_company VARCHAR(150);")
+                cur.execute("ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS img_front TEXT;")
+                cur.execute("ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS img_left TEXT;")
+                cur.execute("ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS img_rear TEXT;")
+                cur.execute("ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS img_right TEXT;")
+                cur.execute("ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS ins_doc_url TEXT;")
+                cur.execute("ALTER TABLE IF EXISTS public.maintenance_records ADD COLUMN IF NOT EXISTS ins_doc_url TEXT;")
+
                 # Ensure financial_records table and columns
                 cur.execute("""
                     CREATE TABLE IF NOT EXISTS public.financial_records (
