@@ -869,7 +869,8 @@ class DataStore:
                     'remaining_rental', 'created_by', 'status', 'dispatch_closed',
                     'return_closed', 'worker_delivery', 'worker_return', 'loc_delivery',
                     'loc_return', 'extension_history', 'is_fully_paid', 'rental_payment_method',
-                    'payment_type', 'google_drive_link', 'contract_pdf_url', 'checkout_pdf_url', 'checkin_pdf_url'
+                    'payment_type', 'google_drive_link', 'contract_pdf_url', 'checkout_pdf_url', 'checkin_pdf_url',
+                    'checkin_img_front', 'checkin_img_left', 'checkin_img_rear', 'checkin_img_right'
                 }
                 row["is_fully_paid"] = bool(row.get("is_fully_paid", False) or row.get("rental_paid", False))
                 if "contract_pdf_url" in row:
@@ -878,6 +879,14 @@ class DataStore:
                     row["checkout_pdf_url"] = str(row["checkout_pdf_url"]) if row["checkout_pdf_url"] else None
                 if "checkin_pdf_url" in row:
                     row["checkin_pdf_url"] = str(row["checkin_pdf_url"]) if row["checkin_pdf_url"] else None
+                if "checkin_img_front" in row:
+                    row["checkin_img_front"] = str(row["checkin_img_front"]).strip() if row["checkin_img_front"] else None
+                if "checkin_img_left" in row:
+                    row["checkin_img_left"] = str(row["checkin_img_left"]).strip() if row["checkin_img_left"] else None
+                if "checkin_img_rear" in row:
+                    row["checkin_img_rear"] = str(row["checkin_img_rear"]).strip() if row["checkin_img_rear"] else None
+                if "checkin_img_right" in row:
+                    row["checkin_img_right"] = str(row["checkin_img_right"]).strip() if row["checkin_img_right"] else None
                 filtered_row = {k: v for k, v in row.items() if k in VALID_COLS}
                 db_cols = None
                 if hasattr(sb, "run"):
@@ -1798,11 +1807,20 @@ class DataStore:
             print(f"Error encoding photo: {e}")
             return None
 
-    def archive_completed_booking(self, booking_id, fuel_level="⛽ เต็มถัง (Full - 8/8) [100%]", inspection_notes="ตรวจสภาพปกติ", inspection_photos=None, mileage="", late_fee=0.0, condition="normal", damage_desc="", repair_cost=0.0, service_center=""):
+    def archive_completed_booking(self, booking_id, fuel_level="⛽ เต็มถัง (Full - 8/8) [100%]", inspection_notes="ตรวจสภาพปกติ", inspection_photos=None, mileage="", late_fee=0.0, condition="normal", damage_desc="", repair_cost=0.0, service_center="", checkin_img_front=None, checkin_img_left=None, checkin_img_rear=None, checkin_img_right=None, **kwargs):
         with self.lock:
             target = next((b for b in self.bookings if b.get("booking_id") == booking_id), None)
             if not target:
                 return False
+
+            if checkin_img_front is not None:
+                target["checkin_img_front"] = str(checkin_img_front).strip() or None
+            if checkin_img_left is not None:
+                target["checkin_img_left"] = str(checkin_img_left).strip() or None
+            if checkin_img_rear is not None:
+                target["checkin_img_rear"] = str(checkin_img_rear).strip() or None
+            if checkin_img_right is not None:
+                target["checkin_img_right"] = str(checkin_img_right).strip() or None
 
             target["status"] = "เสร็จสิ้น"
             target["dispatch_closed"] = True
@@ -1948,6 +1966,10 @@ class DataStore:
                 "fuel_level": fuel_level,
                 "inspection_notes": inspection_notes,
                 "inspection_photos": inspection_photos or [],
+                "checkin_img_front": target.get("checkin_img_front"),
+                "checkin_img_left": target.get("checkin_img_left"),
+                "checkin_img_rear": target.get("checkin_img_rear"),
+                "checkin_img_right": target.get("checkin_img_right"),
                 "mileage": mileage or b_car.get("mileage", "-"),
                 "status": "เสร็จสิ้น"
             }

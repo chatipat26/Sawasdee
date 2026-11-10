@@ -365,6 +365,10 @@ class PgClient:
                 cur.execute("ALTER TABLE IF EXISTS public.bookings ADD COLUMN IF NOT EXISTS inspection_categories_in JSONB DEFAULT '{}'::jsonb;")
                 cur.execute("ALTER TABLE IF EXISTS public.bookings ADD COLUMN IF NOT EXISTS extension_history JSONB DEFAULT '[]'::jsonb;")
                 cur.execute("ALTER TABLE IF EXISTS public.bookings ADD COLUMN IF NOT EXISTS is_fully_paid BOOLEAN DEFAULT FALSE;")
+                cur.execute("ALTER TABLE IF EXISTS public.bookings ADD COLUMN IF NOT EXISTS checkin_img_front TEXT;")
+                cur.execute("ALTER TABLE IF EXISTS public.bookings ADD COLUMN IF NOT EXISTS checkin_img_left TEXT;")
+                cur.execute("ALTER TABLE IF EXISTS public.bookings ADD COLUMN IF NOT EXISTS checkin_img_rear TEXT;")
+                cur.execute("ALTER TABLE IF EXISTS public.bookings ADD COLUMN IF NOT EXISTS checkin_img_right TEXT;")
             print("✅ PostgreSQL bookings schema ensured (contract_pdf_url, extension_history, is_fully_paid).")
         except Exception as e:
             print(f"PostgreSQL bookings migration note: {e}")

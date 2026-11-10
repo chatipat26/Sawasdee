@@ -239,6 +239,10 @@ class BookingBase(BaseModel):
     contract_pdf_url: Optional[str] = None
     checkout_pdf_url: Optional[str] = None
     checkin_pdf_url: Optional[str] = None
+    checkin_img_front: Optional[str] = None
+    checkin_img_left: Optional[str] = None
+    checkin_img_rear: Optional[str] = None
+    checkin_img_right: Optional[str] = None
     odometer_out: Optional[str] = None
     odometer_in: Optional[str] = None
     fuel_out: Optional[str] = None
@@ -316,6 +320,10 @@ class InspectionPayload(BaseModel):
     inspector_name: Optional[str] = None
     customer_signature: Optional[str] = None
     staff_signature: Optional[str] = None
+    checkin_img_front: Optional[str] = None
+    checkin_img_left: Optional[str] = None
+    checkin_img_rear: Optional[str] = None
+    checkin_img_right: Optional[str] = None
     inspection_categories: Optional[Union[dict, list, str]] = None
     inspection_categories_out: Optional[Union[dict, list, str]] = None
     inspection_categories_in: Optional[Union[dict, list, str]] = None

@@ -2144,6 +2144,10 @@ async def generate_booking_inspection_pdf(bk_id: str, payload: Optional[Dict[str
         target["inspection_categories_out" if is_checkout else "inspection_categories_in"] = cats_val
         target["inspection_categories"] = cats_val
 
+    for img_col in ("checkin_img_front", "checkin_img_left", "checkin_img_rear", "checkin_img_right"):
+        if img_col in merged_payload and merged_payload.get(img_col) is not None:
+            target[img_col] = str(merged_payload.get(img_col)).strip() or None
+
     if not merged_payload.get("staff_name") and not merged_payload.get("inspector_name"):
         merged_payload["staff_name"] = target.get("worker_delivery" if is_checkout else "worker_return") or "Staff"
 
@@ -2639,6 +2643,9 @@ async def assign_worker(bk_id: str, payload: Dict[str, Any]):
         if inspection_photos is not None and str(inspection_photos).strip() != "":
             target["inspection_photos_in"] = str(inspection_photos).strip()
             target["return_photos"] = str(inspection_photos).strip()
+        for img_col in ("checkin_img_front", "checkin_img_left", "checkin_img_rear", "checkin_img_right"):
+            if img_col in payload and payload.get(img_col) is not None:
+                target[img_col] = str(payload.get(img_col)).strip() or None
         if action_type == "complete_now":
             target["status"] = "เสร็จสิ้น"
             target["return_closed"] = True
@@ -2905,6 +2912,13 @@ async def close_return(bk_id: str, payload: Dict[str, Any]):
     damage_desc = payload.get("damage_desc", "")
     repair_cost = float(payload.get("repair_cost", 0.0))
     service_center = payload.get("service_center", "")
+    img_f = payload.get("checkin_img_front")
+    img_l = payload.get("checkin_img_left")
+    img_re = payload.get("checkin_img_rear")
+    img_ri = payload.get("checkin_img_right")
+    for k_img, v_img in [("checkin_img_front", img_f), ("checkin_img_left", img_l), ("checkin_img_rear", img_re), ("checkin_img_right", img_ri)]:
+        if v_img is not None:
+            target_bk[k_img] = str(v_img).strip() or None
 
     if action == "swap_vehicle":
         new_car_id = str(payload.get("new_car_id", "")).strip()
@@ -2950,7 +2964,11 @@ async def close_return(bk_id: str, payload: Dict[str, Any]):
         condition=condition,
         damage_desc=damage_desc,
         repair_cost=repair_cost,
-        service_center=service_center
+        service_center=service_center,
+        checkin_img_front=img_f,
+        checkin_img_left=img_l,
+        checkin_img_rear=img_re,
+        checkin_img_right=img_ri
     )
     if not success:
         raise HTTPException(status_code=404, detail="ไม่สามารถปิดงานรับคืนได้ หรือไม่พบรหัสการจอง")

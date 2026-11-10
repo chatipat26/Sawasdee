@@ -4753,6 +4753,15 @@ class App {
       const photosPrevEl = document.getElementById("assign-ret-photos-preview");
       const badgeEl = document.getElementById("assign-ret-compare-badge");
 
+      const imgFEl = document.getElementById("assign-ret-img-front");
+      const imgLEl = document.getElementById("assign-ret-img-left");
+      const imgReEl = document.getElementById("assign-ret-img-rear");
+      const imgRiEl = document.getElementById("assign-ret-img-right");
+      if (imgFEl) imgFEl.value = b.checkin_img_front || "";
+      if (imgLEl) imgLEl.value = b.checkin_img_left || "";
+      if (imgReEl) imgReEl.value = b.checkin_img_rear || "";
+      if (imgRiEl) imgRiEl.value = b.checkin_img_right || "";
+
       if (odoEl) odoEl.value = b.odometer_in || b.return_mileage || "";
       const savedRetCats = b.inspection_categories_in || b.inspection_categories;
       ['petrol', 'cleanliness', 'tires', 'interior', 'underhood'].forEach(k => {
@@ -4994,7 +5003,11 @@ class App {
           } : undefined,
           inspection_photos: (isDisp ? (this.assignDispPhotos || []) : (this.assignRetPhotos || [])).length > 0
             ? (isDisp ? this.assignDispPhotos : this.assignRetPhotos).join(",")
-            : (document.getElementById(isDisp ? "assign-disp-photos-url" : "assign-ret-photos-url")?.value || "")
+            : (document.getElementById(isDisp ? "assign-disp-photos-url" : "assign-ret-photos-url")?.value || ""),
+          checkin_img_front: !isDisp ? (document.getElementById("assign-ret-img-front")?.value || "").trim() : undefined,
+          checkin_img_left: !isDisp ? (document.getElementById("assign-ret-img-left")?.value || "").trim() : undefined,
+          checkin_img_rear: !isDisp ? (document.getElementById("assign-ret-img-rear")?.value || "").trim() : undefined,
+          checkin_img_right: !isDisp ? (document.getElementById("assign-ret-img-right")?.value || "").trim() : undefined
         })
       });
       const data = await res.json();
@@ -6454,6 +6467,32 @@ class App {
     this.damageMarks = [];
     setTimeout(() => this.initDamageCanvas(), 60);
 
+    const checkinImgSec = document.getElementById("insp-checkin-images-section");
+    if (checkinImgSec) {
+      checkinImgSec.style.display = jobType === "Return" ? "block" : "none";
+    }
+    if (jobType === "Return") {
+      const fVal = b?.checkin_img_front || document.getElementById("assign-ret-img-front")?.value || "";
+      const lVal = b?.checkin_img_left || document.getElementById("assign-ret-img-left")?.value || "";
+      const reVal = b?.checkin_img_rear || document.getElementById("assign-ret-img-rear")?.value || "";
+      const riVal = b?.checkin_img_right || document.getElementById("assign-ret-img-right")?.value || "";
+
+      const elF = document.getElementById("insp-checkin-img-front");
+      const elL = document.getElementById("insp-checkin-img-left");
+      const elRe = document.getElementById("insp-checkin-img-rear");
+      const elRi = document.getElementById("insp-checkin-img-right");
+
+      if (elF) elF.value = fVal;
+      if (elL) elL.value = lVal;
+      if (elRe) elRe.value = reVal;
+      if (elRi) elRi.value = riVal;
+
+      this.updateCheckinImgPreview("front", fVal);
+      this.updateCheckinImgPreview("left", lVal);
+      this.updateCheckinImgPreview("rear", reVal);
+      this.updateCheckinImgPreview("right", riVal);
+    }
+
     const pdfContainer = document.getElementById("insp-pdf-result-container");
     const modalPrintBtn = document.getElementById("btn-modal-print-inspection");
     if (pdfContainer && modalPrintBtn) {
@@ -6744,6 +6783,20 @@ class App {
     }
   }
 
+  updateCheckinImgPreview(angle, url) {
+    const previewContainer = document.getElementById(`preview-checkin-img-${angle}`);
+    if (!previewContainer) return;
+    const directSrc = this.convertDriveUrl(url);
+    const imgEl = previewContainer.querySelector("img");
+    if (directSrc && imgEl) {
+      imgEl.src = directSrc;
+      previewContainer.style.display = "block";
+    } else {
+      previewContainer.style.display = "none";
+      if (imgEl) imgEl.src = "";
+    }
+  }
+
   async submitInspection() {
     const bkId = document.getElementById("insp-bk-id").value;
     const jobType = document.getElementById("insp-job-type").value;
@@ -6770,6 +6823,11 @@ class App {
       }
     }
 
+    const imgFront = (document.getElementById("insp-checkin-img-front")?.value || "").trim();
+    const imgLeft = (document.getElementById("insp-checkin-img-left")?.value || "").trim();
+    const imgRear = (document.getElementById("insp-checkin-img-rear")?.value || "").trim();
+    const imgRight = (document.getElementById("insp-checkin-img-right")?.value || "").trim();
+
     const payload = {
       fuel_level: fuel,
       mileage: mileage,
@@ -6782,6 +6840,13 @@ class App {
       action: branchBAction,
       new_car_id: swapNewPlate
     };
+
+    if (jobType === "Return") {
+      payload.checkin_img_front = imgFront;
+      payload.checkin_img_left = imgLeft;
+      payload.checkin_img_rear = imgRear;
+      payload.checkin_img_right = imgRight;
+    }
 
     // TARGET MISSION 2 & 3: Generate official inspection checklist PDF
     const diagramBase64 = this.getCarDiagramBase64();
@@ -6804,6 +6869,10 @@ class App {
           damage_notes: notes,
           damage_desc: damageDesc,
           car_diagram: diagramBase64,
+          checkin_img_front: jobType === "Return" ? imgFront : undefined,
+          checkin_img_left: jobType === "Return" ? imgLeft : undefined,
+          checkin_img_rear: jobType === "Return" ? imgRear : undefined,
+          checkin_img_right: jobType === "Return" ? imgRight : undefined,
           inspection_categories: bObj?.inspection_categories || (jobType === "Dispatch" ? bObj?.inspection_categories_out : bObj?.inspection_categories_in) || {
             petrol: true, cleanliness: true, tires: true, interior: true, underhood: true
           },
@@ -6838,6 +6907,13 @@ class App {
       const data = await res.json();
       if (data.success) {
         this.closeModal("modal-handover");
+        const bObj = (this.bookings || []).find(x => x.booking_id === bkId);
+        if (bObj && jobType === "Return") {
+          bObj.checkin_img_front = imgFront;
+          bObj.checkin_img_left = imgLeft;
+          bObj.checkin_img_rear = imgRear;
+          bObj.checkin_img_right = imgRight;
+        }
         if (jobType === "Return" && isRepair) {
           if (branchBAction === "swap_vehicle") {
             this.showToast(`🔄 สลับรถทดแทนเป็น ${swapNewPlate} เรียบร้อย (รถเดิมเข้าซ่อมบำรุง & แขวนยอดค่าเสียหาย ฿${repairCost.toLocaleString()})`, "success");
@@ -8971,6 +9047,14 @@ ${e.message}`);
     }
 
     tbody.innerHTML = filtered.map(j => {
+      const bObj = (this.bookings || []).find(b => b.booking_id === j.booking_id) || {};
+      const hasCheckinImgs = Boolean(
+        j.checkin_img_front || j.checkin_img_left || j.checkin_img_rear || j.checkin_img_right ||
+        bObj.checkin_img_front || bObj.checkin_img_left || bObj.checkin_img_rear || bObj.checkin_img_right
+      );
+      const img4Badge = hasCheckinImgs
+        ? `<button type="button" onclick="app.showCheckinImagesModal('${j.booking_id}')" class="btn btn-sm" style="background:#FEF3C7; color:#B45309; border:1px solid #FCD34D; padding:2px 7px; border-radius:10px; font-size:11px; font-weight:700; margin-left:4px; cursor:pointer;" title="${isEn ? 'View 4 Return Photos' : 'คลิกดูรูปรถ 4 มุมตอนรับคืน'}">📸 ${isEn ? '4 Angles' : '4 มุม'}</button>`
+        : "";
       const custObj = (this.customers || []).find(c => c.full_name === j.customer) || {};
       const phone = custObj.contact_no && custObj.contact_no !== "-" ? `<div style="font-size:11px; color:#64748B;">📞 ${custObj.contact_no}</div>` : "";
       const locStr = j.loc_return || j.loc_delivery || "-";
@@ -9005,11 +9089,12 @@ ${e.message}`);
           <td style="font-size:12px;">${j.worker_delivery || '-'} / ${j.worker_return || '-'}</td>
           <td style="font-size:12px; max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${locStr}">${locStr}</td>
           <td>
-            <div style="font-size:12px; white-space:nowrap;"><b>${fuelDisp}</b>${pBadge}</div>
+            <div style="font-size:12px; white-space:nowrap;"><b>${fuelDisp}</b>${pBadge}${img4Badge}</div>
             <div style="font-size:11px; color:#64748B; max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${notes}">${notes}</div>
           </td>
           <td><span class="badge badge-success">${isEn ? 'Completed' : 'เสร็จสิ้น'}</span></td>
           <td style="text-align:center; white-space:nowrap;">
+            ${hasCheckinImgs ? `<button type="button" onclick="app.showCheckinImagesModal('${j.booking_id}')" class="btn btn-sm btn-secondary" title="${isEn ? 'View 4 Check-in Photos' : 'ดูภาพรับรถคืน 4 มุม'}">📸</button>` : ''}
             <a href="/api/pdf/contract/${j.booking_id}" target="_blank" class="btn btn-sm btn-secondary" title="${isEn ? 'Download Rental Agreement PDF' : 'โหลดสัญญาเช่า PDF'}">📝</a>
             <a href="/api/pdf/receipt/${j.booking_id}" target="_blank" class="btn btn-sm btn-secondary" title="${isEn ? 'Download Receipt PDF' : 'โหลดใบเสร็จ PDF'}">🧾</a>
             <a href="/api/pdf/job/${j.booking_id}" target="_blank" class="btn btn-sm btn-secondary" title="${isEn ? 'Download Vehicle Checklist PDF' : 'โหลดลิสต์ตรวจเช็ครถ PDF'}">📋</a>
@@ -9062,6 +9147,58 @@ ${e.message}`);
           </details>
         `;
       }
+    }
+  }
+
+  showCheckinImagesModal(bkId) {
+    const b = (this.bookings || []).find(x => x.booking_id === bkId)
+      || (this.completedJobs || []).find(x => x.booking_id === bkId) || {};
+    const isEn = (this.currentLang === "EN");
+
+    const angles = [
+      { key: "front", label: isEn ? "Front View" : "ด้านหน้า", url: b.checkin_img_front },
+      { key: "left", label: isEn ? "Left View" : "ด้านซ้าย", url: b.checkin_img_left },
+      { key: "rear", label: isEn ? "Rear View" : "ด้านหลัง", url: b.checkin_img_rear },
+      { key: "right", label: isEn ? "Right View" : "ด้านขวา", url: b.checkin_img_right }
+    ];
+
+    const cardsHtml = angles.map(a => {
+      const direct = this.convertDriveUrl(a.url);
+      if (!direct) {
+        return `
+          <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:8px; padding:10px; text-align:center;">
+            <div style="font-weight:700; font-size:12px; color:#475569; margin-bottom:6px;">🚘 ${a.label}</div>
+            <div style="height:120px; display:flex; align-items:center; justify-content:center; background:#F1F5F9; border-radius:6px; color:#94A3B8; font-size:11.5px;">
+              ${isEn ? 'No image link' : 'ไม่มีรูปรถ'}
+            </div>
+          </div>
+        `;
+      }
+      return `
+        <div style="background:#F8FAFC; border:1px solid #CBD5E1; border-radius:8px; padding:10px; text-align:center;">
+          <div style="font-weight:700; font-size:12px; color:#1E293B; margin-bottom:6px;">🚘 ${a.label}</div>
+          <a href="${direct}" target="_blank" title="${isEn ? 'Click to enlarge' : 'คลิกดูภาพขนาดใหญ่'}" style="display:block; height:120px; overflow:hidden; border-radius:6px; border:1px solid #E2E8F0;">
+            <img src="${direct}" alt="${a.label}" style="width:100%; height:100%; object-fit:cover;">
+          </a>
+          <a href="${a.url}" target="_blank" style="display:inline-block; font-size:11px; color:#2563EB; margin-top:6px; text-decoration:none;">🔗 ${isEn ? 'Original Drive Link' : 'ลิงก์ Google Drive'}</a>
+        </div>
+      `;
+    }).join("");
+
+    if (typeof Swal !== "undefined") {
+      Swal.fire({
+        title: isEn ? `Check-in Return Photos (${bkId})` : `📸 รูปรถยนต์ 4 มุมตอนรับคืน (${bkId})`,
+        html: `
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:10px; text-align:left;">
+            ${cardsHtml}
+          </div>
+        `,
+        width: 600,
+        confirmButtonText: isEn ? "Close" : "ปิดหน้าต่าง",
+        confirmButtonColor: "#475569"
+      });
+    } else {
+      alert(`รูปรถ 4 มุม (${bkId}):\nหน้า: ${b.checkin_img_front || '-'}\nซ้าย: ${b.checkin_img_left || '-'}\nหลัง: ${b.checkin_img_rear || '-'}\nขวา: ${b.checkin_img_right || '-'}`);
     }
   }
 

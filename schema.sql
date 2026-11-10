@@ -148,6 +148,10 @@ CREATE TABLE IF NOT EXISTS public.bookings (
     contract_pdf_url TEXT,
     checkout_pdf_url VARCHAR(500),
     checkin_pdf_url VARCHAR(500),
+    checkin_img_front TEXT,
+    checkin_img_left TEXT,
+    checkin_img_rear TEXT,
+    checkin_img_right TEXT,
     created_by VARCHAR(100),
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
@@ -159,6 +163,10 @@ ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS checkout_pdf_url VARCHAR(50
 ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS checkin_pdf_url VARCHAR(500);
 ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS extension_history JSONB DEFAULT '[]'::jsonb;
 ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS is_fully_paid BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS checkin_img_front TEXT;
+ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS checkin_img_left TEXT;
+ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS checkin_img_rear TEXT;
+ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS checkin_img_right TEXT;
 
 -- 5. Completed Jobs Table (Historical Archive)
 CREATE TABLE IF NOT EXISTS public.completed_jobs (
