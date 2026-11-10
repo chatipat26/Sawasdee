@@ -218,8 +218,9 @@
         </div>
 
         <!-- Global Search in Sidebar -->
-        <div style="margin-bottom: 12px;">
-          <input type="text" id="sb-search-input" oninput="app.handleSidebarSearch(this.value)" placeholder="🔍 ค้นหา (เลขที่จอง / ทะเบียน / ลูกค้า)" style="width: 100%; padding: 9px 12px; border: 1.5px solid #E5DFD7; border-radius: 8px; background: #FAF7F2; font-size: 12px; outline: none; transition: all 0.2s;" onfocus="this.style.borderColor='#E85826'; this.style.background='#FFFFFF';" onblur="this.style.borderColor='#E5DFD7'; this.style.background='#FAF7F2';" />
+        <div style="margin-bottom: 12px; position: relative;" id="sb-search-wrapper">
+          <input type="text" id="sb-search-input" oninput="app.handleSidebarSearch(this.value)" placeholder="🔍 ค้นหา (เลขที่จอง / ทะเบียน / ลูกค้า)" style="width: 100%; padding: 9px 12px; border: 1.5px solid #E5DFD7; border-radius: 8px; background: #FAF7F2; font-size: 12px; outline: none; transition: all 0.2s;" onfocus="this.style.borderColor='#E85826'; this.style.background='#FFFFFF'; app.handleSidebarSearch(this.value);" onblur="this.style.borderColor='#E5DFD7'; this.style.background='#FAF7F2';" autocomplete="off" />
+          <div id="sb-search-results" style="display: none; position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 1000; background: #FFFFFF; border: 1.5px solid #CBD5E1; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.18); max-height: 280px; overflow-y: auto;"></div>
         </div>
 
         <!-- Quick Actions (Global Action Buttons) -->
@@ -2087,7 +2088,28 @@
             <button type="button" onclick="app.openAddCustomerModal()" class="btn btn-sm btn-primary" style="padding:2px 8px; font-size:11.5px;">เพิ่มใหม่</button>
           </div>
         </div>
-        <select id="book-cust-select" class="form-control" onchange="app.onSelectBookingCustomer()"></select>
+        <!-- Searchable Customer Combobox (TARGET MISSION 1) -->
+        <div id="book-cust-searchable-wrapper" style="position:relative;">
+          <!-- Hidden input preserves exact element ID 'book-cust-select' so existing code & booking logic never break -->
+          <input type="hidden" id="book-cust-select" value="ลูกค้าทั่วไป (Walk-in)">
+          
+          <div style="position:relative; display:flex; align-items:center;">
+            <input type="text" id="book-cust-search-input" class="form-control" 
+              placeholder="🔍 พิมพ์ชื่อ หรือ เบอร์โทร เพื่อค้นหาลูกค้า..." 
+              autocomplete="off" 
+              style="padding-right:32px; font-weight:600; background:#FFFFFF; cursor:text;" 
+              onfocus="app.openBookingCustDropdown()" 
+              oninput="app.filterBookingCustDropdown(this.value)" 
+              onkeydown="app.handleBookingCustKeydown(event)">
+            <span id="book-cust-dropdown-icon" onclick="app.toggleBookingCustDropdown()" 
+              style="position:absolute; right:10px; top:50%; transform:translateY(-50%); cursor:pointer; color:#64748B; font-size:12px; padding:4px;">▼</span>
+          </div>
+
+          <!-- Dropdown items menu -->
+          <div id="book-cust-dropdown-menu" style="display:none; position:absolute; top:calc(100% + 2px); left:0; right:0; z-index:1050; background:#FFF; border:1.5px solid #CBD5E1; border-radius:8px; box-shadow:0 10px 25px rgba(0,0,0,0.18); max-height:220px; overflow-y:auto;">
+            <!-- Rendered by app.renderBookingCustDropdown -->
+          </div>
+        </div>
         <div id="book-cust-info-badge" style="margin-top:6px; font-size:11.5px; color:#475569; background:#F8FAFC; border:1px solid #E2E8F0; border-radius:6px; padding:6px 10px; display:none;"></div>
       </div>
 

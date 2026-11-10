@@ -82,6 +82,21 @@ class App {
       try { this.setupDatePickers(); } catch (e) { console.warn("DatePickers err:", e); }
       try { this.updateAuthUI(); } catch (e) { console.warn("UpdateAuthUI err:", e); }
 
+      document.addEventListener("click", (e) => {
+        const bookCustWrapper = document.getElementById("book-cust-searchable-wrapper");
+        if (bookCustWrapper && !bookCustWrapper.contains(e.target)) {
+          const menu = document.getElementById("book-cust-dropdown-menu");
+          if (menu && menu.style.display === "block") {
+            this.closeBookingCustDropdown();
+          }
+        }
+        const sbSearchWrapper = document.getElementById("sb-search-wrapper");
+        if (sbSearchWrapper && !sbSearchWrapper.contains(e.target)) {
+          const sbResults = document.getElementById("sb-search-results");
+          if (sbResults) sbResults.style.display = "none";
+        }
+      });
+
       const splashStatus = document.getElementById("app-splash-status");
 
       if (this.user) {
@@ -6911,12 +6926,19 @@ class App {
     if (preferredName) {
       this.lastAddedCustomerName = preferredName;
     }
-    const sel = document.getElementById("book-cust-select");
-    if (sel) {
-      const curVal = preferredName || this.lastAddedCustomerName || sel.value || "";
-      sel.innerHTML = this.customers.map(c => `<option value="${c.full_name}">${c.full_name} (📞 ${c.contact_no || '-'})</option>`).join("");
-      if (curVal && Array.from(sel.options).some(o => o.value === curVal)) {
-        sel.value = curVal;
+    const hiddenEl = document.getElementById("book-cust-select");
+    const searchInput = document.getElementById("book-cust-search-input");
+    if (hiddenEl) {
+      let curVal = preferredName || this.lastAddedCustomerName || hiddenEl.value || "";
+      let matchedCust = (this.customers || []).find(c => c.full_name === curVal);
+      if (!matchedCust) {
+        matchedCust = (this.customers || []).find(c => c.full_name === "ลูกค้าทั่วไป (Walk-in)") || (this.customers || [])[0];
+      }
+      if (matchedCust) {
+        hiddenEl.value = matchedCust.full_name;
+        if (searchInput) {
+          searchInput.value = `${matchedCust.full_name} (📞 ${matchedCust.contact_no || '-'})`;
+        }
       }
       this.onSelectBookingCustomer();
     }
@@ -6929,6 +6951,118 @@ class App {
         walkinSel.value = curVal;
       }
       this.onSelectWalkinCustomer();
+    }
+  }
+
+  // --- Searchable Customer Dropdown in Booking Modal (TARGET MISSION 1) ---
+  openBookingCustDropdown() {
+    const menu = document.getElementById("book-cust-dropdown-menu");
+    const input = document.getElementById("book-cust-search-input");
+    if (!menu) return;
+    menu.style.display = "block";
+    if (input) {
+      input.select();
+    }
+    this.filterBookingCustDropdown("");
+  }
+
+  toggleBookingCustDropdown() {
+    const menu = document.getElementById("book-cust-dropdown-menu");
+    if (!menu) return;
+    if (menu.style.display === "block") {
+      this.closeBookingCustDropdown();
+    } else {
+      this.openBookingCustDropdown();
+    }
+  }
+
+  closeBookingCustDropdown() {
+    const menu = document.getElementById("book-cust-dropdown-menu");
+    if (menu) menu.style.display = "none";
+    const hiddenEl = document.getElementById("book-cust-select");
+    const input = document.getElementById("book-cust-search-input");
+    if (hiddenEl && input) {
+      const cust = (this.customers || []).find(c => c.full_name === hiddenEl.value);
+      if (cust) {
+        input.value = `${cust.full_name} (📞 ${cust.contact_no || '-'})`;
+      }
+    }
+  }
+
+  filterBookingCustDropdown(rawKw) {
+    const menu = document.getElementById("book-cust-dropdown-menu");
+    if (!menu) return;
+    menu.style.display = "block";
+    const kw = String(rawKw || "").trim().toLowerCase();
+    const hiddenEl = document.getElementById("book-cust-select");
+    const selectedName = hiddenEl ? hiddenEl.value : "";
+
+    const filtered = (this.customers || []).filter(c => {
+      if (!kw) return true;
+      const fn = String(c.full_name || "").toLowerCase();
+      const ph = String(c.contact_no || c.phone_number || "").toLowerCase();
+      const pass = String(c.passport_id || c.id_card_no || "").toLowerCase();
+      const lic = String(c.licence_no || c.driver_license_no || "").toLowerCase();
+      return fn.includes(kw) || ph.includes(kw) || pass.includes(kw) || lic.includes(kw);
+    });
+
+    if (filtered.length === 0) {
+      menu.innerHTML = `
+        <div style="padding:14px; text-align:center; color:#94A3B8; font-size:12px;">
+          ไม่พบข้อมูลลูกค้าสำหรับ "<b>${rawKw}</b>"<br/>
+          <button type="button" onclick="app.closeBookingCustDropdown(); app.openAddCustomerModal();" class="btn btn-sm btn-primary" style="margin-top:8px; font-size:11px; padding:3px 10px;">
+            ➕ กดเพิ่มลูกค้าใหม่
+          </button>
+        </div>
+      `;
+      return;
+    }
+
+    menu.innerHTML = filtered.map(c => {
+      const isSelected = c.full_name === selectedName;
+      const safeName = String(c.full_name || "").replace(/'/g, "\\'");
+      return `
+        <div class="cust-drop-item" 
+          onclick="app.selectBookingCustomer('${safeName}')"
+          style="padding:9px 12px; cursor:pointer; border-bottom:1px solid #F1F5F9; display:flex; justify-content:space-between; align-items:center; background:${isSelected ? '#EFF6FF' : '#FFF'}; transition:background 0.15s;"
+          onmouseover="this.style.background='${isSelected ? '#DBEAFE' : '#FFF7ED'}'"
+          onmouseout="this.style.background='${isSelected ? '#EFF6FF' : '#FFF'}'">
+          <div>
+            <div style="font-weight:700; font-size:12.5px; color:${isSelected ? '#1D4ED8' : '#1E293B'};">
+              👤 ${c.full_name} ${isSelected ? '<span style="font-size:10.5px; color:#2563EB; font-weight:700;">(เลือกอยู่)</span>' : ''}
+            </div>
+            <div style="font-size:11px; color:#64748B; margin-top:2px;">
+              📞 ${c.contact_no || c.phone_number || '-'} ${c.passport_id && c.passport_id !== '-' ? `| บัตร/ID: ${c.passport_id}` : ''}
+            </div>
+          </div>
+          ${isSelected ? '<span style="color:#2563EB; font-weight:800; font-size:14px;">✓</span>' : ''}
+        </div>
+      `;
+    }).join("");
+  }
+
+  selectBookingCustomer(name) {
+    const hiddenEl = document.getElementById("book-cust-select");
+    const input = document.getElementById("book-cust-search-input");
+    const cust = (this.customers || []).find(c => c.full_name === name);
+    if (!cust) return;
+
+    if (hiddenEl) hiddenEl.value = cust.full_name;
+    if (input) input.value = `${cust.full_name} (📞 ${cust.contact_no || '-'})`;
+    this.closeBookingCustDropdown();
+    this.onSelectBookingCustomer();
+  }
+
+  handleBookingCustKeydown(e) {
+    if (e.key === "Escape") {
+      this.closeBookingCustDropdown();
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      const menu = document.getElementById("book-cust-dropdown-menu");
+      const firstItem = menu?.querySelector(".cust-drop-item");
+      if (firstItem) {
+        firstItem.click();
+      }
     }
   }
 
@@ -6970,7 +7104,8 @@ class App {
   }
 
   openEditCustomerModal(customerName) {
-    const cust = this.customers.find(c => c.full_name === customerName);
+    const cust = (this.customers || []).find(c => c.full_name === customerName)
+      || (this.customers || []).find(c => String(c.id) === String(customerName) || String(c.customer_id) === String(customerName) || c.contact_no === customerName || c.phone_number === customerName || c.passport_id === customerName);
     if (!cust) {
       this.showToast("⚠️ ไม่พบข้อมูลลูกค้าที่ต้องการแก้ไข", "warning");
       return;
@@ -9201,6 +9336,63 @@ ${e.message}`);
     if (this.activeModule === "backoffice") {
       this.renderBackOfficeJobs();
     }
+
+    // Sidebar Customer Search Popup (TARGET MISSION 2)
+    const resContainer = document.getElementById("sb-search-results");
+    if (!resContainer) return;
+    const cleanKw = this.sidebarSearchKw;
+    if (!cleanKw) {
+      resContainer.style.display = "none";
+      resContainer.innerHTML = "";
+      return;
+    }
+
+    const matches = (this.customers || []).filter(c => {
+      const fn = String(c.full_name || "").toLowerCase();
+      const ph = String(c.contact_no || c.phone_number || "").toLowerCase();
+      const pass = String(c.passport_id || c.id_card_no || "").toLowerCase();
+      const lic = String(c.licence_no || c.driver_license_no || "").toLowerCase();
+      return fn.includes(cleanKw) || ph.includes(cleanKw) || pass.includes(cleanKw) || lic.includes(cleanKw);
+    });
+
+    if (matches.length === 0) {
+      resContainer.style.display = "none";
+      resContainer.innerHTML = "";
+      return;
+    }
+
+    resContainer.style.display = "block";
+    resContainer.innerHTML = `
+      <div style="padding:6px 10px; font-size:10.5px; font-weight:700; color:#8C827A; background:#FAF7F2; border-bottom:1px solid #E5DFD7; text-transform:uppercase; display:flex; justify-content:space-between; align-items:center;">
+        <span>👥 ลูกค้าที่ค้นพบ (${matches.length})</span>
+        <span style="font-size:10px; color:#64748B;">คลิกเพื่อดู/แก้ไข</span>
+      </div>
+    ` + matches.map(c => {
+      const safeName = String(c.full_name || "").replace(/'/g, "\\'");
+      return `
+        <div class="sb-cust-search-item" 
+          onclick="app.onSelectSidebarCustomer('${safeName}')" 
+          style="padding:8px 12px; cursor:pointer; border-bottom:1px solid #F1F5F9; display:flex; justify-content:space-between; align-items:center; background:#FFF; transition:background 0.15s;"
+          onmouseover="this.style.background='#FFF7ED'" 
+          onmouseout="this.style.background='#FFF'">
+          <div>
+            <div style="font-weight:700; font-size:12px; color:#1E293B;">👤 ${c.full_name}</div>
+            <div style="font-size:11px; color:#64748B;">📞 ${c.contact_no || c.phone_number || '-'} ${c.passport_id && c.passport_id !== '-' ? `| ID: ${c.passport_id}` : ''}</div>
+          </div>
+          <button type="button" class="btn btn-sm btn-secondary" style="padding:2px 8px; font-size:11px; background:#EFF6FF; border-color:#93C5FD; color:#1D4ED8; font-weight:700; pointer-events:none;">
+            ✏️ ดู/แก้ไข
+          </button>
+        </div>
+      `;
+    }).join("");
+  }
+
+  onSelectSidebarCustomer(custName) {
+    const resContainer = document.getElementById("sb-search-results");
+    if (resContainer) {
+      resContainer.style.display = "none";
+    }
+    this.openEditCustomerModal(custName);
   }
 
   logout() {
