@@ -6,7 +6,7 @@ from typing import Optional, List, Dict, Any, Union
 from pydantic import BaseModel, Field
 from fastapi import FastAPI, HTTPException, Request, Response, UploadFile, File, Form, Depends
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 import re
 
@@ -147,6 +147,29 @@ static_dir = os.path.join(BASE_DIR, "static")
 os.makedirs(static_dir, exist_ok=True)
 os.makedirs(os.path.join(static_dir, "css"), exist_ok=True)
 os.makedirs(os.path.join(static_dir, "js"), exist_ok=True)
+os.makedirs(os.path.join(static_dir, "pdf"), exist_ok=True)
+os.makedirs(os.path.join(static_dir, "pdf", "inspections"), exist_ok=True)
+
+# Inspection PDF route with automatic on-demand generation fallback (prevents 404 on Render restarts)
+@app.get("/static/pdf/inspections/{fname}")
+async def serve_static_inspection_pdf(fname: str):
+    insp_dir = os.path.join(static_dir, "pdf", "inspections")
+    file_path = os.path.join(insp_dir, fname)
+    if os.path.exists(file_path):
+        return FileResponse(file_path, media_type="application/pdf", filename=fname)
+    m = re.match(r"^Inspection_(Checkout|Checkin|Checklist)_(MRC\w+)\.pdf$", fname, re.IGNORECASE)
+    if m:
+        kind = m.group(1).lower()
+        bk_id = m.group(2)
+        try:
+            if kind == "checklist":
+                return await get_job_pdf(bk_id=bk_id)
+            else:
+                return await get_inspection_pdf(bk_id=bk_id, type=kind, download=0)
+        except Exception as e:
+            print(f"[PDF Engine] On-demand fallback generation error for {fname}: {e}")
+    raise HTTPException(status_code=404, detail="File Not Found")
+
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
 from database import init_db

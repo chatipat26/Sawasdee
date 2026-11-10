@@ -219,7 +219,7 @@
 
         <!-- Global Search in Sidebar -->
         <div style="margin-bottom: 12px; position: relative;" id="sb-search-wrapper">
-          <input type="text" id="sb-search-input" oninput="app.handleSidebarSearch(this.value)" placeholder="🔍 ค้นหา (เลขที่จอง / ทะเบียน / ลูกค้า)" style="width: 100%; padding: 9px 12px; border: 1.5px solid #E5DFD7; border-radius: 8px; background: #FAF7F2; font-size: 12px; outline: none; transition: all 0.2s;" onfocus="this.style.borderColor='#E85826'; this.style.background='#FFFFFF'; app.handleSidebarSearch(this.value);" onblur="this.style.borderColor='#E5DFD7'; this.style.background='#FAF7F2';" autocomplete="off" />
+          <input type="text" id="sb-search-input" oninput="app.handleSidebarSearch(this.value)" onkeydown="if(event.key==='Enter'){ event.preventDefault(); app.onSidebarSearchEnter(this.value); }" placeholder="🔍 ค้นหา (เลขที่จอง / ทะเบียน / ลูกค้า)" style="width: 100%; padding: 9px 12px; border: 1.5px solid #E5DFD7; border-radius: 8px; background: #FAF7F2; font-size: 12px; outline: none; transition: all 0.2s;" onfocus="this.style.borderColor='#E85826'; this.style.background='#FFFFFF'; app.handleSidebarSearch(this.value);" onblur="this.style.borderColor='#E5DFD7'; this.style.background='#FAF7F2';" autocomplete="off" />
           <div id="sb-search-results" style="display: none; position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 1000; background: #FFFFFF; border: 1.5px solid #CBD5E1; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.18); max-height: 280px; overflow-y: auto;"></div>
         </div>
 

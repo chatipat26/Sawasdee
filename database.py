@@ -101,7 +101,12 @@ def init_db():
         "ALTER TABLE public.cars ADD COLUMN IF NOT EXISTS act_price NUMERIC DEFAULT 0;",
         "ALTER TABLE public.cars ADD COLUMN IF NOT EXISTS ins_premium NUMERIC DEFAULT 0;",
         "ALTER TABLE public.cars ADD COLUMN IF NOT EXISTS next_engine_oil_date VARCHAR(50);",
-        "ALTER TABLE public.cars ADD COLUMN IF NOT EXISTS next_engine_oil_mileage NUMERIC DEFAULT 0;"
+        "ALTER TABLE public.cars ADD COLUMN IF NOT EXISTS next_engine_oil_mileage NUMERIC DEFAULT 0;",
+        "ALTER TABLE public.cars ADD COLUMN IF NOT EXISTS img_front TEXT;",
+        "ALTER TABLE public.cars ADD COLUMN IF NOT EXISTS img_left TEXT;",
+        "ALTER TABLE public.cars ADD COLUMN IF NOT EXISTS img_rear TEXT;",
+        "ALTER TABLE public.cars ADD COLUMN IF NOT EXISTS img_right TEXT;",
+        "ALTER TABLE public.cars ADD COLUMN IF NOT EXISTS ins_doc_url TEXT;"
     ]
     booking_migrations = [
         "ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS payment_type VARCHAR(50);",
@@ -169,6 +174,7 @@ def init_db():
         "ALTER TABLE public.maintenance_records ADD COLUMN IF NOT EXISTS new_tax_expiry VARCHAR(50);",
         "ALTER TABLE public.maintenance_records ADD COLUMN IF NOT EXISTS insurance_company VARCHAR(150);",
         "ALTER TABLE public.maintenance_records ADD COLUMN IF NOT EXISTS policy_no VARCHAR(100);",
+        "ALTER TABLE public.maintenance_records ADD COLUMN IF NOT EXISTS ins_doc_url TEXT;",
         """CREATE TABLE IF NOT EXISTS public.vehicle_maintenances (
             id SERIAL PRIMARY KEY,
             car_id VARCHAR(50) NOT NULL,
@@ -245,9 +251,41 @@ def init_db():
                 AND job_status NOT IN ('Completed', 'เสร็จสิ้น', 'Canceled', 'ยกเลิก')
           );"""
     ]
+    insurance_records_migrations = [
+        """CREATE TABLE IF NOT EXISTS public.insurance_records (
+            id VARCHAR(100) PRIMARY KEY,
+            car_id VARCHAR(100),
+            insurance_company VARCHAR(150),
+            policy_no VARCHAR(100),
+            ins_class VARCHAR(50),
+            ins_category VARCHAR(100),
+            ins_type VARCHAR(100),
+            coverage_amount NUMERIC DEFAULT 0,
+            premium NUMERIC DEFAULT 0,
+            expiry_date VARCHAR(50),
+            ins_doc_url TEXT,
+            notes TEXT,
+            created_by VARCHAR(100),
+            created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+        );""",
+        "ALTER TABLE public.insurance_records ADD COLUMN IF NOT EXISTS ins_doc_url TEXT;",
+        "ALTER TABLE public.insurance_records ADD COLUMN IF NOT EXISTS insurance_company VARCHAR(150);",
+        "ALTER TABLE public.insurance_records ADD COLUMN IF NOT EXISTS policy_no VARCHAR(100);",
+        "ALTER TABLE public.insurance_records ADD COLUMN IF NOT EXISTS ins_company VARCHAR(150);",
+        "ALTER TABLE public.insurance_records ADD COLUMN IF NOT EXISTS ins_policy_no VARCHAR(100);",
+        "ALTER TABLE public.insurance_records ADD COLUMN IF NOT EXISTS ins_class VARCHAR(50);",
+        "ALTER TABLE public.insurance_records ADD COLUMN IF NOT EXISTS ins_category VARCHAR(100);",
+        "ALTER TABLE public.insurance_records ADD COLUMN IF NOT EXISTS ins_type VARCHAR(100);",
+        "ALTER TABLE public.insurance_records ADD COLUMN IF NOT EXISTS coverage_amount NUMERIC DEFAULT 0;",
+        "ALTER TABLE public.insurance_records ADD COLUMN IF NOT EXISTS premium NUMERIC DEFAULT 0;",
+        "ALTER TABLE public.insurance_records ADD COLUMN IF NOT EXISTS expiry_date VARCHAR(50);",
+        "ALTER TABLE public.insurance_records ADD COLUMN IF NOT EXISTS notes TEXT;",
+        "ALTER TABLE public.insurance_records ADD COLUMN IF NOT EXISTS created_by VARCHAR(100);",
+        "ALTER TABLE public.insurance_records ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP;"
+    ]
     try:
         with engine.begin() as conn:
-            for sql_stmt in customer_migrations + car_migrations + booking_migrations + maintenance_migrations + financial_migrations + work_order_logs_migrations + sanitization_migrations:
+            for sql_stmt in customer_migrations + car_migrations + booking_migrations + maintenance_migrations + insurance_records_migrations + financial_migrations + work_order_logs_migrations + sanitization_migrations:
                 try:
                     conn.execute(text(sql_stmt))
                 except Exception:

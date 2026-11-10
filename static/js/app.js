@@ -9337,7 +9337,7 @@ ${e.message}`);
       this.renderBackOfficeJobs();
     }
 
-    // Sidebar Customer Search Popup (TARGET MISSION 2)
+    // Sidebar Search Popup: Customers & Bookings (TARGET MISSION 1 & 2)
     const resContainer = document.getElementById("sb-search-results");
     if (!resContainer) return;
     const cleanKw = this.sidebarSearchKw;
@@ -9347,6 +9347,35 @@ ${e.message}`);
       return;
     }
 
+    // 1. Search Bookings (Active Pipeline & Completed Jobs)
+    const bkMatches = [];
+    const seenBks = new Set();
+
+    (this.bookings || []).forEach(b => {
+      const bid = String(b.booking_id || "").toLowerCase();
+      const cust = String(b.customer || b.customer_name || "").toLowerCase();
+      const car = String(b.car_id || b.car_plate || "").toLowerCase();
+      if (bid.includes(cleanKw) || (cleanKw.startsWith("mrc") && bid.includes(cleanKw)) || (cleanKw.length >= 3 && (car.includes(cleanKw) || cust.includes(cleanKw)))) {
+        if (!seenBks.has(b.booking_id)) {
+          seenBks.add(b.booking_id);
+          bkMatches.push({ ...b, isCompleted: (b.status === "เสร็จสิ้น" || b.status === "Completed") });
+        }
+      }
+    });
+
+    (this.completedJobs || []).forEach(j => {
+      const bid = String(j.booking_id || "").toLowerCase();
+      const cust = String(j.customer || "").toLowerCase();
+      const car = String(j.car_id || "").toLowerCase();
+      if (bid.includes(cleanKw) || (cleanKw.startsWith("mrc") && bid.includes(cleanKw)) || (cleanKw.length >= 3 && (car.includes(cleanKw) || cust.includes(cleanKw)))) {
+        if (!seenBks.has(j.booking_id)) {
+          seenBks.add(j.booking_id);
+          bkMatches.push({ ...j, isCompleted: true, status: "เสร็จสิ้น" });
+        }
+      }
+    });
+
+    // 2. Search Customers
     const matches = (this.customers || []).filter(c => {
       const fn = String(c.full_name || "").toLowerCase();
       const ph = String(c.contact_no || c.phone_number || "").toLowerCase();
@@ -9355,36 +9384,201 @@ ${e.message}`);
       return fn.includes(cleanKw) || ph.includes(cleanKw) || pass.includes(cleanKw) || lic.includes(cleanKw);
     });
 
-    if (matches.length === 0) {
+    if (bkMatches.length === 0 && matches.length === 0) {
       resContainer.style.display = "none";
       resContainer.innerHTML = "";
       return;
     }
 
-    resContainer.style.display = "block";
-    resContainer.innerHTML = `
-      <div style="padding:6px 10px; font-size:10.5px; font-weight:700; color:#8C827A; background:#FAF7F2; border-bottom:1px solid #E5DFD7; text-transform:uppercase; display:flex; justify-content:space-between; align-items:center;">
-        <span>👥 ลูกค้าที่ค้นพบ (${matches.length})</span>
-        <span style="font-size:10px; color:#64748B;">คลิกเพื่อดู/แก้ไข</span>
-      </div>
-    ` + matches.map(c => {
-      const safeName = String(c.full_name || "").replace(/'/g, "\\'");
-      return `
-        <div class="sb-cust-search-item" 
-          onclick="app.onSelectSidebarCustomer('${safeName}')" 
-          style="padding:8px 12px; cursor:pointer; border-bottom:1px solid #F1F5F9; display:flex; justify-content:space-between; align-items:center; background:#FFF; transition:background 0.15s;"
-          onmouseover="this.style.background='#FFF7ED'" 
-          onmouseout="this.style.background='#FFF'">
-          <div>
-            <div style="font-weight:700; font-size:12px; color:#1E293B;">👤 ${c.full_name}</div>
-            <div style="font-size:11px; color:#64748B;">📞 ${c.contact_no || c.phone_number || '-'} ${c.passport_id && c.passport_id !== '-' ? `| ID: ${c.passport_id}` : ''}</div>
-          </div>
-          <button type="button" class="btn btn-sm btn-secondary" style="padding:2px 8px; font-size:11px; background:#EFF6FF; border-color:#93C5FD; color:#1D4ED8; font-weight:700; pointer-events:none;">
-            ✏️ ดู/แก้ไข
-          </button>
+    let html = "";
+
+    // Render Booking Matches Section
+    if (bkMatches.length > 0) {
+      html += `
+        <div style="padding:6px 10px; font-size:10.5px; font-weight:700; color:#E85826; background:#FFF7ED; border-bottom:1px solid #FED7AA; text-transform:uppercase; display:flex; justify-content:space-between; align-items:center;">
+          <span>📋 รายการจองที่ค้นพบ (${bkMatches.length})</span>
+          <span style="font-size:10px; color:#C2410C;">คลิกเพื่อไปที่งาน</span>
         </div>
-      `;
-    }).join("");
+      ` + bkMatches.slice(0, 8).map(b => {
+        const isDone = b.isCompleted || b.status === "เสร็จสิ้น" || b.status === "Completed";
+        const badgeColor = isDone ? "#059669" : (b.status === "กำลังเช่า" ? "#2563EB" : "#D97706");
+        const badgeBg = isDone ? "#ECFDF5" : (b.status === "กำลังเช่า" ? "#EFF6FF" : "#FEF3C7");
+        const stText = b.status || (isDone ? "เสร็จสิ้น" : "รอดำเนินการ");
+        const safeBid = String(b.booking_id || "").replace(/'/g, "\\'");
+        return `
+          <div class="sb-booking-search-item"
+            onclick="app.navigateToBooking('${safeBid}')"
+            style="padding:8px 12px; cursor:pointer; border-bottom:1px solid #F1F5F9; display:flex; justify-content:space-between; align-items:center; background:#FFF; transition:background 0.15s;"
+            onmouseover="this.style.background='#FFF7ED'"
+            onmouseout="this.style.background='#FFF'">
+            <div>
+              <div style="font-weight:700; font-size:12px; color:#E85826; display:flex; align-items:center; gap:6px;">
+                <span>🔖 ${b.booking_id}</span>
+                <span style="font-size:10px; font-weight:700; background:${badgeBg}; color:${badgeColor}; padding:1px 6px; border-radius:10px;">${stText}</span>
+              </div>
+              <div style="font-size:11px; color:#475569; margin-top:2px;">
+                🚗 ${b.car_id || '-'} | 👤 ${b.customer || b.customer_name || '-'}
+              </div>
+            </div>
+            <button type="button" class="btn btn-sm btn-primary" style="padding:3px 9px; font-size:11px; font-weight:700; border-radius:6px; pointer-events:none;">
+              ${isDone ? '📂 ดูประวัติ' : '👉 ไปที่งาน'}
+            </button>
+          </div>
+        `;
+      }).join("");
+    }
+
+    // Render Customer Matches Section
+    if (matches.length > 0) {
+      html += `
+        <div style="padding:6px 10px; font-size:10.5px; font-weight:700; color:#8C827A; background:#FAF7F2; border-bottom:1px solid #E5DFD7; text-transform:uppercase; display:flex; justify-content:space-between; align-items:center;">
+          <span>👥 ลูกค้าที่ค้นพบ (${matches.length})</span>
+          <span style="font-size:10px; color:#64748B;">คลิกเพื่อดู/แก้ไข</span>
+        </div>
+      ` + matches.slice(0, 8).map(c => {
+        const safeName = String(c.full_name || "").replace(/'/g, "\\'");
+        return `
+          <div class="sb-cust-search-item" 
+            onclick="app.onSelectSidebarCustomer('${safeName}')" 
+            style="padding:8px 12px; cursor:pointer; border-bottom:1px solid #F1F5F9; display:flex; justify-content:space-between; align-items:center; background:#FFF; transition:background 0.15s;"
+            onmouseover="this.style.background='#FFF7ED'" 
+            onmouseout="this.style.background='#FFF'">
+            <div>
+              <div style="font-weight:700; font-size:12px; color:#1E293B;">👤 ${c.full_name}</div>
+              <div style="font-size:11px; color:#64748B;">📞 ${c.contact_no || c.phone_number || '-'} ${c.passport_id && c.passport_id !== '-' ? `| ID: ${c.passport_id}` : ''}</div>
+            </div>
+            <button type="button" class="btn btn-sm btn-secondary" style="padding:2px 8px; font-size:11px; background:#EFF6FF; border-color:#93C5FD; color:#1D4ED8; font-weight:700; pointer-events:none;">
+              ✏️ ดู/แก้ไข
+            </button>
+          </div>
+        `;
+      }).join("");
+    }
+
+    resContainer.style.display = "block";
+    resContainer.innerHTML = html;
+  }
+
+  onSidebarSearchEnter(kw) {
+    const cleanKw = (kw || "").trim();
+    if (!cleanKw) return;
+    // Check if it matches a booking ID
+    const activeBk = (this.bookings || []).find(b => String(b.booking_id).toLowerCase().includes(cleanKw.toLowerCase()));
+    const compBk = (this.completedJobs || []).find(j => String(j.booking_id).toLowerCase().includes(cleanKw.toLowerCase()));
+    if (activeBk || compBk || cleanKw.toUpperCase().startsWith("MRC")) {
+      const targetId = activeBk ? activeBk.booking_id : (compBk ? compBk.booking_id : cleanKw);
+      this.navigateToBooking(targetId);
+      return;
+    }
+    // Check if it matches a customer
+    const cust = (this.customers || []).find(c => String(c.full_name || "").toLowerCase().includes(cleanKw.toLowerCase()));
+    if (cust) {
+      this.onSelectSidebarCustomer(cust.full_name);
+      return;
+    }
+  }
+
+  async navigateToBooking(bookingId) {
+    const resContainer = document.getElementById("sb-search-results");
+    if (resContainer) resContainer.style.display = "none";
+
+    const cleanId = String(bookingId || "").trim();
+    if (!cleanId) return;
+
+    // 1. Check active bookings
+    let activeBk = (this.bookings || []).find(b => String(b.booking_id).toUpperCase() === cleanId.toUpperCase());
+    
+    // 2. Check completed jobs
+    let completedBk = (this.completedJobs || []).find(j => String(j.booking_id).toUpperCase() === cleanId.toUpperCase());
+
+    // 3. If neither found locally, try fetching from API
+    if (!activeBk && !completedBk) {
+      try {
+        const res = await fetch(`/api/bookings/${encodeURIComponent(cleanId)}`);
+        if (res.ok) {
+          activeBk = await res.json();
+          if (activeBk && !this.bookings.some(b => b.booking_id === activeBk.booking_id)) {
+            this.bookings.unshift(activeBk);
+          }
+        }
+      } catch (e) {
+        console.warn("Could not fetch booking from API:", e);
+      }
+    }
+
+    if (activeBk && activeBk.status !== "เสร็จสิ้น" && activeBk.status !== "Completed") {
+      // Active booking: Route to Front Office Tab 5 (Pipeline) & Auto-filter
+      this.switchModule("frontoffice");
+      await this.switchTab("dashboard_bks");
+      
+      const searchInp = document.getElementById("bks-search-input");
+      if (searchInp) searchInp.value = cleanId;
+      
+      const monthSel = document.getElementById("bks-month-filter");
+      if (monthSel) monthSel.value = "all";
+      
+      const statusSel = document.getElementById("bks-status-filter");
+      if (statusSel) statusSel.value = "all_with_completed";
+
+      this.renderBookingsTable();
+
+      // Scroll and highlight
+      setTimeout(() => {
+        const rows = document.querySelectorAll("#bookings-table-body tr");
+        for (const row of rows) {
+          if (row.textContent.includes(cleanId)) {
+            row.scrollIntoView({ behavior: "smooth", block: "center" });
+            row.style.transition = "background-color 0.5s";
+            row.style.backgroundColor = "#FEF3C7";
+            setTimeout(() => {
+              row.style.backgroundColor = "";
+            }, 3500);
+            break;
+          }
+        }
+      }, 250);
+
+      const isEn = (this.currentLang === "EN");
+      this.showToast(isEn ? `Found Active Booking ${cleanId}` : `พบการจอง ${cleanId} ในระบบ Pipeline`, "success");
+    } else if (completedBk || (activeBk && (activeBk.status === "เสร็จสิ้น" || activeBk.status === "Completed"))) {
+      // Completed booking: Route to Completed Jobs Archive in Dashboard module
+      this.switchModule("dashboard");
+      
+      const expBody = document.getElementById("body-expander-completed");
+      if (!expBody || expBody.style.display === "none") {
+        this.toggleExpander("expander-completed");
+      }
+
+      this.sidebarSearchKw = cleanId;
+      const sbInput = document.getElementById("sb-search-input");
+      if (sbInput) sbInput.value = cleanId;
+
+      this.renderCompletedJobsTable();
+
+      setTimeout(() => {
+        const expCard = document.getElementById("expander-completed");
+        if (expCard) expCard.scrollIntoView({ behavior: "smooth", block: "start" });
+
+        const rows = document.querySelectorAll("#completed-jobs-tbody tr");
+        for (const row of rows) {
+          if (row.textContent.includes(cleanId)) {
+            row.scrollIntoView({ behavior: "smooth", block: "center" });
+            row.style.transition = "background-color 0.5s";
+            row.style.backgroundColor = "#FEF3C7";
+            setTimeout(() => {
+              row.style.backgroundColor = "";
+            }, 3500);
+            break;
+          }
+        }
+      }, 250);
+
+      const isEn = (this.currentLang === "EN");
+      this.showToast(isEn ? `Found Completed Job ${cleanId}` : `พบประวัติงานเสร็จสิ้น ${cleanId}`, "success");
+    } else {
+      const isEn = (this.currentLang === "EN");
+      this.showToast(isEn ? `Booking ${cleanId} not found` : `ไม่พบรหัสการจอง ${cleanId}`, "warning");
+    }
   }
 
   onSelectSidebarCustomer(custName) {

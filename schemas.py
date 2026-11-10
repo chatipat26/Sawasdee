@@ -321,3 +321,33 @@ class InspectionPayload(BaseModel):
     inspection_categories_in: Optional[Union[dict, list, str]] = None
 
     model_config = ConfigDict(extra="allow", populate_by_name=True)
+
+
+class InsuranceRecordBase(BaseModel):
+    id: Optional[Union[int, str]] = None
+    car_plate: str
+    record_type: Optional[str] = "insurance"
+    insurance_type: Optional[str] = None
+    policy_no: Optional[str] = None
+    company: Optional[str] = None
+    coverage_details: Optional[str] = None
+    start_date: Optional[str] = None
+    expiry_date: Optional[str] = None
+    premium_amount: Optional[float] = 0.0
+    cost: Optional[float] = 0.0
+    ins_doc_url: Optional[str] = None
+    receipt_url: Optional[str] = None
+    notes: Optional[str] = None
+    created_by: Optional[str] = "admin"
+    created_at: Optional[str] = None
+
+    model_config = ConfigDict(extra="allow", populate_by_name=True)
+
+
+class InsuranceRecordCreate(InsuranceRecordBase):
+    pass
+
+
+class InsuranceRecordResponse(InsuranceRecordBase):
+    pass
+
