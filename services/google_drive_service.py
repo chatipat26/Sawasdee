@@ -19,6 +19,12 @@ FOLDER_INSURANCE_ACT = "1cxfQEi9oHUIBBF4oMMHJgIvGu8fxOOEq"
 FOLDER_CAR_ANGLES = "1V5S_j4dXQGuUW6zCAwQaXSkYJ9XNo-Mj"
 FOLDER_PAYMENT_SLIPS = "1BqKO4TXM4sJQ5_GzKdcVPTwE_qyiAsv8"
 
+# PDF Document Folders (Configurable via Environment Variables, defaults to Sawasdee App parent folder)
+PARENT_APP_FOLDER = "10f_0dbowDOMPpDL59oAjnHBgLAzBHgHO"
+FOLDER_CONTRACTS = os.environ.get("GOOGLE_DRIVE_FOLDER_CONTRACT", os.environ.get("GOOGLE_DRIVE_FOLDER_CONTRACTS", PARENT_APP_FOLDER))
+FOLDER_INSPECTIONS = os.environ.get("GOOGLE_DRIVE_FOLDER_INSPECTION", os.environ.get("GOOGLE_DRIVE_FOLDER_INSPECTIONS", PARENT_APP_FOLDER))
+FOLDER_RECEIPTS = os.environ.get("GOOGLE_DRIVE_FOLDER_RECEIPT", os.environ.get("GOOGLE_DRIVE_FOLDER_RECEIPTS", PARENT_APP_FOLDER))
+
 GOOGLE_APPS_SCRIPT_URL = os.environ.get(
     "GOOGLE_DRIVE_WEBHOOK_URL",
     "https://script.google.com/macros/s/AKfycbym7RQvghcv9rODPXp_Poc_wsAgR6sX1vQhchqSvW0P_QU7B5jPlZUiwMjGC2hnlUDlvg/exec"
@@ -303,3 +309,34 @@ def upload_image_to_drive(
             "folder_id": folder_id,
             "is_gdrive": False
         }
+
+
+def build_pdf_filename(doc_type: str, ref_id: str, date_str: Optional[str] = None) -> str:
+    """
+    Build standardized PDF filename for Google Drive:
+    Format: [ประเภทเอกสาร]_[รหัสการจอง/เลขที่อ้างอิง]_[YYYYMMDD].pdf
+    Examples:
+    - สัญญาเช่า_MRC261115141928_20261115.pdf
+    - ใบตรวจสภาพรถ_MRC261115141928_20261115.pdf
+    - ใบเสร็จ_MRC261115141928_20261115.pdf
+    """
+    clean_ref = re.sub(r'[\s/\\:*?"<>|]', '', str(ref_id or "REF")).strip()
+    if not date_str:
+        date_str = datetime.now().strftime("%Y%m%d")
+    clean_type = str(doc_type or "เอกสาร").strip()
+    return f"{clean_type}_{clean_ref}_{date_str}.pdf"
+
+
+def upload_pdf_to_drive(
+    file_bytes: Union[bytes, bytearray],
+    folder_id: Optional[str],
+    file_name: str
+) -> Dict[str, Any]:
+    """Upload generated PDF bytes to Google Drive with MIME type application/pdf."""
+    target_folder = folder_id or PARENT_APP_FOLDER
+    return upload_image_to_drive(
+        file=file_bytes,
+        folder_id=target_folder,
+        file_name=file_name,
+        content_type="application/pdf"
+    )

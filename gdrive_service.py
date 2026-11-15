@@ -24,6 +24,12 @@ GOOGLE_APPS_SCRIPT_URL = os.environ.get(
     "https://script.google.com/macros/s/AKfycbym7RQvghcv9rODPXp_Poc_wsAgR6sX1vQhchqSvW0P_QU7B5jPlZUiwMjGC2hnlUDlvg/exec"
 )
 
+# PDF Document Folders (Configurable via Environment Variables)
+PARENT_APP_FOLDER = "10f_0dbowDOMPpDL59oAjnHBgLAzBHgHO"
+FOLDER_CONTRACTS = os.environ.get("GOOGLE_DRIVE_FOLDER_CONTRACT", os.environ.get("GOOGLE_DRIVE_FOLDER_CONTRACTS", PARENT_APP_FOLDER))
+FOLDER_INSPECTIONS = os.environ.get("GOOGLE_DRIVE_FOLDER_INSPECTION", os.environ.get("GOOGLE_DRIVE_FOLDER_INSPECTIONS", PARENT_APP_FOLDER))
+FOLDER_RECEIPTS = os.environ.get("GOOGLE_DRIVE_FOLDER_RECEIPT", os.environ.get("GOOGLE_DRIVE_FOLDER_RECEIPTS", PARENT_APP_FOLDER))
+
 DEFAULT_FOLDER_MAP = {
     "insurance": FOLDER_INSURANCE_ACT,
     "insurance_act": FOLDER_INSURANCE_ACT,
@@ -40,6 +46,13 @@ DEFAULT_FOLDER_MAP = {
     "payment_slip": FOLDER_PAYMENT_SLIPS,
     "deposit_slip": FOLDER_PAYMENT_SLIPS,
     "rental_slip": FOLDER_PAYMENT_SLIPS,
+
+    "contract": FOLDER_CONTRACTS,
+    "สัญญาเช่า": FOLDER_CONTRACTS,
+    "inspection_doc": FOLDER_INSPECTIONS,
+    "ใบตรวจสภาพรถ": FOLDER_INSPECTIONS,
+    "receipt": FOLDER_RECEIPTS,
+    "ใบเสร็จ": FOLDER_RECEIPTS,
 }
 
 def clean_plate_for_filename(plate: str) -> str:

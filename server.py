@@ -69,6 +69,45 @@ TH_TZ = timezone(timedelta(hours=7))
 def now_th():
     return datetime.now(TH_TZ)
 
+def async_upload_pdf_to_drive(
+    doc_type: str,
+    ref_id: str,
+    pdf_bytes: bytes,
+    folder_id: Optional[str],
+    booking_dict: Optional[Dict[str, Any]] = None,
+    db_col: Optional[str] = None
+):
+    """
+    Safely uploads generated PDF to Google Drive in a daemon thread.
+    Returns HTTP response immediately to user without any delay or timeout risk.
+    """
+    def _task():
+        try:
+            from services.google_drive_service import upload_pdf_to_drive, build_pdf_filename, PARENT_APP_FOLDER
+            target_folder = folder_id or PARENT_APP_FOLDER
+            fname = build_pdf_filename(doc_type, ref_id)
+            res = upload_pdf_to_drive(pdf_bytes, target_folder, fname)
+            if res.get("success") and res.get("webViewLink"):
+                gdrive_url = res.get("webViewLink")
+                print(f"[PDF GDrive Auto-Upload] Success: {fname} -> {gdrive_url}")
+                if booking_dict and db_col:
+                    booking_dict[db_col] = gdrive_url
+                    store.async_sync_booking(booking_dict)
+                    try:
+                        from db import get_db_client
+                        sb = get_db_client()
+                        if sb:
+                            sb.table("bookings").update({db_col: gdrive_url}).eq("booking_id", ref_id).execute()
+                    except Exception as dberr:
+                        print(f"[PDF GDrive Auto-Upload] DB update notice: {dberr}")
+            else:
+                print(f"[PDF GDrive Auto-Upload] Result: {res.get('error')}")
+        except Exception as e:
+            print(f"[PDF GDrive Auto-Upload] Warning: {e}")
+
+    import threading
+    threading.Thread(target=_task, daemon=True).start()
+
 # -------------------------------------------------------------------------
 # BUSINESS FLOW GUARDS (state machine / overlap protection)
 # -------------------------------------------------------------------------
@@ -2231,6 +2270,22 @@ async def generate_booking_inspection_pdf(bk_id: str, payload: Optional[Dict[str
         target["checkin_pdf_url"] = pdf_url
     store.async_sync_booking(target)
 
+    # Isolated Feature: Auto-upload Inspection PDF to Google Drive in background thread
+    try:
+        from services.google_drive_service import FOLDER_INSPECTIONS
+        insp_col = "checkout_pdf_url" if is_checkout else "checkin_pdf_url"
+        insp_label = f"ใบตรวจสภาพรถ_{clean_type.capitalize()}"
+        async_upload_pdf_to_drive(
+            doc_type=insp_label,
+            ref_id=bk_id,
+            pdf_bytes=pdf_bytes,
+            folder_id=FOLDER_INSPECTIONS,
+            booking_dict=target,
+            db_col=insp_col
+        )
+    except Exception as gdrive_err:
+        print(f"[Inspection PDF Gen] Auto-upload notice: {gdrive_err}")
+
     return {
         "success": True,
         "booking_id": bk_id,
@@ -4215,6 +4270,7 @@ def _resolve_cust_and_car(target):
 # -------------------------------------------------------------------------
 # PDF DOCUMENT STREAMING ENDPOINTS
 # -------------------------------------------------------------------------
+
 @app.get("/api/pdf/contract/{bk_id}")
 async def get_contract_pdf(bk_id: str, download: int = 0):
     target = next((b for b in store.bookings if b.get("booking_id") == bk_id), None)
@@ -4237,6 +4293,20 @@ async def get_contract_pdf(bk_id: str, download: int = 0):
     if not target.get("contract_issued") and target.get("deposit_paid") and target.get("rental_paid"):
         target["contract_issued"] = True
     store.async_sync_booking(target)
+
+    # Isolated Feature: Auto-upload Contract PDF to Google Drive in background thread
+    try:
+        from services.google_drive_service import FOLDER_CONTRACTS
+        async_upload_pdf_to_drive(
+            doc_type="สัญญาเช่า",
+            ref_id=bk_id,
+            pdf_bytes=pdf_bytes,
+            folder_id=FOLDER_CONTRACTS,
+            booking_dict=target,
+            db_col="contract_pdf_url"
+        )
+    except Exception as gdrive_err:
+        print(f"[Contract PDF] Auto-upload notice: {gdrive_err}")
 
     ext_count = len([x for x in (target.get("extension_history") or []) if isinstance(x, dict) and x.get("type") == "extension"])
     fname = f"Agreement_{bk_id}" + (f"_ext{ext_count}" if ext_count else "") + ".pdf"
@@ -4261,6 +4331,21 @@ async def get_receipt_pdf(bk_id: str):
     ref_no = target.get("rental_ref") or target.get("deposit_ref")
 
     pdf_bytes = pdf_engine.generate_receipt_bytes(f"REC{bk_id}", target, cust, car, amt, method, "ค่าเช่ารถยนต์ (Vehicle Rental Fee)", ref_no=ref_no)
+
+    # Isolated Feature: Auto-upload Receipt PDF to Google Drive in background thread
+    try:
+        from services.google_drive_service import FOLDER_RECEIPTS
+        async_upload_pdf_to_drive(
+            doc_type="ใบเสร็จ",
+            ref_id=bk_id,
+            pdf_bytes=pdf_bytes,
+            folder_id=FOLDER_RECEIPTS,
+            booking_dict=target,
+            db_col="receipt_pdf_url"
+        )
+    except Exception as gdrive_err:
+        print(f"[Receipt PDF] Auto-upload notice: {gdrive_err}")
+
     return StreamingResponse(
         io.BytesIO(pdf_bytes),
         media_type="application/pdf",
@@ -4281,6 +4366,21 @@ async def get_deposit_receipt_pdf(bk_id: str):
     ref_no = target.get("deposit_ref")
 
     pdf_bytes = pdf_engine.generate_receipt_bytes(f"DEP{bk_id}", target, cust, car, amt, method, "เงินมัดจำประกันสัญญา (Security Deposit)", ref_no=ref_no)
+
+    # Isolated Feature: Auto-upload Deposit Receipt PDF to Google Drive in background thread
+    try:
+        from services.google_drive_service import FOLDER_RECEIPTS
+        async_upload_pdf_to_drive(
+            doc_type="ใบเสร็จมัดจำ",
+            ref_id=bk_id,
+            pdf_bytes=pdf_bytes,
+            folder_id=FOLDER_RECEIPTS,
+            booking_dict=target,
+            db_col="deposit_receipt_pdf_url"
+        )
+    except Exception as gdrive_err:
+        print(f"[Deposit Receipt PDF] Auto-upload notice: {gdrive_err}")
+
     return StreamingResponse(
         io.BytesIO(pdf_bytes),
         media_type="application/pdf",
@@ -4293,7 +4393,7 @@ async def get_inspection_pdf(bk_id: str, type: str = "checkout", download: int =
     if not target:
         target = next((cj for cj in store.completed_jobs if cj.get("booking_id") == bk_id), None)
     if not target:
-        raise HTTPException(status_code=404, detail="?????????????????")
+        raise HTTPException(status_code=404, detail="ไม่พบข้อมูลการจอง")
 
     cust, car = _resolve_cust_and_car(target)
     is_checkout = str(type).lower().strip() in ("checkout", "dispatch", "out")
@@ -4325,6 +4425,22 @@ async def get_inspection_pdf(bk_id: str, type: str = "checkout", download: int =
     elif not is_checkout and not target.get("checkin_pdf_url"):
         target["checkin_pdf_url"] = pdf_url
         store.async_sync_booking(target)
+
+    # Isolated Feature: Auto-upload Inspection PDF to Google Drive in background thread
+    try:
+        from services.google_drive_service import FOLDER_INSPECTIONS
+        insp_col = "checkout_pdf_url" if is_checkout else "checkin_pdf_url"
+        insp_label = f"ใบตรวจสภาพรถ_{clean_type.capitalize()}"
+        async_upload_pdf_to_drive(
+            doc_type=insp_label,
+            ref_id=bk_id,
+            pdf_bytes=pdf_bytes,
+            folder_id=FOLDER_INSPECTIONS,
+            booking_dict=target,
+            db_col=insp_col
+        )
+    except Exception as gdrive_err:
+        print(f"[Inspection PDF] Auto-upload notice: {gdrive_err}")
 
     disp = "attachment" if download else "inline"
     return StreamingResponse(
