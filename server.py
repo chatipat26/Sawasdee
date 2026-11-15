@@ -23,6 +23,15 @@ def convert_gdrive_url(url: str) -> str:
         return f"https://lh3.googleusercontent.com/d/{m.group(1)}"
     return u
 
+from gdrive_service import (
+    gdrive_service,
+    build_gdrive_filename,
+    get_gdrive_folder_id,
+    FOLDER_INSURANCE_ACT,
+    FOLDER_CAR_ANGLES,
+    FOLDER_PAYMENT_SLIPS
+)
+
 from db import (
     store,
     get_db_client,
@@ -1704,8 +1713,16 @@ async def list_bookings():
         b_copy["contract_pdf_url"] = b_copy.get("contract_pdf_url") or ""
         b_copy["checkout_pdf_url"] = b_copy.get("checkout_pdf_url") or ""
         b_copy["checkin_pdf_url"] = b_copy.get("checkin_pdf_url") or ""
-        b_copy["checkout_pdf_url"] = b_copy.get("checkout_pdf_url") or ""
-        b_copy["checkin_pdf_url"] = b_copy.get("checkin_pdf_url") or ""
+        
+        # TARGET MISSION 3: Safe balance calculation (net_price - deposit_amount)
+        if b_copy.get("rental_paid"):
+            b_copy["remaining_rental"] = 0.0
+        elif b_copy.get("deposit_paid"):
+            np_val = float(b_copy.get("net_price") or 0.0)
+            dep_val = float(b_copy.get("deposit_amount") or 5000.0)
+            cur_rem = float(b_copy.get("remaining_rental") or 0.0)
+            if (cur_rem >= np_val and np_val > 0) or b_copy.get("remaining_rental") is None:
+                b_copy["remaining_rental"] = max(0.0, np_val - dep_val)
         res.append(b_copy)
     return res
 
@@ -1735,6 +1752,16 @@ async def get_booking(bk_id: str):
         b_copy["extension_history"] = []
     b_copy["is_fully_paid"] = bool(b_copy.get("is_fully_paid", False) or b_copy.get("rental_paid", False))
     b_copy["contract_pdf_url"] = b_copy.get("contract_pdf_url") or ""
+    
+    # TARGET MISSION 3: Safe balance calculation (net_price - deposit_amount)
+    if b_copy.get("rental_paid"):
+        b_copy["remaining_rental"] = 0.0
+    elif b_copy.get("deposit_paid"):
+        np_val = float(b_copy.get("net_price") or 0.0)
+        dep_val = float(b_copy.get("deposit_amount") or 5000.0)
+        cur_rem = float(b_copy.get("remaining_rental") or 0.0)
+        if (cur_rem >= np_val and np_val > 0) or b_copy.get("remaining_rental") is None:
+            b_copy["remaining_rental"] = max(0.0, np_val - dep_val)
     return b_copy
 
 @app.post("/api/bookings")
@@ -1821,7 +1848,7 @@ async def create_booking(payload: Dict[str, Any]):
         "deposit_ref": payload.get("deposit_ref", "") or payload.get("payment_ref", ""),
         "deposit_slip": convert_gdrive_url(payload.get("deposit_slip", "") or payload.get("slip_url", "")),
         "rental_paid": rental_paid,
-        "remaining_rental": 0.0 if rental_paid else net_price,
+        "remaining_rental": 0.0 if rental_paid else (max(0.0, net_price - deposit_amount) if deposit_paid else net_price),
         "rental_ref": payload.get("rental_ref", ""),
         "rental_slip": convert_gdrive_url(payload.get("rental_slip", "")),
         "created_by": payload.get("created_by", "admin"),
@@ -2361,7 +2388,8 @@ async def record_deposit(bk_id: str, payload: Dict[str, Any]):
         target["rental_ref"] = dep_ref
         target["rental_slip"] = dep_slip
     else:
-        target["remaining_rental"] = net_p
+        # TARGET MISSION 3: ยอดเงินคงเหลือ = ราคาค่าเช่าที่ตกลง (net_price) - เงินมัดจำที่ชำระแล้ว (deposit_amount)
+        target["remaining_rental"] = max(0.0, net_p - dep_amount)
 
     if target.get("status") == "รอชำระมัดจำ":
         target["status"] = "รอส่งมอบ"
@@ -2449,8 +2477,13 @@ async def settle_rental(bk_id: str, payload: Dict[str, Any]):
     settle_method = str(payload.get("payment_method", "โอนเงิน / สแกน QR"))
     settle_ref = str(payload.get("payment_ref") or payload.get("rental_ref") or "").strip()
     settle_slip = convert_gdrive_url(str(payload.get("slip_url") or payload.get("rental_slip") or "").strip())
-    # Amount due = outstanding balance (covers extension top-ups); falls back to full rental price
-    net_p = float(target.get("remaining_rental") or target.get("net_price", 0.0))
+    # Amount due = outstanding balance (covers extension top-ups); falls back to net_price - deposit
+    rem_due = float(target.get("remaining_rental") if target.get("remaining_rental") is not None else 0.0)
+    if rem_due <= 0.0 and not target.get("rental_paid"):
+        net_val = float(target.get("net_price") or 0.0)
+        dep_val = float(target.get("deposit_amount") or 5000.0) if target.get("deposit_paid") else 0.0
+        rem_due = max(0.0, net_val - dep_val)
+    net_p = rem_due
 
     th_today = now_th().date().isoformat()
     target["rental_paid"] = True
@@ -2995,14 +3028,69 @@ async def close_return(bk_id: str, payload: Dict[str, Any]):
     return {"success": True, "action": "end_contract"}
 
 @app.post("/api/upload-photo")
-async def upload_photo(file: UploadFile = File(...)):
+async def upload_photo(
+    file: UploadFile = File(...),
+    category: Optional[str] = None,
+    ref_id: Optional[str] = None,
+    plate: Optional[str] = None,
+    sub_type: Optional[str] = None
+):
+    """
+    Unified upload endpoint:
+    - Automatically organizes into Google Drive folders if credentials configured
+    - Standardizes filenames:
+        พ.ร.บ./กรมธรรม์: [กรมธรรม์/พรบ]_[ทะเบียนรถ]_[YYYYMMDD] (Folder: 1cxfQEi9oHUIBBF4oMMHJgIvGu8fxOOEq)
+        รูปรถยนต์ 4 มุม: รถ_[มุม]_[ทะเบียนรถ]_[YYYYMMDD] (Folder: 1V5S_j4dXQGuUW6zCAwQaXSkYJ9XNo-Mj)
+        สลิปการโอนเงิน: สลิป_[รหัสการจอง/อ้างอิง]_[YYYYMMDD] (Folder: 1BqKO4TXM4sJQ5_GzKdcVPTwE_qyiAsv8)
+    - Fallback: Safe compressed Base64 photo storage if GDrive is not yet configured
+    """
     contents = await file.read()
     ext = file.filename.split(".")[-1] if "." in file.filename else "jpg"
+
+    # 1. Google Drive Auto-Upload (TARGET MISSION 2)
+    if gdrive_service.is_configured():
+        target_ref = ref_id or plate or "ref"
+        res = gdrive_service.upload_file(
+            file_bytes=contents,
+            category=category or "slip",
+            ref_or_plate=target_ref,
+            sub_type=sub_type,
+            original_filename=file.filename,
+            content_type=file.content_type or "image/jpeg"
+        )
+        if res.get("success"):
+            return {
+                "success": True,
+                "url": res["webViewLink"],
+                "webViewLink": res["webViewLink"],
+                "direct_url": res["direct_url"],
+                "filename": res["filename"],
+                "folder_id": res["folder_id"],
+                "is_gdrive": True
+            }
+        else:
+            print(f"[Upload] GDrive upload error, falling back to local base64: {res.get('error')}")
+
+    # 2. Resilient Base64 fallback (safe for current demo)
     safe_fn = f"insp_{int(time.time()*1000)}.{ext}"
     url = store.upload_photo(safe_fn, contents, file.content_type or "image/jpeg")
     if not url:
         raise HTTPException(status_code=500, detail="อัปโหลดรูปภาพไม่สำเร็จ")
-    return {"success": True, "url": url, "filename": safe_fn}
+    return {"success": True, "url": url, "filename": safe_fn, "is_gdrive": False}
+
+@app.get("/api/gdrive/status")
+async def get_gdrive_status():
+    """Returns Google Drive service connection status and configured folder IDs."""
+    return {
+        "success": True,
+        "configured": gdrive_service.is_configured(),
+        "client_email": gdrive_service.get_service_account_email(),
+        "folders": {
+            "insurance_act": FOLDER_INSURANCE_ACT,
+            "car_angles": FOLDER_CAR_ANGLES,
+            "payment_slips": FOLDER_PAYMENT_SLIPS
+        }
+    }
 
 # -------------------------------------------------------------------------
 # FLEET MAINTENANCE & SERVICE WORK ORDERS

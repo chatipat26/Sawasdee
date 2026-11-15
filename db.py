@@ -514,6 +514,17 @@ class DataStore:
                                     b_copy["pending_damage_cost"] = float(item["pending_damage_cost"])
                                 if item.get("swap_history"):
                                     b_copy["swap_history"] = item["swap_history"]
+                        
+                        # TARGET MISSION 3: Safe balance calculation (net_price - deposit_amount)
+                        if b_copy.get("rental_paid"):
+                            b_copy["remaining_rental"] = 0.0
+                        elif b_copy.get("deposit_paid"):
+                            np_val = float(b_copy.get("net_price") or 0.0)
+                            dep_val = float(b_copy.get("deposit_amount") or 5000.0)
+                            cur_rem = float(b_copy.get("remaining_rental") or 0.0)
+                            if (cur_rem >= np_val and np_val > 0) or b_copy.get("remaining_rental") is None:
+                                b_copy["remaining_rental"] = max(0.0, np_val - dep_val)
+
                         fresh_b.append(b_copy)
                     with self.lock:
                         self.bookings = fresh_b

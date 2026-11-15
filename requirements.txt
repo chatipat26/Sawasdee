@@ -10,3 +10,6 @@ reportlab
 sqlalchemy
 jinja2
 pillow
+openpyxl
+google-api-python-client
+google-auth

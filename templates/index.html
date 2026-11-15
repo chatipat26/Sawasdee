@@ -453,17 +453,30 @@
                 </div>
               </div>
 
-              <!-- Uploaded Slip Preview Card -->
-              <div id="deposit-slip-preview-box" style="display:none; margin-bottom:14px; align-items:center; gap:12px; background:#F8FAFC; border:1px solid #CBD5E1; border-radius:8px; padding:8px 12px;">
-                <a id="deposit-slip-preview-link" href="#" target="_blank" title="คลิกเพื่อดูรูปสลิปขนาดใหญ่">
+              <!-- Uploaded Slip Preview Card: Deposit Slip -->
+              <div id="deposit-slip-preview-box" style="display:none; margin-bottom:10px; align-items:center; gap:12px; background:#F8FAFC; border:1px solid #CBD5E1; border-radius:8px; padding:8px 12px;">
+                <a id="deposit-slip-preview-link" href="javascript:void(0)" onclick="app.viewCurrentDepositSlip()" title="คลิกเพื่อดูรูปสลิปขนาดใหญ่">
                   <img id="deposit-slip-preview-img" src="" alt="สลิป" style="width:52px; height:52px; object-fit:cover; border-radius:6px; border:1px solid #94A3B8; cursor:pointer;">
                 </a>
                 <div style="flex:1; overflow:hidden;">
                   <span id="deposit-slip-preview-name" style="font-size:12.5px; font-weight:700; color:#1E293B; display:block; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">สลิปหลักฐานการชำระเงิน</span>
                   <div style="display:flex; gap:10px; align-items:center; margin-top:2px;">
-                    <a id="deposit-slip-open-btn" href="#" target="_blank" style="font-size:12px; color:#2563EB; font-weight:700; text-decoration:none;">🔍 ดูรูปสลิปเต็ม</a>
+                    <a id="deposit-slip-open-btn" href="javascript:void(0)" onclick="app.viewCurrentDepositSlip()" style="font-size:12px; color:#2563EB; font-weight:700; text-decoration:none; cursor:pointer;">🔍 ดูรูปสลิปเต็ม</a>
                     <span style="color:#CBD5E1;">|</span>
                     <button type="button" onclick="app.clearDepositSlip(true)" class="btn btn-sm btn-danger" style="padding:1px 6px; font-size:11px;">🗑️ ลบสลิปนี้</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Uploaded Slip Preview Card: Rental Balance Slip (when 2 slips exist) -->
+              <div id="rental-slip-preview-box" style="display:none; margin-bottom:14px; align-items:center; gap:12px; background:#F0FDF4; border:1px solid #BBF7D0; border-radius:8px; padding:8px 12px;">
+                <a id="rental-slip-preview-link" href="javascript:void(0)" onclick="app.viewCurrentRentalSlip()" title="คลิกเพื่อดูรูปสลิปชำระคงเหลือ">
+                  <img id="rental-slip-preview-img" src="" alt="สลิปค่าเช่า" style="width:52px; height:52px; object-fit:cover; border-radius:6px; border:1px solid #86EFAC; cursor:pointer;">
+                </a>
+                <div style="flex:1; overflow:hidden;">
+                  <span id="rental-slip-preview-name" style="font-size:12.5px; font-weight:700; color:#166534; display:block; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">สลิปชำระค่าเช่าคงเหลือ</span>
+                  <div style="display:flex; gap:10px; align-items:center; margin-top:2px;">
+                    <a id="rental-slip-open-btn" href="javascript:void(0)" onclick="app.viewCurrentRentalSlip()" style="font-size:12px; color:#15803D; font-weight:700; text-decoration:none; cursor:pointer;">🔍 ดูสลิปชำระคงเหลือ</a>
                   </div>
                 </div>
               </div>
@@ -1892,6 +1905,42 @@
     </div>
   </div>
 
+  <!-- Modal: Slip & Image Lightbox Viewer (TARGET MISSION 1) -->
+  <div id="modal-slip-viewer" class="modal-backdrop" onclick="if(event.target===this)app.closeModal('modal-slip-viewer')">
+    <div class="modal-dialog" style="max-width:760px; width:95%; max-height:92vh; padding:22px; display:flex; flex-direction:column; background:#ffffff !important; border-radius:18px; box-shadow:0 24px 60px rgba(0,0,0,0.25);">
+      <div class="modal-header" style="margin-bottom:12px; padding-bottom:12px; border-bottom:1px solid #E2E8F0; display:flex; justify-content:space-between; align-items:center;">
+        <div class="modal-title" id="modal-slip-viewer-title" style="font-size:16px; font-weight:800; color:#1E3A8A; display:flex; align-items:center; gap:8px;">
+          <span>🧾</span> <span id="modal-slip-title-text">สลิปหลักฐานการชำระเงิน</span>
+        </div>
+        <button type="button" class="modal-close" onclick="app.closeModal('modal-slip-viewer')" style="background:none; border:none; font-size:22px; cursor:pointer; color:#64748B; padding:0 6px;">✕</button>
+      </div>
+
+      <div style="flex:1; display:flex; justify-content:center; align-items:center; background:#0F172A; border-radius:12px; padding:12px; overflow:hidden; min-height:340px; max-height:65vh;">
+        <img id="modal-slip-viewer-img" src="" alt="สลิปการชำระเงิน" style="max-width:100%; max-height:62vh; object-fit:contain; border-radius:6px; box-shadow:0 10px 25px rgba(0,0,0,0.5);">
+        <div id="modal-slip-viewer-empty" style="display:none; color:#CBD5E1; text-align:center; padding:30px;">
+          <div style="font-size:36px; margin-bottom:10px;">📄</div>
+          <div style="font-weight:700; font-size:14px;">ไม่สามารถแสดงภาพตัวอย่างโดยตรงได้</div>
+          <div style="font-size:12px; margin-top:6px; color:#94A3B8;">อาจเป็นไฟล์ PDF หรือลิงก์ภายนอก กรุณากดปุ่มเปิดดูด้านล่าง</div>
+        </div>
+      </div>
+
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-top:14px; flex-wrap:wrap;">
+        <div style="font-size:11.5px; color:#64748B; max-width:320px; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;" id="modal-slip-url-preview"></div>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <button type="button" id="btn-slip-open-external" onclick="app.openCurrentSlipExternal()" class="btn btn-secondary btn-sm" style="font-weight:700; font-size:12px; background:#F1F5F9; border-color:#CBD5E1; color:#1E293B;">
+            ↗️ เปิดในแท็บใหม่
+          </button>
+          <button type="button" onclick="app.downloadCurrentSlip()" class="btn btn-primary btn-sm" style="background:#2563EB; border-color:#1D4ED8; font-weight:700; font-size:12px;">
+            ⬇️ ดาวน์โหลดสลิป
+          </button>
+          <button type="button" onclick="app.closeModal('modal-slip-viewer')" class="btn btn-secondary btn-sm" style="font-size:12px;">
+            ปิด
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- 1. Handover / Inspection Modal (Back Office) -->
   <div id="modal-handover" class="modal-backdrop">
     <div class="modal-dialog">
@@ -2077,29 +2126,45 @@
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
           <div class="form-group">
             <label style="font-size:12px; font-weight:700; color:#334155;">🚘 1. ด้านหน้า (Front View)</label>
-            <input type="text" id="insp-checkin-img-front" class="form-control" placeholder="https://drive.google.com/file/d/.../view" oninput="app.updateCheckinImgPreview('front', this.value)">
-            <div id="preview-checkin-img-front" style="display:none; margin-top:6px; height:70px; border-radius:6px; overflow:hidden; border:1px solid #E2E8F0;">
+            <div style="display:flex; gap:6px;">
+              <input type="text" id="insp-checkin-img-front" class="form-control" placeholder="https://drive.google.com/file/d/.../view" oninput="app.updateCheckinImgPreview('front', this.value)">
+              <button type="button" class="btn btn-sm btn-secondary" onclick="document.getElementById('file-checkin-img-front').click()" title="อัปโหลดรูปด้านหน้าขึ้น Google Drive">📤</button>
+              <input type="file" id="file-checkin-img-front" accept="image/*" style="display:none;" onchange="app.uploadCheckinAnglePhoto(this, 'หน้า')">
+            </div>
+            <div id="preview-checkin-img-front" style="display:none; margin-top:6px; height:70px; border-radius:6px; overflow:hidden; border:1px solid #E2E8F0; cursor:pointer;" onclick="app.viewSlip(document.getElementById('insp-checkin-img-front').value, 'รูปรถด้านหน้า')">
               <img src="" style="width:100%; height:100%; object-fit:cover;">
             </div>
           </div>
           <div class="form-group">
             <label style="font-size:12px; font-weight:700; color:#334155;">🚘 2. ด้านซ้าย (Left View)</label>
-            <input type="text" id="insp-checkin-img-left" class="form-control" placeholder="https://drive.google.com/file/d/.../view" oninput="app.updateCheckinImgPreview('left', this.value)">
-            <div id="preview-checkin-img-left" style="display:none; margin-top:6px; height:70px; border-radius:6px; overflow:hidden; border:1px solid #E2E8F0;">
+            <div style="display:flex; gap:6px;">
+              <input type="text" id="insp-checkin-img-left" class="form-control" placeholder="https://drive.google.com/file/d/.../view" oninput="app.updateCheckinImgPreview('left', this.value)">
+              <button type="button" class="btn btn-sm btn-secondary" onclick="document.getElementById('file-checkin-img-left').click()" title="อัปโหลดรูปด้านซ้ายขึ้น Google Drive">📤</button>
+              <input type="file" id="file-checkin-img-left" accept="image/*" style="display:none;" onchange="app.uploadCheckinAnglePhoto(this, 'ซ้าย')">
+            </div>
+            <div id="preview-checkin-img-left" style="display:none; margin-top:6px; height:70px; border-radius:6px; overflow:hidden; border:1px solid #E2E8F0; cursor:pointer;" onclick="app.viewSlip(document.getElementById('insp-checkin-img-left').value, 'รูปรถด้านซ้าย')">
               <img src="" style="width:100%; height:100%; object-fit:cover;">
             </div>
           </div>
           <div class="form-group">
             <label style="font-size:12px; font-weight:700; color:#334155;">🚘 3. ด้านหลัง (Rear View)</label>
-            <input type="text" id="insp-checkin-img-rear" class="form-control" placeholder="https://drive.google.com/file/d/.../view" oninput="app.updateCheckinImgPreview('rear', this.value)">
-            <div id="preview-checkin-img-rear" style="display:none; margin-top:6px; height:70px; border-radius:6px; overflow:hidden; border:1px solid #E2E8F0;">
+            <div style="display:flex; gap:6px;">
+              <input type="text" id="insp-checkin-img-rear" class="form-control" placeholder="https://drive.google.com/file/d/.../view" oninput="app.updateCheckinImgPreview('rear', this.value)">
+              <button type="button" class="btn btn-sm btn-secondary" onclick="document.getElementById('file-checkin-img-rear').click()" title="อัปโหลดรูปด้านหลังขึ้น Google Drive">📤</button>
+              <input type="file" id="file-checkin-img-rear" accept="image/*" style="display:none;" onchange="app.uploadCheckinAnglePhoto(this, 'หลัง')">
+            </div>
+            <div id="preview-checkin-img-rear" style="display:none; margin-top:6px; height:70px; border-radius:6px; overflow:hidden; border:1px solid #E2E8F0; cursor:pointer;" onclick="app.viewSlip(document.getElementById('insp-checkin-img-rear').value, 'รูปรถด้านหลัง')">
               <img src="" style="width:100%; height:100%; object-fit:cover;">
             </div>
           </div>
           <div class="form-group">
             <label style="font-size:12px; font-weight:700; color:#334155;">🚘 4. ด้านขวา (Right View)</label>
-            <input type="text" id="insp-checkin-img-right" class="form-control" placeholder="https://drive.google.com/file/d/.../view" oninput="app.updateCheckinImgPreview('right', this.value)">
-            <div id="preview-checkin-img-right" style="display:none; margin-top:6px; height:70px; border-radius:6px; overflow:hidden; border:1px solid #E2E8F0;">
+            <div style="display:flex; gap:6px;">
+              <input type="text" id="insp-checkin-img-right" class="form-control" placeholder="https://drive.google.com/file/d/.../view" oninput="app.updateCheckinImgPreview('right', this.value)">
+              <button type="button" class="btn btn-sm btn-secondary" onclick="document.getElementById('file-checkin-img-right').click()" title="อัปโหลดรูปด้านขวาขึ้น Google Drive">📤</button>
+              <input type="file" id="file-checkin-img-right" accept="image/*" style="display:none;" onchange="app.uploadCheckinAnglePhoto(this, 'ขวา')">
+            </div>
+            <div id="preview-checkin-img-right" style="display:none; margin-top:6px; height:70px; border-radius:6px; overflow:hidden; border:1px solid #E2E8F0; cursor:pointer;" onclick="app.viewSlip(document.getElementById('insp-checkin-img-right').value, 'รูปรถด้านขวา')">
               <img src="" style="width:100%; height:100%; object-fit:cover;">
             </div>
           </div>
@@ -2541,7 +2606,11 @@
             </div>
             <div class="form-group">
               <label id="lbl-modal-car-ins-doc"><span style="color:#2563EB;">🔗</span> ลิงก์เอกสารกรมธรรม์ (Google Drive Link)</label>
-              <input type="text" id="edit-car-ins-doc-url" class="form-control" placeholder="https://drive.google.com/file/d/.../view" oninput="app.updateCarFormField('ins_doc_url', this.value)">
+              <div style="display:flex; gap:6px;">
+                <input type="text" id="edit-car-ins-doc-url" class="form-control" placeholder="https://drive.google.com/file/d/.../view" oninput="app.updateCarFormField('ins_doc_url', this.value)">
+                <button type="button" class="btn btn-sm btn-secondary" onclick="document.getElementById('file-car-ins-doc').click()" title="อัปโหลดไฟล์เอกสารเข้า Google Drive (Folder: 1cxfQEi9oHUIBBF4oMMHJgIvGu8fxOOEq)">📤</button>
+                <input type="file" id="file-car-ins-doc" accept="image/*,application/pdf" style="display:none;" onchange="app.uploadInsuranceDoc(this, 'กรมธรรม์')">
+              </div>
             </div>
           </div>
         </div>

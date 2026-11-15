@@ -4210,17 +4210,35 @@ class App {
     const gdriveEl = document.getElementById("deposit-gdrive-input");
     if (gdriveEl) gdriveEl.value = b.google_drive_link || "";
 
-    // 3. Populate slip URL and preview
-    if (b.deposit_slip) {
-      const urlInput = document.getElementById("deposit-slip-url");
-      if (urlInput) urlInput.value = b.deposit_slip;
+    // 3. Populate slip URL and preview (Supports both 1 slip and 2 slips)
+    const hasDepSlip = Boolean(b.deposit_slip);
+    const hasRentSlip = Boolean(b.rental_slip && b.rental_slip !== b.deposit_slip);
+
+    const urlInput = document.getElementById("deposit-slip-url");
+    if (urlInput) urlInput.value = b.deposit_slip || b.rental_slip || "";
+
+    if (hasDepSlip) {
       this.showDepositSlipPreview(b.deposit_slip, isEn ? `Deposit Slip (${b.booking_id})` : `สลิปมัดจำ (${b.booking_id})`);
     } else if (b.rental_slip) {
-      const urlInput = document.getElementById("deposit-slip-url");
-      if (urlInput) urlInput.value = b.rental_slip;
       this.showDepositSlipPreview(b.rental_slip, isEn ? `Rental Fee Slip (${b.booking_id})` : `สลิปค่าเช่า (${b.booking_id})`);
     } else {
       this.clearDepositSlip(false);
+    }
+
+    // Secondary preview for rental balance slip if 2 separate slips exist
+    const rentBox = document.getElementById("rental-slip-preview-box");
+    const rentImg = document.getElementById("rental-slip-preview-img");
+    const rentName = document.getElementById("rental-slip-preview-name");
+    if (rentBox) {
+      if (hasDepSlip && hasRentSlip) {
+        this.currentRentalSlipUrl = b.rental_slip;
+        rentBox.style.display = "flex";
+        if (rentImg) rentImg.src = this.convertDriveUrl(b.rental_slip) || b.rental_slip;
+        if (rentName) rentName.textContent = isEn ? `Rental Balance Slip (${b.booking_id})` : `สลิปชำระค่าเช่าคงเหลือ (${b.booking_id})`;
+      } else {
+        rentBox.style.display = "none";
+        this.currentRentalSlipUrl = null;
+      }
     }
 
     // 4. Render detailed summary with slip badges
@@ -4229,13 +4247,13 @@ class App {
       slipBadges.push(`<span>🧾 <b>${isEn ? 'Slip Ref:' : 'เลขที่ Ref สลิป:'}</b> <code style="background:#FEF3C7; color:#92400E; padding:2px 7px; border-radius:4px; font-weight:700; font-size:12px;">${b.deposit_ref}</code></span>`);
     }
     if (b.deposit_slip) {
-      slipBadges.push(`<span>📎 <b>${isEn ? 'Deposit Slip:' : 'สลิปมัดจำ:'}</b> <a href="${b.deposit_slip}" target="_blank" style="color:#0284C7; font-weight:700; text-decoration:underline;">🖼️ ${isEn ? 'Click to view slip' : 'คลิกเปิดดูรูปสลิป'}</a></span>`);
+      slipBadges.push(`<span>📎 <b>${isEn ? 'Deposit Slip:' : 'สลิปมัดจำ:'}</b> <a href="javascript:void(0)" onclick="app.viewSlip('${b.deposit_slip}', '${isEn ? 'Deposit Slip' : 'สลิปมัดจำ'} (${b.booking_id})')" style="color:#0284C7; font-weight:700; text-decoration:underline; cursor:pointer;">🖼️ ${isEn ? 'Click to view slip' : 'ดูสลิปมัดจำ'}</a></span>`);
     }
     if (b.rental_ref && b.rental_ref !== b.deposit_ref) {
       slipBadges.push(`<span>🧾 <b>${isEn ? 'Rental Ref:' : 'Ref ค่าเช่า:'}</b> <code style="background:#E0F2FE; color:#0369A1; padding:2px 7px; border-radius:4px; font-weight:700; font-size:12px;">${b.rental_ref}</code></span>`);
     }
     if (b.rental_slip && b.rental_slip !== b.deposit_slip) {
-      slipBadges.push(`<span>📎 <b>${isEn ? 'Rental Slip:' : 'สลิปค่าเช่า:'}</b> <a href="${b.rental_slip}" target="_blank" style="color:#0284C7; font-weight:700; text-decoration:underline;">🖼️ ${isEn ? 'Click to view slip' : 'คลิกเปิดดูรูปสลิป'}</a></span>`);
+      slipBadges.push(`<span>📎 <b>${isEn ? 'Rental Slip:' : 'สลิปค่าเช่า:'}</b> <a href="javascript:void(0)" onclick="app.viewSlip('${b.rental_slip}', '${isEn ? 'Rental Slip' : 'สลิปชำระคงเหลือ'} (${b.booking_id})')" style="color:#059669; font-weight:700; text-decoration:underline; cursor:pointer;">🖼️ ${isEn ? 'Click to view slip' : 'ดูสลิปชำระคงเหลือ'}</a></span>`);
     }
 
     summary.innerHTML = `
@@ -4246,13 +4264,17 @@ class App {
         <div class="deposit-summary-row"><span>${isEn ? 'Net' : 'ค่าเช่าสุทธิ'}</span><b class="deposit-summary-price">฿${netP.toLocaleString()}</b><span style="color:${isDep ? '#059669' : '#DC2626'};">${isDep ? (isEn ? 'Deposit paid' : 'มัดจำชำระแล้ว') : (isEn ? 'Deposit pending' : 'รอมัดจำ')}</span></div>
         ${b.payment_type ? `<div class="deposit-summary-row"><span>${isEn ? 'Type' : 'ประเภท'}</span><b>${b.payment_type}</b></div>` : ''}
         ${b.google_drive_link ? `<a class="deposit-summary-slip" href="${b.google_drive_link}" target="_blank">${isEn ? 'Google Drive' : 'Google Drive'}</a>` : ''}
-        ${b.deposit_slip ? `<a class="deposit-summary-slip" href="${b.deposit_slip}" target="_blank">${isEn ? 'View slip' : 'ดูสลิป'}</a>` : ''}
+        ${b.deposit_slip ? `<a class="deposit-summary-slip" href="javascript:void(0)" onclick="app.viewSlip('${b.deposit_slip}', 'สลิปมัดจำ (${b.booking_id})')">${isEn ? 'View slip' : 'ดูสลิปมัดจำ'}</a>` : ''}
+        ${(b.rental_slip && b.rental_slip !== b.deposit_slip) ? `<a class="deposit-summary-slip" href="javascript:void(0)" onclick="app.viewSlip('${b.rental_slip}', 'สลิปชำระคงเหลือ (${b.booking_id})')">${isEn ? 'View rental slip' : 'ดูสลิปคงเหลือ'}</a>` : ''}
         ${slipBadges.length > 0 ? `<div class="deposit-summary-extra">${slipBadges.join("")}</div>` : ''}
       </div>
     `;
 
     if (btnSaveSlip) btnSaveSlip.style.display = isDep ? "inline-flex" : "none";
-    if (btnSettle) { const remVal = parseFloat(b.remaining_rental !== undefined ? b.remaining_rental : (b.rental_paid ? 0 : netP)); btnSettle.style.display = ((!isRent && isDep) || remVal > 0) ? "inline-flex" : "none"; }
+    if (btnSettle) { 
+      const remVal = isRent ? 0 : (isDep ? Math.max(0, netP - depAmt) : parseFloat(b.remaining_rental !== undefined ? b.remaining_rental : netP));
+      btnSettle.style.display = ((!isRent && isDep) || remVal > 0) ? "inline-flex" : "none"; 
+    }
     if (btnDlDep) btnDlDep.style.display = isDep ? "inline-flex" : "none";
     if (btnDlRent) btnDlRent.style.display = isRent ? "inline-flex" : "none";
     if (btnDlContract) btnDlContract.style.display = "inline-flex";
@@ -4269,7 +4291,9 @@ class App {
 
     try {
       this.showToast(`⏳ กำลังอัปโหลดสลิป ${file.name}...`, "info");
-      const res = await fetch("/api/upload-photo", { method: "POST", body: formData });
+      const bkId = this.currentSelectedBooking?.booking_id || "";
+      const uploadUrl = `/api/upload-photo?category=slip&ref_id=${encodeURIComponent(bkId || 'DEP')}`;
+      const res = await fetch(uploadUrl, { method: "POST", body: formData });
       const data = await res.json();
       if (!data.success || !data.url) {
         throw new Error(data.detail || "อัปโหลดรูปภาพสลิปไม่สำเร็จ");
@@ -4291,31 +4315,163 @@ class App {
   showDepositSlipPreview(url, fileName = "สลิปหลักฐานการชำระเงิน") {
     const box = document.getElementById("deposit-slip-preview-box");
     const img = document.getElementById("deposit-slip-preview-img");
-    const link = document.getElementById("deposit-slip-preview-link");
     const nameEl = document.getElementById("deposit-slip-preview-name");
-    const openBtn = document.getElementById("deposit-slip-open-btn");
     const statusEl = document.getElementById("deposit-slip-status");
 
-    if (box && img && link) {
+    this.currentDepositSlipUrl = url;
+    this.currentDepositSlipName = fileName;
+
+    if (box && img) {
       box.style.display = "flex";
-      img.src = url;
-      link.href = url;
-      if (openBtn) openBtn.href = url;
+      img.src = this.convertDriveUrl(url) || url;
       if (nameEl) nameEl.textContent = fileName || "สลิปหลักฐานการชำระเงิน";
       if (statusEl) statusEl.innerHTML = `<b style="color:#059669;">✔️ แนบสลิปแล้ว</b>`;
     }
   }
 
+  viewCurrentDepositSlip() {
+    if (!this.currentDepositSlipUrl) {
+      this.showToast("⚠️ ยังไม่มีรูปภาพสลิปให้แสดง", "danger");
+      return;
+    }
+    this.viewSlip(this.currentDepositSlipUrl, this.currentDepositSlipName || "สลิปมัดจำ");
+  }
+
+  viewCurrentRentalSlip() {
+    if (!this.currentRentalSlipUrl) {
+      this.showToast("⚠️ ยังไม่มีรูปภาพสลิปชำระคงเหลือ", "danger");
+      return;
+    }
+    this.viewSlip(this.currentRentalSlipUrl, "สลิปชำระค่าเช่าคงเหลือ");
+  }
+
   clearDepositSlip(resetFile = true) {
     const urlInput = document.getElementById("deposit-slip-url");
     if (urlInput) urlInput.value = "";
+    this.currentDepositSlipUrl = null;
+    this.currentDepositSlipName = null;
     const box = document.getElementById("deposit-slip-preview-box");
     if (box) box.style.display = "none";
+    const rentBox = document.getElementById("rental-slip-preview-box");
+    if (rentBox) rentBox.style.display = "none";
+    this.currentRentalSlipUrl = null;
     const statusEl = document.getElementById("deposit-slip-status");
     if (statusEl) statusEl.textContent = "ยังไม่ได้แนบสลิป";
     if (resetFile) {
       const fileInput = document.getElementById("deposit-slip-file");
       if (fileInput) fileInput.value = "";
+    }
+  }
+
+  // =========================================================================
+  // SLIP & IMAGE LIGHTBOX VIEWER (TARGET MISSION 1)
+  // =========================================================================
+  viewSlip(url, title = "สลิปหลักฐานการชำระเงิน") {
+    if (!url || url === "-" || url === "null" || url === "undefined") {
+      this.showToast("⚠️ ไม่พบรูปภาพสลิป หรือยังไม่ได้แนบสลิป", "danger");
+      return;
+    }
+
+    this.currentViewingSlip = { url, title };
+    const titleEl = document.getElementById("modal-slip-title-text");
+    const imgEl = document.getElementById("modal-slip-viewer-img");
+    const emptyEl = document.getElementById("modal-slip-viewer-empty");
+    const urlPrevEl = document.getElementById("modal-slip-url-preview");
+
+    if (titleEl) titleEl.textContent = title;
+    if (urlPrevEl) {
+      urlPrevEl.textContent = url.startsWith("data:") ? "สลิป (รูปภาพ Base64)" : url;
+      urlPrevEl.title = url;
+    }
+
+    const directSrc = this.convertDriveUrl(url) || url;
+    const isPdf = String(url).toLowerCase().includes(".pdf");
+
+    if (isPdf) {
+      if (imgEl) imgEl.style.display = "none";
+      if (emptyEl) {
+        emptyEl.style.display = "block";
+        emptyEl.innerHTML = `
+          <div style="font-size:36px; margin-bottom:10px;">📄</div>
+          <div style="font-weight:700; color:#FFFFFF;">เอกสารสลิปในรูปแบบ PDF</div>
+          <div style="font-size:12px; margin-top:6px; color:#94A3B8;">กรุณากดปุ่ม "เปิดในแท็บใหม่" หรือ "ดาวน์โหลดสลิป" เพื่อดูเอกสาร</div>
+        `;
+      }
+    } else {
+      if (emptyEl) emptyEl.style.display = "none";
+      if (imgEl) {
+        imgEl.style.display = "block";
+        imgEl.src = directSrc;
+        imgEl.onerror = () => {
+          imgEl.style.display = "none";
+          if (emptyEl) {
+            emptyEl.style.display = "block";
+            emptyEl.innerHTML = `
+              <div style="font-size:36px; margin-bottom:10px;">🖼️</div>
+              <div style="font-weight:700; color:#FFFFFF;">ไม่สามารถแสดงภาพตัวอย่างได้โดยตรง</div>
+              <div style="font-size:12px; margin-top:6px; color:#94A3B8;">กรุณากดปุ่มเปิดดูในแท็บใหม่ หรือเปิดใน Google Drive</div>
+            `;
+          }
+        };
+      }
+    }
+
+    this.openModal("modal-slip-viewer");
+  }
+
+  openSafeImageWindow(url) {
+    if (!url) return;
+    if (url.startsWith("data:")) {
+      try {
+        // Convert Base64 data URL to native Blob URL to safely bypass Chrome's top-frame navigation block
+        const parts = url.split(";base64,");
+        const contentType = parts[0].replace("data:", "") || "image/jpeg";
+        const byteCharacters = atob(parts[1]);
+        const byteArrays = [];
+        for (let offset = 0; offset < byteCharacters.length; offset += 512) {
+          const slice = byteCharacters.slice(offset, offset + 512);
+          const byteNumbers = new Array(slice.length);
+          for (let i = 0; i < slice.length; i++) {
+            byteNumbers[i] = slice.charCodeAt(i);
+          }
+          byteArrays.push(new Uint8Array(byteNumbers));
+        }
+        const blob = new Blob(byteArrays, { type: contentType });
+        const blobUrl = URL.createObjectURL(blob);
+        window.open(blobUrl, "_blank");
+      } catch (e) {
+        console.error("Blob URL creation error:", e);
+        const win = window.open("", "_blank");
+        if (win) {
+          win.document.write(`<html><head><title>สลิปการชำระเงิน</title></head><body style="margin:0;background:#0f172a;display:flex;align-items:center;justify-content:center;height:100vh;"><img src="${url}" style="max-width:98%;max-height:98vh;object-fit:contain;border-radius:8px;"/></body></html>`);
+          win.document.close();
+        }
+      }
+    } else {
+      window.open(url, "_blank");
+    }
+  }
+
+  openCurrentSlipExternal() {
+    if (!this.currentViewingSlip?.url) return;
+    this.openSafeImageWindow(this.currentViewingSlip.url);
+  }
+
+  downloadCurrentSlip() {
+    if (!this.currentViewingSlip?.url) return;
+    const url = this.currentViewingSlip.url;
+    const cleanTitle = (this.currentViewingSlip.title || "slip").replace(/[\s\/:*?"<>|]/g, "_");
+    const filename = `${cleanTitle}.jpg`;
+
+    if (url.startsWith("data:")) {
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } else {
+      window.open(url, "_blank");
     }
   }
 
@@ -4638,6 +4794,9 @@ class App {
         const isDep = Boolean(b.deposit_paid);
         const isRent = Boolean(b.rental_paid);
         const netP = parseFloat(b.net_price || 0);
+        const depAmt = parseFloat(b.deposit_amount || 5000);
+        // TARGET MISSION 3: ยอดเงินคงเหลือ = ราคาค่าเช่าที่ตกลง (net_price) - เงินมัดจำที่ชำระแล้ว (deposit_amount)
+        const remP = isRent ? 0 : (isDep ? Math.max(0, netP - depAmt) : parseFloat(b.remaining_rental !== undefined ? b.remaining_rental : netP));
         const wDel = String(b.worker_delivery || "").trim();
         const hasDriver = wDel && wDel !== "Wait" && wDel !== "-";
         const sFmt = b.start_date_formatted || sVal;
@@ -4679,7 +4838,7 @@ class App {
         } else {
           html += `
             <div style="background:#EFF6FF; border:1px solid #93C5FD; border-radius:8px; padding:8px 12px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
-              <div style="font-size:12.5px; color:#1E40AF;">⏳ <b>${isEn ? 'Pending Rental Fee on Pick-up:' : 'รอชำระค่าเช่าวันรับรถ:'}</b> ฿${netP.toLocaleString('th-TH', {minimumFractionDigits: 2})}</div>
+              <div style="font-size:12.5px; color:#1E40AF;">⏳ <b>${isEn ? 'Pending Rental Fee on Pick-up:' : 'รอชำระค่าเช่าวันรับรถ:'}</b> ฿${remP.toLocaleString('th-TH', {minimumFractionDigits: 2})}</div>
               <button type="button" onclick="app.openSettleModal('${b.booking_id}')" class="btn btn-secondary" style="padding:4px 10px; font-size:12px; font-weight:700;">💳 ${isEn ? 'Pay Rental Fee' : 'กดจ่ายเงินค่าเช่า'}</button>
             </div>
           `;
@@ -5156,7 +5315,8 @@ class App {
     const depAmt = parseFloat(b.deposit_amount || 5000);
     const isDep = !!b.deposit_paid;
     const isRent = !!b.rental_paid;
-    const remP = isRent ? 0 : parseFloat(b.remaining_rental !== undefined ? b.remaining_rental : netP);
+    // TARGET MISSION 3: ยอดเงินคงเหลือ = ราคาค่าเช่าที่ตกลง (net_price) - เงินมัดจำที่ชำระแล้ว (deposit_amount)
+    const remP = isRent ? 0 : (isDep ? Math.max(0, netP - depAmt) : parseFloat(b.remaining_rental !== undefined ? b.remaining_rental : netP));
 
     // Header with badges
     const header = document.getElementById("contract-header-info");
@@ -5281,7 +5441,7 @@ class App {
     const depEl = document.getElementById("contract-dep-status");
     if (depEl) {
       let refText = b.deposit_ref ? ` (Ref: ${b.deposit_ref})` : '';
-      let slipLink = b.deposit_slip ? ` <a href="${b.deposit_slip}" target="_blank" style="color:#0284C7; font-size:12px; text-decoration:underline; font-weight:700;">[📎 ${isEn ? 'View Slip' : 'ดูสลิป'}]</a>` : '';
+      let slipLink = b.deposit_slip ? ` <a href="javascript:void(0)" onclick="app.viewSlip('${b.deposit_slip}', '${isEn ? 'Deposit Slip' : 'สลิปมัดจำ'} (${b.booking_id})')" style="color:#0284C7; font-size:12px; text-decoration:underline; font-weight:700; cursor:pointer;">[📎 ${isEn ? 'View Slip' : 'ดูสลิป'}]</a>` : '';
       depEl.innerHTML = isDep 
         ? `<span style="color:#059669;">${isEn ? 'Paid' : 'ชำระแล้ว'} (฿${depAmt.toLocaleString()})${refText}${slipLink}</span>`
         : `<span style="color:#DC2626;">${isEn ? 'Pending Deposit' : 'รอมัดจำ'} (฿${depAmt.toLocaleString()})</span>`;
@@ -5289,8 +5449,11 @@ class App {
 
     const remEl = document.getElementById("contract-rem-price");
     if (remEl) {
+      let rentSlipLink = (b.rental_slip && b.rental_slip !== b.deposit_slip) 
+        ? ` <a href="javascript:void(0)" onclick="app.viewSlip('${b.rental_slip}', '${isEn ? 'Rental Slip' : 'สลิปชำระคงเหลือ'} (${b.booking_id})')" style="color:#059669; font-size:12px; text-decoration:underline; font-weight:700; cursor:pointer;">[📎 ${isEn ? 'View Rental Slip' : 'ดูสลิปชำระคงเหลือ'}]</a>` 
+        : '';
       remEl.innerHTML = isRent 
-        ? `<span style="color:#059669;">฿0.00 (${isEn ? 'Fully Paid' : 'ชำระครบแล้ว'})</span>`
+        ? `<span style="color:#059669;">฿0.00 (${isEn ? 'Fully Paid' : 'ชำระครบแล้ว'})${rentSlipLink}</span>`
         : `<span style="color:#E85826;">฿${remP.toLocaleString('th-TH', {minimumFractionDigits: 2})}</span>
            <button type="button" onclick="app.openSettleModal('${b.booking_id}')" class="btn btn-sm btn-success" style="padding:2px 8px; font-size:11px; font-weight:700; margin-left:6px; vertical-align:middle; background:#10B981; border-color:#059669;">
              💳 ${isEn ? 'Pay Balance' : 'รับชำระค่าเช่า'}
@@ -5858,9 +6021,24 @@ class App {
             </div>
           </td>
           <td style="text-align:center; white-space:nowrap;">
-            ${(b.deposit_slip || b.rental_slip) ? `
-              <a href="${b.deposit_slip || b.rental_slip}" target="_blank" class="btn btn-sm btn-secondary" style="background:#EFF6FF; border-color:#93C5FD; color:#1D4ED8; font-weight:700;" title="${isEn ? 'View Payment Slip' : 'ดูสลิปหลักฐานการชำระเงิน'} (Ref: ${b.deposit_ref || b.rental_ref || '-'})">📎 ${isEn ? 'Slip' : 'สลิป'}</a>
-            ` : ''}
+            ${(() => {
+              const hasDep = Boolean(b.deposit_slip);
+              const hasRent = Boolean(b.rental_slip && b.rental_slip !== b.deposit_slip);
+              if (hasDep && hasRent) {
+                return `
+                  <button type="button" onclick="app.viewSlip('${b.deposit_slip}', '${isEn ? 'Deposit Slip' : 'สลิปมัดจำ'} (${b.booking_id})')" class="btn btn-sm btn-secondary" style="background:#EFF6FF; border-color:#93C5FD; color:#1D4ED8; font-weight:700; padding:2px 6px; font-size:11px;" title="${isEn ? 'View Deposit Slip' : 'ดูสลิปมัดจำ'} (Ref: ${b.deposit_ref || '-'})">📎 ${isEn ? 'Deposit' : 'สลิปมัดจำ'}</button>
+                  <button type="button" onclick="app.viewSlip('${b.rental_slip}', '${isEn ? 'Rental Slip' : 'สลิปคงเหลือ'} (${b.booking_id})')" class="btn btn-sm btn-secondary" style="background:#F0FDF4; border-color:#86EFAC; color:#15803D; font-weight:700; padding:2px 6px; font-size:11px; margin-left:3px;" title="${isEn ? 'View Rental Balance Slip' : 'ดูสลิปชำระคงเหลือ'} (Ref: ${b.rental_ref || '-'})">📎 ${isEn ? 'Balance' : 'สลิปคงเหลือ'}</button>
+                `;
+              } else if (hasDep || b.rental_slip) {
+                const slipUrl = b.deposit_slip || b.rental_slip;
+                const slipTitle = b.deposit_slip ? `${isEn ? 'Deposit Slip' : 'สลิปมัดจำ'} (${b.booking_id})` : `${isEn ? 'Rental Slip' : 'สลิปค่าเช่า'} (${b.booking_id})`;
+                const slipRef = b.deposit_ref || b.rental_ref || '-';
+                return `
+                  <button type="button" onclick="app.viewSlip('${slipUrl}', '${slipTitle}')" class="btn btn-sm btn-secondary" style="background:#EFF6FF; border-color:#93C5FD; color:#1D4ED8; font-weight:700; padding:2px 7px; font-size:11px;" title="${isEn ? 'View Payment Slip' : 'ดูสลิปหลักฐานการชำระเงิน'} (Ref: ${slipRef})">📎 ${isEn ? 'Slip' : 'สลิป'}</button>
+                `;
+              }
+              return '';
+            })()}
             <a href="${b.contract_pdf_url || `/api/pdf/contract/${b.booking_id}`}" target="_blank" class="btn btn-sm btn-secondary" title="${isEn ? 'Rental Agreement PDF' : 'สัญญาเช่า (Rental Agreement PDF)'}">📝</a>
             <a href="/api/pdf/deposit-receipt/${b.booking_id}" target="_blank" class="btn btn-sm btn-secondary" title="${isEn ? 'Deposit Receipt PDF' : 'ใบเสร็จมัดจำ (Deposit Receipt PDF)'}">🛡️</a>
             <a href="/api/pdf/receipt/${b.booking_id}" target="_blank" class="btn btn-sm btn-secondary" title="${isEn ? 'Rental Receipt PDF' : 'ใบเสร็จค่าเช่า (Rental Receipt PDF)'}">🧾</a>
@@ -6676,14 +6854,18 @@ class App {
     const b = (this.bookings || []).find(x => x.booking_id === bkId);
     if (!b) return;
     const netP = parseFloat(b.net_price || 0);
-    const remP = parseFloat(b.remaining_rental !== undefined ? b.remaining_rental : netP);
+    const depAmt = parseFloat(b.deposit_amount || 5000);
+    const isDep = Boolean(b.deposit_paid);
+    const isRent = Boolean(b.rental_paid);
+    // TARGET MISSION 3: ยอดเงินคงเหลือ = ราคาค่าเช่าที่ตกลง (net_price) - เงินมัดจำที่ชำระแล้ว (deposit_amount)
+    const remP = isRent ? 0 : (isDep ? Math.max(0, netP - depAmt) : parseFloat(b.remaining_rental !== undefined ? b.remaining_rental : netP));
     
     document.getElementById("modal-settle-bk-id").value = bkId;
     const sumEl = document.getElementById("modal-settle-summary");
     if (sumEl) {
       sumEl.innerHTML = `
         <b>รหัสการจอง:</b> <span style="color:#C2410C;">${b.booking_id}</span> | <b>ทะเบียน:</b> ${b.car_id}<br/>
-        <b>ผู้เช่า:</b> ${b.customer} | <b>ยอดสัญญาเต็ม:</b> ฿${netP.toLocaleString()}
+        <b>ผู้เช่า:</b> ${b.customer} | <b>ยอดสัญญาเต็ม:</b> ฿${netP.toLocaleString()} ${isDep ? `| <b>หักเงินมัดจำ:</b> ฿${depAmt.toLocaleString()}` : ''}
       `;
     }
     const amtEl = document.getElementById("modal-settle-amount");
@@ -6704,7 +6886,9 @@ class App {
     formData.append("file", file);
     try {
       this.showToast(`กำลังอัปโหลดสลิป ${file.name}...`, "info");
-      const res = await fetch("/api/upload-photo", { method: "POST", body: formData });
+      const bkId = document.getElementById("modal-settle-bk-id")?.value || "";
+      const uploadUrl = `/api/upload-photo?category=slip&ref_id=${encodeURIComponent(bkId || 'SETTLE')}`;
+      const res = await fetch(uploadUrl, { method: "POST", body: formData });
       const data = await res.json();
       if (data.success && data.url) {
         document.getElementById("modal-settle-slip-url").value = data.url;
@@ -6794,6 +6978,55 @@ class App {
     } else {
       previewContainer.style.display = "none";
       if (imgEl) imgEl.src = "";
+    }
+  }
+
+  async uploadCheckinAnglePhoto(input, angle) {
+    if (!input.files || input.files.length === 0) return;
+    const file = input.files[0];
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const bkId = document.getElementById("insp-bk-id")?.value;
+    const b = (this.bookings || []).find(x => x.booking_id === bkId);
+    const plate = b?.car_id || "CAR";
+
+    try {
+      this.showToast(`กำลังอัปโหลดรูปรถด้าน ${angle} (${file.name})...`, "info");
+      const url = `/api/upload-photo?category=car&plate=${encodeURIComponent(plate)}&sub_type=${encodeURIComponent(angle)}`;
+      const res = await fetch(url, { method: "POST", body: formData });
+      const data = await res.json();
+      if (data.success && data.url) {
+        const inp = document.getElementById(`insp-checkin-img-${angle}`);
+        if (inp) inp.value = data.webViewLink || data.url;
+        this.updateCheckinImgPreview(angle, data.webViewLink || data.url);
+        this.showToast(`📸 อัปโหลดรูปรถด้าน ${angle} เรียบร้อย!`, "success");
+      }
+    } catch (e) {
+      this.showToast(`อัปโหลดรูปรถด้าน ${angle} ไม่สำเร็จ: ` + e.message, "danger");
+    }
+  }
+
+  async uploadInsuranceDoc(input, subType = "กรมธรรม์") {
+    if (!input.files || input.files.length === 0) return;
+    const file = input.files[0];
+    const formData = new FormData();
+    formData.append("file", file);
+    const plate = document.getElementById("edit-car-plate")?.value || "CAR";
+
+    try {
+      this.showToast(`กำลังอัปโหลดเอกสาร ${subType} (${file.name})...`, "info");
+      const url = `/api/upload-photo?category=insurance&plate=${encodeURIComponent(plate)}&sub_type=${encodeURIComponent(subType)}`;
+      const res = await fetch(url, { method: "POST", body: formData });
+      const data = await res.json();
+      if (data.success && data.url) {
+        const inp = document.getElementById("edit-car-ins-doc-url");
+        if (inp) inp.value = data.webViewLink || data.url;
+        this.updateCarFormField('ins_doc_url', data.webViewLink || data.url);
+        this.showToast(`📄 อัปโหลดเอกสาร ${subType} เรียบร้อย!`, "success");
+      }
+    } catch (e) {
+      this.showToast(`อัปโหลดเอกสารไม่สำเร็จ: ` + e.message, "danger");
     }
   }
 
