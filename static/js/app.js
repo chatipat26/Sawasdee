@@ -3004,26 +3004,19 @@ class App {
 
     const formData = new FormData();
     formData.append("file", file);
+    formData.append("angle", "front");
 
     try {
-      this.showToast(`⏳ กำลังอัปโหลดรูปภาพสำหรับรถทะเบียน ${plate}...`, "info");
-      const upRes = await fetch("/api/upload-photo", { method: "POST", body: formData });
+      this.showToast(`⏳ กำลังอัปโหลดรูปภาพสำหรับรถทะเบียน ${plate} ไปยัง Google Drive...`, "info");
+      const cleanPlate = encodeURIComponent(plate.trim());
+      const upRes = await fetch(`/api/cars/${cleanPlate}/images`, { method: "POST", body: formData });
       const upData = await upRes.json();
       if (!upData.success || !upData.url) {
         throw new Error(upData.detail || "อัปโหลดรูปภาพไม่สำเร็จ");
       }
 
-      const payload = Object.assign({}, car, { plate: plate, image: upData.url });
-      const saveRes = await fetch("/api/cars", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-      const saveData = await saveRes.json();
-      if (saveData.success) {
-        this.showToast(`✅ อัปเดตรูปภาพรถทะเบียน ${plate} เรียบร้อยแล้ว!`, "success");
-        await this.loadCars();
-      }
+      this.showToast(`✅ อัปเดตรูปภาพรถทะเบียน ${plate} เรียบร้อยแล้ว!`, "success");
+      await this.loadCars();
     } catch (e) {
       this.showToast("❌ อัปโหลดรูปรถไม่สำเร็จ: " + e.message, "danger");
     }
@@ -3512,15 +3505,92 @@ class App {
     }
   }
 
+  async uploadCarAnglePhoto(input, angle) {
+    if (!input.files || input.files.length === 0) return;
+    const file = input.files[0];
+    const plate = (this.carFormData && this.carFormData.plate) || 
+                  (document.getElementById("edit-car-plate") && document.getElementById("edit-car-plate").value) ||
+                  this.quickUploadTargetPlate || 
+                  "car";
+
+    const angleLabels = {
+      front: "ด้านหน้า (Front)",
+      left: "ด้านซ้าย (Left)",
+      rear: "ด้านหลัง (Rear)",
+      right: "ด้านขวา (Right)"
+    };
+    const angleColMap = {
+      front: "img_front",
+      left: "img_left",
+      rear: "img_rear",
+      right: "img_right"
+    };
+    const colName = angleColMap[angle] || "img_front";
+    const angleText = angleLabels[angle] || angle;
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("angle", angle);
+
+    try {
+      this.showToast(`⏳ กำลังอัปโหลดรูปรถ (${angleText}) ไปยัง Google Drive...`, "info");
+      const cleanPlate = encodeURIComponent(plate.trim());
+      const res = await fetch(`/api/cars/${cleanPlate}/images`, {
+        method: "POST",
+        body: formData
+      });
+      const data = await res.json();
+      if (!data.success || !data.url) {
+        throw new Error(data.detail || data.error || "อัปโหลดรูปรถไม่สำเร็จ");
+      }
+
+      // 1. Update text input
+      const inputEl = document.getElementById(`edit-car-${colName.replace('_', '-')}`);
+      if (inputEl) {
+        inputEl.value = data.url;
+      }
+
+      // 2. Update state
+      if (!this.carFormData) this.carFormData = {};
+      this.carFormData[colName] = data.url;
+      if (angle === "front" || !this.carFormData.image) {
+        this.carFormData.image = data.url;
+        this.carFormData.image_url = data.url;
+        const mainImgUrlEl = document.getElementById("edit-car-image-url");
+        if (mainImgUrlEl) mainImgUrlEl.value = data.url;
+        const prevEl = document.getElementById("edit-car-img-preview");
+        if (prevEl) {
+          prevEl.src = data.url;
+          prevEl.style.display = "block";
+        }
+        const noImgEl = document.getElementById("edit-car-no-img-text");
+        if (noImgEl) noImgEl.style.display = "none";
+      }
+
+      const driveBadge = data.is_gdrive ? "ไปยัง Google Drive " : "";
+      this.showToast(`✅ อัปโหลดรูปรถ (${angleText}) ${driveBadge}เรียบร้อยแล้ว!`, "success");
+      input.value = "";
+    } catch (e) {
+      console.error("[UploadCarAnglePhoto Error]", e);
+      this.showToast("❌ อัปโหลดรูปรถไม่สำเร็จ: " + e.message, "danger");
+      input.value = "";
+    }
+  }
+
   async onEditCarModalPhotoSelected(input) {
     if (!input.files || input.files.length === 0) return;
     const file = input.files[0];
+    const plate = (this.carFormData && this.carFormData.plate) || 
+                  (document.getElementById("edit-car-plate") && document.getElementById("edit-car-plate").value) ||
+                  "car";
     const formData = new FormData();
     formData.append("file", file);
+    formData.append("angle", "front");
 
     try {
-      this.showToast(`กำลังอัปโหลดรูปภาพ ${file.name}...`, "info");
-      const res = await fetch("/api/upload-photo", { method: "POST", body: formData });
+      this.showToast(`⏳ กำลังอัปโหลดรูปภาพ ${file.name} ไปยัง Google Drive...`, "info");
+      const cleanPlate = encodeURIComponent(plate.trim());
+      const res = await fetch(`/api/cars/${cleanPlate}/images`, { method: "POST", body: formData });
       const data = await res.json();
       if (data.success && data.url) {
         const previewEl = document.getElementById("edit-car-img-preview");
@@ -3532,12 +3602,20 @@ class App {
         }
         if (noImgEl) noImgEl.style.display = "none";
         if (urlEl) urlEl.value = data.url;
-        this.showToast("อัปโหลดรูปภาพสำเร็จ! กดบันทึกข้อมูลรถยนต์เพื่อยืนยัน", "success");
+        if (this.carFormData) {
+          this.carFormData.image = data.url;
+          this.carFormData.image_url = data.url;
+          this.carFormData.img_front = data.url;
+        }
+        const frontInput = document.getElementById("edit-car-img-front");
+        if (frontInput && !frontInput.value) frontInput.value = data.url;
+        const driveBadge = data.is_gdrive ? " (Google Drive)" : "";
+        this.showToast(`✅ อัปโหลดรูปภาพเรียบร้อยแล้ว!${driveBadge}`, "success");
       } else {
-        this.showToast("อัปโหลดรูปไม่สำเร็จ", "danger");
+        this.showToast("❌ อัปโหลดรูปไม่สำเร็จ: " + (data.detail || data.error || "เกิดข้อผิดพลาด"), "danger");
       }
     } catch (e) {
-      this.showToast("อัปโหลดรูปไม่สำเร็จ: " + e.message, "danger");
+      this.showToast("❌ เกิดข้อผิดพลาดในการอัปโหลดรูป: " + e.message, "danger");
     }
   }
 

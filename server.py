@@ -140,7 +140,9 @@ def require_contract_before_rent(booking):
     if not booking.get("deposit_paid"):
         raise HTTPException(status_code=400, detail="⚠️ ยังไม่ได้ชำระเงินมัดจำ ไม่สามารถส่งมอบรถได้")
 
+from routers.cars import router as cars_router
 app = FastAPI(title="SawasdeeRental Web App", version="2.0.0")
+app.include_router(cars_router)
 
 app.add_middleware(
     CORSMiddleware,
@@ -1590,6 +1592,24 @@ async def delete_car(plate: str):
 
     store.async_delete_car(actual_plate)
     return {"success": True, "message": f"ลบข้อมูลรถยนต์ทะเบียน {actual_plate} เรียบร้อยแล้ว"}
+
+# -------------------------------------------------------------------------
+# CAR 4-ANGLE IMAGES (GOOGLE DRIVE AUTO-UPLOAD - TARGET MISSION 2)
+# -------------------------------------------------------------------------
+@app.post("/api/cars/{car_id}/images")
+@app.post("/api/cars/{car_id:path}/images")
+async def upload_car_image_endpoint(
+    car_id: str,
+    file: UploadFile = File(...),
+    angle: Optional[str] = Form(None),
+    view: Optional[str] = Query(None)
+):
+    """
+    Dedicated endpoint for uploading car 4-angle images to Google Drive.
+    Delegates to routers.cars.upload_car_image.
+    """
+    from routers.cars import upload_car_image
+    return await upload_car_image(car_id=car_id, file=file, angle=angle, view=view)
 
 # -------------------------------------------------------------------------
 # CUSTOMERS

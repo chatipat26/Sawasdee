@@ -2712,19 +2712,43 @@
           <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
             <div class="form-group">
               <label id="lbl-modal-car-img-front">🚘 1. ด้านหน้า (Front View)</label>
-              <input type="text" id="edit-car-img-front" class="form-control" placeholder="https://drive.google.com/file/d/.../view" oninput="app.updateCarFormField('img_front', this.value)">
+              <div style="display:flex; gap:6px;">
+                <input type="text" id="edit-car-img-front" class="form-control" placeholder="https://drive.google.com/file/d/.../view" oninput="app.updateCarFormField('img_front', this.value)">
+                <label class="btn btn-sm btn-secondary" style="margin:0; padding:6px 10px; cursor:pointer; display:flex; align-items:center; white-space:nowrap; border-radius:6px;" title="เลือกไฟล์อัปโหลดเข้า Google Drive อัตโนมัติ">
+                  📷
+                  <input type="file" accept="image/*" style="display:none;" onchange="app.uploadCarAnglePhoto(this, 'front')">
+                </label>
+              </div>
             </div>
             <div class="form-group">
               <label id="lbl-modal-car-img-left">🚘 2. ด้านซ้าย (Left View)</label>
-              <input type="text" id="edit-car-img-left" class="form-control" placeholder="https://drive.google.com/file/d/.../view" oninput="app.updateCarFormField('img_left', this.value)">
+              <div style="display:flex; gap:6px;">
+                <input type="text" id="edit-car-img-left" class="form-control" placeholder="https://drive.google.com/file/d/.../view" oninput="app.updateCarFormField('img_left', this.value)">
+                <label class="btn btn-sm btn-secondary" style="margin:0; padding:6px 10px; cursor:pointer; display:flex; align-items:center; white-space:nowrap; border-radius:6px;" title="เลือกไฟล์อัปโหลดเข้า Google Drive อัตโนมัติ">
+                  📷
+                  <input type="file" accept="image/*" style="display:none;" onchange="app.uploadCarAnglePhoto(this, 'left')">
+                </label>
+              </div>
             </div>
             <div class="form-group">
               <label id="lbl-modal-car-img-rear">🚘 3. ด้านหลัง (Rear View)</label>
-              <input type="text" id="edit-car-img-rear" class="form-control" placeholder="https://drive.google.com/file/d/.../view" oninput="app.updateCarFormField('img_rear', this.value)">
+              <div style="display:flex; gap:6px;">
+                <input type="text" id="edit-car-img-rear" class="form-control" placeholder="https://drive.google.com/file/d/.../view" oninput="app.updateCarFormField('img_rear', this.value)">
+                <label class="btn btn-sm btn-secondary" style="margin:0; padding:6px 10px; cursor:pointer; display:flex; align-items:center; white-space:nowrap; border-radius:6px;" title="เลือกไฟล์อัปโหลดเข้า Google Drive อัตโนมัติ">
+                  📷
+                  <input type="file" accept="image/*" style="display:none;" onchange="app.uploadCarAnglePhoto(this, 'rear')">
+                </label>
+              </div>
             </div>
             <div class="form-group">
               <label id="lbl-modal-car-img-right">🚘 4. ด้านขวา (Right View)</label>
-              <input type="text" id="edit-car-img-right" class="form-control" placeholder="https://drive.google.com/file/d/.../view" oninput="app.updateCarFormField('img_right', this.value)">
+              <div style="display:flex; gap:6px;">
+                <input type="text" id="edit-car-img-right" class="form-control" placeholder="https://drive.google.com/file/d/.../view" oninput="app.updateCarFormField('img_right', this.value)">
+                <label class="btn btn-sm btn-secondary" style="margin:0; padding:6px 10px; cursor:pointer; display:flex; align-items:center; white-space:nowrap; border-radius:6px;" title="เลือกไฟล์อัปโหลดเข้า Google Drive อัตโนมัติ">
+                  📷
+                  <input type="file" accept="image/*" style="display:none;" onchange="app.uploadCarAnglePhoto(this, 'right')">
+                </label>
+              </div>
             </div>
           </div>
           <small style="color:#64748B; font-size:11px; margin-top:6px; display:block;">
