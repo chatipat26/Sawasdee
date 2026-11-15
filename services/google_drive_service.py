@@ -19,6 +19,11 @@ FOLDER_INSURANCE_ACT = "1cxfQEi9oHUIBBF4oMMHJgIvGu8fxOOEq"
 FOLDER_CAR_ANGLES = "1V5S_j4dXQGuUW6zCAwQaXSkYJ9XNo-Mj"
 FOLDER_PAYMENT_SLIPS = "1BqKO4TXM4sJQ5_GzKdcVPTwE_qyiAsv8"
 
+GOOGLE_APPS_SCRIPT_URL = os.environ.get(
+    "GOOGLE_DRIVE_WEBHOOK_URL",
+    "https://script.google.com/macros/s/AKfycbym7RQvghcv9rODPXp_Poc_wsAgR6sX1vQhchqSvW0P_QU7B5jPlZUiwMjGC2hnlUDlvg/exec"
+)
+
 SCOPES = ["https://www.googleapis.com/auth/drive", "https://www.googleapis.com/auth/drive.file"]
 
 _drive_service_instance = None
@@ -97,7 +102,9 @@ def get_drive_service():
     return None
 
 def is_drive_configured() -> bool:
-    """Return True if Google Drive Service Account credentials are valid and ready."""
+    """Return True if Google Drive integration is configured via Apps Script Webhook or Service Account."""
+    if GOOGLE_APPS_SCRIPT_URL and "script.google.com" in GOOGLE_APPS_SCRIPT_URL:
+        return True
     return get_drive_service() is not None
 
 def clean_plate_for_filename(plate: str) -> str:
@@ -178,22 +185,9 @@ def upload_image_to_drive(
             "is_gdrive": bool
         }
     """
-    service = get_drive_service()
-    if not service:
-        return {
-            "success": False,
-            "error": "Google Drive credentials not configured. Please place credentials.json in project root or set GOOGLE_APPLICATION_CREDENTIALS.",
-            "file_name": file_name,
-            "folder_id": folder_id,
-            "is_gdrive": False
-        }
-
+    # 1. Read file bytes
     try:
-        from googleapiclient.http import MediaIoBaseUpload
-
-        # 1. Read file bytes
         if hasattr(file, "read"):
-            # Check if file has synchronous or asynchronous read
             res_bytes = file.read()
             if hasattr(res_bytes, "__await__"):
                 import asyncio
@@ -207,9 +201,57 @@ def upload_image_to_drive(
                 file_bytes = f.read()
         else:
             file_bytes = bytes(file)
+    except Exception as e:
+        return {"success": False, "error": f"Error reading file bytes: {e}", "file_name": file_name}
 
-        if not file_bytes:
-            return {"success": False, "error": "File is empty (0 bytes)", "file_name": file_name}
+    if not file_bytes:
+        return {"success": False, "error": "File is empty (0 bytes)", "file_name": file_name}
+
+    # 2. Priority Method: Google Apps Script Web App (Executes under personal 5 TB Google One storage directly)
+    if GOOGLE_APPS_SCRIPT_URL and "script.google.com" in GOOGLE_APPS_SCRIPT_URL:
+        try:
+            import base64
+            import requests
+
+            b64_str = base64.b64encode(file_bytes).decode("utf-8")
+            payload = {
+                "folder_id": folder_id,
+                "file_name": file_name,
+                "mime_type": content_type or "image/jpeg",
+                "file_base64": b64_str
+            }
+            resp = requests.post(GOOGLE_APPS_SCRIPT_URL, json=payload, timeout=35, allow_redirects=True)
+            if resp.status_code == 200:
+                res_json = resp.json()
+                if res_json.get("success"):
+                    return {
+                        "success": True,
+                        "file_id": res_json.get("file_id"),
+                        "file_name": file_name,
+                        "webViewLink": res_json.get("webViewLink"),
+                        "direct_url": res_json.get("direct_url") or f"https://lh3.googleusercontent.com/d/{res_json.get('file_id')}",
+                        "webContentLink": res_json.get("webContentLink"),
+                        "folder_id": folder_id,
+                        "is_gdrive": True
+                    }
+                else:
+                    print(f"[GDrive] Apps Script returned error: {res_json.get('error')}")
+            else:
+                print(f"[GDrive] Apps Script returned status {resp.status_code}: {resp.text}")
+        except Exception as e:
+            print(f"[GDrive] Notice: Apps Script upload exception: {e}")
+
+    # 3. Method B: Direct Google Drive API v3 (Service Account / Shared Drive)
+    try:
+        service = get_drive_service()
+        if not service:
+            return {
+                "success": False,
+                "error": "Google Drive credentials not configured. Please place credentials.json in project root or configure GOOGLE_DRIVE_WEBHOOK_URL.",
+                "file_name": file_name,
+                "folder_id": folder_id,
+                "is_gdrive": False
+            }
 
         # 2. Prepare upload payload
         mime = content_type or "image/jpeg"

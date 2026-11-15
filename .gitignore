@@ -9,3 +9,7 @@ data_users.json
 data_work_order_logs.json
 
 scratch/
+credentials*.json
+credentials.json
+service_account*.json
+*sawasdee*.json

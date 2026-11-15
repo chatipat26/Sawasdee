@@ -19,6 +19,11 @@ FOLDER_INSURANCE_ACT = "1cxfQEi9oHUIBBF4oMMHJgIvGu8fxOOEq"
 FOLDER_CAR_ANGLES = "1V5S_j4dXQGuUW6zCAwQaXSkYJ9XNo-Mj"
 FOLDER_PAYMENT_SLIPS = "1BqKO4TXM4sJQ5_GzKdcVPTwE_qyiAsv8"
 
+GOOGLE_APPS_SCRIPT_URL = os.environ.get(
+    "GOOGLE_DRIVE_WEBHOOK_URL",
+    "https://script.google.com/macros/s/AKfycbym7RQvghcv9rODPXp_Poc_wsAgR6sX1vQhchqSvW0P_QU7B5jPlZUiwMjGC2hnlUDlvg/exec"
+)
+
 DEFAULT_FOLDER_MAP = {
     "insurance": FOLDER_INSURANCE_ACT,
     "insurance_act": FOLDER_INSURANCE_ACT,
@@ -173,7 +178,9 @@ class GoogleDriveService:
                     pass
 
     def is_configured(self) -> bool:
-        """Check if valid Google Service Account credentials have been loaded."""
+        """Check if valid Google Drive credentials or Webhook URL are configured."""
+        if GOOGLE_APPS_SCRIPT_URL and "script.google.com" in GOOGLE_APPS_SCRIPT_URL:
+            return True
         if self._service_account_info and self._service_account_info.get("private_key") and self._service_account_info.get("client_email"):
             return True
         return False
@@ -277,6 +284,36 @@ class GoogleDriveService:
         )
         folder_id = get_gdrive_folder_id(category)
 
+        # 1. Priority Method: Google Apps Script Webhook (uses personal 5 TB Google One storage directly)
+        if GOOGLE_APPS_SCRIPT_URL and "script.google.com" in GOOGLE_APPS_SCRIPT_URL:
+            try:
+                import base64
+                b64_str = base64.b64encode(file_bytes).decode("utf-8")
+                payload = {
+                    "folder_id": folder_id,
+                    "file_name": target_filename,
+                    "mime_type": content_type or "image/jpeg",
+                    "file_base64": b64_str
+                }
+                resp = requests.post(GOOGLE_APPS_SCRIPT_URL, json=payload, timeout=35, allow_redirects=True)
+                if resp.status_code == 200:
+                    res_json = resp.json()
+                    if res_json.get("success"):
+                        return {
+                            "success": True,
+                            "file_id": res_json.get("file_id"),
+                            "filename": target_filename,
+                            "webViewLink": res_json.get("webViewLink"),
+                            "direct_url": res_json.get("direct_url") or f"https://lh3.googleusercontent.com/d/{res_json.get('file_id')}",
+                            "folder_id": folder_id,
+                            "is_gdrive": True
+                        }
+                    else:
+                        print(f"[GDrive] Apps Script upload returned error: {res_json.get('error')}")
+            except Exception as e:
+                print(f"[GDrive] Apps Script upload exception: {e}")
+
+        # 2. Method B: Direct Google Drive API v3 (Service Account)
         token = self.get_access_token()
         if not token:
             return {
