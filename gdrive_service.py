@@ -367,6 +367,15 @@ class GoogleDriveService:
         )
         folder_id = get_gdrive_folder_id(category)
 
+        if target_filename.lower().endswith(".pdf"):
+            content_type = "application/pdf"
+            if len(file_bytes) < 50 or not file_bytes.startswith(b"%PDF"):
+                return {
+                    "success": False,
+                    "error": f"Invalid or corrupted PDF content ({len(file_bytes)} bytes). Proper PDF header required.",
+                    "filename": target_filename
+                }
+
         # 1. Priority Method: Google Apps Script Webhook (uses personal 5 TB Google One storage directly)
         if GOOGLE_APPS_SCRIPT_URL and "script.google.com" in GOOGLE_APPS_SCRIPT_URL:
             try:

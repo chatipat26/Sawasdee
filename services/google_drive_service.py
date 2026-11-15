@@ -278,8 +278,14 @@ def upload_image_to_drive(
             "is_gdrive": bool
         }
     """
-    # 1. Read file bytes
+    # 1. Read file bytes with seek(0) rewind safety
     try:
+        if hasattr(file, "seek"):
+            try:
+                file.seek(0)
+            except Exception:
+                pass
+
         if hasattr(file, "read"):
             res_bytes = file.read()
             if hasattr(res_bytes, "__await__"):
@@ -297,8 +303,18 @@ def upload_image_to_drive(
     except Exception as e:
         return {"success": False, "error": f"Error reading file bytes: {e}", "file_name": file_name}
 
-    if not file_bytes:
+    if not file_bytes or len(file_bytes) == 0:
         return {"success": False, "error": "File is empty (0 bytes)", "file_name": file_name}
+
+    # Safeguard: Validate PDF header and MIME type
+    if file_name.lower().endswith(".pdf"):
+        content_type = "application/pdf"
+        if len(file_bytes) < 50 or not file_bytes.startswith(b"%PDF"):
+            return {
+                "success": False,
+                "error": f"Invalid or corrupted PDF content ({len(file_bytes)} bytes). Proper PDF header required.",
+                "file_name": file_name
+            }
 
     # Resolve destination folder ID: Check folder_id validity -> Doc Type mapping -> Fallback to Root
     target_folder = resolve_folder_id(folder_id, file_name)
