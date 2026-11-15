@@ -4,6 +4,7 @@ Endpoint for car 4-angle image uploads with Google Drive auto-upload integration
 """
 
 import os
+import re
 import urllib.parse
 from datetime import datetime
 from typing import Optional, Dict, Any
@@ -18,6 +19,12 @@ from services.google_drive_service import (
 from db import store, normalize_plate_str
 
 router = APIRouter(prefix="/api/cars", tags=["cars"])
+
+def normalize_plate_key(plate: Optional[str]) -> str:
+    """Normalize license plate text by stripping spaces, dashes, dots, and slashes."""
+    if not plate:
+        return ""
+    return re.sub(r"[\s\-_./]+", "", str(plate)).strip().lower()
 
 @router.post("/{car_id:path}/images")
 async def upload_car_image(
@@ -76,48 +83,71 @@ async def upload_car_image(
     if not image_url:
         raise HTTPException(status_code=500, detail="ไม่สามารถบันทึกรูปภาพได้")
 
-    # 2. Update Database 'cars' table
-    norm_target = normalize_plate_str(clean_plate)
+    # 2. Update Database 'cars' table with robust plate matching
+    norm_target = normalize_plate_key(clean_plate)
     matched_key = None
     target_car = None
 
+    # Step A: Match against in-memory store
     for k, v in store.cars.items():
-        if k == clean_plate or normalize_plate_str(k) == norm_target:
+        if k == clean_plate or normalize_plate_key(k) == norm_target:
             matched_key = k
             target_car = v
             break
 
+    # Step B: Direct database lookup using normalized comparison to find exact plate stored in PostgreSQL
+    actual_db_plate = None
+    sb = None
+    try:
+        from db import get_db_client
+        sb = get_db_client()
+        if sb and hasattr(sb, "run"):
+            from psycopg import sql as _sql
+            # Strip spaces, dashes, dots, and slashes on DB column to match norm_target
+            find_res = sb.run([(
+                _sql.SQL("SELECT plate FROM cars WHERE regexp_replace(lower(plate), '[\\s\\-_./]+', '', 'g') = %s LIMIT 1"),
+                [norm_target]
+            )])
+            if find_res and len(find_res) > 0 and find_res[0].get("plate"):
+                actual_db_plate = str(find_res[0]["plate"]).strip()
+    except Exception as query_err:
+        print(f"[Cars API] DB plate lookup note: {query_err}")
+
+    # Determine canonical plate key
+    canonical_plate = actual_db_plate or matched_key or clean_plate
+
     if not target_car:
-        matched_key = clean_plate
-        target_car = {
-            "plate": clean_plate,
+        target_car = store.cars.get(canonical_plate) or {
+            "plate": canonical_plate,
             "status": "ว่างพร้อมใช้งาน",
             "car_status": "ว่างพร้อมใช้งาน"
         }
-        store.cars[matched_key] = target_car
+        store.cars[canonical_plate] = target_car
 
-    # Update 4-angle column in cars table
+    # Update 4-angle column in cars object
     target_car[db_col] = image_url
     if db_col == "img_front" or not target_car.get("image") or target_car.get("image") == "-":
         target_car["image"] = image_url
         target_car["image_url"] = image_url
 
-    # Persist changes to database & storage
-    store.async_sync_car(matched_key, target_car)
+    # Persist changes to in-memory store and async database sync
+    store.async_sync_car(canonical_plate, target_car)
+    if matched_key and matched_key != canonical_plate:
+        store.cars[matched_key] = target_car
+        store.async_sync_car(matched_key, target_car)
 
-    # Direct database UPDATE to guarantee immediate persistence in PostgreSQL
-    try:
-        from db import get_db_client
-        sb = get_db_client()
-        if sb:
+    # Step C: Direct database UPDATE using all matched plate variations to guarantee persistence
+    if sb:
+        try:
             db_update = {db_col: image_url}
             if db_col == "img_front" or not target_car.get("image") or target_car.get("image") == "-":
                 db_update["image_url"] = image_url
-            sb.table("cars").update(db_update).eq("plate", clean_plate).execute()
-            if matched_key and matched_key != clean_plate:
-                sb.table("cars").update(db_update).eq("plate", matched_key).execute()
-    except Exception as dberr:
-        print(f"[Cars API] Direct DB update warning: {dberr}")
+
+            target_plates = {p for p in [actual_db_plate, canonical_plate, matched_key, clean_plate] if p}
+            for p in target_plates:
+                sb.table("cars").update(db_update).eq("plate", p).execute()
+        except Exception as dberr:
+            print(f"[Cars API] Direct DB update warning: {dberr}")
 
     thai_angle, _ = normalize_car_angle(chosen_angle)
     return {
