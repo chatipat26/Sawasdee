@@ -14,16 +14,100 @@ import re
 from datetime import datetime
 from typing import Optional, Dict, Any, Union, Tuple
 
-# Google Drive Target Folders (Strict System Rules)
-FOLDER_INSURANCE_ACT = "1cxfQEi9oHUIBBF4oMMHJgIvGu8fxOOEq"
-FOLDER_CAR_ANGLES = "1V5S_j4dXQGuUW6zCAwQaXSkYJ9XNo-Mj"
-FOLDER_PAYMENT_SLIPS = "1BqKO4TXM4sJQ5_GzKdcVPTwE_qyiAsv8"
-
-# PDF Document Folders (Configurable via Environment Variables, defaults to Sawasdee App parent folder)
+# =========================================================================
+# GOOGLE DRIVE TARGET SUB-FOLDERS (Strict Routing Rules)
+# =========================================================================
+# โฟลเดอร์หลัก (Root App Folder: "Sawasdee App")
 PARENT_APP_FOLDER = "10f_0dbowDOMPpDL59oAjnHBgLAzBHgHO"
-FOLDER_CONTRACTS = os.environ.get("GOOGLE_DRIVE_FOLDER_CONTRACT", os.environ.get("GOOGLE_DRIVE_FOLDER_CONTRACTS", PARENT_APP_FOLDER))
-FOLDER_INSPECTIONS = os.environ.get("GOOGLE_DRIVE_FOLDER_INSPECTION", os.environ.get("GOOGLE_DRIVE_FOLDER_INSPECTIONS", PARENT_APP_FOLDER))
-FOLDER_RECEIPTS = os.environ.get("GOOGLE_DRIVE_FOLDER_RECEIPT", os.environ.get("GOOGLE_DRIVE_FOLDER_RECEIPTS", PARENT_APP_FOLDER))
+
+# 1. โฟลเดอร์ "สัญญาเช่า"
+# ใส่ Folder ID ของ [สัญญาเช่า] ตรงนี้ (หรือตั้งค่า GOOGLE_DRIVE_FOLDER_CONTRACT ใน .env / Render)
+FOLDER_CONTRACTS = os.environ.get("GOOGLE_DRIVE_FOLDER_CONTRACT") or "ใส่ Folder ID ของ [สัญญาเช่า] ตรงนี้"
+
+# 2. โฟลเดอร์ "ใบตรวจสภาพรถ"
+# ใส่ Folder ID ของ [ใบตรวจสภาพรถ] ตรงนี้ (หรือตั้งค่า GOOGLE_DRIVE_FOLDER_INSPECTION ใน .env / Render)
+FOLDER_INSPECTIONS = os.environ.get("GOOGLE_DRIVE_FOLDER_INSPECTION") or "ใส่ Folder ID ของ [ใบตรวจสภาพรถ] ตรงนี้"
+
+# 3. โฟลเดอร์ "ใบเสร็จ"
+# ใส่ Folder ID ของ [ใบเสร็จ] ตรงนี้ (หรือตั้งค่า GOOGLE_DRIVE_FOLDER_RECEIPT ใน .env / Render)
+FOLDER_RECEIPTS = os.environ.get("GOOGLE_DRIVE_FOLDER_RECEIPT") or "ใส่ Folder ID ของ [ใบเสร็จ] ตรงนี้"
+
+# 4. โฟลเดอร์ "รถ" (รูปรถยนต์ 4 มุม)
+# ใส่ Folder ID ของ [รถ] ตรงนี้
+FOLDER_CAR_ANGLES = os.environ.get("GOOGLE_DRIVE_FOLDER_CAR_ANGLES") or "1V5S_j4dXQGuUW6zCAwQaXSkYJ9XNo-Mj"
+
+# 5. โฟลเดอร์ "กรมธรรม์ประกันภัย" (พ.ร.บ. และ กรมธรรม์)
+# ใส่ Folder ID ของ [กรมธรรม์ประกันภัย] ตรงนี้
+FOLDER_INSURANCE_ACT = os.environ.get("GOOGLE_DRIVE_FOLDER_INSURANCE") or "1cxfQEi9oHUIBBF4oMMHJgIvGu8fxOOEq"
+
+# 6. โฟลเดอร์ "สลิปการเงิน"
+# ใส่ Folder ID ของ [สลิปการเงิน] ตรงนี้
+FOLDER_PAYMENT_SLIPS = os.environ.get("GOOGLE_DRIVE_FOLDER_PAYMENT_SLIPS") or "1BqKO4TXM4sJQ5_GzKdcVPTwE_qyiAsv8"
+
+def is_valid_folder_id(fid: Optional[str]) -> bool:
+    """Validate if folder ID is a legitimate alphanumeric Google Drive ID."""
+    if not fid or not isinstance(fid, str):
+        return False
+    s = fid.strip()
+    if "ใส่" in s or "ตรงนี้" in s or len(s) < 15:
+        return False
+    return True
+
+def get_target_folder_by_doctype(doc_type: Optional[str] = None) -> str:
+    """
+    Map document or upload category to target Google Drive Sub-folder ID:
+    - สัญญาเช่า -> FOLDER_CONTRACTS
+    - ใบตรวจสภาพรถ -> FOLDER_INSPECTIONS
+    - ใบเสร็จ -> FOLDER_RECEIPTS
+    - รูปรถยนต์ 4 มุม -> FOLDER_CAR_ANGLES
+    - พ.ร.บ. / กรมธรรม์ -> FOLDER_INSURANCE_ACT
+    - สลิปการโอนเงิน -> FOLDER_PAYMENT_SLIPS
+    """
+    if not doc_type:
+        return PARENT_APP_FOLDER
+
+    dt = str(doc_type).lower().strip()
+
+    # 1. สัญญาเช่า (Contracts)
+    if any(k in dt for k in ["contract", "agreement", "สัญญา", "สัญญาเช่า"]):
+        if is_valid_folder_id(FOLDER_CONTRACTS):
+            return FOLDER_CONTRACTS.strip()
+
+    # 2. ใบตรวจสภาพรถ (Inspections / Job Sheet / Checkout / Checkin)
+    elif any(k in dt for k in ["inspection", "checkout", "checkin", "ตรวจสภาพ", "ตรวจรถ", "สภาพรถ", "job"]):
+        if is_valid_folder_id(FOLDER_INSPECTIONS):
+            return FOLDER_INSPECTIONS.strip()
+
+    # 3. ใบเสร็จรับเงิน (Receipts / Deposit Receipt)
+    elif any(k in dt for k in ["receipt", "deposit-receipt", "ใบเสร็จ", "มัดจำ"]):
+        if is_valid_folder_id(FOLDER_RECEIPTS):
+            return FOLDER_RECEIPTS.strip()
+
+    # 4. รูปรถ 4 มุม
+    elif any(k in dt for k in ["car", "angle", "รถ", "มุม"]):
+        if is_valid_folder_id(FOLDER_CAR_ANGLES):
+            return FOLDER_CAR_ANGLES.strip()
+
+    # 5. พ.ร.บ. / กรมธรรม์
+    elif any(k in dt for k in ["insurance", "act", "กรมธรรม์", "พรบ", "พ.ร.บ."]):
+        if is_valid_folder_id(FOLDER_INSURANCE_ACT):
+            return FOLDER_INSURANCE_ACT.strip()
+
+    # 6. สลิปการโอนเงิน
+    elif any(k in dt for k in ["slip", "สลิป"]):
+        if is_valid_folder_id(FOLDER_PAYMENT_SLIPS):
+            return FOLDER_PAYMENT_SLIPS.strip()
+
+    return PARENT_APP_FOLDER
+
+def resolve_folder_id(folder_id: Optional[str] = None, doc_type: Optional[str] = None) -> str:
+    """
+    Resolve Google Drive destination folder ID:
+    Prioritizes valid folder_id, then maps from doc_type, falling back safely to root app folder.
+    """
+    if is_valid_folder_id(folder_id):
+        return folder_id.strip()
+    return get_target_folder_by_doctype(doc_type)
 
 GOOGLE_APPS_SCRIPT_URL = os.environ.get(
     "GOOGLE_DRIVE_WEBHOOK_URL",
@@ -216,6 +300,9 @@ def upload_image_to_drive(
     if not file_bytes:
         return {"success": False, "error": "File is empty (0 bytes)", "file_name": file_name}
 
+    # Resolve destination folder ID: Check folder_id validity -> Doc Type mapping -> Fallback to Root
+    target_folder = resolve_folder_id(folder_id, file_name)
+
     # 2. Priority Method: Google Apps Script Web App (Executes under personal 5 TB Google One storage directly)
     if GOOGLE_APPS_SCRIPT_URL and "script.google.com" in GOOGLE_APPS_SCRIPT_URL:
         try:
@@ -224,7 +311,7 @@ def upload_image_to_drive(
 
             b64_str = base64.b64encode(file_bytes).decode("utf-8")
             payload = {
-                "folder_id": folder_id,
+                "folder_id": target_folder,
                 "file_name": file_name,
                 "mime_type": content_type or "image/jpeg",
                 "file_base64": b64_str
@@ -240,7 +327,7 @@ def upload_image_to_drive(
                         "webViewLink": res_json.get("webViewLink"),
                         "direct_url": res_json.get("direct_url") or f"https://lh3.googleusercontent.com/d/{res_json.get('file_id')}",
                         "webContentLink": res_json.get("webContentLink"),
-                        "folder_id": folder_id,
+                        "folder_id": target_folder,
                         "is_gdrive": True
                     }
                 else:
@@ -258,16 +345,16 @@ def upload_image_to_drive(
                 "success": False,
                 "error": "Google Drive credentials not configured. Please place credentials.json in project root or configure GOOGLE_DRIVE_WEBHOOK_URL.",
                 "file_name": file_name,
-                "folder_id": folder_id,
+                "folder_id": target_folder,
                 "is_gdrive": False
             }
 
-        # 2. Prepare upload payload
+        # 2. Prepare upload payload with specific parents folder
         mime = content_type or "image/jpeg"
         media = MediaIoBaseUpload(io.BytesIO(file_bytes), mimetype=mime, resumable=True)
         file_metadata = {
             "name": file_name,
-            "parents": [folder_id]
+            "parents": [target_folder]
         }
 
         # 3. Execute Drive upload
@@ -298,7 +385,7 @@ def upload_image_to_drive(
             "webViewLink": web_view_link,
             "direct_url": direct_url,
             "webContentLink": drive_file.get("webContentLink"),
-            "folder_id": folder_id,
+            "folder_id": target_folder,
             "is_gdrive": True
         }
 
@@ -309,7 +396,7 @@ def upload_image_to_drive(
             "success": False,
             "error": err_msg,
             "file_name": file_name,
-            "folder_id": folder_id,
+            "folder_id": target_folder,
             "is_gdrive": False
         }
 
@@ -332,11 +419,12 @@ def build_pdf_filename(doc_type: str, ref_id: str, date_str: Optional[str] = Non
 
 def upload_pdf_to_drive(
     file_bytes: Union[bytes, bytearray],
-    folder_id: Optional[str],
-    file_name: str
+    folder_id: Optional[str] = None,
+    file_name: str = "document.pdf",
+    doc_type: Optional[str] = None
 ) -> Dict[str, Any]:
-    """Upload generated PDF bytes to Google Drive with MIME type application/pdf."""
-    target_folder = folder_id or PARENT_APP_FOLDER
+    """Upload generated PDF bytes to Google Drive with MIME type application/pdf and automated sub-folder routing."""
+    target_folder = resolve_folder_id(folder_id, doc_type or file_name)
     return upload_image_to_drive(
         file=file_bytes,
         folder_id=target_folder,

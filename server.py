@@ -83,10 +83,10 @@ def async_upload_pdf_to_drive(
     """
     def _task():
         try:
-            from services.google_drive_service import upload_pdf_to_drive, build_pdf_filename, PARENT_APP_FOLDER
-            target_folder = folder_id or PARENT_APP_FOLDER
+            from services.google_drive_service import upload_pdf_to_drive, build_pdf_filename, resolve_folder_id
+            target_folder = resolve_folder_id(folder_id, doc_type)
             fname = build_pdf_filename(doc_type, ref_id)
-            res = upload_pdf_to_drive(pdf_bytes, target_folder, fname)
+            res = upload_pdf_to_drive(pdf_bytes, target_folder, fname, doc_type=doc_type)
             if res.get("success") and res.get("webViewLink"):
                 gdrive_url = res.get("webViewLink")
                 print(f"[PDF GDrive Auto-Upload] Success: {fname} -> {gdrive_url}")
@@ -2273,7 +2273,7 @@ async def generate_booking_inspection_pdf(bk_id: str, payload: Optional[Dict[str
     try:
         from services.google_drive_service import upload_pdf_to_drive, build_pdf_filename, FOLDER_INSPECTIONS
         gdrive_fname = build_pdf_filename(insp_label, bk_id)
-        res = upload_pdf_to_drive(pdf_bytes, FOLDER_INSPECTIONS, gdrive_fname)
+        res = upload_pdf_to_drive(pdf_bytes, FOLDER_INSPECTIONS, gdrive_fname, doc_type=insp_label)
         if res.get("success") and res.get("webViewLink"):
             pdf_url = res.get("webViewLink")
             print(f"[Inspection PDF Gen] Direct Google Drive upload success: {pdf_url}")

@@ -14,10 +14,86 @@ from datetime import datetime
 from typing import Optional, Dict, Any, Tuple
 import requests
 
-# Google Drive Target Folders (Strict System Rules)
-FOLDER_INSURANCE_ACT = "1cxfQEi9oHUIBBF4oMMHJgIvGu8fxOOEq"
-FOLDER_CAR_ANGLES = "1V5S_j4dXQGuUW6zCAwQaXSkYJ9XNo-Mj"
-FOLDER_PAYMENT_SLIPS = "1BqKO4TXM4sJQ5_GzKdcVPTwE_qyiAsv8"
+# =========================================================================
+# GOOGLE DRIVE TARGET SUB-FOLDERS (Strict Routing Rules)
+# =========================================================================
+# โฟลเดอร์หลัก (Root App Folder: "Sawasdee App")
+PARENT_APP_FOLDER = "10f_0dbowDOMPpDL59oAjnHBgLAzBHgHO"
+
+# 1. โฟลเดอร์ "สัญญาเช่า"
+# ใส่ Folder ID ของ [สัญญาเช่า] ตรงนี้ (หรือตั้งค่า GOOGLE_DRIVE_FOLDER_CONTRACT ใน .env / Render)
+FOLDER_CONTRACTS = os.environ.get("GOOGLE_DRIVE_FOLDER_CONTRACT") or "ใส่ Folder ID ของ [สัญญาเช่า] ตรงนี้"
+
+# 2. โฟลเดอร์ "ใบตรวจสภาพรถ"
+# ใส่ Folder ID ของ [ใบตรวจสภาพรถ] ตรงนี้ (หรือตั้งค่า GOOGLE_DRIVE_FOLDER_INSPECTION ใน .env / Render)
+FOLDER_INSPECTIONS = os.environ.get("GOOGLE_DRIVE_FOLDER_INSPECTION") or "ใส่ Folder ID ของ [ใบตรวจสภาพรถ] ตรงนี้"
+
+# 3. โฟลเดอร์ "ใบเสร็จ"
+# ใส่ Folder ID ของ [ใบเสร็จ] ตรงนี้ (หรือตั้งค่า GOOGLE_DRIVE_FOLDER_RECEIPT ใน .env / Render)
+FOLDER_RECEIPTS = os.environ.get("GOOGLE_DRIVE_FOLDER_RECEIPT") or "ใส่ Folder ID ของ [ใบเสร็จ] ตรงนี้"
+
+# 4. โฟลเดอร์ "รถ" (รูปรถยนต์ 4 มุม)
+# ใส่ Folder ID ของ [รถ] ตรงนี้
+FOLDER_CAR_ANGLES = os.environ.get("GOOGLE_DRIVE_FOLDER_CAR_ANGLES") or "1V5S_j4dXQGuUW6zCAwQaXSkYJ9XNo-Mj"
+
+# 5. โฟลเดอร์ "กรมธรรม์ประกันภัย" (พ.ร.บ. และ กรมธรรม์)
+# ใส่ Folder ID ของ [กรมธรรม์ประกันภัย] ตรงนี้
+FOLDER_INSURANCE_ACT = os.environ.get("GOOGLE_DRIVE_FOLDER_INSURANCE") or "1cxfQEi9oHUIBBF4oMMHJgIvGu8fxOOEq"
+
+# 6. โฟลเดอร์ "สลิปการเงิน"
+# ใส่ Folder ID ของ [สลิปการเงิน] ตรงนี้
+FOLDER_PAYMENT_SLIPS = os.environ.get("GOOGLE_DRIVE_FOLDER_PAYMENT_SLIPS") or "1BqKO4TXM4sJQ5_GzKdcVPTwE_qyiAsv8"
+
+def is_valid_folder_id(fid: Optional[str]) -> bool:
+    """Validate if folder ID is a legitimate alphanumeric Google Drive ID."""
+    if not fid or not isinstance(fid, str):
+        return False
+    s = fid.strip()
+    if "ใส่" in s or "ตรงนี้" in s or len(s) < 15:
+        return False
+    return True
+
+def get_target_folder_by_doctype(doc_type: Optional[str] = None) -> str:
+    """
+    Map document or upload category to target Google Drive Sub-folder ID:
+    - สัญญาเช่า -> FOLDER_CONTRACTS
+    - ใบตรวจสภาพรถ -> FOLDER_INSPECTIONS
+    - ใบเสร็จ -> FOLDER_RECEIPTS
+    - รูปรถยนต์ 4 มุม -> FOLDER_CAR_ANGLES
+    - พ.ร.บ. / กรมธรรม์ -> FOLDER_INSURANCE_ACT
+    - สลิปการโอนเงิน -> FOLDER_PAYMENT_SLIPS
+    """
+    if not doc_type:
+        return PARENT_APP_FOLDER
+
+    dt = str(doc_type).lower().strip()
+
+    if any(k in dt for k in ["contract", "agreement", "สัญญา", "สัญญาเช่า"]):
+        if is_valid_folder_id(FOLDER_CONTRACTS):
+            return FOLDER_CONTRACTS.strip()
+    elif any(k in dt for k in ["inspection", "checkout", "checkin", "ตรวจสภาพ", "ตรวจรถ", "สภาพรถ", "job"]):
+        if is_valid_folder_id(FOLDER_INSPECTIONS):
+            return FOLDER_INSPECTIONS.strip()
+    elif any(k in dt for k in ["receipt", "deposit-receipt", "ใบเสร็จ", "มัดจำ"]):
+        if is_valid_folder_id(FOLDER_RECEIPTS):
+            return FOLDER_RECEIPTS.strip()
+    elif any(k in dt for k in ["car", "angle", "รถ", "มุม"]):
+        if is_valid_folder_id(FOLDER_CAR_ANGLES):
+            return FOLDER_CAR_ANGLES.strip()
+    elif any(k in dt for k in ["insurance", "act", "กรมธรรม์", "พรบ", "พ.ร.บ."]):
+        if is_valid_folder_id(FOLDER_INSURANCE_ACT):
+            return FOLDER_INSURANCE_ACT.strip()
+    elif any(k in dt for k in ["slip", "สลิป"]):
+        if is_valid_folder_id(FOLDER_PAYMENT_SLIPS):
+            return FOLDER_PAYMENT_SLIPS.strip()
+
+    return PARENT_APP_FOLDER
+
+def resolve_folder_id(folder_id: Optional[str] = None, doc_type: Optional[str] = None) -> str:
+    """Resolve Google Drive destination folder ID with safe fallback."""
+    if is_valid_folder_id(folder_id):
+        return folder_id.strip()
+    return get_target_folder_by_doctype(doc_type)
 
 GOOGLE_APPS_SCRIPT_URL = os.environ.get(
     "GOOGLE_DRIVE_WEBHOOK_URL",
@@ -34,12 +110,20 @@ DEFAULT_FOLDER_MAP = {
     "car": FOLDER_CAR_ANGLES,
     "car_angle": FOLDER_CAR_ANGLES,
     "car_photo": FOLDER_CAR_ANGLES,
-    "inspection": FOLDER_CAR_ANGLES,
+    "inspection": FOLDER_INSPECTIONS,
     
     "slip": FOLDER_PAYMENT_SLIPS,
     "payment_slip": FOLDER_PAYMENT_SLIPS,
     "deposit_slip": FOLDER_PAYMENT_SLIPS,
     "rental_slip": FOLDER_PAYMENT_SLIPS,
+
+    "contract": FOLDER_CONTRACTS,
+    "agreement": FOLDER_CONTRACTS,
+    "สัญญา": FOLDER_CONTRACTS,
+    "สัญญาเช่า": FOLDER_CONTRACTS,
+
+    "receipt": FOLDER_RECEIPTS,
+    "ใบเสร็จ": FOLDER_RECEIPTS,
 }
 
 def clean_plate_for_filename(plate: str) -> str:
@@ -121,8 +205,7 @@ def build_gdrive_filename(
 
 def get_gdrive_folder_id(category: str) -> str:
     """Resolve target Google Drive folder ID for the category."""
-    cat_low = str(category or "slip").lower().strip()
-    return DEFAULT_FOLDER_MAP.get(cat_low, FOLDER_PAYMENT_SLIPS)
+    return resolve_folder_id(None, category)
 
 
 class GoogleDriveService:
