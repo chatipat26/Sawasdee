@@ -21,16 +21,13 @@ import requests
 PARENT_APP_FOLDER = "10f_0dbowDOMPpDL59oAjnHBgLAzBHgHO"
 
 # 1. โฟลเดอร์ "สัญญาเช่า"
-# ใส่ Folder ID ของ [สัญญาเช่า] ตรงนี้ (หรือตั้งค่า GOOGLE_DRIVE_FOLDER_CONTRACT ใน .env / Render)
-FOLDER_CONTRACTS = os.environ.get("GOOGLE_DRIVE_FOLDER_CONTRACT") or "ใส่ Folder ID ของ [สัญญาเช่า] ตรงนี้"
+FOLDER_CONTRACTS = os.environ.get("GOOGLE_DRIVE_FOLDER_CONTRACT") or "1qydIOqXvi0YwTOkxGe6YOidNezLsZzzd"
 
 # 2. โฟลเดอร์ "ใบตรวจสภาพรถ"
-# ใส่ Folder ID ของ [ใบตรวจสภาพรถ] ตรงนี้ (หรือตั้งค่า GOOGLE_DRIVE_FOLDER_INSPECTION ใน .env / Render)
-FOLDER_INSPECTIONS = os.environ.get("GOOGLE_DRIVE_FOLDER_INSPECTION") or "ใส่ Folder ID ของ [ใบตรวจสภาพรถ] ตรงนี้"
+FOLDER_INSPECTIONS = os.environ.get("GOOGLE_DRIVE_FOLDER_INSPECTION") or "1uLqzNziLyx03aK0Ny0iiuKYHWj2QNUZl"
 
 # 3. โฟลเดอร์ "ใบเสร็จ"
-# ใส่ Folder ID ของ [ใบเสร็จ] ตรงนี้ (หรือตั้งค่า GOOGLE_DRIVE_FOLDER_RECEIPT ใน .env / Render)
-FOLDER_RECEIPTS = os.environ.get("GOOGLE_DRIVE_FOLDER_RECEIPT") or "ใส่ Folder ID ของ [ใบเสร็จ] ตรงนี้"
+FOLDER_RECEIPTS = os.environ.get("GOOGLE_DRIVE_FOLDER_RECEIPT") or "1fR4ZtkfJJSEo6NzLKtyDD5EaiZpWWdC6"
 
 # 4. โฟลเดอร์ "รถ" (รูปรถยนต์ 4 มุม)
 # ใส่ Folder ID ของ [รถ] ตรงนี้
