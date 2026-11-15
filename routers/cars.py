@@ -105,6 +105,20 @@ async def upload_car_image(
     # Persist changes to database & storage
     store.async_sync_car(matched_key, target_car)
 
+    # Direct database UPDATE to guarantee immediate persistence in PostgreSQL
+    try:
+        from db import get_db_client
+        sb = get_db_client()
+        if sb:
+            db_update = {db_col: image_url}
+            if db_col == "img_front" or not target_car.get("image") or target_car.get("image") == "-":
+                db_update["image_url"] = image_url
+            sb.table("cars").update(db_update).eq("plate", clean_plate).execute()
+            if matched_key and matched_key != clean_plate:
+                sb.table("cars").update(db_update).eq("plate", matched_key).execute()
+    except Exception as dberr:
+        print(f"[Cars API] Direct DB update warning: {dberr}")
+
     thai_angle, _ = normalize_car_angle(chosen_angle)
     return {
         "success": True,

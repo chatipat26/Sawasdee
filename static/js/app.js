@@ -3567,6 +3567,17 @@ class App {
         if (noImgEl) noImgEl.style.display = "none";
       }
 
+      // 3. Immediately update this.cars in-memory cache so Car Details displays it without page refresh
+      const normPlate = typeof this.normalizePlate === "function" ? this.normalizePlate(plate) : plate.replace(/[\s\-_]+/g, "");
+      const matchedCar = (this.cars || []).find(c => c.plate === plate || (typeof this.normalizePlate === "function" && this.normalizePlate(c.plate) === normPlate));
+      if (matchedCar) {
+        matchedCar[colName] = data.url;
+        if (angle === "front" || !matchedCar.image || matchedCar.image === "-") {
+          matchedCar.image = data.url;
+          matchedCar.image_url = data.url;
+        }
+      }
+
       const driveBadge = data.is_gdrive ? "ไปยัง Google Drive " : "";
       this.showToast(`✅ อัปโหลดรูปรถ (${angleText}) ${driveBadge}เรียบร้อยแล้ว!`, "success");
       input.value = "";
