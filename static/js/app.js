@@ -4278,6 +4278,7 @@ class App {
     const isDep = b.deposit_paid;
     const isRent = b.rental_paid;
     const netP = parseFloat(b.net_price || 0);
+    const depAmt = parseFloat(b.deposit_amount || 5000);
 
     // 1. Populate amount & payment method (Fixed 5,000 THB)
     const amtEl = document.getElementById("deposit-amount-input");
