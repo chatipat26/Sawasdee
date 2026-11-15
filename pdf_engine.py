@@ -91,15 +91,84 @@ def format_date_dmy(date_val):
         return d.strftime("%d/%m/%Y")
     return str(date_val)
 
+def format_currency(val, prefix="฿"):
+    """
+    Format currency values for PDF display:
+    - Adds commas (e.g. 13,714)
+    - Strips decimal .0 if integer (e.g. 13714.0 -> 13,714)
+    - Retains 2 decimal places if non-zero decimals (e.g. 13714.50 -> 13,714.50)
+    - No space between prefix and number (e.g. ฿13,714)
+    """
+    if val is None or val == "" or val == "-":
+        return "-"
+    try:
+        f = float(str(val).replace(",", "").strip())
+        if f.is_integer():
+            return f"{prefix}{int(f):,}"
+        return f"{prefix}{f:,.2f}"
+    except Exception:
+        s = str(val).strip()
+        if s.endswith(".0"):
+            s = s[:-2]
+        return f"{prefix}{s}"
+
+def get_rental_days_and_duration(booking_info):
+    """Calculate rental days count and formatted duration string"""
+    days = booking_info.get("days") or booking_info.get("rental_days")
+    if not days:
+        try:
+            from db import calculate_rental_duration_and_days
+            s_d = booking_info.get("start_date")
+            e_d = booking_info.get("end_date")
+            s_t = booking_info.get("start_time") or "10:00"
+            e_t = booking_info.get("end_time") or "10:00"
+            billable_days, _, _, _, _ = calculate_rental_duration_and_days(s_d, s_t, e_d, e_t)
+            days = billable_days
+        except Exception:
+            days = 1
+    try:
+        d_int = int(days)
+        dur_text = f"{d_int} days" if d_int != 1 else "1 day"
+    except Exception:
+        dur_text = str(days)
+    return days, dur_text
+
+def get_daily_rate(booking_info, car_info, days=1, net_price=0):
+    """Retrieve or calculate daily rate"""
+    for key in ("daily_rate", "price_per_day", "price_day"):
+        v = booking_info.get(key)
+        if v is not None:
+            try:
+                f = float(v)
+                if f > 0:
+                    return f
+            except (ValueError, TypeError):
+                pass
+    for key in ("price_day", "daily_rate", "rental_rate"):
+        v = car_info.get(key)
+        if v is not None:
+            try:
+                f = float(v)
+                if f > 0:
+                    return f
+            except (ValueError, TypeError):
+                pass
+    if days and days > 0 and net_price:
+        try:
+            return round(float(net_price) / float(days))
+        except Exception:
+            pass
+    return None
+
 # =========================================================================
 # CONTRACT PDF OVERLAY COORDINATES (A4: width ~595pt, height ~842pt)
 # ตัวแปรพิกัด (X, Y) สำหรับ Overlay ข้อมูลลงบนไฟล์ rental_template_blank_v2.pdf
 # แอดมินสามารถปรับแก้ตัวเลขแกน X, Y และขนาดฟอนต์ได้ที่นี่โดยตรง
 # =========================================================================
 CONTRACT_COORDINATES = {
-    # 0. Header (เลขที่สัญญา & วันที่ทำสัญญา)
-    "booking_id": {"x": 485, "y": 782, "font": "bold", "size": 12, "color": (0.1, 0.1, 0.1)},
-    "issue_date": {"x": 485, "y": 768, "font": "regular", "size": 7.5, "color": (0.2, 0.2, 0.2)},
+    # 0. Header (เลขที่สัญญา & วันที่ทำสัญญา - จัดชิดขวาเสมอขอบขวา 556.8 เหมือนต้นฉบับ)
+    "booking_id": {"x": 556.8, "y": 782, "font": "bold", "size": 11.5, "align": "right", "color": (0.1, 0.1, 0.1)},
+    "issue_date": {"x": 556.8, "y": 768, "font": "regular", "size": 7.5, "align": "right", "color": (0.2, 0.2, 0.2)},
 
     # 1. Section 01: VEHICLE (ข้อมูลรถยนต์)
     "car_brand_model": {"x": 44, "y": 701, "font": "bold", "size": 9.5, "color": (1.0, 1.0, 1.0)}, # สีขาวบนแถบสีเข้ม
@@ -131,8 +200,11 @@ CONTRACT_COORDINATES = {
     "end_datetime": {"x": 304, "y": 474, "font": "regular", "size": 8.5, "color": (0.15, 0.15, 0.15)},
     "loc_return": {"x": 437, "y": 474, "font": "regular", "size": 8.5, "color": (0.15, 0.15, 0.15), "max_chars": 30},
 
-    # 4. Section 04: CHARGES (กล่องขาวในแถบสีส้ม TO BE INVOICED)
-    "net_price": {"x": 498, "y": 303, "font": "bold", "size": 10.0, "color": (0.9, 0.35, 0.15)},
+    # 4. Section 04: CHARGES (ตารางสรุปค่าเช่าและยอดรวม ตรงตาม Original)
+    "charges_days": {"x": 365.5, "y": 431, "font": "bold", "size": 8.5, "align": "left", "color": (0.15, 0.15, 0.15)},
+    "charges_subtotal": {"x": 550.8, "y": 430.5, "font": "bold", "size": 13.0, "align": "right", "color": (0.1, 0.1, 0.1)},
+    "charges_daily_rate": {"x": 550.8, "y": 412.5, "font": "regular", "size": 7.5, "align": "right", "color": (0.2, 0.2, 0.2)},
+    "net_price": {"x": 550.8, "y": 303.5, "font": "bold", "size": 13.0, "align": "right", "color": (1.0, 1.0, 1.0)}, # สีขาวบนแถบสีส้ม
 
     # 5. Section 05: PAYMENT CONFIRMATION (ยืนยันการชำระเงิน)
     "confirm_ref": {"x": 37, "y": 259, "font": "regular", "size": 8.0, "color": (0.15, 0.15, 0.15)},
@@ -140,7 +212,7 @@ CONTRACT_COORDINATES = {
 }
 
 def draw_field(can, field_key, value):
-    """Draw a text string at specified coordinates from CONTRACT_COORDINATES"""
+    """Draw a text string at specified coordinates from CONTRACT_COORDINATES with left/right alignment support"""
     cfg = CONTRACT_COORDINATES.get(field_key)
     if not cfg or value is None:
         return
@@ -154,12 +226,20 @@ def draw_field(can, field_key, value):
     can.setFont(font_name, cfg.get("size", 9))
     color = cfg.get("color", (0.15, 0.15, 0.15))
     can.setFillColorRGB(*color)
-    try:
-        can.drawString(cfg["x"], cfg["y"], text)
-    except UnicodeEncodeError:
-        # Fallback if standard Type 1 font is active
-        safe_text = text.encode("ascii", "replace").decode("ascii")
-        can.drawString(cfg["x"], cfg["y"], safe_text)
+    align = cfg.get("align", "left")
+    if align == "right":
+        try:
+            can.drawRightString(cfg["x"], cfg["y"], text)
+        except UnicodeEncodeError:
+            safe_text = text.encode("ascii", "replace").decode("ascii")
+            can.drawRightString(cfg["x"], cfg["y"], safe_text)
+    else:
+        try:
+            can.drawString(cfg["x"], cfg["y"], text)
+        except UnicodeEncodeError:
+            # Fallback if standard Type 1 font is active
+            safe_text = text.encode("ascii", "replace").decode("ascii")
+            can.drawString(cfg["x"], cfg["y"], safe_text)
 
 def clear_dash_box(can, x, y, width=14, height=10):
     """Clear dash character in base template before drawing overlay text"""
@@ -207,9 +287,12 @@ def generate_filled_pdf(template_path="rental_template_blank_v2.pdf", booking_in
         packet = io.BytesIO()
         can = canvas.Canvas(packet, pagesize=A4)
 
-        # 0. Header (Reference No. & Date)
+        # 0. Header (Reference No. & Date - Clean white mask then draw right-aligned)
         th_now = now_th()
         b_id = str(booking_info.get("booking_id", "-"))
+        # Clear background area of header reference to prevent any collision
+        can.setFillColorRGB(1, 1, 1)
+        can.rect(420, 762, 138, 32, fill=1, stroke=0)
         draw_field(can, "booking_id", b_id)
         draw_field(can, "issue_date", f"Issued: {format_date_dmy(th_now.date())} {th_now.strftime('%H:%M')} น.")
 
@@ -270,14 +353,39 @@ def generate_filled_pdf(template_path="rental_template_blank_v2.pdf", booking_in
             clear_dash_box(can, CONTRACT_COORDINATES["loc_return"]["x"], CONTRACT_COORDINATES["loc_return"]["y"])
             draw_field(can, "loc_return", loc_ret)
 
-        # 4. Section 04: CHARGES
+        # 4. Section 04: CHARGES (ตารางค่าเช่าและยอดรวม)
         net_price = booking_info.get('net_price', 0)
-        price_val = f"{net_price:,}" if isinstance(net_price, (int, float)) else str(net_price)
-        draw_field(can, "net_price", f"฿ {price_val}")
+        days_count, duration_text = get_rental_days_and_duration(booking_info)
+        daily_rate = get_daily_rate(booking_info, car_info, days=days_count, net_price=net_price)
+
+        # Clear background areas in template CHARGES table
+        can.setFillColorRGB(1, 1, 1)
+        can.rect(363, 426, 80, 15, fill=1, stroke=0) # Clear row 1 left (1 month)
+        can.rect(460, 425, 96, 18, fill=1, stroke=0) # Clear row 1 right (39,000)
+        can.rect(480, 408, 76, 15, fill=1, stroke=0) # Clear row 2 right (2,600)
+
+        # Mask over template's white box on orange bar with exact orange color to restore solid bar
+        can.setFillColorRGB(0.9098, 0.3843, 0.1765)
+        can.rect(488, 296, 68, 22, fill=1, stroke=0)
+
+        # Draw row 1: duration in days (left) and total rental amount (right)
+        draw_field(can, "charges_days", duration_text)
+        draw_field(can, "charges_subtotal", format_currency(net_price, prefix="฿"))
+
+        # Draw row 2: daily rate (right)
+        if daily_rate is not None:
+            draw_field(can, "charges_daily_rate", format_currency(daily_rate, prefix="฿"))
+
+        # Draw bottom orange bar: TO BE INVOICED total amount in white
+        draw_field(can, "net_price", format_currency(net_price, prefix="฿"))
 
         # 5. Section 05: PAYMENT CONFIRMATION
+        can.setFillColorRGB(1, 1, 1)
+        can.rect(34, 254, 150, 16, fill=1, stroke=0)
+        can.rect(225, 254, 75, 16, fill=1, stroke=0)
+
         draw_field(can, "confirm_ref", b_id)
-        draw_field(can, "confirm_amount", f"THB {price_val}")
+        draw_field(can, "confirm_amount", format_currency(net_price, prefix="THB "))
 
         can.save()
         packet.seek(0)
