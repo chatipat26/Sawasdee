@@ -5362,7 +5362,10 @@ class App {
       if (data.success && data.pdf_url) {
         if (isDisp) bObj.checkout_pdf_url = data.pdf_url;
         else bObj.checkin_pdf_url = data.pdf_url;
-        window.open(data.pdf_url + '?t=' + Date.now(), '_blank');
+        const openUrl = data.pdf_url.startsWith('http')
+          ? data.pdf_url
+          : (data.pdf_url + (data.pdf_url.includes('?') ? '&' : '?') + 't=' + Date.now());
+        window.open(openUrl, '_blank');
       } else {
         throw new Error(data.detail || "สร้าง PDF ไม่สำเร็จ");
       }
@@ -5880,12 +5883,15 @@ class App {
     window.open(`${pdfUrl}?t=${Date.now()}`, "_blank");
 
     try {
+      const bFound = (this.bookings || []).find(x => x.booking_id === id);
+      const existingContract = bFound?.contract_pdf_url;
+      const finalContractUrl = (existingContract && existingContract.includes("drive.google.com")) ? existingContract : (existingContract || pdfUrl);
       const res = await fetch(`/api/bookings/${encodeURIComponent(id)}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           contract_issued: true,
-          contract_pdf_url: pdfUrl,
+          contract_pdf_url: finalContractUrl,
           status: "กำลังเช่า",
           dispatch_closed: true
         })

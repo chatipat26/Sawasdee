@@ -93,11 +93,13 @@ def async_upload_pdf_to_drive(
                 if booking_dict and db_col:
                     booking_dict[db_col] = gdrive_url
                     store.async_sync_booking(booking_dict)
+                if db_col and ref_id:
                     try:
                         from db import get_db_client
                         sb = get_db_client()
                         if sb:
                             sb.table("bookings").update({db_col: gdrive_url}).eq("booking_id", ref_id).execute()
+                            print(f"[PDF GDrive Auto-Upload] Updated bookings.{db_col} for {ref_id}")
                     except Exception as dberr:
                         print(f"[PDF GDrive Auto-Upload] DB update notice: {dberr}")
             else:
@@ -2262,29 +2264,46 @@ async def generate_booking_inspection_pdf(bk_id: str, payload: Optional[Dict[str
     except Exception as io_err:
         print(f"[PDF Engine] Storage write note: {io_err}")
 
-    pdf_url = f"/static/pdf/inspections/{fname}"
+    local_pdf_url = f"/static/pdf/inspections/{fname}"
+    pdf_url = local_pdf_url
+    insp_col = "checkout_pdf_url" if is_checkout else "checkin_pdf_url"
+    insp_label = f"ใบตรวจสภาพรถ_{clean_type.capitalize()}"
 
-    if is_checkout:
-        target["checkout_pdf_url"] = pdf_url
-    else:
-        target["checkin_pdf_url"] = pdf_url
-    store.async_sync_booking(target)
-
-    # Isolated Feature: Auto-upload Inspection PDF to Google Drive in background thread
+    # Google Drive Priority Upload & DB Update
     try:
-        from services.google_drive_service import FOLDER_INSPECTIONS
-        insp_col = "checkout_pdf_url" if is_checkout else "checkin_pdf_url"
-        insp_label = f"ใบตรวจสภาพรถ_{clean_type.capitalize()}"
-        async_upload_pdf_to_drive(
-            doc_type=insp_label,
-            ref_id=bk_id,
-            pdf_bytes=pdf_bytes,
-            folder_id=FOLDER_INSPECTIONS,
-            booking_dict=target,
-            db_col=insp_col
-        )
+        from services.google_drive_service import upload_pdf_to_drive, build_pdf_filename, FOLDER_INSPECTIONS
+        gdrive_fname = build_pdf_filename(insp_label, bk_id)
+        res = upload_pdf_to_drive(pdf_bytes, FOLDER_INSPECTIONS, gdrive_fname)
+        if res.get("success") and res.get("webViewLink"):
+            pdf_url = res.get("webViewLink")
+            print(f"[Inspection PDF Gen] Direct Google Drive upload success: {pdf_url}")
     except Exception as gdrive_err:
-        print(f"[Inspection PDF Gen] Auto-upload notice: {gdrive_err}")
+        print(f"[Inspection PDF Gen] Direct Google Drive upload note: {gdrive_err}")
+
+    target[insp_col] = pdf_url
+    store.async_sync_booking(target)
+    try:
+        from db import get_db_client
+        sb = get_db_client()
+        if sb:
+            sb.table("bookings").update({insp_col: pdf_url}).eq("booking_id", bk_id).execute()
+    except Exception as dberr:
+        print(f"[Inspection PDF Gen] Direct DB update notice: {dberr}")
+
+    # Fallback background retry if direct upload failed
+    if pdf_url == local_pdf_url:
+        try:
+            from services.google_drive_service import FOLDER_INSPECTIONS
+            async_upload_pdf_to_drive(
+                doc_type=insp_label,
+                ref_id=bk_id,
+                pdf_bytes=pdf_bytes,
+                folder_id=FOLDER_INSPECTIONS,
+                booking_dict=target,
+                db_col=insp_col
+            )
+        except Exception as bg_err:
+            print(f"[Inspection PDF Gen] Background retry notice: {bg_err}")
 
     return {
         "success": True,
@@ -2650,6 +2669,18 @@ async def update_payment_slip(bk_id: str, payload: Dict[str, Any]):
         with open(os.path.join(insp_dir, fname), "wb") as f:
             f.write(pdf_bytes)
         target["checkout_pdf_url"] = f"/static/pdf/inspections/{fname}"
+        try:
+            from services.google_drive_service import FOLDER_INSPECTIONS
+            async_upload_pdf_to_drive(
+                doc_type="ใบตรวจสภาพรถ_Checkout",
+                ref_id=bk_id,
+                pdf_bytes=pdf_bytes,
+                folder_id=FOLDER_INSPECTIONS,
+                booking_dict=target,
+                db_col="checkout_pdf_url"
+            )
+        except Exception as bg_gdrive_err:
+            print(f"[Mileage Fuel] GDrive upload notice: {bg_gdrive_err}")
     except Exception as gen_err:
         print(f"[PDF Engine] Auto-generate checkout inspection error: {gen_err}")
 
@@ -2792,10 +2823,21 @@ async def assign_worker(bk_id: str, payload: Dict[str, Any]):
         fname = f"Inspection_{clean_type.capitalize()}_{bk_id}.pdf"
         with open(os.path.join(insp_dir, fname), "wb") as f:
             f.write(pdf_bytes)
-        if is_checkout:
-            target["checkout_pdf_url"] = f"/static/pdf/inspections/{fname}"
-        else:
-            target["checkin_pdf_url"] = f"/static/pdf/inspections/{fname}"
+        insp_col = "checkout_pdf_url" if is_checkout else "checkin_pdf_url"
+        target[insp_col] = f"/static/pdf/inspections/{fname}"
+        try:
+            from services.google_drive_service import FOLDER_INSPECTIONS
+            insp_label = f"ใบตรวจสภาพรถ_{clean_type.capitalize()}"
+            async_upload_pdf_to_drive(
+                doc_type=insp_label,
+                ref_id=bk_id,
+                pdf_bytes=pdf_bytes,
+                folder_id=FOLDER_INSPECTIONS,
+                booking_dict=target,
+                db_col=insp_col
+            )
+        except Exception as bg_gdrive_err:
+            print(f"[Assign Worker] GDrive upload notice: {bg_gdrive_err}")
     except Exception as auto_pdf_err:
         print(f"[PDF Engine] Auto inspection update in assign: {auto_pdf_err}")
 

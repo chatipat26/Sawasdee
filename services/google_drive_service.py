@@ -30,7 +30,10 @@ GOOGLE_APPS_SCRIPT_URL = os.environ.get(
     "https://script.google.com/macros/s/AKfycbym7RQvghcv9rODPXp_Poc_wsAgR6sX1vQhchqSvW0P_QU7B5jPlZUiwMjGC2hnlUDlvg/exec"
 )
 
-SCOPES = ["https://www.googleapis.com/auth/drive", "https://www.googleapis.com/auth/drive.file"]
+try:
+    from googleapiclient.http import MediaIoBaseUpload
+except ImportError:
+    MediaIoBaseUpload = None
 
 _drive_service_instance = None
 _drive_credentials_info = None

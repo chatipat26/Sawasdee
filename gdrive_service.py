@@ -1,383 +1,345 @@
 """
-Sawasdee Rental - Google Drive API v3 Service
-Automated upload and organization for:
-1. ACT & Insurance policies (Folder: 1cxfQEi9oHUIBBF4oMMHJgIvGu8fxOOEq)
-2. Car inspection photos 4 angles (Folder: 1V5S_j4dXQGuUW6zCAwQaXSkYJ9XNo-Mj)
-3. Payment slips (Folder: 1BqKO4TXM4sJQ5_GzKdcVPTwE_qyiAsv8)
+Google Drive Service for Sawasdee Rental
+Automated upload and file organization for Google Drive API v3.
+Target Folders:
+- 1. พ.ร.บ. และ กรมธรรม์: 1cxfQEi9oHUIBBF4oMMHJgIvGu8fxOOEq
+- 2. รูปรถยนต์ 4 มุม: 1V5S_j4dXQGuUW6zCAwQaXSkYJ9XNo-Mj
+- 3. สลิปการโอนเงิน: 1BqKO4TXM4sJQ5_GzKdcVPTwE_qyiAsv8
 """
 
 import os
+import io
 import json
-import time
 import re
 from datetime import datetime
-from typing import Optional, Dict, Any, Tuple
-import requests
+from typing import Optional, Dict, Any, Union, Tuple
 
 # Google Drive Target Folders (Strict System Rules)
 FOLDER_INSURANCE_ACT = "1cxfQEi9oHUIBBF4oMMHJgIvGu8fxOOEq"
 FOLDER_CAR_ANGLES = "1V5S_j4dXQGuUW6zCAwQaXSkYJ9XNo-Mj"
 FOLDER_PAYMENT_SLIPS = "1BqKO4TXM4sJQ5_GzKdcVPTwE_qyiAsv8"
 
-GOOGLE_APPS_SCRIPT_URL = os.environ.get(
-    "GOOGLE_DRIVE_WEBHOOK_URL",
-    "https://script.google.com/macros/s/AKfycbym7RQvghcv9rODPXp_Poc_wsAgR6sX1vQhchqSvW0P_QU7B5jPlZUiwMjGC2hnlUDlvg/exec"
-)
-
-# PDF Document Folders (Configurable via Environment Variables)
+# PDF Document Folders (Configurable via Environment Variables, defaults to Sawasdee App parent folder)
 PARENT_APP_FOLDER = "10f_0dbowDOMPpDL59oAjnHBgLAzBHgHO"
 FOLDER_CONTRACTS = os.environ.get("GOOGLE_DRIVE_FOLDER_CONTRACT", os.environ.get("GOOGLE_DRIVE_FOLDER_CONTRACTS", PARENT_APP_FOLDER))
 FOLDER_INSPECTIONS = os.environ.get("GOOGLE_DRIVE_FOLDER_INSPECTION", os.environ.get("GOOGLE_DRIVE_FOLDER_INSPECTIONS", PARENT_APP_FOLDER))
 FOLDER_RECEIPTS = os.environ.get("GOOGLE_DRIVE_FOLDER_RECEIPT", os.environ.get("GOOGLE_DRIVE_FOLDER_RECEIPTS", PARENT_APP_FOLDER))
 
-DEFAULT_FOLDER_MAP = {
-    "insurance": FOLDER_INSURANCE_ACT,
-    "insurance_act": FOLDER_INSURANCE_ACT,
-    "act": FOLDER_INSURANCE_ACT,
-    "กรมธรรม์": FOLDER_INSURANCE_ACT,
-    "พรบ": FOLDER_INSURANCE_ACT,
-    
-    "car": FOLDER_CAR_ANGLES,
-    "car_angle": FOLDER_CAR_ANGLES,
-    "car_photo": FOLDER_CAR_ANGLES,
-    "inspection": FOLDER_CAR_ANGLES,
-    
-    "slip": FOLDER_PAYMENT_SLIPS,
-    "payment_slip": FOLDER_PAYMENT_SLIPS,
-    "deposit_slip": FOLDER_PAYMENT_SLIPS,
-    "rental_slip": FOLDER_PAYMENT_SLIPS,
+GOOGLE_APPS_SCRIPT_URL = os.environ.get(
+    "GOOGLE_DRIVE_WEBHOOK_URL",
+    "https://script.google.com/macros/s/AKfycbym7RQvghcv9rODPXp_Poc_wsAgR6sX1vQhchqSvW0P_QU7B5jPlZUiwMjGC2hnlUDlvg/exec"
+)
 
-    "contract": FOLDER_CONTRACTS,
-    "สัญญาเช่า": FOLDER_CONTRACTS,
-    "inspection_doc": FOLDER_INSPECTIONS,
-    "ใบตรวจสภาพรถ": FOLDER_INSPECTIONS,
-    "receipt": FOLDER_RECEIPTS,
-    "ใบเสร็จ": FOLDER_RECEIPTS,
-}
+try:
+    from googleapiclient.http import MediaIoBaseUpload
+except ImportError:
+    MediaIoBaseUpload = None
+
+_drive_service_instance = None
+_drive_credentials_info = None
+
+def find_credentials_file() -> Optional[str]:
+    """Locate Google Service Account credentials file from environment or candidate paths."""
+    # 1. Standard Google environment variable
+    env_app_cred = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
+    if env_app_cred and os.path.exists(env_app_cred):
+        return os.path.abspath(env_app_cred)
+
+    # 2. Custom environment variable
+    env_sa_file = os.environ.get("GOOGLE_SERVICE_ACCOUNT_FILE")
+    if env_sa_file and os.path.exists(env_sa_file):
+        return os.path.abspath(env_sa_file)
+
+    # 3. Candidate files in project root
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    candidates = [
+        "credentials.json",
+        "service_account.json",
+        "google_service_account.json",
+        os.path.join(base_dir, "credentials.json"),
+        os.path.join(base_dir, "service_account.json"),
+        os.path.join(base_dir, "google_service_account.json"),
+        os.path.join(os.getcwd(), "credentials.json"),
+        os.path.join(os.getcwd(), "service_account.json"),
+    ]
+    for c in candidates:
+        if os.path.exists(c) and os.path.isfile(c):
+            return os.path.abspath(c)
+    return None
+
+def get_drive_service():
+    """
+    Build and return an authorized Google Drive API v3 service resource.
+    Uses google-auth and google-api-python-client.
+    """
+    global _drive_service_instance, _drive_credentials_info
+    if _drive_service_instance:
+        return _drive_service_instance
+
+    try:
+        from google.oauth2 import service_account
+        from googleapiclient.discovery import build
+    except ImportError as e:
+        print(f"[GDrive] Missing required library: {e}")
+        return None
+
+    # Check for raw JSON string in environment variable
+    raw_json = os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON")
+    if raw_json:
+        try:
+            info = json.loads(raw_json)
+            creds = service_account.Credentials.from_service_account_info(info, scopes=SCOPES)
+            _drive_credentials_info = info
+            _drive_service_instance = build("drive", "v3", credentials=creds, cache_discovery=False)
+            return _drive_service_instance
+        except Exception as e:
+            print(f"[GDrive] Error parsing GOOGLE_SERVICE_ACCOUNT_JSON: {e}")
+
+    # Check for file
+    cred_path = find_credentials_file()
+    if cred_path:
+        try:
+            creds = service_account.Credentials.from_service_account_file(cred_path, scopes=SCOPES)
+            with open(cred_path, "r", encoding="utf-8") as f:
+                _drive_credentials_info = json.load(f)
+            _drive_service_instance = build("drive", "v3", credentials=creds, cache_discovery=False)
+            print(f"[GDrive] Successfully initialized Google Drive API client using {os.path.basename(cred_path)}")
+            return _drive_service_instance
+        except Exception as e:
+            print(f"[GDrive] Error loading credentials from {cred_path}: {e}")
+
+    return None
+
+def is_drive_configured() -> bool:
+    """Return True if Google Drive integration is configured via Apps Script Webhook or Service Account."""
+    if GOOGLE_APPS_SCRIPT_URL and "script.google.com" in GOOGLE_APPS_SCRIPT_URL:
+        return True
+    return get_drive_service() is not None
 
 def clean_plate_for_filename(plate: str) -> str:
-    """Clean license plate text for filename safety while retaining Thai letters & digits."""
+    """Clean license plate text for filename safety."""
     if not plate:
         return "รถไม่ระบุ"
-    cleaned = str(plate).strip()
-    cleaned = re.sub(r'[\s/\\:*?"<>|]', '', cleaned)
+    cleaned = re.sub(r'[\s/\\:*?"<>|]', '', str(plate).strip())
     return cleaned or "รถไม่ระบุ"
 
-def clean_ref_for_filename(ref: str) -> str:
-    """Clean booking ID or reference string for filename safety."""
-    if not ref:
-        return f"REF{int(time.time())}"
-    cleaned = str(ref).strip()
-    cleaned = re.sub(r'[\s/\\:*?"<>|]', '', cleaned)
-    return cleaned or f"REF{int(time.time())}"
-
-def normalize_angle_name(sub_type: Optional[str]) -> str:
-    """Normalize car 4-angle identifier to Thai naming: หน้า, ซ้าย, หลัง, ขวา."""
-    st = str(sub_type or "").strip().lower()
-    if any(k in st for k in ["front", "หน้า", "หน้ารถ"]):
-        return "หน้า"
-    if any(k in st for k in ["left", "ซ้าย"]):
-        return "ซ้าย"
-    if any(k in st for k in ["rear", "back", "หลัง"]):
-        return "หลัง"
-    if any(k in st for k in ["right", "ขวา"]):
-        return "ขวา"
-    return "หน้า"
-
-def normalize_insurance_type(sub_type: Optional[str]) -> str:
-    """Normalize insurance document type to Thai naming: กรมธรรม์ or พรบ."""
-    st = str(sub_type or "").strip().lower()
-    if any(k in st for k in ["พรบ", "พ.ร.บ.", "act", "tax"]):
-        return "พรบ"
-    return "กรมธรรม์"
-
-def build_gdrive_filename(
-    category: str,
-    ref_or_plate: str,
-    sub_type: Optional[str] = None,
-    original_filename: Optional[str] = None,
-    date_str: Optional[str] = None
-) -> str:
+def normalize_car_angle(angle_raw: Optional[str]) -> Tuple[str, str]:
     """
-    Build target Google Drive filename according to strict system rules:
-    - 2.1 พ.ร.บ. / กรมธรรม์: [กรมธรรม์/พรบ]_[ทะเบียนรถ]_[YYYYMMDD] (เช่น กรมธรรม์_5ขฒ5181_20261115.jpg)
-    - 2.2 รูปรถ 4 มุม: รถ_[มุม(หน้า/ซ้าย/หลัง/ขวา)]_[ทะเบียนรถ]_[YYYYMMDD] (เช่น รถ_หน้า_5ขฒ5181_20261115.jpg)
-    - 2.3 สลิปการโอนเงิน: สลิป_[รหัสการจอง/อ้างอิง]_[YYYYMMDD] (เช่น สลิป_MRC261115141928_20261115.jpg)
+    Normalize car angle string to Thai name and DB column.
+    Returns (thai_name, db_column)
+    - front / หน้า -> ('หน้า', 'img_front')
+    - left / ซ้าย  -> ('ซ้าย', 'img_left')
+    - rear / หลัง  -> ('หลัง', 'img_rear')
+    - right / ขวา  -> ('ขวา', 'img_right')
     """
-    ext = "jpg"
-    if original_filename and "." in original_filename:
-        ext = original_filename.rsplit(".", 1)[-1].lower().strip()
-        if ext not in ["jpg", "jpeg", "png", "pdf", "webp"]:
-            ext = "jpg"
-            
+    raw = str(angle_raw or "").strip().lower()
+    if any(k in raw for k in ["front", "หน้า", "fore", "head"]):
+        return "หน้า", "img_front"
+    if any(k in raw for k in ["left", "ซ้าย"]):
+        return "ซ้าย", "img_left"
+    if any(k in raw for k in ["rear", "back", "หลัง"]):
+        return "หลัง", "img_rear"
+    if any(k in raw for k in ["right", "ขวา"]):
+        return "ขวา", "img_right"
+    return "หน้า", "img_front"
+
+def build_car_filename(angle: Optional[str], plate: str, original_filename: Optional[str] = None, date_str: Optional[str] = None) -> Tuple[str, str]:
+    """
+    Build standardized car angle filename:
+    รถ_[มุม(หน้า/ซ้าย/หลัง/ขวา)]_[ทะเบียนรถ]_[YYYYMMDD].[ext]
+    (เช่น รถ_หน้า_5ขฒ5181_20261115.jpg)
+    Returns: (file_name, db_column)
+    """
+    thai_angle, db_col = normalize_car_angle(angle)
+    clean_p = clean_plate_for_filename(plate)
     if not date_str:
         date_str = datetime.now().strftime("%Y%m%d")
     else:
-        # Strip dashes or colons if provided as YYYY-MM-DD
         date_str = re.sub(r'[^0-9]', '', str(date_str))[:8] or datetime.now().strftime("%Y%m%d")
 
-    cat_low = str(category or "slip").lower().strip()
+    ext = "jpg"
+    if original_filename and "." in original_filename:
+        parsed_ext = original_filename.rsplit(".", 1)[-1].lower().strip()
+        if parsed_ext in ["jpg", "jpeg", "png", "webp"]:
+            ext = parsed_ext
 
-    if cat_low in ["insurance", "insurance_act", "act", "กรมธรรม์", "พรบ"]:
-        doc_type = normalize_insurance_type(sub_type)
-        plate_clean = clean_plate_for_filename(ref_or_plate)
-        return f"{doc_type}_{plate_clean}_{date_str}.{ext}"
+    file_name = f"รถ_{thai_angle}_{clean_p}_{date_str}.{ext}"
+    return file_name, db_col
 
-    elif cat_low in ["car", "car_angle", "car_photo", "inspection"]:
-        angle = normalize_angle_name(sub_type)
-        plate_clean = clean_plate_for_filename(ref_or_plate)
-        return f"รถ_{angle}_{plate_clean}_{date_str}.{ext}"
-
-    else: # slip (default)
-        ref_clean = clean_ref_for_filename(ref_or_plate)
-        return f"สลิป_{ref_clean}_{date_str}.{ext}"
-
-def get_gdrive_folder_id(category: str) -> str:
-    """Resolve target Google Drive folder ID for the category."""
-    cat_low = str(category or "slip").lower().strip()
-    return DEFAULT_FOLDER_MAP.get(cat_low, FOLDER_PAYMENT_SLIPS)
-
-
-class GoogleDriveService:
+def upload_image_to_drive(
+    file: Any,
+    folder_id: str = FOLDER_CAR_ANGLES,
+    file_name: str = "car_photo.jpg",
+    content_type: Optional[str] = "image/jpeg"
+) -> Dict[str, Any]:
     """
-    Production-ready Google Drive API v3 client using Service Account credentials.
-    Zero external dependencies beyond standard 'jwt' (PyJWT/cryptography) and 'requests'.
+    Upload an image file to Google Drive under specified folder and make it public (role: reader, type: anyone).
+    Uses google-api-python-client (MediaIoBaseUpload) and google-auth.
+    
+    Parameters:
+        file: UploadFile (FastAPI), bytes, BytesIO, or path string
+        folder_id: Target Google Drive folder ID
+        file_name: Target filename in Google Drive
+        content_type: MIME type of the file
+        
+    Returns:
+        {
+            "success": bool,
+            "file_id": str,
+            "file_name": str,
+            "webViewLink": str,
+            "direct_url": str,
+            "webContentLink": str,
+            "folder_id": str,
+            "is_gdrive": bool
+        }
     """
-    def __init__(self):
-        self._service_account_info: Optional[Dict[str, Any]] = None
-        self._access_token: Optional[str] = None
-        self._token_expiry: float = 0.0
-        self._load_credentials()
+    # 1. Read file bytes
+    try:
+        if hasattr(file, "read"):
+            res_bytes = file.read()
+            if hasattr(res_bytes, "__await__"):
+                import asyncio
+                file_bytes = asyncio.run(res_bytes)
+            else:
+                file_bytes = res_bytes
+        elif isinstance(file, (bytes, bytearray)):
+            file_bytes = bytes(file)
+        elif isinstance(file, str) and os.path.isfile(file):
+            with open(file, "rb") as f:
+                file_bytes = f.read()
+        else:
+            file_bytes = bytes(file)
+    except Exception as e:
+        return {"success": False, "error": f"Error reading file bytes: {e}", "file_name": file_name}
 
-    def _load_credentials(self) -> None:
-        """Locate and parse Google Service Account credentials."""
-        # 1. Environment variable containing raw JSON
-        raw_json = os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON")
-        if raw_json:
-            try:
-                self._service_account_info = json.loads(raw_json)
-                return
-            except Exception as e:
-                print(f"[GDrive] Failed to parse GOOGLE_SERVICE_ACCOUNT_JSON: {e}")
+    if not file_bytes:
+        return {"success": False, "error": "File is empty (0 bytes)", "file_name": file_name}
 
-        # 2. Environment variable pointing to file path
-        env_file = os.environ.get("GOOGLE_SERVICE_ACCOUNT_FILE")
-        if env_file and os.path.exists(env_file):
-            try:
-                with open(env_file, "r", encoding="utf-8") as f:
-                    self._service_account_info = json.load(f)
-                    return
-            except Exception as e:
-                print(f"[GDrive] Failed to read GOOGLE_SERVICE_ACCOUNT_FILE ({env_file}): {e}")
-
-        # 3. Default search paths
-        candidate_paths = [
-            "service_account.json",
-            "google_service_account.json",
-            "credentials.json",
-            "gdrive_credentials.json",
-            os.path.join(os.path.dirname(__file__), "service_account.json"),
-            os.path.join(os.path.dirname(__file__), "credentials.json")
-        ]
-        for path in candidate_paths:
-            if os.path.exists(path):
-                try:
-                    with open(path, "r", encoding="utf-8") as f:
-                        data = json.load(f)
-                        if data.get("type") == "service_account" or "private_key" in data:
-                            self._service_account_info = data
-                            return
-                except Exception:
-                    pass
-
-    def is_configured(self) -> bool:
-        """Check if valid Google Drive credentials or Webhook URL are configured."""
-        if GOOGLE_APPS_SCRIPT_URL and "script.google.com" in GOOGLE_APPS_SCRIPT_URL:
-            return True
-        if self._service_account_info and self._service_account_info.get("private_key") and self._service_account_info.get("client_email"):
-            return True
-        return False
-
-    def get_service_account_email(self) -> Optional[str]:
-        if self._service_account_info:
-            return self._service_account_info.get("client_email")
-        return None
-
-    def get_access_token(self) -> Optional[str]:
-        """Obtain or refresh an OAuth2 access token for Google Drive API v3."""
-        if not self.is_configured():
-            return None
-
-        # Reuse cached token if valid (buffer 60 seconds)
-        now = time.time()
-        if self._access_token and now < (self._token_expiry - 60):
-            return self._access_token
-
+    # 2. Priority Method: Google Apps Script Web App (Executes under personal 5 TB Google One storage directly)
+    if GOOGLE_APPS_SCRIPT_URL and "script.google.com" in GOOGLE_APPS_SCRIPT_URL:
         try:
-            import jwt
-            client_email = self._service_account_info["client_email"]
-            private_key = self._service_account_info["private_key"]
-            token_uri = self._service_account_info.get("token_uri", "https://oauth2.googleapis.com/token")
+            import base64
+            import requests
 
+            b64_str = base64.b64encode(file_bytes).decode("utf-8")
             payload = {
-                "iss": client_email,
-                "scope": "https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/drive.file",
-                "aud": token_uri,
-                "exp": int(now + 3600),
-                "iat": int(now)
+                "folder_id": folder_id,
+                "file_name": file_name,
+                "mime_type": content_type or "image/jpeg",
+                "file_base64": b64_str
             }
-
-            signed_jwt = jwt.encode(payload, private_key, algorithm="RS256")
-            resp = requests.post(
-                token_uri,
-                data={
-                    "grant_type": "urn:ietf:params:oauth:grant-type:jwt-bearer",
-                    "assertion": signed_jwt
-                },
-                timeout=15
-            )
-
-            if resp.status_code != 200:
-                print(f"[GDrive] Token exchange failed ({resp.status_code}): {resp.text}")
-                return None
-
-            token_data = resp.json()
-            self._access_token = token_data.get("access_token")
-            expires_in = float(token_data.get("expires_in", 3600))
-            self._token_expiry = now + expires_in
-            return self._access_token
-
+            resp = requests.post(GOOGLE_APPS_SCRIPT_URL, json=payload, timeout=35, allow_redirects=True)
+            if resp.status_code == 200:
+                res_json = resp.json()
+                if res_json.get("success"):
+                    return {
+                        "success": True,
+                        "file_id": res_json.get("file_id"),
+                        "file_name": file_name,
+                        "webViewLink": res_json.get("webViewLink"),
+                        "direct_url": res_json.get("direct_url") or f"https://lh3.googleusercontent.com/d/{res_json.get('file_id')}",
+                        "webContentLink": res_json.get("webContentLink"),
+                        "folder_id": folder_id,
+                        "is_gdrive": True
+                    }
+                else:
+                    print(f"[GDrive] Apps Script returned error: {res_json.get('error')}")
+            else:
+                print(f"[GDrive] Apps Script returned status {resp.status_code}: {resp.text}")
         except Exception as e:
-            print(f"[GDrive] Error obtaining access token: {e}")
-            return None
+            print(f"[GDrive] Notice: Apps Script upload exception: {e}")
 
-    def make_file_public(self, file_id: str, access_token: str) -> bool:
-        """Set file permission to anyone with link can view (reader)."""
-        try:
-            perm_url = f"https://www.googleapis.com/drive/v3/files/{file_id}/permissions"
-            headers = {
-                "Authorization": f"Bearer {access_token}",
-                "Content-Type": "application/json"
-            }
-            body = {"role": "reader", "type": "anyone"}
-            r = requests.post(perm_url, headers=headers, json=body, timeout=10)
-            return r.status_code in [200, 201]
-        except Exception as e:
-            print(f"[GDrive] Failed to make file {file_id} public: {e}")
-            return False
-
-    def upload_file(
-        self,
-        file_bytes: bytes,
-        category: str = "slip",
-        ref_or_plate: str = "unknown",
-        sub_type: Optional[str] = None,
-        original_filename: Optional[str] = None,
-        content_type: str = "image/jpeg",
-        date_str: Optional[str] = None
-    ) -> Dict[str, Any]:
-        """
-        Upload file to Google Drive under specified category folder with standardized naming.
-        Returns:
-            {
-                "success": bool,
-                "file_id": str,
-                "filename": str,
-                "webViewLink": str,
-                "direct_url": str,
-                "folder_id": str
-            }
-        """
-        target_filename = build_gdrive_filename(
-            category=category,
-            ref_or_plate=ref_or_plate,
-            sub_type=sub_type,
-            original_filename=original_filename,
-            date_str=date_str
-        )
-        folder_id = get_gdrive_folder_id(category)
-
-        # 1. Priority Method: Google Apps Script Webhook (uses personal 5 TB Google One storage directly)
-        if GOOGLE_APPS_SCRIPT_URL and "script.google.com" in GOOGLE_APPS_SCRIPT_URL:
-            try:
-                import base64
-                b64_str = base64.b64encode(file_bytes).decode("utf-8")
-                payload = {
-                    "folder_id": folder_id,
-                    "file_name": target_filename,
-                    "mime_type": content_type or "image/jpeg",
-                    "file_base64": b64_str
-                }
-                resp = requests.post(GOOGLE_APPS_SCRIPT_URL, json=payload, timeout=35, allow_redirects=True)
-                if resp.status_code == 200:
-                    res_json = resp.json()
-                    if res_json.get("success"):
-                        return {
-                            "success": True,
-                            "file_id": res_json.get("file_id"),
-                            "filename": target_filename,
-                            "webViewLink": res_json.get("webViewLink"),
-                            "direct_url": res_json.get("direct_url") or f"https://lh3.googleusercontent.com/d/{res_json.get('file_id')}",
-                            "folder_id": folder_id,
-                            "is_gdrive": True
-                        }
-                    else:
-                        print(f"[GDrive] Apps Script upload returned error: {res_json.get('error')}")
-            except Exception as e:
-                print(f"[GDrive] Apps Script upload exception: {e}")
-
-        # 2. Method B: Direct Google Drive API v3 (Service Account)
-        token = self.get_access_token()
-        if not token:
+    # 3. Method B: Direct Google Drive API v3 (Service Account / Shared Drive)
+    try:
+        service = get_drive_service()
+        if not service:
             return {
                 "success": False,
-                "error": "Google Drive credentials not configured or failed to obtain access token.",
-                "filename": target_filename,
-                "folder_id": folder_id
+                "error": "Google Drive credentials not configured. Please place credentials.json in project root or configure GOOGLE_DRIVE_WEBHOOK_URL.",
+                "file_name": file_name,
+                "folder_id": folder_id,
+                "is_gdrive": False
             }
 
+        # 2. Prepare upload payload
+        mime = content_type or "image/jpeg"
+        media = MediaIoBaseUpload(io.BytesIO(file_bytes), mimetype=mime, resumable=True)
+        file_metadata = {
+            "name": file_name,
+            "parents": [folder_id]
+        }
+
+        # 3. Execute Drive upload
+        drive_file = service.files().create(
+            body=file_metadata,
+            media_body=media,
+            fields="id, name, webViewLink, webContentLink"
+        ).execute()
+
+        file_id = drive_file.get("id")
+        web_view_link = drive_file.get("webViewLink") or f"https://drive.google.com/file/d/{file_id}/view?usp=sharing"
+        direct_url = f"https://lh3.googleusercontent.com/d/{file_id}"
+
+        # 4. Set Permission: Anyone with the link can view (reader)
         try:
-            metadata = {
-                "name": target_filename,
-                "parents": [folder_id]
-            }
+            service.permissions().create(
+                fileId=file_id,
+                body={"role": "reader", "type": "anyone"},
+                fields="id"
+            ).execute()
+        except Exception as perm_err:
+            print(f"[GDrive] Warning setting public permission on file {file_id}: {perm_err}")
 
-            upload_url = "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink,webContentLink"
-            headers = {"Authorization": f"Bearer {token}"}
+        return {
+            "success": True,
+            "file_id": file_id,
+            "file_name": file_name,
+            "webViewLink": web_view_link,
+            "direct_url": direct_url,
+            "webContentLink": drive_file.get("webContentLink"),
+            "folder_id": folder_id,
+            "is_gdrive": True
+        }
 
-            files = {
-                "data": ("metadata", json.dumps(metadata), "application/json; charset=UTF-8"),
-                "file": (target_filename, file_bytes, content_type or "image/jpeg")
-            }
-
-            resp = requests.post(upload_url, headers=headers, files=files, timeout=30)
-            if resp.status_code not in [200, 201]:
-                err_msg = f"GDrive upload returned {resp.status_code}: {resp.text}"
-                print(f"[GDrive] {err_msg}")
-                return {"success": False, "error": err_msg, "filename": target_filename}
-
-            res_json = resp.json()
-            file_id = res_json.get("id")
-            web_view_link = res_json.get("webViewLink") or f"https://drive.google.com/file/d/{file_id}/view?usp=sharing"
-            direct_url = f"https://lh3.googleusercontent.com/d/{file_id}"
-
-            # Make readable by link
-            self.make_file_public(file_id, token)
-
-            return {
-                "success": True,
-                "file_id": file_id,
-                "filename": target_filename,
-                "webViewLink": web_view_link,
-                "direct_url": direct_url,
-                "folder_id": folder_id
-            }
-
-        except Exception as e:
-            err_msg = f"Exception during Google Drive upload: {e}"
-            print(f"[GDrive] {err_msg}")
-            return {"success": False, "error": err_msg, "filename": target_filename}
+    except Exception as e:
+        err_msg = f"Exception during Google Drive upload: {e}"
+        print(f"[GDrive] {err_msg}")
+        return {
+            "success": False,
+            "error": err_msg,
+            "file_name": file_name,
+            "folder_id": folder_id,
+            "is_gdrive": False
+        }
 
 
-# Global singleton instance
-gdrive_service = GoogleDriveService()
+def build_pdf_filename(doc_type: str, ref_id: str, date_str: Optional[str] = None) -> str:
+    """
+    Build standardized PDF filename for Google Drive:
+    Format: [ประเภทเอกสาร]_[รหัสการจอง/เลขที่อ้างอิง]_[YYYYMMDD].pdf
+    Examples:
+    - สัญญาเช่า_MRC261115141928_20261115.pdf
+    - ใบตรวจสภาพรถ_MRC261115141928_20261115.pdf
+    - ใบเสร็จ_MRC261115141928_20261115.pdf
+    """
+    clean_ref = re.sub(r'[\s/\\:*?"<>|]', '', str(ref_id or "REF")).strip()
+    if not date_str:
+        date_str = datetime.now().strftime("%Y%m%d")
+    clean_type = str(doc_type or "เอกสาร").strip()
+    return f"{clean_type}_{clean_ref}_{date_str}.pdf"
+
+
+def upload_pdf_to_drive(
+    file_bytes: Union[bytes, bytearray],
+    folder_id: Optional[str],
+    file_name: str
+) -> Dict[str, Any]:
+    """Upload generated PDF bytes to Google Drive with MIME type application/pdf."""
+    target_folder = folder_id or PARENT_APP_FOLDER
+    return upload_image_to_drive(
+        file=file_bytes,
+        folder_id=target_folder,
+        file_name=file_name,
+        content_type="application/pdf"
+    )
