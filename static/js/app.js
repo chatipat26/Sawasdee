@@ -5093,19 +5093,22 @@ class App {
   }
 
   async handleInspectionPhotoUpload(input, mode) {
-    if (!input.files || input.files.length === 0) return;
     const isDisp = mode === "Dispatch";
+    const fileInput = (input && input.files) ? input : document.getElementById(isDisp ? "assign-disp-photos-input" : "assign-ret-photos-input");
+    if (!fileInput || !fileInput.files || fileInput.files.length === 0) return;
     const bkId = document.getElementById(isDisp ? "assign-disp-bk" : "assign-ret-bk")?.value;
     const bkObj = (this.bookings || []).find(x => x.booking_id === bkId);
     const carPlate = bkObj?.car_id || "";
 
     if (!carPlate) {
       alert("⚠️ กรุณาเลือกรหัสการจองก่อนเลือกรูปถ่ายสภาพรถยนต์");
-      input.value = "";
+      fileInput.value = "";
       return;
     }
 
-    const filesToUpload = Array.from(input.files).slice(0, 4);
+    const filesToUpload = Array.from(fileInput.files).slice(0, 4);
+    if (filesToUpload.length === 0) return;
+
     // Instant local preview for immediate visual feedback
     const tempUrls = filesToUpload.map(f => URL.createObjectURL(f));
     this.renderInspectionPhotosPreview(mode, tempUrls, true);
@@ -5113,8 +5116,12 @@ class App {
     const formData = new FormData();
     formData.append("booking_id", bkId || "");
     formData.append("job_type", mode);
-    filesToUpload.forEach(f => {
+    const angleNames = ["front", "left", "rear", "right"];
+    filesToUpload.forEach((f, idx) => {
       formData.append("files", f);
+      if (angleNames[idx]) {
+        formData.append(angleNames[idx], f);
+      }
     });
 
     this.showToast(`📸 กำลังอัปโหลดรูปรถ 4 มุม (${filesToUpload.length} รูป) ขึ้น Google Drive...`, "info");
@@ -5262,6 +5269,13 @@ class App {
       });
     } catch (woErr) {
       console.warn("[WorkOrder] Decoupled work order log creation notice:", woErr);
+    }
+
+    // Automatically upload any selected inspection photos if not already uploaded
+    const photoInput = document.getElementById(isDisp ? "assign-disp-photos-input" : "assign-ret-photos-input");
+    const existingPhotos = isDisp ? (this.assignDispPhotos || []) : (this.assignRetPhotos || []);
+    if (photoInput && photoInput.files && photoInput.files.length > 0 && existingPhotos.length === 0) {
+      await this.handleInspectionPhotoUpload(photoInput, jobType);
     }
 
     try {
@@ -5552,7 +5566,8 @@ class App {
           <div>• <b>${isEn ? 'Assigned Staff:' : 'พนักงานส่งมอบ:'}</b> ${b.worker_delivery || (isEn ? 'Unassigned' : 'ยังไม่ได้มอบหมาย')}</div>
           <div>• <b>${isEn ? 'Current Booking Status:' : 'สถานะการจองปัจจุบัน:'}</b> <span class="badge ${b.status === 'กำลังเช่า' ? 'badge-primary' : (b.status === 'เสร็จสิ้น' ? 'badge-success' : 'badge-info')}">${b.status}</span></div>
           <div style="display:flex; gap:6px; margin-top:6px; flex-wrap:wrap;">
-            <button type="button" onclick="app.setContractToCurrentThaiTime()" class="btn btn-outline btn-sm" style="font-size:11.5px; padding:4px 10px;" title="${isEn ? 'Set dates to current Thai time' : 'ปรับวันและเวลาให้ตรงกับปัจจุบัน'}">
+            <!-- ซ่อนปุ่ม 'ใช้วัน-เวลาปัจจุบัน' ออกจากหน้าจอทำสัญญาเช่า -->
+            <button type="button" onclick="app.setContractToCurrentThaiTime()" class="btn btn-outline btn-sm" style="display:none; font-size:11.5px; padding:4px 10px;" title="${isEn ? 'Set dates to current Thai time' : 'ปรับวันและเวลาให้ตรงกับปัจจุบัน'}">
               🕒 ${isEn ? 'Use Current Time' : 'ใช้วัน-เวลาปัจจุบัน'}
             </button>
             <button type="button" onclick="app.saveContractSchedule()" class="btn btn-primary btn-sm" style="font-size:11.5px; padding:4px 10px;">

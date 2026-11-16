@@ -167,7 +167,7 @@ async def upload_car_4_angles(
     car_id: str = Path(..., description="Car license plate or ID"),
     booking_id: Optional[str] = Form(None),
     job_type: Optional[str] = Form("Dispatch"),
-    files: Optional[List[UploadFile]] = File(None),
+    files: Optional[Union[List[UploadFile], UploadFile]] = File(None),
     front: Optional[UploadFile] = File(None),
     left: Optional[UploadFile] = File(None),
     rear: Optional[UploadFile] = File(None),
@@ -202,11 +202,15 @@ async def upload_car_4_angles(
     if isinstance(right, UploadFile) and right.filename:
         angle_files["right"] = right
 
-    if isinstance(files, (list, tuple)):
-        angle_order = ["front", "left", "rear", "right"]
-        for idx, f in enumerate(files[:4]):
-            if isinstance(f, UploadFile) and f.filename and angle_order[idx] not in angle_files:
-                angle_files[angle_order[idx]] = f
+    if isinstance(files, UploadFile) and files.filename:
+        files = [files]
+    elif not isinstance(files, (list, tuple)):
+        files = []
+
+    angle_order = ["front", "left", "rear", "right"]
+    for idx, f in enumerate(files[:4]):
+        if isinstance(f, UploadFile) and f.filename and angle_order[idx] not in angle_files:
+            angle_files[angle_order[idx]] = f
 
     if not angle_files:
         raise HTTPException(status_code=400, detail="กรุณาเลือกไฟล์รูปภาพอย่างน้อย 1 รูป")
