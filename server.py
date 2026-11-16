@@ -1687,10 +1687,14 @@ async def upload_car_image_endpoint(
 @app.post("/api/cars/{car_id:path}/4-angles")
 @app.post("/api/inspections/{car_id:path}/4-angles")
 async def upload_car_4_angles_endpoint(
+    request: Request,
     car_id: str,
     booking_id: Optional[str] = Form(None),
     job_type: Optional[str] = Form("Dispatch"),
-    files: Optional[List[UploadFile]] = File(None),
+    files: Optional[Union[List[UploadFile], UploadFile]] = File(None),
+    photos: Optional[Union[List[UploadFile], UploadFile]] = File(None),
+    images: Optional[Union[List[UploadFile], UploadFile]] = File(None),
+    file: Optional[UploadFile] = File(None),
     front: Optional[UploadFile] = File(None),
     left: Optional[UploadFile] = File(None),
     rear: Optional[UploadFile] = File(None),
@@ -1698,10 +1702,14 @@ async def upload_car_4_angles_endpoint(
 ):
     from routers.cars import upload_car_4_angles
     return await upload_car_4_angles(
+        request=request,
         car_id=car_id,
         booking_id=booking_id,
         job_type=job_type,
         files=files,
+        photos=photos,
+        images=images,
+        file=file,
         front=front,
         left=left,
         rear=rear,

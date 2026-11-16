@@ -5108,12 +5108,15 @@ class App {
     if (!fileInput || !fileInput.files || fileInput.files.length === 0) return;
     const bkId = document.getElementById(isDisp ? "assign-disp-bk" : "assign-ret-bk")?.value;
     const bkObj = (this.bookings || []).find(x => x.booking_id === bkId);
-    const carPlate = bkObj?.car_id || "";
+    let carPlate = bkObj?.car_id || "";
 
-    if (!carPlate) {
+    if (!carPlate && !bkId) {
       alert("⚠️ กรุณาเลือกรหัสการจองก่อนเลือกรูปถ่ายสภาพรถยนต์");
       fileInput.value = "";
       return;
+    }
+    if (!carPlate) {
+      carPlate = "unknown";
     }
 
     const filesToUpload = Array.from(fileInput.files).slice(0, 4);
@@ -5129,6 +5132,7 @@ class App {
     const angleNames = ["front", "left", "rear", "right"];
     filesToUpload.forEach((f, idx) => {
       formData.append("files", f);
+      formData.append("photos", f);
       if (angleNames[idx]) {
         formData.append(angleNames[idx], f);
       }

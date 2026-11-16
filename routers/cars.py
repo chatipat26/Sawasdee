@@ -8,7 +8,7 @@ import re
 import urllib.parse
 from datetime import datetime
 from typing import Optional, Dict, Any, List, Tuple, Union
-from fastapi import APIRouter, UploadFile, File, Form, Query, HTTPException, Path
+from fastapi import APIRouter, UploadFile, File, Form, Query, HTTPException, Path, Request
 
 from services.google_drive_service import (
     upload_image_to_drive,
@@ -164,10 +164,14 @@ async def upload_car_image(
 
 @router.post("/{car_id:path}/4-angles")
 async def upload_car_4_angles(
+    request: Request,
     car_id: str = Path(..., description="Car license plate or ID"),
     booking_id: Optional[str] = Form(None),
     job_type: Optional[str] = Form("Dispatch"),
     files: Optional[Union[List[UploadFile], UploadFile]] = File(None),
+    photos: Optional[Union[List[UploadFile], UploadFile]] = File(None),
+    images: Optional[Union[List[UploadFile], UploadFile]] = File(None),
+    file: Optional[UploadFile] = File(None),
     front: Optional[UploadFile] = File(None),
     left: Optional[UploadFile] = File(None),
     rear: Optional[UploadFile] = File(None),
@@ -193,24 +197,67 @@ async def upload_car_4_angles(
         raise HTTPException(status_code=400, detail="กรุณาระบุเลขทะเบียนรถยนต์")
 
     angle_files = {}
-    if isinstance(front, UploadFile) and front.filename:
+
+    # 1. Direct explicit angle params
+    if isinstance(front, UploadFile) and getattr(front, "filename", None):
         angle_files["front"] = front
-    if isinstance(left, UploadFile) and left.filename:
+    if isinstance(left, UploadFile) and getattr(left, "filename", None):
         angle_files["left"] = left
-    if isinstance(rear, UploadFile) and rear.filename:
+    if isinstance(rear, UploadFile) and getattr(rear, "filename", None):
         angle_files["rear"] = rear
-    if isinstance(right, UploadFile) and right.filename:
+    if isinstance(right, UploadFile) and getattr(right, "filename", None):
         angle_files["right"] = right
 
-    if isinstance(files, UploadFile) and files.filename:
-        files = [files]
-    elif not isinstance(files, (list, tuple)):
-        files = []
+    # 2. Direct list / generic params
+    extra_files = []
+    for candidate in [files, photos, images, file]:
+        if not candidate:
+            continue
+        if isinstance(candidate, (list, tuple)):
+            for f in candidate:
+                if isinstance(f, UploadFile) and getattr(f, "filename", None) and f not in extra_files:
+                    extra_files.append(f)
+        elif isinstance(candidate, UploadFile) and getattr(candidate, "filename", None) and candidate not in extra_files:
+            extra_files.append(candidate)
 
+    # 3. Comprehensive fallback: inspect raw request form if request is provided
+    if request:
+        try:
+            form_data = await request.form()
+            if not booking_id and form_data.get("booking_id"):
+                booking_id = str(form_data.get("booking_id"))
+            if not job_type and form_data.get("job_type"):
+                job_type = str(form_data.get("job_type"))
+
+            # Check explicit angle keys in form_data
+            for ak in ["front", "left", "rear", "right"]:
+                if ak not in angle_files:
+                    v = form_data.get(ak)
+                    if isinstance(v, UploadFile) and getattr(v, "filename", None):
+                        angle_files[ak] = v
+
+            # Check all items in multi_items (covers files, photos, images, etc.)
+            for key, val in form_data.multi_items():
+                if isinstance(val, UploadFile) and getattr(val, "filename", None):
+                    k_lower = key.lower().strip()
+                    if k_lower in ("front", "left", "rear", "right"):
+                        if k_lower not in angle_files:
+                            angle_files[k_lower] = val
+                    else:
+                        if val not in extra_files and val not in angle_files.values():
+                            extra_files.append(val)
+        except Exception as form_err:
+            print(f"[upload_car_4_angles] request.form fallback warning: {form_err}")
+
+    # 4. Sequentially allocate extra files into missing angle slots
     angle_order = ["front", "left", "rear", "right"]
-    for idx, f in enumerate(files[:4]):
-        if isinstance(f, UploadFile) and f.filename and angle_order[idx] not in angle_files:
-            angle_files[angle_order[idx]] = f
+    for f in extra_files:
+        if f in angle_files.values():
+            continue
+        for angle in angle_order:
+            if angle not in angle_files:
+                angle_files[angle] = f
+                break
 
     if not angle_files:
         raise HTTPException(status_code=400, detail="กรุณาเลือกไฟล์รูปภาพอย่างน้อย 1 รูป")
