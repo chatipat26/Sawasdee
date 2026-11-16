@@ -1676,6 +1676,30 @@ async def upload_car_image_endpoint(
     from routers.cars import upload_car_image
     return await upload_car_image(car_id=car_id, file=file, angle=angle, view=view)
 
+@app.post("/api/cars/{car_id:path}/4-angles")
+@app.post("/api/inspections/{car_id:path}/4-angles")
+async def upload_car_4_angles_endpoint(
+    car_id: str,
+    booking_id: Optional[str] = Form(None),
+    job_type: Optional[str] = Form("Dispatch"),
+    files: Optional[List[UploadFile]] = File(None),
+    front: Optional[UploadFile] = File(None),
+    left: Optional[UploadFile] = File(None),
+    rear: Optional[UploadFile] = File(None),
+    right: Optional[UploadFile] = File(None)
+):
+    from routers.cars import upload_car_4_angles
+    return await upload_car_4_angles(
+        car_id=car_id,
+        booking_id=booking_id,
+        job_type=job_type,
+        files=files,
+        front=front,
+        left=left,
+        rear=rear,
+        right=right
+    )
+
 # -------------------------------------------------------------------------
 # CUSTOMERS
 # -------------------------------------------------------------------------

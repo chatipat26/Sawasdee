@@ -4872,13 +4872,7 @@ class App {
       if (notesEl) notesEl.value = b.inspection_notes_out || b.dispatch_notes || b.remarks || "";
       if (photosUrlEl) photosUrlEl.value = b.inspection_photos_out || "";
       this.assignDispPhotos = b.inspection_photos_out ? b.inspection_photos_out.split(",").map(x => x.trim()).filter(Boolean) : [];
-      if (photosPrevEl) {
-        photosPrevEl.innerHTML = (this.assignDispPhotos || []).map(url => `
-          <a href="${url}" target="_blank" style="display:inline-block; border-radius:6px; overflow:hidden; border:1px solid #CBD5E1;">
-            <img src="${url}" style="width:60px; height:45px; object-fit:cover; display:block;">
-          </a>
-        `).join("");
-      }
+      this.renderInspectionPhotosPreview("Dispatch", this.assignDispPhotos);
 
       if (bannerEl) {
         const isDep = Boolean(b.deposit_paid);
@@ -5021,13 +5015,7 @@ class App {
       if (notesEl) notesEl.value = b.inspection_notes_in || b.return_notes || b.remarks || "";
       if (photosUrlEl) photosUrlEl.value = b.inspection_photos_in || "";
       this.assignRetPhotos = b.inspection_photos_in ? b.inspection_photos_in.split(",").map(x => x.trim()).filter(Boolean) : [];
-      if (photosPrevEl) {
-        photosPrevEl.innerHTML = (this.assignRetPhotos || []).map(url => `
-          <a href="${url}" target="_blank" style="display:inline-block; border-radius:6px; overflow:hidden; border:1px solid #CBD5E1;">
-            <img src="${url}" style="width:60px; height:45px; object-fit:cover; display:block;">
-          </a>
-        `).join("");
-      }
+      this.renderInspectionPhotosPreview("Return", this.assignRetPhotos);
 
       if (badgeEl) {
         const outOdoFmt = b.odometer_out ? `${Number(b.odometer_out).toLocaleString()} กม.` : 'ไม่ได้ระบุ';
@@ -5060,38 +5048,110 @@ class App {
   }
 
 
+  renderInspectionPhotosPreview(mode, photos = [], isUploading = false) {
+    const isDisp = mode === "Dispatch";
+    const prevEl = document.getElementById(isDisp ? "assign-disp-photos-preview" : "assign-ret-photos-preview");
+    if (!prevEl) return;
+
+    const angleDefs = [
+      { key: "front", label: "1. ด้านหน้า (Front)", icon: "🚘" },
+      { key: "left", label: "2. ด้านซ้าย (Left)", icon: "🚗" },
+      { key: "rear", label: "3. ด้านหลัง (Rear)", icon: "🚙" },
+      { key: "right", label: "4. ด้านขวา (Right)", icon: "🏎️" }
+    ];
+
+    prevEl.innerHTML = angleDefs.map((def, idx) => {
+      const url = photos[idx];
+      if (url) {
+        const directSrc = this.convertDriveUrl ? this.convertDriveUrl(url) : url;
+        return `
+          <div style="position:relative; background:#0F172A; border-radius:8px; overflow:hidden; border:1.5px solid #EA580C; height:85px; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+            <span style="position:absolute; top:3px; left:4px; background:rgba(15,23,42,0.88); color:#F8FAFC; font-size:9px; font-weight:700; padding:1px 5px; border-radius:3px; z-index:2; border:1px solid rgba(255,255,255,0.15);">
+              ${def.label}
+            </span>
+            <img src="${directSrc}" onclick="window.open('${url || directSrc}', '_blank')" style="width:100%; height:100%; object-fit:cover; cursor:pointer;" title="คลิกดูรูปขนาดเต็มในแท็บใหม่">
+            <span style="position:absolute; bottom:3px; right:4px; font-size:9px; color:#10B981; font-weight:700; background:rgba(15,23,42,0.85); padding:1px 5px; border-radius:3px; border:1px solid rgba(16,185,129,0.3);">
+              ${isUploading ? '⏳ กำลังอัปโหลด...' : '✓ GDrive'}
+            </span>
+          </div>
+        `;
+      }
+      return `
+        <div style="border:1.5px dashed #CBD5E1; border-radius:8px; height:85px; display:flex; flex-direction:column; align-items:center; justify-content:center; background:#F8FAFC; color:#64748B; font-size:10px; font-weight:600; text-align:center; padding:4px;">
+          <span style="font-size:16px; margin-bottom:2px;">${def.icon}</span>
+          <span>${def.label}</span>
+        </div>
+      `;
+    }).join("");
+  }
+
+  onInspectionPhotoUrlInput(mode, val) {
+    const urls = String(val || "").split(",").map(x => x.trim()).filter(Boolean);
+    if (mode === "Dispatch") this.assignDispPhotos = urls;
+    else this.assignRetPhotos = urls;
+    this.renderInspectionPhotosPreview(mode, urls, false);
+  }
+
   async handleInspectionPhotoUpload(input, mode) {
     if (!input.files || input.files.length === 0) return;
     const isDisp = mode === "Dispatch";
-    const prevEl = document.getElementById(isDisp ? "assign-disp-photos-preview" : "assign-ret-photos-preview");
-    const urlInput = document.getElementById(isDisp ? "assign-disp-photos-url" : "assign-ret-photos-url");
-    if (isDisp) this.assignDispPhotos = this.assignDispPhotos || [];
-    else this.assignRetPhotos = this.assignRetPhotos || [];
-    const photosArr = isDisp ? this.assignDispPhotos : this.assignRetPhotos;
+    const bkId = document.getElementById(isDisp ? "assign-disp-bk" : "assign-ret-bk")?.value;
+    const bkObj = (this.bookings || []).find(x => x.booking_id === bkId);
+    const carPlate = bkObj?.car_id || "";
 
-    for (let i = 0; i < input.files.length; i++) {
-      const file = input.files[i];
-      const formData = new FormData();
-      formData.append("file", file);
-      try {
-        this.showToast(`กำลังอัปโหลดรูปสภาพรถ ${file.name}...`, "info");
-        const res = await fetch("/api/upload-photo", { method: "POST", body: formData });
-        const data = await res.json();
-        if (data.success && data.url) {
-          photosArr.push(data.url);
-          this.showToast(`📸 แนบรูป ${file.name} เรียบร้อย!`, "success");
-        }
-      } catch (e) {
-        this.showToast(`อัปโหลดรูป ${file.name} ไม่สำเร็จ: ` + e.message, "danger");
-      }
+    if (!carPlate) {
+      alert("⚠️ กรุณาเลือกรหัสการจองก่อนเลือกรูปถ่ายสภาพรถยนต์");
+      input.value = "";
+      return;
     }
-    if (urlInput) urlInput.value = photosArr.join(",");
-    if (prevEl) {
-      prevEl.innerHTML = photosArr.map(url => `
-        <a href="${url}" target="_blank" style="display:inline-block; border-radius:6px; overflow:hidden; border:1px solid #CBD5E1;">
-          <img src="${url}" style="width:60px; height:45px; object-fit:cover; display:block;">
-        </a>
-      `).join("");
+
+    const filesToUpload = Array.from(input.files).slice(0, 4);
+    // Instant local preview for immediate visual feedback
+    const tempUrls = filesToUpload.map(f => URL.createObjectURL(f));
+    this.renderInspectionPhotosPreview(mode, tempUrls, true);
+
+    const formData = new FormData();
+    formData.append("booking_id", bkId || "");
+    formData.append("job_type", mode);
+    filesToUpload.forEach(f => {
+      formData.append("files", f);
+    });
+
+    this.showToast(`📸 กำลังอัปโหลดรูปรถ 4 มุม (${filesToUpload.length} รูป) ขึ้น Google Drive...`, "info");
+    try {
+      const res = await fetch(`/api/cars/${encodeURIComponent(carPlate)}/4-angles`, {
+        method: "POST",
+        body: formData
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        const uploadedUrls = (data.urls || []).filter(Boolean);
+        if (isDisp) this.assignDispPhotos = uploadedUrls;
+        else this.assignRetPhotos = uploadedUrls;
+
+        const urlInput = document.getElementById(isDisp ? "assign-disp-photos-url" : "assign-ret-photos-url");
+        if (urlInput) urlInput.value = uploadedUrls.join(",");
+
+        // Render permanent Google Drive links
+        this.renderInspectionPhotosPreview(mode, uploadedUrls, false);
+
+        // Update frontend car data immediately for Fleet & Car details modal
+        if (this.cars && this.cars[carPlate]) {
+          Object.assign(this.cars[carPlate], data.angles || {});
+          if (data.angles?.img_front) {
+            this.cars[carPlate].image = data.angles.img_front;
+            this.cars[carPlate].image_url = data.angles.img_front;
+          }
+        }
+
+        this.showToast(`✅ อัปโหลดรูปรถ 4 มุมขึ้น Google Drive และอัปเดตข้อมูลรถ (${carPlate}) สำเร็จ!`, "success");
+      } else {
+        throw new Error(data.detail || data.message || "Upload failed");
+      }
+    } catch (e) {
+      this.showToast(`❌ อัปโหลดรูปรถ 4 มุมไม่สำเร็จ: ` + e.message, "danger");
+      const curPhotos = isDisp ? this.assignDispPhotos : this.assignRetPhotos;
+      this.renderInspectionPhotosPreview(mode, curPhotos || [], false);
     }
   }
 

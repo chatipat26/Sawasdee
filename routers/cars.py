@@ -7,7 +7,7 @@ import os
 import re
 import urllib.parse
 from datetime import datetime
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List, Tuple
 from fastapi import APIRouter, UploadFile, File, Form, Query, HTTPException, Path
 
 from services.google_drive_service import (
@@ -160,4 +160,173 @@ async def upload_car_image(
         "angle": thai_angle,
         "plate": clean_plate,
         "is_gdrive": is_gdrive
+    }
+
+@router.post("/{car_id:path}/4-angles")
+async def upload_car_4_angles(
+    car_id: str = Path(..., description="Car license plate or ID"),
+    booking_id: Optional[str] = Form(None),
+    job_type: Optional[str] = Form("Dispatch"),
+    files: Optional[List[UploadFile]] = File(None),
+    front: Optional[UploadFile] = File(None),
+    left: Optional[UploadFile] = File(None),
+    rear: Optional[UploadFile] = File(None),
+    right: Optional[UploadFile] = File(None)
+):
+    """
+    Car 4-Angle Batch Upload Endpoint:
+    - Receives up to 4 photos for the 4 angles: front, left, rear, right
+    - Uploads each photo to Google Drive Folder: 1V5S_j4dXQGuUW6zCAwQaXSkYJ9XNo-Mj (FOLDER_CAR_ANGLES)
+    - NEVER deletes existing files in Google Drive (historical archive preservation)
+    - Standardized naming: รถ_[มุม]_[ทะเบียน]_[YYYYMMDD].[ext]
+    - Updates 'cars' table in PostgreSQL (img_front, img_left, img_rear, img_right, image_url)
+    - Updates in-memory store.cars and store.bookings (if booking_id provided)
+    - Returns Google Drive URLs to frontend
+    """
+    clean_plate = urllib.parse.unquote(car_id).strip()
+    if (not clean_plate or clean_plate == "unknown") and booking_id:
+        target_bk = next((b for b in store.bookings if b.get("booking_id") == booking_id), None)
+        if target_bk and target_bk.get("car_id"):
+            clean_plate = str(target_bk.get("car_id")).strip()
+
+    if not clean_plate or clean_plate == "unknown":
+        raise HTTPException(status_code=400, detail="กรุณาระบุเลขทะเบียนรถยนต์")
+
+    angle_files = {}
+    if isinstance(front, UploadFile) and front.filename:
+        angle_files["front"] = front
+    if isinstance(left, UploadFile) and left.filename:
+        angle_files["left"] = left
+    if isinstance(rear, UploadFile) and rear.filename:
+        angle_files["rear"] = rear
+    if isinstance(right, UploadFile) and right.filename:
+        angle_files["right"] = right
+
+    if isinstance(files, (list, tuple)):
+        angle_order = ["front", "left", "rear", "right"]
+        for idx, f in enumerate(files[:4]):
+            if isinstance(f, UploadFile) and f.filename and angle_order[idx] not in angle_files:
+                angle_files[angle_order[idx]] = f
+
+    if not angle_files:
+        raise HTTPException(status_code=400, detail="กรุณาเลือกไฟล์รูปภาพอย่างน้อย 1 รูป")
+
+    angle_urls = {}
+    angle_results = []
+    today_str = datetime.now().strftime("%Y%m%d")
+
+    for angle_key, file_obj in angle_files.items():
+        try:
+            target_filename, db_col = build_car_filename(
+                angle=angle_key,
+                plate=clean_plate,
+                original_filename=file_obj.filename,
+                date_str=today_str
+            )
+            file_bytes = await file_obj.read()
+            if not file_bytes:
+                continue
+
+            gdrive_res = upload_image_to_drive(
+                file=file_bytes,
+                folder_id=FOLDER_CAR_ANGLES,
+                file_name=target_filename,
+                content_type=file_obj.content_type or "image/jpeg"
+            )
+
+            if gdrive_res.get("success"):
+                img_url = gdrive_res.get("webViewLink")
+            else:
+                ext = file_obj.filename.split(".")[-1] if "." in file_obj.filename else "jpg"
+                safe_fn = f"car_{db_col}_{int(datetime.now().timestamp()*1000)}.{ext}"
+                img_url = store.upload_photo(safe_fn, file_bytes, file_obj.content_type or "image/jpeg")
+
+            if img_url:
+                angle_urls[db_col] = img_url
+                angle_results.append({
+                    "angle": angle_key,
+                    "column": db_col,
+                    "filename": target_filename,
+                    "url": img_url
+                })
+        except Exception as e:
+            print(f"[Cars 4-Angles API] Error uploading angle {angle_key} for {clean_plate}: {e}")
+
+    if not angle_urls:
+        raise HTTPException(status_code=500, detail="ไม่สามารถอัปโหลดรูปภาพได้")
+
+    # Match canonical plate in store.cars
+    norm_target = normalize_plate_key(clean_plate)
+    matched_key = None
+    target_car = None
+
+    for k, v in store.cars.items():
+        if k == clean_plate or normalize_plate_key(k) == norm_target:
+            matched_key = k
+            target_car = v
+            break
+
+    canonical_plate = matched_key or clean_plate
+    if not target_car:
+        target_car = store.cars.get(canonical_plate) or {
+            "plate": canonical_plate,
+            "status": "ว่างพร้อมใช้งาน"
+        }
+        store.cars[canonical_plate] = target_car
+
+    # Update in-memory car with 4-angle URLs
+    for col, url in angle_urls.items():
+        target_car[col] = url
+
+    if "img_front" in angle_urls or not target_car.get("image") or target_car.get("image") == "-":
+        main_img = angle_urls.get("img_front") or next(iter(angle_urls.values()), "")
+        if main_img:
+            target_car["image"] = main_img
+            target_car["image_url"] = main_img
+
+    store.async_sync_car(canonical_plate, target_car)
+
+    # Database UPDATE in table 'cars'
+    try:
+        from db import get_db_client
+        sb = get_db_client()
+        if sb:
+            db_update = dict(angle_urls)
+            if "image_url" in target_car:
+                db_update["image_url"] = target_car["image_url"]
+            sb.table("cars").update(db_update).eq("plate", canonical_plate).execute()
+    except Exception as dbe:
+        print(f"[Cars 4-Angles API] Database update cars error: {dbe}")
+
+    # Attach to booking record if booking_id provided
+    if booking_id:
+        try:
+            b_target = next((b for b in store.bookings if b.get("booking_id") == booking_id), None)
+            if b_target:
+                is_ret = str(job_type).lower() in ("return", "checkin")
+                photo_str = ",".join([angle_urls.get(c, "") for c in ["img_front", "img_left", "img_rear", "img_right"] if angle_urls.get(c)])
+                if is_ret:
+                    for c in ["img_front", "img_left", "img_rear", "img_right"]:
+                        if c in angle_urls:
+                            b_target["checkin_" + c] = angle_urls[c]
+                    b_target["inspection_photos_in"] = photo_str
+                    b_target["return_photos"] = photo_str
+                else:
+                    for c in ["img_front", "img_left", "img_rear", "img_right"]:
+                        if c in angle_urls:
+                            b_target["checkout_" + c] = angle_urls[c]
+                    b_target["inspection_photos_out"] = photo_str
+                    b_target["dispatch_photos"] = photo_str
+                store.async_sync_booking(b_target)
+        except Exception as be:
+            print(f"[Cars 4-Angles API] Booking sync error: {be}")
+
+    return {
+        "success": True,
+        "plate": canonical_plate,
+        "booking_id": booking_id,
+        "angles": angle_urls,
+        "results": angle_results,
+        "urls": [angle_urls.get("img_front", ""), angle_urls.get("img_left", ""), angle_urls.get("img_rear", ""), angle_urls.get("img_right", "")],
+        "message": "อัปโหลดรูปรถยนต์ 4 มุมขึ้น Google Drive และอัปเดตข้อมูลรถสำเร็จ"
     }

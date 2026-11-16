@@ -622,12 +622,12 @@
                     <textarea id="assign-disp-notes" class="form-control" rows="2" placeholder="เช่น กันชนหน้ามีรอยสะเก็ดหินเล็กน้อย, ล้อแม็กหน้าซ้ายมีรอยเบียดฟุตบาทเล็กน้อย"></textarea>
                   </div>
                   <div class="form-group" style="margin-bottom:0;">
-                    <label style="font-size:12px; font-weight:700; color:#334155;">📸 แนบรูปถ่ายสภาพรถตอนส่งมอบ (Upload Inspection Photos):</label>
+                    <label style="font-size:12px; font-weight:700; color:#334155;">📸 แนบรูปถ่ายสภาพรถตอนส่งมอบ (Upload Inspection Photos - 4 มุม):</label>
                     <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
                       <input type="file" id="assign-disp-photos-input" class="form-control" style="flex:1; min-width:200px;" multiple accept="image/*" onchange="app.handleInspectionPhotoUpload(this, 'Dispatch')">
-                      <input type="text" id="assign-disp-photos-url" class="form-control" style="flex:1; min-width:200px;" placeholder="หรือใส่ URL รูปถ่าย / Google Drive link">
+                      <input type="text" id="assign-disp-photos-url" class="form-control" style="flex:1; min-width:200px;" placeholder="หรือใส่ URL รูปถ่าย / Google Drive link" oninput="app.onInspectionPhotoUrlInput('Dispatch', this.value)">
                     </div>
-                    <div id="assign-disp-photos-preview" style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;"></div>
+                    <div id="assign-disp-photos-preview" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(110px, 1fr)); gap:8px; margin-top:8px;"></div>
                   </div>
                 </div>
 
@@ -776,12 +776,12 @@
                     </div>
                   </div>
                   <div class="form-group" style="margin-bottom:0;">
-                    <label style="font-size:12px; font-weight:700; color:#334155;">📸 แนบรูปถ่ายสภาพรถตอนรับคืน (Upload Inspection Photos):</label>
+                    <label style="font-size:12px; font-weight:700; color:#334155;">📸 แนบรูปถ่ายสภาพรถตอนรับคืน (Upload Inspection Photos - 4 มุม):</label>
                     <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
                       <input type="file" id="assign-ret-photos-input" class="form-control" style="flex:1; min-width:200px;" multiple accept="image/*" onchange="app.handleInspectionPhotoUpload(this, 'Return')">
-                      <input type="text" id="assign-ret-photos-url" class="form-control" style="flex:1; min-width:200px;" placeholder="หรือใส่ URL รูปถ่าย / Google Drive link">
+                      <input type="text" id="assign-ret-photos-url" class="form-control" style="flex:1; min-width:200px;" placeholder="หรือใส่ URL รูปถ่าย / Google Drive link" oninput="app.onInspectionPhotoUrlInput('Return', this.value)">
                     </div>
-                    <div id="assign-ret-photos-preview" style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;"></div>
+                    <div id="assign-ret-photos-preview" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(110px, 1fr)); gap:8px; margin-top:8px;"></div>
                   </div>
                 </div>
 
