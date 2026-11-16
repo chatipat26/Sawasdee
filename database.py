@@ -9,10 +9,12 @@ if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
 try:
+    _connect_args = {"connect_timeout": 5} if DATABASE_URL.startswith("postgresql") else {}
     engine = create_engine(
         DATABASE_URL,
         pool_pre_ping=True,
         pool_recycle=300,
+        connect_args=_connect_args,
     )
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 except Exception as e:
@@ -290,7 +292,12 @@ def init_db():
         "ALTER TABLE public.insurance_records ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP;"
     ]
     try:
-        with engine.begin() as conn:
+        with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
+            try:
+                conn.execute(text("SET lock_timeout = '2000ms';"))
+                conn.execute(text("SET statement_timeout = '5000ms';"))
+            except Exception:
+                pass
             for sql_stmt in customer_migrations + car_migrations + booking_migrations + maintenance_migrations + insurance_records_migrations + financial_migrations + work_order_logs_migrations + sanitization_migrations:
                 try:
                     conn.execute(text(sql_stmt))

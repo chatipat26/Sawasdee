@@ -230,20 +230,28 @@ from database import init_db
 @app.on_event("startup")
 def startup_event():
     print("🚀 Starting SawasdeeRental Web App server...")
-    # Attempt direct PostgreSQL schema check/migration
-    try:
-        init_db()
-        sb = get_db_client()
-        if sb and hasattr(sb, "_connection"):
-            sb._connection()
-    except Exception as e:
-        print(f"Startup schema check note: {e}")
+    import threading
 
-    # Perform initial synchronous sync so all database tables are immediately available
+    def _async_startup_bootstrap():
+        # Attempt direct PostgreSQL schema check/migration (non-blocking)
+        try:
+            init_db()
+            sb = get_db_client()
+            if sb and hasattr(sb, "_connection"):
+                sb._connection()
+        except Exception as e:
+            print(f"Startup schema check note: {e}")
+
+        # Perform initial sync in background so uvicorn binds port & returns 200 immediately
+        try:
+            store.sync_from_database(force=True)
+        except Exception as e:
+            print(f"Startup sync note: {e}")
+
     try:
-        store.sync_from_database(force=True)
+        threading.Thread(target=_async_startup_bootstrap, daemon=True).start()
     except Exception as e:
-        print(f"Startup sync note: {e}")
+        print(f"Startup bootstrap thread note: {e}")
 
     try:
         start_background_cloud_sync()
