@@ -182,17 +182,17 @@ def send_line_reply_message(reply_token: str, message: str, channel_access_token
         return False
 
 
-def send_line_message(message: str, to_user_ids=None, channel_access_token: str = None) -> bool:
+def send_line_message(message: str, to_user_ids=None, channel_access_token: str = None, delivery_mode: str = None) -> bool:
     """
     ฟังก์ชันหลักในการส่งข้อความ LINE แบบยืดหยุ่น (Broadcast / Multicast / Push):
-    1. ตรวจสอบ LINE_BROADCAST_MODE ใน .env:
-       - หากเป็น 'true': ใช้ LINE Broadcast API (https://api.line.me/v2/bot/message/broadcast)
-         เพื่อส่งหาผู้ติดตาม (Followers) ทุกคนของบัญชี LINE OA นี้ (เหมาะสำหรับกรณีที่ไม่ทราบ LINE ID ของแต่ละคน)
-    2. หากโหมด Broadcast ปิดอยู่ (default: false):
-       - ใช้ LINE Multicast API (https://api.line.me/v2/bot/message/multicast) สำหรับ User IDs ('U...')
-       - ส่งพร้อมกันรวดเดียวถึงทุกคนโดยอ่านจาก LINE_USER_IDS, LINE_TARGET_USER_ID, หรือ get_admin_line_ids()
-       - หากมี Group ID ('C...') หรือเกิด Error ใน Multicast จะ Fallback เป็น Direct Push รายคนอย่างปลอดภัย
-    3. ครอบคลุมด้วย try-except ทุกจุด ป้องกันไม่ให้ข้อผิดพลาดของ LINE กระทบระบบหลัก
+    1. delivery_mode == 'broadcast':
+       - บังคับเรียก LINE Broadcast API (https://api.line.me/v2/bot/message/broadcast)
+       - ส่งหาผู้ติดตาม (Followers) ทุกคนของบัญชี LINE OA นี้ โดยไม่ต้องพึ่งพา User ID
+    2. delivery_mode == 'admin_only':
+       - ส่งเฉพาะรายชื่อ Admin ตาม LINE ID ในระบบ / .env โดยใช้ Multicast หรือ Direct Push
+       - ข้าม Broadcast โดยเด็ดขาด
+    3. หากไม่ได้ระบุ delivery_mode:
+       - ตรวจสอบ LINE_BROADCAST_MODE จาก .env
     """
     token, _ = get_line_credentials()
     act = channel_access_token or token
@@ -204,9 +204,18 @@ def send_line_message(message: str, to_user_ids=None, channel_access_token: str 
         "Authorization": f"Bearer {act}"
     }
 
-    # 1. โหมด BROADCAST (หากตั้ง LINE_BROADCAST_MODE=true ใน .env)
-    is_broadcast_mode = os.environ.get("LINE_BROADCAST_MODE", "false").strip().lower() in ("true", "1", "yes")
-    if is_broadcast_mode:
+    mode_str = str(delivery_mode or "").strip().lower()
+
+    # 1. โหมด BROADCAST
+    is_broadcast = False
+    if mode_str == "broadcast":
+        is_broadcast = True
+    elif mode_str == "admin_only":
+        is_broadcast = False
+    else:
+        is_broadcast = os.environ.get("LINE_BROADCAST_MODE", "false").strip().lower() in ("true", "1", "yes")
+
+    if is_broadcast:
         try:
             payload = {
                 "messages": [{"type": "text", "text": message}]
@@ -218,9 +227,12 @@ def send_line_message(message: str, to_user_ids=None, channel_access_token: str 
             print(f"⚠️ LINE Broadcast Error: HTTP {resp.status_code} - {resp.text}")
         except Exception as e:
             print(f"❌ Exception in LINE Broadcast: {e}")
-        # หาก Broadcast มีปัญหา จะ Fallback ลองส่งแบบ Multicast/Push ต่อไป
 
-    # 2. โหมด MULTICAST / DIRECT PUSH
+        # หากเจาะจง delivery_mode == "broadcast" แล้วไม่สำเร็จ ให้จบการทำงานทันที (ไม่หลุดไปยิงซ้ำ)
+        if mode_str == "broadcast":
+            return False
+
+    # 2. โหมด MULTICAST / DIRECT PUSH (Admin / Specific IDs)
     target_list = []
     raw_targets = to_user_ids
     if not raw_targets:
@@ -466,9 +478,11 @@ def notify_line_expense(expense_obj: dict):
     return False
 
 
-def check_and_send_expiry_alerts(cars_dict=None, target_days=None, recipient_mode: str = None, check_date=None, check_mode: str = "weekly"):
+def check_and_send_expiry_alerts(cars_dict=None, target_days=None, recipient_mode: str = None, check_date=None, check_mode: str = "weekly", delivery_mode: str = None):
     """
-    แจ้งเตือนวันหมดอายุ พ.ร.บ. / ประกันภัย / ภาษี (Direct Push 1:1 หาแอดมิน เพื่อประหยัดโควต้า):
+    แจ้งเตือนวันหมดอายุ พ.ร.บ. / ประกันภัย / ภาษี (Broadcast ถึงผู้ติดตาม หรือ Direct Push / Multicast หาแอดมิน):
+    - delivery_mode == "broadcast": บังคับส่งแบบ Broadcast ถึงทุกคนที่เป็นเพื่อนกับ LINE OA โดยไม่ต้องพึ่ง User ID
+    - delivery_mode == "admin_only": ส่งเฉพาะ Admin ตาม LINE ID ในระบบ
     - check_mode == "weekly": คัดกรองเฉพาะรถที่หมดอายุภายในสัปดาห์ปัจจุบัน (จันทร์-อาทิตย์) สำหรับปุ่มกดหน้าเว็บ
     - check_mode == "cycle": คัดกรองรอบวันที่ 1 (เดือนนี้) หรือรอบวันที่ 16 (เดือนหน้า) สำหรับ CRON อัตโนมัติ 19:00 น.
     - กรณีไม่มีรายการ (count == 0): ส่ง Fallback Message ว่า "ไม่มีรถครบกำหนดต่ออายุประกัน พ.ร.บ. ภาษี ในรอบนี้"
@@ -512,18 +526,20 @@ def check_and_send_expiry_alerts(cars_dict=None, target_days=None, recipient_mod
 
         # ดึงรายชื่อผู้รับสำหรับกรณี Multicast / Direct Push
         admin_uids = get_admin_line_ids()
+        effective_mode = str(delivery_mode or "broadcast").strip().lower()
 
         # ตรวจสอบจำนวนรถที่เข้าเกณฑ์ นอกลูปเด็ดขาด ส่งแจ้งเตือนเพียง 1 ครั้งเท่านั้น
         if not expiring or len(expiring) == 0:
             fallback_msg = build_alert_message([], cycle_info=cycle_info, header_title=active_cycle_title)
-            success = send_line_message(fallback_msg, to_user_ids=admin_uids)
+            success = send_line_message(fallback_msg, to_user_ids=admin_uids, delivery_mode=effective_mode)
             return {
                 "sent": success,
                 "count": 0,
                 "recipient_mode": mode,
+                "delivery_mode": effective_mode,
                 "check_mode": check_mode,
                 "cycle": active_cycle_title,
-                "recipients": admin_uids,
+                "recipients": ["BROADCAST_ALL"] if effective_mode == "broadcast" else admin_uids,
                 "items": [],
                 "message": "ไม่มีรถครบกำหนดต่ออายุประกัน พ.ร.บ. ภาษี ในรอบนี้"
             }
@@ -542,18 +558,19 @@ def check_and_send_expiry_alerts(cars_dict=None, target_days=None, recipient_mod
                 if send_line_message(sub_msg, to_user_ids=[uid]):
                     any_sent = True
             msg = build_alert_message(expiring, cycle_info=cycle_info, header_title=active_cycle_title)
-            return {"sent": any_sent, "count": len(expiring), "recipient_mode": mode, "check_mode": check_mode, "cycle": active_cycle_title, "items": expiring, "message": msg}
+            return {"sent": any_sent, "count": len(expiring), "recipient_mode": mode, "delivery_mode": effective_mode, "check_mode": check_mode, "cycle": active_cycle_title, "items": expiring, "message": msg}
         else:
             # โหมดปัจจุบัน: ส่งหาผู้รับทุกคนเพียง 1 ครั้ง (รองรับ Broadcast / Multicast / Push ตามการตั้งค่า)
             msg = build_alert_message(expiring, cycle_info=cycle_info, header_title=active_cycle_title)
-            success = send_line_message(msg, to_user_ids=admin_uids)
+            success = send_line_message(msg, to_user_ids=admin_uids, delivery_mode=effective_mode)
             return {
                 "sent": success,
                 "count": len(expiring),
                 "recipient_mode": "admin",
+                "delivery_mode": effective_mode,
                 "check_mode": check_mode,
                 "cycle": active_cycle_title,
-                "recipients": admin_uids,
+                "recipients": ["BROADCAST_ALL"] if effective_mode == "broadcast" else admin_uids,
                 "items": expiring,
                 "message": msg if success else "ไม่สามารถส่งข้อความ LINE ได้ กรุณาตรวจสอบการตั้งค่า LINE ID"
             }

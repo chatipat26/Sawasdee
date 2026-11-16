@@ -9559,6 +9559,58 @@ ${e.message}`);
 
   async triggerLineExpiryCheck() {
     if (this._isSendingLineAlert) return;
+
+    let selectedMode = "broadcast";
+    if (typeof Swal !== "undefined") {
+      const result = await Swal.fire({
+        title: "📲 เลือกกลุ่มเป้าหมายส่งแจ้งเตือน LINE",
+        html: `
+          <div style="text-align:left; font-size:14px; display:flex; flex-direction:column; gap:12px; margin-top:12px;">
+            <label class="line-mode-label" style="display:flex; align-items:flex-start; gap:12px; cursor:pointer; padding:12px; border:2px solid #EA580C; border-radius:10px; background:#FFF7ED; transition:all 0.2s;">
+              <input type="radio" name="line_delivery_mode" value="broadcast" checked style="margin-top:4px; accent-color:#EA580C; width:18px; height:18px;">
+              <div>
+                <b style="color:#C2410C; font-size:15px;">📢 บรอดแคสต์ (ส่งหาผู้ติดตามทุกคน)</b>
+                <div style="font-size:12px; color:#64748B; margin-top:3px;">ส่งข้อความถึงทุกคนที่เป็นเพื่อนกับ LINE OA นี้ทันที (พนักงานทุกคนได้รับข้อความ โดยไม่ต้องผูก LINE ID)</div>
+              </div>
+            </label>
+            <label class="line-mode-label" style="display:flex; align-items:flex-start; gap:12px; cursor:pointer; padding:12px; border:1px solid #CBD5E1; border-radius:10px; background:#F8FAFC; transition:all 0.2s;">
+              <input type="radio" name="line_delivery_mode" value="admin_only" style="margin-top:4px; accent-color:#EA580C; width:18px; height:18px;">
+              <div>
+                <b style="color:#1E293B; font-size:15px;">👤 ทดสอบ / ส่งเฉพาะแอดมิน</b>
+                <div style="font-size:12px; color:#64748B; margin-top:3px;">ส่งข้อความตรงเฉพาะแอดมินตาม LINE ID ที่ตั้งไว้ในระบบ / .env (Multicast หรือ Direct Push)</div>
+              </div>
+            </label>
+          </div>
+        `,
+        showCancelButton: true,
+        confirmButtonText: "🚀 ส่งข้อความทันที",
+        cancelButtonText: "ยกเลิก",
+        confirmButtonColor: "#EA580C",
+        cancelButtonColor: "#64748B",
+        didOpen: () => {
+          const labels = document.querySelectorAll('.line-mode-label');
+          labels.forEach(lbl => {
+            lbl.addEventListener('click', () => {
+              labels.forEach(l => {
+                l.style.borderColor = '#CBD5E1';
+                l.style.backgroundColor = '#F8FAFC';
+              });
+              lbl.style.borderColor = '#EA580C';
+              lbl.style.backgroundColor = '#FFF7ED';
+              const rad = lbl.querySelector('input[type="radio"]');
+              if (rad) rad.checked = true;
+            });
+          });
+        },
+        preConfirm: () => {
+          const checked = document.querySelector('input[name="line_delivery_mode"]:checked');
+          return checked ? checked.value : "broadcast";
+        }
+      });
+      if (!result.isConfirmed) return;
+      selectedMode = result.value || "broadcast";
+    }
+
     this._isSendingLineAlert = true;
     const btn = document.getElementById("btn-dash-line-check");
     if (btn) {
@@ -9566,19 +9618,20 @@ ${e.message}`);
       btn.style.opacity = "0.7";
     }
 
-    this.showToast("📲 กำลังตรวจสอบวันหมดอายุ พ.ร.บ./ประกันภัย/ภาษี (รอบสัปดาห์นี้) และส่ง LINE...", "info");
+    const modeText = selectedMode === "broadcast" ? "บรอดแคสต์ทุกคน" : "เฉพาะแอดมิน";
+    this.showToast(`📲 กำลังตรวจสอบวันหมดอายุ พ.ร.บ./ประกันภัย/ภาษี และส่ง LINE (${modeText})...`, "info");
     try {
       const res = await fetch("/api/line/check-expiry", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ check_mode: "weekly" })
+        body: JSON.stringify({ check_mode: "weekly", delivery_mode: selectedMode, mode: selectedMode })
       });
       const data = await res.json();
       if (data.sent) {
         if (data.count > 0) {
-          this.showToast(`🚨 ส่งแจ้งเตือน LINE สำเร็จ: ${data.count} รายการ (${data.cycle || 'รอบสัปดาห์นี้'})!`, "success");
+          this.showToast(`🚨 ส่งแจ้งเตือน LINE สำเร็จ: ${data.count} รายการ (${data.cycle || 'รอบสัปดาห์นี้'}) [${modeText}]!`, "success");
         } else {
-          this.showToast(`✅ ส่ง LINE สำเร็จ: ${data.message || 'ไม่มีรถครบกำหนดต่ออายุประกัน พ.ร.บ. ภาษี ในรอบนี้'}`, "success");
+          this.showToast(`✅ ส่ง LINE สำเร็จ: ${data.message || 'ไม่มีรถครบกำหนดต่ออายุประกัน พ.ร.บ. ภาษี ในรอบนี้'} [${modeText}]`, "success");
         }
       } else {
         this.showToast(data.message || "ไม่มีรายการครบกำหนดแจ้งเตือนในรอบนี้", "info");

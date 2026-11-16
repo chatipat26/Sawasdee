@@ -4555,17 +4555,24 @@ async def trigger_line_broadcast(payload: Dict[str, Any]):
     return {"success": success, "to_user_id": to_uid or get_admin_line_id()}
 
 @app.post("/api/line/check-expiry")
+@app.post("/api/notify/expirations")
 async def trigger_expiry_alert_check(payload: Optional[Dict[str, Any]] = None):
     try:
         p = payload or {}
-        mode = p.get("recipient_mode")
+        recipient_mode = p.get("recipient_mode")
+        delivery_mode = p.get("delivery_mode") or p.get("mode") or "broadcast"
         check_mode = p.get("check_mode", "weekly")
         if not store.cars or not store.initial_sync_done:
             try:
                 store.sync_from_database(force=False)
             except Exception as se:
                 print(f"Sync cars before expiry check note: {se}")
-        res = check_and_send_expiry_alerts(store.cars, recipient_mode=mode, check_mode=check_mode)
+        res = check_and_send_expiry_alerts(
+            store.cars,
+            recipient_mode=recipient_mode,
+            check_mode=check_mode,
+            delivery_mode=delivery_mode
+        )
         return res
     except Exception as e:
         print(f"Error in trigger_expiry_alert_check endpoint: {e}")
