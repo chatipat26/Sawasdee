@@ -2284,6 +2284,28 @@ async def generate_booking_inspection_pdf(bk_id: str, payload: Optional[Dict[str
         if img_col in merged_payload and merged_payload.get(img_col) is not None:
             target[img_col] = str(merged_payload.get(img_col)).strip() or None
 
+    # 5. Diagram & Damage Marks
+    diag_val = (
+        merged_payload.get("car_diagram") or
+        merged_payload.get("car_diagram_out" if is_checkout else "car_diagram_in") or
+        merged_payload.get("diagram_base64")
+    )
+    if diag_val:
+        merged_payload["car_diagram_out" if is_checkout else "car_diagram_in"] = diag_val
+        target["car_diagram_out" if is_checkout else "car_diagram_in"] = diag_val
+        if is_checkout:
+            target["car_diagram"] = diag_val
+
+    marks_val = (
+        merged_payload.get("damage_marks") or
+        merged_payload.get("damage_marks_out" if is_checkout else "damage_marks_in")
+    )
+    if marks_val:
+        merged_payload["damage_marks_out" if is_checkout else "damage_marks_in"] = marks_val
+        target["damage_marks_out" if is_checkout else "damage_marks_in"] = marks_val
+        if is_checkout:
+            target["damage_marks"] = marks_val
+
     if not merged_payload.get("staff_name") and not merged_payload.get("inspector_name"):
         merged_payload["staff_name"] = target.get("worker_delivery" if is_checkout else "worker_return") or "Staff"
 
@@ -3084,6 +3106,15 @@ async def close_dispatch(bk_id: str, payload: Dict[str, Any]):
     target["dispatch_photos"] = photos
     target["status"] = "กำลังเช่า"
 
+    car_diag = payload.get("car_diagram") or payload.get("car_diagram_out") or payload.get("diagram_base64")
+    if car_diag:
+        target["car_diagram_out"] = car_diag
+        target["car_diagram"] = car_diag
+    dmg_marks = payload.get("damage_marks") or payload.get("damage_marks_out")
+    if dmg_marks:
+        target["damage_marks_out"] = dmg_marks
+        target["damage_marks"] = dmg_marks
+
     car_id = target.get("car_id")
     if car_id in store.cars:
         store.cars[car_id]["status"] = "กำลังเช่า"
@@ -3117,6 +3148,13 @@ async def close_return(bk_id: str, payload: Dict[str, Any]):
     for k_img, v_img in [("checkin_img_front", img_f), ("checkin_img_left", img_l), ("checkin_img_rear", img_re), ("checkin_img_right", img_ri)]:
         if v_img is not None:
             target_bk[k_img] = str(v_img).strip() or None
+
+    car_diag = payload.get("car_diagram") or payload.get("car_diagram_in") or payload.get("diagram_base64")
+    if car_diag:
+        target_bk["car_diagram_in"] = car_diag
+    dmg_marks = payload.get("damage_marks") or payload.get("damage_marks_in")
+    if dmg_marks:
+        target_bk["damage_marks_in"] = dmg_marks
 
     if action == "swap_vehicle":
         new_car_id = str(payload.get("new_car_id", "")).strip()

@@ -7217,6 +7217,9 @@ class App {
     const imgRear = (document.getElementById("insp-checkin-img-rear")?.value || "").trim();
     const imgRight = (document.getElementById("insp-checkin-img-right")?.value || "").trim();
 
+    const diagramBase64 = this.getCarDiagramBase64();
+    const curDamageMarks = Array.isArray(this.damageMarks) ? [...this.damageMarks] : [];
+
     const payload = {
       fuel_level: fuel,
       mileage: mileage,
@@ -7227,7 +7230,9 @@ class App {
       repair_cost: repairCost,
       service_center: serviceCenter,
       action: branchBAction,
-      new_car_id: swapNewPlate
+      new_car_id: swapNewPlate,
+      car_diagram: diagramBase64,
+      damage_marks: curDamageMarks
     };
 
     if (jobType === "Return") {
@@ -7238,7 +7243,6 @@ class App {
     }
 
     // TARGET MISSION 2 & 3: Generate official inspection checklist PDF
-    const diagramBase64 = this.getCarDiagramBase64();
     let genPdfUrl = null;
     try {
       const bObj = (this.bookings || []).find(x => x.booking_id === bkId);
@@ -7258,6 +7262,11 @@ class App {
           damage_notes: notes,
           damage_desc: damageDesc,
           car_diagram: diagramBase64,
+          car_diagram_out: jobType === "Dispatch" ? diagramBase64 : undefined,
+          car_diagram_in: jobType !== "Dispatch" ? diagramBase64 : undefined,
+          damage_marks: curDamageMarks,
+          damage_marks_out: jobType === "Dispatch" ? curDamageMarks : undefined,
+          damage_marks_in: jobType !== "Dispatch" ? curDamageMarks : undefined,
           checkin_img_front: jobType === "Return" ? imgFront : undefined,
           checkin_img_left: jobType === "Return" ? imgLeft : undefined,
           checkin_img_rear: jobType === "Return" ? imgRear : undefined,

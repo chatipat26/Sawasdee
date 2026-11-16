@@ -514,6 +514,10 @@ class DataStore:
                                     b_copy["pending_damage_cost"] = float(item["pending_damage_cost"])
                                 if item.get("swap_history"):
                                     b_copy["swap_history"] = item["swap_history"]
+                            if isinstance(item, dict) and item.get("type") == "inspection_meta":
+                                for ik in ("car_diagram_out", "car_diagram_in", "damage_marks_out", "damage_marks_in", "odometer_out", "odometer_in", "fuel_out", "fuel_in", "inspection_notes_out", "inspection_notes_in"):
+                                    if item.get(ik) and not b_copy.get(ik):
+                                        b_copy[ik] = item[ik]
                         
                         # TARGET MISSION 3: Safe balance calculation (net_price - deposit_amount)
                         if b_copy.get("rental_paid"):
@@ -870,6 +874,23 @@ class DataStore:
                 ext_list = [x for x in ext_list if not (isinstance(x, dict) and x.get("type") == "swap_meta")]
                 if swap_meta_item["pending_damage_cost"] > 0 or swap_meta_item["swap_history"]:
                     ext_list.append(swap_meta_item)
+
+                insp_meta_item = {
+                    "type": "inspection_meta",
+                    "car_diagram_out": row.get("car_diagram_out", ""),
+                    "car_diagram_in": row.get("car_diagram_in", ""),
+                    "damage_marks_out": list(row.get("damage_marks_out") or []),
+                    "damage_marks_in": list(row.get("damage_marks_in") or []),
+                    "odometer_out": str(row.get("odometer_out") or ""),
+                    "odometer_in": str(row.get("odometer_in") or ""),
+                    "fuel_out": str(row.get("fuel_out") or ""),
+                    "fuel_in": str(row.get("fuel_in") or ""),
+                    "inspection_notes_out": str(row.get("inspection_notes_out") or ""),
+                    "inspection_notes_in": str(row.get("inspection_notes_in") or "")
+                }
+                ext_list = [x for x in ext_list if not (isinstance(x, dict) and x.get("type") == "inspection_meta")]
+                if any(insp_meta_item.get(k) for k in ("car_diagram_out", "car_diagram_in", "damage_marks_out", "damage_marks_in", "odometer_out", "odometer_in")):
+                    ext_list.append(insp_meta_item)
 
                 row["extension_history"] = ext_list
 
