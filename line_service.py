@@ -327,13 +327,12 @@ def notify_line_expense(expense_obj: dict):
     return False
 
 
-def check_and_send_expiry_alerts(cars_dict=None, target_days=None, recipient_mode: str = None, check_date=None):
+def check_and_send_expiry_alerts(cars_dict=None, target_days=None, recipient_mode: str = None, check_date=None, check_mode: str = "weekly"):
     """
     แจ้งเตือนวันหมดอายุ พ.ร.บ. / ประกันภัย / ภาษี (Direct Push 1:1 หาแอดมิน เพื่อประหยัดโควต้า):
-    - คัดกรองตาม 3 เงื่อนไข:
-      1) รอบวันที่ 1: หมดอายุเดือนปัจจุบัน (Current Month)
-      2) รอบวันที่ 16: หมดอายุเดือนหน้า (Next Month)
-      3) แจ้งเตือนรายสัปดาห์ (Weekly Warning): หมดอายุในสัปดาห์ จันทร์-อาทิตย์ ปัจจุบัน
+    - check_mode == "weekly": คัดกรองเฉพาะรถที่หมดอายุภายในสัปดาห์ปัจจุบัน (จันทร์-อาทิตย์) สำหรับปุ่มกดหน้าเว็บ
+    - check_mode == "cycle": คัดกรองรอบวันที่ 1 (เดือนนี้) หรือรอบวันที่ 16 (เดือนหน้า) สำหรับ CRON อัตโนมัติ 19:00 น.
+    - กรณีไม่มีรายการ (count == 0): ส่ง Fallback Message ว่า "ไม่มีรถครบกำหนดต่ออายุประกัน พ.ร.บ. ภาษี ในรอบนี้"
     - ป้องกัน 500 error ด้วย try-except ครอบคลุมรอบด้าน
     """
     try:
@@ -355,19 +354,27 @@ def check_and_send_expiry_alerts(cars_dict=None, target_days=None, recipient_mod
             from check_expiry_alert import fetch_cars_from_database
             cars_list = fetch_cars_from_database()
 
-        expiring = check_expiring_cars(cars_list, check_date=ref_date)
+        expiring = check_expiring_cars(cars_list, check_date=ref_date, check_mode=check_mode)
+
+        # กำหนดชื่อรอบหัวข้อตาม check_mode
+        if str(check_mode).lower() == "weekly":
+            active_cycle_title = f"รอบสัปดาห์นี้ ({cycle_info['week_desc']})"
+        else:
+            active_cycle_title = cycle_info["round_name"]
+
         if not expiring or len(expiring) == 0:
             # เงื่อนไขกรณีไม่มีรถเข้าเกณฑ์ (count == 0): ส่ง Fallback Message ทาง LINE
-            fallback_msg = build_alert_message([], cycle_info=cycle_info)
+            fallback_msg = build_alert_message([], cycle_info=cycle_info, header_title=active_cycle_title)
             admin_uid = get_admin_line_id()
             success = send_line_push_message(fallback_msg, to_user_id=admin_uid)
             return {
                 "sent": success,
                 "count": 0,
                 "recipient_mode": mode,
-                "cycle": cycle_info["round_name"],
+                "check_mode": check_mode,
+                "cycle": active_cycle_title,
                 "items": [],
-                "message": "รถทุกคันยังไม่ครบกำหนดต่อประกัน พ.ร.บ. และภาษี ในรอบนี้"
+                "message": "ไม่มีรถครบกำหนดต่ออายุประกัน พ.ร.บ. ภาษี ในรอบนี้"
             }
 
         if mode == "customer":
@@ -380,21 +387,22 @@ def check_and_send_expiry_alerts(cars_dict=None, target_days=None, recipient_mod
 
             any_sent = False
             for uid, items_for_uid in grouped_by_target.items():
-                sub_msg = build_alert_message(items_for_uid, cycle_info=cycle_info)
+                sub_msg = build_alert_message(items_for_uid, cycle_info=cycle_info, header_title=active_cycle_title)
                 if send_line_push_message(sub_msg, to_user_id=uid):
                     any_sent = True
-            msg = build_alert_message(expiring, cycle_info=cycle_info)
-            return {"sent": any_sent, "count": len(expiring), "recipient_mode": mode, "cycle": cycle_info["round_name"], "items": expiring, "message": msg}
+            msg = build_alert_message(expiring, cycle_info=cycle_info, header_title=active_cycle_title)
+            return {"sent": any_sent, "count": len(expiring), "recipient_mode": mode, "check_mode": check_mode, "cycle": active_cycle_title, "items": expiring, "message": msg}
         else:
             # โหมดปัจจุบัน: ส่งตรงหาแอดมินเท่านั้น (Direct Push 1:1)
-            msg = build_alert_message(expiring, cycle_info=cycle_info)
+            msg = build_alert_message(expiring, cycle_info=cycle_info, header_title=active_cycle_title)
             admin_uid = get_admin_line_id()
             success = send_line_push_message(msg, to_user_id=admin_uid)
             return {
                 "sent": success,
                 "count": len(expiring),
                 "recipient_mode": "admin",
-                "cycle": cycle_info["round_name"],
+                "check_mode": check_mode,
+                "cycle": active_cycle_title,
                 "items": expiring,
                 "message": msg if success else "ไม่สามารถส่งข้อความ LINE ได้ กรุณาตรวจสอบการตั้งค่า LINE ID"
             }
@@ -437,31 +445,42 @@ def _mark_sent_expiry_today(today_tag: str):
                 "amount": 0,
                 "ref": f"EXPIRY_{today_tag}",
                 "date": today_tag,
-                "detail": "Daily 20:00 LINE Expiry Alert Lock"
+                "detail": "Automatic 19:00 LINE Expiry Alert Lock (1st & 16th Cycle)"
             }).execute()
     except Exception as e:
         print(f"Mark expiry lock error: {e}")
 
 
 def init_expiry_scheduler_thread():
+    """
+    CRON / Background Scheduler:
+    - ตรวจสอบทุกนาทีด้วยเวลาประเทศไทย (ICT: UTC+7)
+    - วันที่ 1 เวลา 19:00 น. -> ส่งแจ้งเตือนอัตโนมัติรอบเดือนปัจจุบัน (check_mode="cycle")
+    - วันที่ 16 เวลา 19:00 น. -> ส่งแจ้งเตือนอัตโนมัติรอบเดือนถัดไป (check_mode="cycle")
+    - ป้องกันการส่งซ้ำด้วย Shared Lock ใน PostgreSQL
+    """
     def _scheduler_loop():
         global _last_run_tag
         now_init = datetime.utcnow() + timedelta(hours=7)
         init_tag = now_init.strftime("%Y-%m-%d")
-        if now_init.hour > 20 or (now_init.hour == 20 and now_init.minute >= 2):
+        if now_init.hour > 19 or (now_init.hour == 19 and now_init.minute >= 5):
             _mark_sent_expiry_today(init_tag)
 
         while True:
             try:
                 now_bkk = datetime.utcnow() + timedelta(hours=7)
                 today_tag = now_bkk.strftime("%Y-%m-%d")
-                if now_bkk.hour == 20 and now_bkk.day in (1, 16) and not _has_sent_expiry_today(today_tag):
+
+                # รันอัตโนมัติเฉพาะวันที่ 1 และ 16 เวลา 19:00 น. (ICT)
+                if now_bkk.day in (1, 16) and now_bkk.hour == 19 and not _has_sent_expiry_today(today_tag):
                     _mark_sent_expiry_today(today_tag)
-                    print(f"⏰ [{now_bkk.strftime('%H:%M')} ICT] Running daily expiry check {today_tag}...")
-                    check_and_send_expiry_alerts(target_days=(30, 31, 7, 0))
+                    round_desc = "รอบวันที่ 1 (เดือนปัจจุบัน)" if now_bkk.day == 1 else "รอบวันที่ 16 (เดือนถัดไป)"
+                    print(f"⏰ [{now_bkk.strftime('%H:%M')} ICT] Running automatic {round_desc} expiry check for {today_tag}...")
+                    check_and_send_expiry_alerts(check_mode="cycle")
                 time.sleep(60)
             except Exception as e:
                 print(f"Expiry scheduler error: {e}")
                 time.sleep(60)
+
     t = threading.Thread(target=_scheduler_loop, daemon=True, name="ExpiryScheduler")
     t.start()

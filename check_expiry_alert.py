@@ -123,16 +123,16 @@ def get_target_cycle_info(ref_date=None):
     }
 
 
-def check_expiring_cars(cars_list, target_days=None, check_date=None):
+def check_expiring_cars(cars_list, target_days=None, check_date=None, check_mode="weekly"):
     """
-    ตรวจสอบรายการรถยนต์ที่เอกสาร (ภาษี, พ.ร.บ., ประกันภัย, ผ่อนรถ) ครบกำหนดแจ้งเตือนตามรอบ 1, 16 และสัปดาห์ปัจจุบัน:
-    - วันที่ 1..15: รอบวันที่ 1 (หมดอายุเดือนปัจจุบัน หรือ เกินกำหนด)
-    - วันที่ 16..สิ้นเดือน: รอบวันที่ 16 (หมดอายุเดือนถัดไป)
-    - รายสัปดาห์ (Weekly Warning): หมดอายุในสัปดาห์ปัจจุบัน (Monday ถึง Sunday)
-    - ข้ามรายการที่ได้รับการต่ออายุ/ชำระแล้วเรียบร้อยแล้ว
+    ตรวจสอบรายการรถยนต์ที่เอกสาร (ภาษี, พ.ร.บ., ประกันภัย) ครบกำหนดแจ้งเตือน:
+    - check_mode == "weekly": คัดกรองเฉพาะรถที่หมดอายุภายในสัปดาห์ปัจจุบัน (Monday ถึง Sunday) สำหรับปุ่มกดหน้าเว็บ
+    - check_mode == "cycle": คัดกรองตามรอบวันที่ 1 (เดือนปัจจุบัน) หรือรอบวันที่ 16 (เดือนถัดไป) สำหรับ CRON Scheduler อัตโนมัติ
+    - check_mode == "all": ตรวจสอบรวมทั้งสองเงื่อนไข
     :param cars_list: รายชื่อรถยนต์
     :param target_days: (compatibility)
     :param check_date: วันที่ใช้อ้างอิง (ค่าเริ่มต้นเป็นเวลาปัจจุบันประเทศไทย)
+    :param check_mode: "weekly" (ค่าเริ่มต้นสำหรับปุ่มกด), "cycle" (สำหรับรอบ 1/16), หรือ "all"
     :return: รายการที่เข้าเงื่อนไข เรียงตามความเร่งด่วน
     """
     cycle = get_target_cycle_info(check_date)
@@ -160,7 +160,7 @@ def check_expiring_cars(cars_list, target_days=None, check_date=None):
         model_name = f"{brand} {model}".strip() if (brand or model) else "ไม่ระบุรุ่น"
         company = str(car.get("company") or car.get("owner_company") or "").strip()
 
-        # ตรวจสอบ 3 หมวดหลัก: ภาษีประจำปี, พ.ร.บ., ประกันภัย (และค่างวดผ่อนรถ)
+        # ตรวจสอบ 3 หมวดหลักเท่านั้น: ภาษีประจำปี, พ.ร.บ., ประกันภัย (ตามข้อกำหนดระบบ)
         checks = [
             (
                 "ภาษีประจำปี (Tax)",
@@ -182,16 +182,17 @@ def check_expiring_cars(cars_list, target_days=None, check_date=None):
             )
         ]
 
-        # ผ่อนรถ (ถ้ายังมีภาระผ่อน)
-        if not car.get("is_debt_free"):
-            inst_raw = car.get("payment_due_date") or car.get("installment_due_date")
-            if inst_raw and str(inst_raw).strip() not in ("", "-", "None", "null", "undefined"):
-                checks.append((
-                    "ค่างวดผ่อนรถ (Installment)",
-                    inst_raw,
-                    _safe_float(car.get("installment_amount") or car.get("hp_installment"), 8500.0),
-                    _is_paid(car.get("installment_status") or car.get("payment_status"), car.get("installment_paid"))
-                ))
+        # หมายเหตุ: ตามข้อกำหนดระบบ จำกัดเฉพาะรายการ ประกันภัย, พ.ร.บ., และภาษี เท่านั้น
+        # (ค่างวดผ่อนรถ, เช็คระยะ, ค้างชำระ ให้ Comment out ปิดการแจ้งเตือนไว้)
+        # if not car.get("is_debt_free"):
+        #     inst_raw = car.get("payment_due_date") or car.get("installment_due_date")
+        #     if inst_raw and str(inst_raw).strip() not in ("", "-", "None", "null", "undefined"):
+        #         checks.append((
+        #             "ค่างวดผ่อนรถ (Installment)",
+        #             inst_raw,
+        #             _safe_float(car.get("installment_amount") or car.get("hp_installment"), 8500.0),
+        #             _is_paid(car.get("installment_status") or car.get("payment_status"), car.get("installment_paid"))
+        #         ))
 
         for doc_type, expiry_raw, amount, paid_status in checks:
             if paid_status:
@@ -205,15 +206,23 @@ def check_expiring_cars(cars_list, target_days=None, check_date=None):
             if not exp_date:
                 continue
 
-            # ตรวจสอบ 3 เงื่อนไข:
-            # 1. ตรงรอบเป้าหมาย (Current Month สำหรับรอบ 1 หรือ Next Month สำหรับรอบ 16)
-            # 2. เกินกำหนดในรอบวันที่ 1 (Overdue)
-            # 3. แจ้งเตือนรายสัปดาห์ (Weekly Warning: ตกอยู่ในสัปดาห์ จันทร์-อาทิตย์ ปัจจุบัน)
+            # ตรวจสอบเงื่อนไขตาม check_mode:
+            # 1. is_in_current_week: ตกอยู่ในสัปดาห์ปัจจุบัน จันทร์-อาทิตย์ (สำหรับปุ่มกด manual)
+            # 2. is_in_target_cycle: ตรงรอบเดือนเป้าหมาย (Current Month รอบ 1, Next Month รอบ 16 สำหรับ auto cron)
+            # 3. is_overdue_in_round1: เกินกำหนดในรอบวันที่ 1
+            is_in_current_week = (w_start <= exp_date <= w_end)
             is_in_target_cycle = (exp_date.year == t_year and exp_date.month == t_month)
             is_overdue_in_round1 = (cycle["round_day"] == 1 and exp_date < today)
-            is_in_current_week = (w_start <= exp_date <= w_end)
 
-            if is_in_target_cycle or is_overdue_in_round1 or is_in_current_week:
+            mode_lower = str(check_mode or "weekly").lower()
+            if mode_lower == "weekly":
+                is_matched = is_in_current_week
+            elif mode_lower == "cycle":
+                is_matched = (is_in_target_cycle or is_overdue_in_round1)
+            else:
+                is_matched = (is_in_target_cycle or is_overdue_in_round1 or is_in_current_week)
+
+            if is_matched:
                 diff_days = (exp_date - today).days
                 if diff_days < 0:
                     status_desc = f"🔴 เกินกำหนด {abs(diff_days)} วัน"
@@ -231,6 +240,8 @@ def check_expiring_cars(cars_list, target_days=None, check_date=None):
                     status_desc = f"🟡 อีก {diff_days} วัน"
                     alert_category = "cycle_due"
 
+                cycle_label = f"รอบสัปดาห์นี้ ({cycle['week_desc']})" if mode_lower == "weekly" else cycle["round_name"]
+
                 expiring_items.append({
                     "plate": plate,
                     "model": model_name,
@@ -242,7 +253,7 @@ def check_expiring_cars(cars_list, target_days=None, check_date=None):
                     "amount": amount,
                     "status_desc": status_desc,
                     "alert_category": alert_category,
-                    "cycle_round": cycle["round_name"]
+                    "cycle_round": cycle_label
                 })
 
     # เรียงลำดับรายการตามความเร่งด่วน (ใกล้หมดอายุหรือเกินกำหนดขึ้นก่อน)
@@ -250,21 +261,21 @@ def check_expiring_cars(cars_list, target_days=None, check_date=None):
     return expiring_items
 
 
-def build_alert_message(expiring_items, cycle_info=None):
+def build_alert_message(expiring_items, cycle_info=None, header_title=None):
     """
     สร้างข้อความแจ้งเตือนสำหรับส่งผ่าน LINE:
     - หากมีรายการ (count > 0): แสดงรายการรถ ทะเบียน เอกสาร วันหมดอายุ สั้นกระชับ
-    - หากไม่มีรายการ (count == 0): ส่ง Fallback Message แจ้งว่ารถทุกคันยังไม่ครบกำหนด
+    - หากไม่มีรายการ (count == 0): ส่ง Fallback Message: "ไม่มีรถครบกำหนดต่ออายุประกัน พ.ร.บ. ภาษี ในรอบนี้"
     """
-    round_name = (cycle_info.get("round_name") if cycle_info else None) or "รอบวันที่ 1 และ 16"
+    round_name = header_title or (cycle_info.get("round_name") if cycle_info else None) or "รอบสัปดาห์นี้"
 
-    # กรณีไม่มีรายการ (Fallback Message ตามข้อกำหนดระบบ)
+    # กรณีไม่มีรายการ (count == 0) -> ประกอบ Fallback Message ตรงตามข้อกำหนด
     if not expiring_items or len(expiring_items) == 0:
         return (
             "🚨 แจ้งเตือน: เอกสารรถยนต์ครบกำหนดต่ออายุ\n"
             f"📅 {round_name}\n"
             "────────────────────\n"
-            "รถทุกคันยังไม่ครบกำหนดต่อประกัน พ.ร.บ. และภาษี ในรอบนี้\n"
+            "ไม่มีรถครบกำหนดต่ออายุประกัน พ.ร.บ. ภาษี ในรอบนี้\n"
             "────────────────────\n"
             "ระบบบริหารจัดการ SawasdeeRental"
         )

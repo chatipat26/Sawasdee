@@ -9558,15 +9558,19 @@ ${e.message}`);
   }
 
   async triggerLineExpiryCheck() {
-    this.showToast("📲 กำลังตรวจสอบวันหมดอายุ พ.ร.บ./ประกันภัย/ภาษี และส่ง LINE...", "info");
+    this.showToast("📲 กำลังตรวจสอบวันหมดอายุ พ.ร.บ./ประกันภัย/ภาษี (รอบสัปดาห์นี้) และส่ง LINE...", "info");
     try {
-      const res = await fetch("/api/line/check-expiry", { method: "POST" });
+      const res = await fetch("/api/line/check-expiry", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ check_mode: "weekly" })
+      });
       const data = await res.json();
       if (data.sent) {
         if (data.count > 0) {
-          this.showToast(`🚨 ส่งแจ้งเตือน LINE สำเร็จ: ${data.count} รายการ (${data.cycle || 'รอบปัจจุบัน'})!`, "success");
+          this.showToast(`🚨 ส่งแจ้งเตือน LINE สำเร็จ: ${data.count} รายการ (${data.cycle || 'รอบสัปดาห์นี้'})!`, "success");
         } else {
-          this.showToast(`✅ ส่ง LINE สำเร็จ: ${data.message || 'รถทุกคันยังไม่ครบกำหนดต่อประกัน พ.ร.บ. และภาษี ในรอบนี้'}`, "success");
+          this.showToast(`✅ ส่ง LINE สำเร็จ: ${data.message || 'ไม่มีรถครบกำหนดต่ออายุประกัน พ.ร.บ. ภาษี ในรอบนี้'}`, "success");
         }
       } else {
         this.showToast(data.message || "ไม่มีรายการครบกำหนดแจ้งเตือนในรอบนี้", "info");
