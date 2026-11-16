@@ -7,6 +7,7 @@ from datetime import datetime, date, timedelta
 from typing import Optional
 
 LINE_BROADCAST_URL = "https://api.line.me/v2/bot/message/broadcast"
+LINE_MULTICAST_URL = "https://api.line.me/v2/bot/message/multicast"
 LINE_PUSH_URL = "https://api.line.me/v2/bot/message/push"
 LINE_REPLY_URL = "https://api.line.me/v2/bot/message/reply"
 
@@ -181,45 +182,21 @@ def send_line_reply_message(reply_token: str, message: str, channel_access_token
         return False
 
 
-def send_line_broadcast_message(message: str, channel_access_token: str = None) -> bool:
+def send_line_message(message: str, to_user_ids=None, channel_access_token: str = None) -> bool:
     """
-    [ปิดการใช้ Broadcast อัตโนมัติเพื่อประหยัดข้อความ]
-    เปลี่ยนให้ส่งตรงหาแอดมินแทน ยกเว้นกรณีเรียกใช้งานเฉพาะกิจ
-    """
-    return send_line_push_message(message, to_user_id=get_admin_line_id(), channel_access_token=channel_access_token)
-
-
-def send_line_push_message(message: str, to_user_id=None, channel_access_token: str = None) -> bool:
-    """
-    ส่งข้อความแบบ Direct Push ไปยังผู้รับ (รองรับทั้ง ID เดียว และหลาย ID แบบ List หรือ Comma-separated)
-    - รองรับทั้ง User ID ('U...'), Group ID ('C...'), และ Room ID ('R...')
-    - มี try-except ระดับบุคคล หาก ID ใดผิดพลาด/บล็อกบอท จะไม่ทำให้ระบบหยุดชะงักและส่งต่อให้คนอื่นจนครบ
+    ฟังก์ชันหลักในการส่งข้อความ LINE แบบยืดหยุ่น (Broadcast / Multicast / Push):
+    1. ตรวจสอบ LINE_BROADCAST_MODE ใน .env:
+       - หากเป็น 'true': ใช้ LINE Broadcast API (https://api.line.me/v2/bot/message/broadcast)
+         เพื่อส่งหาผู้ติดตาม (Followers) ทุกคนของบัญชี LINE OA นี้ (เหมาะสำหรับกรณีที่ไม่ทราบ LINE ID ของแต่ละคน)
+    2. หากโหมด Broadcast ปิดอยู่ (default: false):
+       - ใช้ LINE Multicast API (https://api.line.me/v2/bot/message/multicast) สำหรับ User IDs ('U...')
+       - ส่งพร้อมกันรวดเดียวถึงทุกคนโดยอ่านจาก LINE_USER_IDS, LINE_TARGET_USER_ID, หรือ get_admin_line_ids()
+       - หากมี Group ID ('C...') หรือเกิด Error ใน Multicast จะ Fallback เป็น Direct Push รายคนอย่างปลอดภัย
+    3. ครอบคลุมด้วย try-except ทุกจุด ป้องกันไม่ให้ข้อผิดพลาดของ LINE กระทบระบบหลัก
     """
     token, _ = get_line_credentials()
     act = channel_access_token or token
     if not act or not message:
-        return False
-
-    # รวมรายชื่อผู้รับทั้งหมด (กำจัดค่าซ้ำและตัด whitespace)
-    target_list = []
-    if to_user_id:
-        if isinstance(to_user_id, (list, tuple, set)):
-            for u in to_user_id:
-                if u:
-                    for sub in str(u).split(","):
-                        c = sub.strip().strip("'\"")
-                        if c and c not in target_list:
-                            target_list.append(c)
-        else:
-            for sub in str(to_user_id).split(","):
-                c = sub.strip().strip("'\"")
-                if c and c not in target_list:
-                    target_list.append(c)
-    else:
-        target_list = get_admin_line_ids()
-
-    if not target_list:
-        print("[LINE] No recipient IDs found.")
         return False
 
     headers = {
@@ -227,8 +204,73 @@ def send_line_push_message(message: str, to_user_id=None, channel_access_token: 
         "Authorization": f"Bearer {act}"
     }
 
-    success_count = 0
-    for uid in target_list:
+    # 1. โหมด BROADCAST (หากตั้ง LINE_BROADCAST_MODE=true ใน .env)
+    is_broadcast_mode = os.environ.get("LINE_BROADCAST_MODE", "false").strip().lower() in ("true", "1", "yes")
+    if is_broadcast_mode:
+        try:
+            payload = {
+                "messages": [{"type": "text", "text": message}]
+            }
+            resp = requests.post(LINE_BROADCAST_URL, headers=headers, json=payload, timeout=10)
+            if resp.status_code == 200:
+                print("📢 ส่ง LINE Broadcast ถึงผู้ติดตามทุกคนสำเร็จ [HTTP 200 OK]")
+                return True
+            print(f"⚠️ LINE Broadcast Error: HTTP {resp.status_code} - {resp.text}")
+        except Exception as e:
+            print(f"❌ Exception in LINE Broadcast: {e}")
+        # หาก Broadcast มีปัญหา จะ Fallback ลองส่งแบบ Multicast/Push ต่อไป
+
+    # 2. โหมด MULTICAST / DIRECT PUSH
+    target_list = []
+    raw_targets = to_user_ids
+    if not raw_targets:
+        raw_targets = os.environ.get("LINE_USER_IDS") or get_admin_line_ids()
+
+    if isinstance(raw_targets, (list, tuple, set)):
+        for u in raw_targets:
+            if u:
+                for sub in str(u).split(","):
+                    c = sub.strip().strip("'\"")
+                    if c and c not in target_list:
+                        target_list.append(c)
+    else:
+        for sub in str(raw_targets or "").split(","):
+            c = sub.strip().strip("'\"")
+            if c and c not in target_list:
+                target_list.append(c)
+
+    if not target_list:
+        print("[LINE] No recipient IDs found for Multicast/Push.")
+        return False
+
+    # แยก User IDs (U...) สำหรับ Multicast และ Group/Room IDs (C..., R...)
+    user_ids = [uid for uid in target_list if uid.startswith("U")]
+    other_ids = [uid for uid in target_list if not uid.startswith("U")]
+
+    success = False
+
+    # ก. ส่งผ่าน Multicast API สำหรับ User IDs (ส่งครั้งเดียวพร้อมกันสูงสุด 500 คน)
+    if len(user_ids) > 1:
+        try:
+            payload = {
+                "to": user_ids[:500],
+                "messages": [{"type": "text", "text": message}]
+            }
+            resp = requests.post(LINE_MULTICAST_URL, headers=headers, json=payload, timeout=10)
+            if resp.status_code == 200:
+                print(f"✅ ส่ง LINE Multicast ถึง {len(user_ids)} ผู้ใช้สำเร็จ [HTTP 200 OK]")
+                success = True
+            else:
+                print(f"⚠️ LINE Multicast Error (HTTP {resp.status_code}): {resp.text} -> กำลัง Fallback ไป Push ทีละคน")
+                other_ids = user_ids + other_ids
+        except Exception as e:
+            print(f"❌ Exception in LINE Multicast: {e} -> กำลัง Fallback ไป Push ทีละคน")
+            other_ids = user_ids + other_ids
+    elif len(user_ids) == 1:
+        other_ids = user_ids + other_ids
+
+    # ข. ส่ง Direct Push รายบุคคล/กลุ่ม สำหรับ ID ที่เหลือ พร้อม try-except รายคน
+    for uid in other_ids:
         try:
             payload = {
                 "to": uid,
@@ -236,15 +278,42 @@ def send_line_push_message(message: str, to_user_id=None, channel_access_token: 
             }
             resp = requests.post(LINE_PUSH_URL, headers=headers, json=payload, timeout=10)
             if resp.status_code == 200:
-                success_count += 1
-                print(f"✅ ส่ง LINE Direct Push สำเร็จ (to={uid}) [HTTP 200]")
+                print(f"✅ ส่ง LINE Direct Push สำเร็จ (to={uid}) [HTTP 200 OK]")
+                success = True
             else:
                 print(f"⚠️ LINE Direct Push Error (to={uid}): HTTP {resp.status_code} - {resp.text}")
         except Exception as e:
-            # ดักจับข้อผิดพลาดระดับบุคคล เพื่อไม่ให้กระทบผู้รับคนอื่นในรายการ
-            print(f"❌ Exception sending LINE push to {uid}: {e}")
+            print(f"❌ Error sending LINE push to {uid}: {e}")
 
-    return success_count > 0
+    return success
+
+
+def send_line_broadcast_message(message: str, channel_access_token: str = None) -> bool:
+    """
+    ส่งข้อความ Broadcast ไปยังผู้ติดตามทุกคน
+    """
+    token, _ = get_line_credentials()
+    act = channel_access_token or token
+    if not act or not message:
+        return False
+    try:
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {act}"
+        }
+        payload = {"messages": [{"type": "text", "text": message}]}
+        resp = requests.post(LINE_BROADCAST_URL, headers=headers, json=payload, timeout=10)
+        return resp.status_code == 200
+    except Exception as e:
+        print(f"send_line_broadcast_message error: {e}")
+        return False
+
+
+def send_line_push_message(message: str, to_user_id=None, channel_access_token: str = None) -> bool:
+    """
+    Alias ของ send_line_message เพื่อความเข้ากันได้ย้อนหลัง 100%
+    """
+    return send_line_message(message, to_user_ids=to_user_id, channel_access_token=channel_access_token)
 
 
 def send_line_push_async(message: str, to_user_id=None):
@@ -412,6 +481,15 @@ def check_and_send_expiry_alerts(cars_dict=None, target_days=None, recipient_mod
         ref_date = check_date or now_bkk.date()
         cycle_info = get_target_cycle_info(ref_date)
 
+        # โหลดข้อมูลรถจาก cars_dict หรือ store.cars หรือฐานข้อมูล
+        if not cars_dict:
+            try:
+                from db import store
+                if store.cars:
+                    cars_dict = store.cars
+            except Exception:
+                pass
+
         cars_list = []
         if cars_dict:
             for pl, c in cars_dict.items():
@@ -432,11 +510,13 @@ def check_and_send_expiry_alerts(cars_dict=None, target_days=None, recipient_mod
         else:
             active_cycle_title = cycle_info["round_name"]
 
+        # ดึงรายชื่อผู้รับสำหรับกรณี Multicast / Direct Push
+        admin_uids = get_admin_line_ids()
+
+        # ตรวจสอบจำนวนรถที่เข้าเกณฑ์ นอกลูปเด็ดขาด ส่งแจ้งเตือนเพียง 1 ครั้งเท่านั้น
         if not expiring or len(expiring) == 0:
-            # เงื่อนไขกรณีไม่มีรถเข้าเกณฑ์ (count == 0): ส่ง Fallback Message ทาง LINE
             fallback_msg = build_alert_message([], cycle_info=cycle_info, header_title=active_cycle_title)
-            admin_uids = get_admin_line_ids()
-            success = send_line_push_message(fallback_msg, to_user_id=admin_uids)
+            success = send_line_message(fallback_msg, to_user_ids=admin_uids)
             return {
                 "sent": success,
                 "count": 0,
@@ -451,7 +531,6 @@ def check_and_send_expiry_alerts(cars_dict=None, target_days=None, recipient_mod
         if mode == "customer":
             # โหมดอนาคต: แยกส่งหาลูกค้าของแต่ละคัน หากไม่มี LINE ID ของลูกค้าให้ส่งเข้าแอดมิน
             grouped_by_target = {}
-            admin_uids = get_admin_line_ids()
             fallback_admin = admin_uids[0] if admin_uids else LINE_TARGET_USER_ID
             for item in expiring:
                 cust_uid = resolve_customer_line_id_for_car(item.get("plate")) or fallback_admin
@@ -460,15 +539,14 @@ def check_and_send_expiry_alerts(cars_dict=None, target_days=None, recipient_mod
             any_sent = False
             for uid, items_for_uid in grouped_by_target.items():
                 sub_msg = build_alert_message(items_for_uid, cycle_info=cycle_info, header_title=active_cycle_title)
-                if send_line_push_message(sub_msg, to_user_id=uid):
+                if send_line_message(sub_msg, to_user_ids=[uid]):
                     any_sent = True
             msg = build_alert_message(expiring, cycle_info=cycle_info, header_title=active_cycle_title)
             return {"sent": any_sent, "count": len(expiring), "recipient_mode": mode, "check_mode": check_mode, "cycle": active_cycle_title, "items": expiring, "message": msg}
         else:
-            # โหมดปัจจุบัน: ส่งตรงหาแอดมินทุกคนที่ลงทะเบียน (Direct Push Multi-Recipient)
+            # โหมดปัจจุบัน: ส่งหาผู้รับทุกคนเพียง 1 ครั้ง (รองรับ Broadcast / Multicast / Push ตามการตั้งค่า)
             msg = build_alert_message(expiring, cycle_info=cycle_info, header_title=active_cycle_title)
-            admin_uids = get_admin_line_ids()
-            success = send_line_push_message(msg, to_user_id=admin_uids)
+            success = send_line_message(msg, to_user_ids=admin_uids)
             return {
                 "sent": success,
                 "count": len(expiring),

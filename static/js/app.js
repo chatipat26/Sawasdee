@@ -9558,6 +9558,14 @@ ${e.message}`);
   }
 
   async triggerLineExpiryCheck() {
+    if (this._isSendingLineAlert) return;
+    this._isSendingLineAlert = true;
+    const btn = document.getElementById("btn-dash-line-check");
+    if (btn) {
+      btn.disabled = true;
+      btn.style.opacity = "0.7";
+    }
+
     this.showToast("📲 กำลังตรวจสอบวันหมดอายุ พ.ร.บ./ประกันภัย/ภาษี (รอบสัปดาห์นี้) และส่ง LINE...", "info");
     try {
       const res = await fetch("/api/line/check-expiry", {
@@ -9577,6 +9585,12 @@ ${e.message}`);
       }
     } catch (e) {
       this.showToast("เกิดข้อผิดพลาด: " + e.message, "danger");
+    } finally {
+      this._isSendingLineAlert = false;
+      if (btn) {
+        btn.disabled = false;
+        btn.style.opacity = "1";
+      }
     }
   }
 
