@@ -26,6 +26,13 @@ def normalize_plate_key(plate: Optional[str]) -> str:
         return ""
     return re.sub(r"[\s\-_./]+", "", str(plate)).strip().lower()
 
+def _is_file(obj: Any) -> bool:
+    """Helper to check if an object is a valid file upload (duck-typing compatible)."""
+    if obj is None:
+        return False
+    fn = getattr(obj, "filename", None)
+    return bool(fn and str(fn).strip())
+
 @router.post("/{car_id:path}/images")
 async def upload_car_image(
     car_id: str = Path(..., description="Car license plate or ID"),
@@ -199,13 +206,13 @@ async def upload_car_4_angles(
     angle_files = {}
 
     # 1. Direct explicit angle params
-    if isinstance(front, UploadFile) and getattr(front, "filename", None):
+    if _is_file(front):
         angle_files["front"] = front
-    if isinstance(left, UploadFile) and getattr(left, "filename", None):
+    if _is_file(left):
         angle_files["left"] = left
-    if isinstance(rear, UploadFile) and getattr(rear, "filename", None):
+    if _is_file(rear):
         angle_files["rear"] = rear
-    if isinstance(right, UploadFile) and getattr(right, "filename", None):
+    if _is_file(right):
         angle_files["right"] = right
 
     # 2. Direct list / generic params
@@ -215,9 +222,9 @@ async def upload_car_4_angles(
             continue
         if isinstance(candidate, (list, tuple)):
             for f in candidate:
-                if isinstance(f, UploadFile) and getattr(f, "filename", None) and f not in extra_files:
+                if _is_file(f) and f not in extra_files:
                     extra_files.append(f)
-        elif isinstance(candidate, UploadFile) and getattr(candidate, "filename", None) and candidate not in extra_files:
+        elif _is_file(candidate) and candidate not in extra_files:
             extra_files.append(candidate)
 
     # 3. Comprehensive fallback: inspect raw request form if request is provided
@@ -233,12 +240,12 @@ async def upload_car_4_angles(
             for ak in ["front", "left", "rear", "right"]:
                 if ak not in angle_files:
                     v = form_data.get(ak)
-                    if isinstance(v, UploadFile) and getattr(v, "filename", None):
+                    if _is_file(v):
                         angle_files[ak] = v
 
             # Check all items in multi_items (covers files, photos, images, etc.)
             for key, val in form_data.multi_items():
-                if isinstance(val, UploadFile) and getattr(val, "filename", None):
+                if _is_file(val):
                     k_lower = key.lower().strip()
                     if k_lower in ("front", "left", "rear", "right"):
                         if k_lower not in angle_files:
