@@ -24,8 +24,8 @@ EXPIRY_ALERT_RECIPIENT_MODE = os.environ.get("EXPIRY_ALERT_RECIPIENT_MODE", "adm
 
 
 def get_line_credentials():
-    token = os.environ.get("LINE_CHANNEL_ACCESS_TOKEN", LINE_DEFAULT_CHANNEL_ACCESS_TOKEN)
-    user_id = os.environ.get("LINE_TARGET_USER_ID", LINE_TARGET_USER_ID)
+    token = str(os.environ.get("LINE_CHANNEL_ACCESS_TOKEN") or LINE_DEFAULT_CHANNEL_ACCESS_TOKEN).strip()
+    user_id = str(os.environ.get("LINE_TARGET_USER_ID") or LINE_TARGET_USER_ID).strip()
     return token, user_id
 
 
@@ -41,37 +41,40 @@ def get_admin_line_ids() -> list:
     และดึงจากบัญชีผู้ใช้ในตาราง users ที่มี role == 'admin'
     """
     recipients = []
-
-    # 1. อ่านจาก Environment Variables
-    env_keys = ["LINE_TARGET_USER_ID", "LINE_ADMIN_ID", "LINE_USER_ID", "LINE_ADMIN_USER_ID", "GROUP_ID"]
-    for k in env_keys:
-        val = os.environ.get(k)
-        if val:
-            for item in str(val).split(","):
-                clean = item.strip().strip("'\"")
-                if clean and clean not in recipients:
-                    recipients.append(clean)
-
-    # 2. อ่านจากตาราง users สำหรับผู้ดูแลระบบ (Admin)
     try:
-        from db import store
-        admin_u = store.users.get("admin") or store.users.get("Admin")
-        if admin_u and str(admin_u.get("line_user_id") or "").strip():
-            for item in str(admin_u.get("line_user_id")).split(","):
-                clean = item.strip().strip("'\"")
-                if clean and clean not in recipients:
-                    recipients.append(clean)
+        # 1. อ่านจาก Environment Variables
+        env_keys = ["LINE_TARGET_USER_ID", "LINE_ADMIN_ID", "LINE_USER_ID", "LINE_ADMIN_USER_ID", "GROUP_ID"]
+        for k in env_keys:
+            val = os.environ.get(k)
+            if val:
+                for item in str(val).split(","):
+                    clean = item.strip().strip("'\"")
+                    if clean and clean not in recipients:
+                        recipients.append(clean)
 
-        for u in store.users.values():
-            if str(u.get("role") or "").lower() == "admin":
-                l_uid = str(u.get("line_user_id") or "").strip()
-                if l_uid and l_uid not in ["-", "None", "null"]:
-                    for item in l_uid.split(","):
+        # 2. อ่านจากตาราง users สำหรับผู้ดูแลระบบ (Admin)
+        try:
+            from db import store
+            if hasattr(store, "users") and store.users:
+                admin_u = store.users.get("admin") or store.users.get("Admin")
+                if admin_u and str(admin_u.get("line_user_id") or "").strip():
+                    for item in str(admin_u.get("line_user_id")).split(","):
                         clean = item.strip().strip("'\"")
                         if clean and clean not in recipients:
                             recipients.append(clean)
-    except Exception as e:
-        print(f"Lookup admin users LINE IDs note: {e}")
+
+                for u in store.users.values():
+                    if str(u.get("role") or "").lower() == "admin":
+                        l_uid = str(u.get("line_user_id") or "").strip()
+                        if l_uid and l_uid not in ["-", "None", "null"]:
+                            for item in l_uid.split(","):
+                                clean = item.strip().strip("'\"")
+                                if clean and clean not in recipients:
+                                    recipients.append(clean)
+        except Exception as e:
+            print(f"Lookup admin users LINE IDs note: {e}")
+    except Exception as ge:
+        print(f"get_admin_line_ids general note: {ge}")
 
     # 3. Fallback หากไม่มีการตั้งค่าใดๆ เลย
     if not recipients:
@@ -194,110 +197,114 @@ def send_line_message(message: str, to_user_ids=None, channel_access_token: str 
     3. หากไม่ได้ระบุ delivery_mode:
        - ตรวจสอบ LINE_BROADCAST_MODE จาก .env
     """
-    token, _ = get_line_credentials()
-    act = channel_access_token or token
-    if not act or not message:
-        return False
-
-    headers = {
-        "Content-Type": "application/json",
-        "Authorization": f"Bearer {act}"
-    }
-
-    mode_str = str(delivery_mode or "").strip().lower()
-
-    # 1. โหมด BROADCAST
-    is_broadcast = False
-    if mode_str == "broadcast":
-        is_broadcast = True
-    elif mode_str == "admin_only":
-        is_broadcast = False
-    else:
-        is_broadcast = os.environ.get("LINE_BROADCAST_MODE", "false").strip().lower() in ("true", "1", "yes")
-
-    if is_broadcast:
-        try:
-            payload = {
-                "messages": [{"type": "text", "text": message}]
-            }
-            resp = requests.post(LINE_BROADCAST_URL, headers=headers, json=payload, timeout=10)
-            if resp.status_code == 200:
-                print("📢 ส่ง LINE Broadcast ถึงผู้ติดตามทุกคนสำเร็จ [HTTP 200 OK]")
-                return True
-            print(f"⚠️ LINE Broadcast Error: HTTP {resp.status_code} - {resp.text}")
-        except Exception as e:
-            print(f"❌ Exception in LINE Broadcast: {e}")
-
-        # หากเจาะจง delivery_mode == "broadcast" แล้วไม่สำเร็จ ให้จบการทำงานทันที (ไม่หลุดไปยิงซ้ำ)
-        if mode_str == "broadcast":
+    try:
+        token, _ = get_line_credentials()
+        act = channel_access_token or token
+        if not act or not message:
             return False
 
-    # 2. โหมด MULTICAST / DIRECT PUSH (Admin / Specific IDs)
-    target_list = []
-    raw_targets = to_user_ids
-    if not raw_targets:
-        raw_targets = os.environ.get("LINE_USER_IDS") or get_admin_line_ids()
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {act}"
+        }
 
-    if isinstance(raw_targets, (list, tuple, set)):
-        for u in raw_targets:
-            if u:
-                for sub in str(u).split(","):
-                    c = sub.strip().strip("'\"")
-                    if c and c not in target_list:
-                        target_list.append(c)
-    else:
-        for sub in str(raw_targets or "").split(","):
-            c = sub.strip().strip("'\"")
-            if c and c not in target_list:
-                target_list.append(c)
+        mode_str = str(delivery_mode or "").strip().lower()
 
-    if not target_list:
-        print("[LINE] No recipient IDs found for Multicast/Push.")
-        return False
+        # 1. โหมด BROADCAST
+        is_broadcast = False
+        if mode_str == "broadcast":
+            is_broadcast = True
+        elif mode_str == "admin_only":
+            is_broadcast = False
+        else:
+            is_broadcast = str(os.environ.get("LINE_BROADCAST_MODE") or "false").strip().lower() in ("true", "1", "yes")
 
-    # แยก User IDs (U...) สำหรับ Multicast และ Group/Room IDs (C..., R...)
-    user_ids = [uid for uid in target_list if uid.startswith("U")]
-    other_ids = [uid for uid in target_list if not uid.startswith("U")]
+        if is_broadcast:
+            try:
+                payload = {
+                    "messages": [{"type": "text", "text": str(message)}]
+                }
+                resp = requests.post(LINE_BROADCAST_URL, headers=headers, json=payload, timeout=10)
+                if resp.status_code == 200:
+                    print("📢 ส่ง LINE Broadcast ถึงผู้ติดตามทุกคนสำเร็จ [HTTP 200 OK]")
+                    return True
+                print(f"⚠️ LINE Broadcast Error: HTTP {resp.status_code} - {resp.text}")
+            except Exception as e:
+                print(f"❌ Exception in LINE Broadcast: {e}")
 
-    success = False
+            # หากเจาะจง delivery_mode == "broadcast" แล้วไม่สำเร็จ ให้จบการทำงานทันที (ไม่หลุดไปยิงซ้ำ)
+            if mode_str == "broadcast":
+                return False
 
-    # ก. ส่งผ่าน Multicast API สำหรับ User IDs (ส่งครั้งเดียวพร้อมกันสูงสุด 500 คน)
-    if len(user_ids) > 1:
-        try:
-            payload = {
-                "to": user_ids[:500],
-                "messages": [{"type": "text", "text": message}]
-            }
-            resp = requests.post(LINE_MULTICAST_URL, headers=headers, json=payload, timeout=10)
-            if resp.status_code == 200:
-                print(f"✅ ส่ง LINE Multicast ถึง {len(user_ids)} ผู้ใช้สำเร็จ [HTTP 200 OK]")
-                success = True
-            else:
-                print(f"⚠️ LINE Multicast Error (HTTP {resp.status_code}): {resp.text} -> กำลัง Fallback ไป Push ทีละคน")
+        # 2. โหมด MULTICAST / DIRECT PUSH (Admin / Specific IDs)
+        target_list = []
+        raw_targets = to_user_ids
+        if not raw_targets:
+            raw_targets = os.environ.get("LINE_USER_IDS") or get_admin_line_ids()
+
+        if isinstance(raw_targets, (list, tuple, set)):
+            for u in raw_targets:
+                if u:
+                    for sub in str(u).split(","):
+                        c = sub.strip().strip("'\"")
+                        if c and c not in target_list:
+                            target_list.append(c)
+        else:
+            for sub in str(raw_targets or "").split(","):
+                c = sub.strip().strip("'\"")
+                if c and c not in target_list:
+                    target_list.append(c)
+
+        if not target_list:
+            print("[LINE] No recipient IDs found for Multicast/Push.")
+            return False
+
+        # แยก User IDs (U...) สำหรับ Multicast และ Group/Room IDs (C..., R...)
+        user_ids = [uid for uid in target_list if str(uid).startswith("U")]
+        other_ids = [uid for uid in target_list if not str(uid).startswith("U")]
+
+        success = False
+
+        # ก. ส่งผ่าน Multicast API สำหรับ User IDs (ส่งครั้งเดียวพร้อมกันสูงสุด 500 คน)
+        if len(user_ids) > 1:
+            try:
+                payload = {
+                    "to": user_ids[:500],
+                    "messages": [{"type": "text", "text": str(message)}]
+                }
+                resp = requests.post(LINE_MULTICAST_URL, headers=headers, json=payload, timeout=10)
+                if resp.status_code == 200:
+                    print(f"✅ ส่ง LINE Multicast ถึง {len(user_ids)} ผู้ใช้สำเร็จ [HTTP 200 OK]")
+                    success = True
+                else:
+                    print(f"⚠️ LINE Multicast Error (HTTP {resp.status_code}): {resp.text} -> กำลัง Fallback ไป Push ทีละคน")
+                    other_ids = user_ids + other_ids
+            except Exception as e:
+                print(f"❌ Exception in LINE Multicast: {e} -> กำลัง Fallback ไป Push ทีละคน")
                 other_ids = user_ids + other_ids
-        except Exception as e:
-            print(f"❌ Exception in LINE Multicast: {e} -> กำลัง Fallback ไป Push ทีละคน")
+        elif len(user_ids) == 1:
             other_ids = user_ids + other_ids
-    elif len(user_ids) == 1:
-        other_ids = user_ids + other_ids
 
-    # ข. ส่ง Direct Push รายบุคคล/กลุ่ม สำหรับ ID ที่เหลือ พร้อม try-except รายคน
-    for uid in other_ids:
-        try:
-            payload = {
-                "to": uid,
-                "messages": [{"type": "text", "text": message}]
-            }
-            resp = requests.post(LINE_PUSH_URL, headers=headers, json=payload, timeout=10)
-            if resp.status_code == 200:
-                print(f"✅ ส่ง LINE Direct Push สำเร็จ (to={uid}) [HTTP 200 OK]")
-                success = True
-            else:
-                print(f"⚠️ LINE Direct Push Error (to={uid}): HTTP {resp.status_code} - {resp.text}")
-        except Exception as e:
-            print(f"❌ Error sending LINE push to {uid}: {e}")
+        # ข. ส่ง Direct Push รายบุคคล/กลุ่ม สำหรับ ID ที่เหลือ พร้อม try-except รายคน
+        for uid in other_ids:
+            try:
+                payload = {
+                    "to": str(uid),
+                    "messages": [{"type": "text", "text": str(message)}]
+                }
+                resp = requests.post(LINE_PUSH_URL, headers=headers, json=payload, timeout=10)
+                if resp.status_code == 200:
+                    print(f"✅ ส่ง LINE Direct Push สำเร็จ (to={uid}) [HTTP 200 OK]")
+                    success = True
+                else:
+                    print(f"⚠️ LINE Direct Push Error (to={uid}): HTTP {resp.status_code} - {resp.text}")
+            except Exception as e:
+                print(f"❌ Error sending LINE push to {uid}: {e}")
 
-    return success
+        return success
+    except Exception as master_e:
+        print(f"❌ Fatal error inside send_line_message: {master_e}")
+        return False
 
 
 def send_line_broadcast_message(message: str, channel_access_token: str = None) -> bool:

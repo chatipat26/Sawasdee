@@ -238,10 +238,22 @@ def startup_event():
             sb._connection()
     except Exception as e:
         print(f"Startup schema check note: {e}")
+
     # Perform initial synchronous sync so all database tables are immediately available
-    store.sync_from_database(force=True)
-    start_background_cloud_sync()
-    init_expiry_scheduler_thread()
+    try:
+        store.sync_from_database(force=True)
+    except Exception as e:
+        print(f"Startup sync note: {e}")
+
+    try:
+        start_background_cloud_sync()
+    except Exception as e:
+        print(f"Background cloud sync start note: {e}")
+
+    try:
+        init_expiry_scheduler_thread()
+    except Exception as e:
+        print(f"Expiry scheduler start note: {e}")
 
 # -------------------------------------------------------------------------
 # ROOT HTML (SPA)
@@ -4545,13 +4557,15 @@ async def get_inspection_html(bk_id: str, type: Optional[str] = None):
 # LINE MESSAGING (DIRECT PUSH & AUTO-LINK WEBHOOK)
 # -------------------------------------------------------------------------
 @app.post("/api/line/broadcast")
-async def trigger_line_broadcast(payload: Dict[str, Any]):
-    msg = payload.get("message", "ทดสอบการส่งข้อความจากระบบ Sawasdee Rental")
-    to_uid = payload.get("to_user_id")
-    worker = payload.get("worker_name")
+async def trigger_line_broadcast(payload: Optional[Dict[str, Any]] = None):
+    p = payload or {}
+    msg = p.get("message", "ทดสอบการส่งข้อความจากระบบ Sawasdee Rental")
+    to_uid = p.get("to_user_id")
+    worker = p.get("worker_name")
+    delivery_mode = p.get("delivery_mode") or p.get("mode")
     if worker and not to_uid:
         to_uid = resolve_worker_line_id(worker)
-    success = send_line_push_message(msg, to_user_id=to_uid or get_admin_line_id())
+    success = send_line_push_message(msg, to_user_id=to_uid or get_admin_line_id(), delivery_mode=delivery_mode)
     return {"success": success, "to_user_id": to_uid or get_admin_line_id()}
 
 @app.post("/api/line/check-expiry")
