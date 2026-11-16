@@ -160,6 +160,7 @@ class Booking(Base):
     dispatch_photos = Column(JSON, default=list)
     return_photos = Column(JSON, default=list)
     payment_slip_url = Column(Text, nullable=True)
+    remaining_slip_link = Column(Text, nullable=True)
     payment_type = Column(String(50), nullable=True)
     google_drive_link = Column(Text, nullable=True)
     contract_issued = Column(Boolean, default=False)

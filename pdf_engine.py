@@ -898,49 +898,41 @@ def _draw_damage_overlay(can, damage_marks=None, car_diagram_b64=None, is_fallba
     """
     Overlays vehicle damage marks (X for dent, D for scratch) and/or marked canvas diagram.
     Zero-fail, 100% null-safe.
+    Ensures PDF template diagrams never get polluted with duplicate rectangular canvas wireframes.
     """
     from reportlab.lib.utils import ImageReader
     import base64
     import json
 
-    # 1. Overlay Base64 Canvas Image if provided
-    if car_diagram_b64:
-        try:
-            raw_b64 = str(car_diagram_b64).strip()
-            if "," in raw_b64:
-                raw_b64 = raw_b64.split(",", 1)[1]
-            if len(raw_b64) > 50:
-                img_bytes = base64.b64decode(raw_b64)
-                # Convert solid off-white/white background to transparent so underlying diagrams remain visible
-                try:
-                    from PIL import Image
-                    im = Image.open(io.BytesIO(img_bytes)).convert("RGBA")
-                    datas = im.getdata()
-                    new_data = []
-                    for item in datas:
-                        if item[0] > 238 and item[1] > 238 and item[2] > 238:
-                            new_data.append((255, 255, 255, 0))
-                        else:
-                            new_data.append(item)
-                    im.putdata(new_data)
-                    p_buf = io.BytesIO()
-                    im.save(p_buf, format="PNG")
-                    p_buf.seek(0)
-                    draw_reader = ImageReader(p_buf)
-                except Exception:
-                    draw_reader = ImageReader(io.BytesIO(img_bytes))
-
-                can.drawImage(draw_reader, 186, 175, width=370, height=230, mask='auto', preserveAspectRatio=True)
-        except Exception as b64_err:
-            print(f"[PDF Engine] Car diagram base64 overlay notice: {b64_err}")
-
-    # 2. Overlay Vector Damage Marks (X = Dent, D = Scratch)
+    # Parse vector damage marks
     marks_list = damage_marks
     if isinstance(marks_list, str) and marks_list.strip():
         try:
             marks_list = json.loads(marks_list)
         except Exception:
             marks_list = []
+    if not isinstance(marks_list, list):
+        marks_list = []
+
+    has_vector_marks = len(marks_list) > 0
+
+    # 1. Overlay Base64 Canvas Image ONLY when appropriate:
+    # - NEVER draw canvas wireframe over car_inspection_updated.pdf template (not is_fallback)
+    #   because the template already has clean sedan illustrations; drawing canvas wireframe creates duplicate overlapping boxes.
+    # - Only draw car_diagram_b64 if it's fallback mode (is_fallback=True) AND there are no vector marks.
+    if car_diagram_b64 and is_fallback and not has_vector_marks:
+        try:
+            raw_b64 = str(car_diagram_b64).strip()
+            if "," in raw_b64:
+                raw_b64 = raw_b64.split(",", 1)[1]
+            if len(raw_b64) > 50:
+                img_bytes = base64.b64decode(raw_b64)
+                draw_reader = ImageReader(io.BytesIO(img_bytes))
+                can.drawImage(draw_reader, 186, 175, width=370, height=230, mask='auto', preserveAspectRatio=True)
+        except Exception as b64_err:
+            print(f"[PDF Engine] Car diagram base64 overlay notice: {b64_err}")
+
+    # 2. Overlay Vector Damage Marks (X = Dent, D = Scratch)
     if isinstance(marks_list, list):
         for m in marks_list:
             if not isinstance(m, dict):

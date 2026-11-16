@@ -1823,6 +1823,26 @@ async def list_bookings():
         b_copy["checkout_pdf_url"] = b_copy.get("checkout_pdf_url") or ""
         b_copy["checkin_pdf_url"] = b_copy.get("checkin_pdf_url") or ""
         
+        # Harmonize slips between columns and payment_meta
+        for item in (b_copy.get("extension_history") or []):
+            if isinstance(item, dict) and item.get("type") == "payment_meta":
+                if item.get("deposit_slip") and not b_copy.get("deposit_slip"):
+                    b_copy["deposit_slip"] = item["deposit_slip"]
+                if item.get("rental_slip") and not b_copy.get("rental_slip"):
+                    b_copy["rental_slip"] = item["rental_slip"]
+                if item.get("remaining_slip_link") and not b_copy.get("remaining_slip_link"):
+                    b_copy["remaining_slip_link"] = item["remaining_slip_link"]
+                if item.get("payment_slip_url") and not b_copy.get("payment_slip_url"):
+                    b_copy["payment_slip_url"] = item["payment_slip_url"]
+        if b_copy.get("payment_slip_url") and not b_copy.get("deposit_slip"):
+            b_copy["deposit_slip"] = b_copy["payment_slip_url"]
+        if b_copy.get("deposit_slip") and not b_copy.get("payment_slip_url"):
+            b_copy["payment_slip_url"] = b_copy["deposit_slip"]
+        if b_copy.get("remaining_slip_link") and not b_copy.get("rental_slip"):
+            b_copy["rental_slip"] = b_copy["remaining_slip_link"]
+        if b_copy.get("rental_slip") and not b_copy.get("remaining_slip_link"):
+            b_copy["remaining_slip_link"] = b_copy["rental_slip"]
+
         # TARGET MISSION 3: Safe balance calculation (net_price - deposit_amount)
         if b_copy.get("rental_paid"):
             b_copy["remaining_rental"] = 0.0
@@ -1862,6 +1882,26 @@ async def get_booking(bk_id: str):
     b_copy["is_fully_paid"] = bool(b_copy.get("is_fully_paid", False) or b_copy.get("rental_paid", False))
     b_copy["contract_pdf_url"] = b_copy.get("contract_pdf_url") or ""
     
+    # Harmonize slips between columns and payment_meta
+    for item in (b_copy.get("extension_history") or []):
+        if isinstance(item, dict) and item.get("type") == "payment_meta":
+            if item.get("deposit_slip") and not b_copy.get("deposit_slip"):
+                b_copy["deposit_slip"] = item["deposit_slip"]
+            if item.get("rental_slip") and not b_copy.get("rental_slip"):
+                b_copy["rental_slip"] = item["rental_slip"]
+            if item.get("remaining_slip_link") and not b_copy.get("remaining_slip_link"):
+                b_copy["remaining_slip_link"] = item["remaining_slip_link"]
+            if item.get("payment_slip_url") and not b_copy.get("payment_slip_url"):
+                b_copy["payment_slip_url"] = item["payment_slip_url"]
+    if b_copy.get("payment_slip_url") and not b_copy.get("deposit_slip"):
+        b_copy["deposit_slip"] = b_copy["payment_slip_url"]
+    if b_copy.get("deposit_slip") and not b_copy.get("payment_slip_url"):
+        b_copy["payment_slip_url"] = b_copy["deposit_slip"]
+    if b_copy.get("remaining_slip_link") and not b_copy.get("rental_slip"):
+        b_copy["rental_slip"] = b_copy["remaining_slip_link"]
+    if b_copy.get("rental_slip") and not b_copy.get("remaining_slip_link"):
+        b_copy["remaining_slip_link"] = b_copy["rental_slip"]
+    
     # TARGET MISSION 3: Safe balance calculation (net_price - deposit_amount)
     if b_copy.get("rental_paid"):
         b_copy["remaining_rental"] = 0.0
@@ -1875,124 +1915,143 @@ async def get_booking(bk_id: str):
 
 @app.post("/api/bookings")
 async def create_booking(payload: Dict[str, Any]):
-    # Generate booking ID in Thailand Time: MRC<YYMMDD><HHMMSS>
-    now = now_th()
-    bk_id = payload.get("booking_id") or f"MRC{now.strftime('%y%m%d%H%M%S')}"
-    
-    start_d = to_date(payload.get("start_date"))
-    end_d = to_date(payload.get("end_date"))
-    
-    # Block backdated contracts (start_date must be >= today in Thailand timezone)
-    th_today = now.date()
-    if start_d and start_d < th_today:
-        raise HTTPException(
-            status_code=400,
-            detail=f"ไม่อนุญาตให้ทำสัญญาหรือจองรถย้อนหลัง: วันที่เริ่มต้น ({start_d.strftime('%d/%m/%Y')}) ต้องไม่น้อยกว่าวันที่ปัจจุบัน ({th_today.strftime('%d/%m/%Y')})"
-        )
-    if start_d and end_d and end_d < start_d:
-        raise HTTPException(
-            status_code=400,
-            detail=f"วันที่สิ้นสุดสัญญา ({end_d.strftime('%d/%m/%Y')}) ต้องไม่น้อยกว่าวันที่เริ่มต้น ({start_d.strftime('%d/%m/%Y')})"
-        )
-
-    # Prevent double booking: block immediately when dates overlap an existing active queue
-    _conflict = find_booking_overlap(payload.get("car_id"), start_d, end_d)
-    if _conflict:
-        raise_overlap_error(_conflict, "จองรถ")
-
-    default_t = now.strftime("%H:%M")
-    start_t = payload.get("start_time") or default_t
-    end_t = payload.get("end_time") or default_t
-    
-    billable_days, extra_hours, rem_minutes, is_over_4hr, explanation = calculate_rental_duration_and_days(
-        start_d, start_t, end_d, end_t
-    )
-    
-    car_id = payload.get("car_id")
-    car_obj = store.cars.get(car_id, {})
-    price_day = float(car_obj.get("price_day") or car_obj.get("daily_rate") or 1000)
-    price_week = float(car_obj.get("price_week") or (price_day * 6))
-    price_month = float(car_obj.get("price_month") or (price_day * 20))
-    contract_type = payload.get("contract_type", "รายวัน")
-    
-    base_price = payload.get("base_price")
-    if base_price is None:
-        if contract_type == "รายสัปดาห์":
-            if billable_days <= 7:
-                base_price = price_week
-            else:
-                weeks = billable_days // 7
-                rem_days = billable_days % 7
-                base_price = (weeks * price_week) + (rem_days * price_day)
-        elif contract_type == "รายเดือน":
-            if billable_days <= 30:
-                base_price = price_month
-            else:
-                months = billable_days // 30
-                rem_days = billable_days % 30
-                base_price = (months * price_month) + (rem_days * price_day)
-        else:
-            base_price = price_day * billable_days
-
-    discount = float(payload.get("discount", 0))
-    net_price = max(0.0, float(base_price) - discount)
-    deposit_amount = 5000.0 # STRICT RULE: Fixed 5,000 THB deposit
-    deposit_paid = bool(payload.get("deposit_paid", False))
-    rental_paid = bool(payload.get("rental_paid", False))
-
-    booking = {
-        "booking_id": bk_id,
-        "car_id": car_id,
-        "customer": payload.get("customer", "ลูกค้าทั่วไป (Walk-in)"),
-        "start_date": start_d,
-        "end_date": end_d,
-        "start_time": start_t,
-        "end_time": end_t,
-        "contract_type": contract_type,
-        "base_price": base_price,
-        "discount": discount,
-        "net_price": net_price,
-        "deposit_amount": deposit_amount,
-        "deposit_paid": deposit_paid,
-        "deposit_ref": payload.get("deposit_ref", "") or payload.get("payment_ref", ""),
-        "deposit_slip": convert_gdrive_url(payload.get("deposit_slip", "") or payload.get("slip_url", "")),
-        "rental_paid": rental_paid,
-        "remaining_rental": 0.0 if rental_paid else (max(0.0, net_price - deposit_amount) if deposit_paid else net_price),
-        "rental_ref": payload.get("rental_ref", ""),
-        "rental_slip": convert_gdrive_url(payload.get("rental_slip", "")),
-        "created_by": payload.get("created_by", "admin"),
-        "status": "รอส่งมอบ" if deposit_paid else "รอชำระมัดจำ",
-        "dispatch_closed": False,
-        "return_closed": False,
-        "worker_delivery": payload.get("worker_delivery", ""),
-        "worker_return": payload.get("worker_return", ""),
-        "loc_delivery": payload.get("loc_delivery", "Sukhumvit"),
-        "loc_return": payload.get("loc_return", payload.get("loc_delivery", "Sukhumvit")),
-        "extension_history": [],
-        "is_fully_paid": rental_paid,
-        "rental_payment_method": payload.get("rental_payment_method", "เงินสด"),
-        "created_at": now.isoformat()
-    }
-    
-    with store.lock:
-        store.bookings.insert(0, booking)
-        # Flow step 4: after booking the car becomes "Reserved" (never jumps to On Rent).
-        # A car that is currently On Rent / in workshop keeps its status while accepting future queues.
-        c_key = get_car_key(car_id)
-        if c_key and c_key in store.cars:
-            norm_ck = re.sub(r"[\s\-_]", "", str(c_key)).strip().lower()
-            has_active_on_rent = any(
-                re.sub(r"[\s\-_]", "", str(b.get("car_id", ""))).strip().lower() == norm_ck
-                and b.get("status") in ("กำลังเช่า", "รอรับคืน")
-                for b in store.bookings
+    try:
+        # Generate booking ID in Thailand Time: MRC<YYMMDD><HHMMSS>
+        now = now_th()
+        bk_id = payload.get("booking_id") or f"MRC{now.strftime('%y%m%d%H%M%S')}"
+        
+        start_d = to_date(payload.get("start_date"))
+        end_d = to_date(payload.get("end_date"))
+        
+        if not start_d or not end_d:
+            raise HTTPException(
+                status_code=400,
+                detail="กรุณาระบุวันที่เริ่มต้นและสิ้นสุดสัญญาให้ถูกต้อง"
             )
-            if not has_active_on_rent and store.cars[c_key].get("status") != "ซ่อมบำรุง":
-                store.cars[c_key]["status"] = "ติดจอง"
-                store.async_sync_car(c_key, store.cars[c_key])
-            
-    store.async_sync_booking(booking)
-    # Work order LINE notification retired per system rule
-    return {"success": True, "booking_id": bk_id, "booking": booking}
+
+        # Block backdated contracts (start_date must be >= today in Thailand timezone)
+        th_today = now.date()
+        if start_d < th_today:
+            raise HTTPException(
+                status_code=400,
+                detail=f"ไม่อนุญาตให้ทำสัญญาหรือจองรถย้อนหลัง: วันที่เริ่มต้น ({start_d.strftime('%d/%m/%Y')}) ต้องไม่น้อยกว่าวันที่ปัจจุบัน ({th_today.strftime('%d/%m/%Y')})"
+            )
+        if end_d < start_d:
+            raise HTTPException(
+                status_code=400,
+                detail=f"วันที่สิ้นสุดสัญญา ({end_d.strftime('%d/%m/%Y')}) ต้องไม่น้อยกว่าวันที่เริ่มต้น ({start_d.strftime('%d/%m/%Y')})"
+            )
+
+        # Prevent double booking: block immediately when dates overlap an existing active queue
+        _conflict = find_booking_overlap(payload.get("car_id"), start_d, end_d)
+        if _conflict:
+            raise_overlap_error(_conflict, "จองรถ")
+
+        default_t = now.strftime("%H:%M")
+        start_t = payload.get("start_time") or default_t
+        end_t = payload.get("end_time") or default_t
+        
+        billable_days, extra_hours, rem_minutes, is_over_4hr, explanation = calculate_rental_duration_and_days(
+            start_d, start_t, end_d, end_t
+        )
+        
+        car_id = payload.get("car_id")
+        car_obj = store.cars.get(car_id, {})
+        price_day = float(car_obj.get("price_day") or car_obj.get("daily_rate") or 1000)
+        price_week = float(car_obj.get("price_week") or (price_day * 6))
+        price_month = float(car_obj.get("price_month") or (price_day * 20))
+        contract_type = payload.get("contract_type", "รายวัน")
+        
+        base_price = payload.get("base_price")
+        if base_price is None:
+            if contract_type == "รายสัปดาห์":
+                if billable_days <= 7:
+                    base_price = price_week
+                else:
+                    weeks = billable_days // 7
+                    rem_days = billable_days % 7
+                    base_price = (weeks * price_week) + (rem_days * price_day)
+            elif contract_type == "รายเดือน":
+                if billable_days <= 30:
+                    base_price = price_month
+                else:
+                    months = billable_days // 30
+                    rem_days = billable_days % 30
+                    base_price = (months * price_month) + (rem_days * price_day)
+            else:
+                base_price = price_day * billable_days
+
+        discount = float(payload.get("discount", 0))
+        net_price = max(0.0, float(base_price) - discount)
+        deposit_amount = 5000.0 # STRICT RULE: Fixed 5,000 THB deposit
+        deposit_paid = bool(payload.get("deposit_paid", False))
+        rental_paid = bool(payload.get("rental_paid", False))
+
+        dep_slip_url = convert_gdrive_url(payload.get("deposit_slip", "") or payload.get("slip_url", "") or payload.get("payment_slip_url", ""))
+        rent_slip_url = convert_gdrive_url(payload.get("rental_slip", "") or payload.get("remaining_slip_link", ""))
+
+        booking = {
+            "booking_id": bk_id,
+            "car_id": car_id,
+            "customer": payload.get("customer", "ลูกค้าทั่วไป (Walk-in)"),
+            "start_date": start_d,
+            "end_date": end_d,
+            "start_time": start_t,
+            "end_time": end_t,
+            "contract_type": contract_type,
+            "base_price": base_price,
+            "discount": discount,
+            "net_price": net_price,
+            "deposit_amount": deposit_amount,
+            "deposit_paid": deposit_paid,
+            "deposit_ref": payload.get("deposit_ref", "") or payload.get("payment_ref", ""),
+            "deposit_slip": dep_slip_url,
+            "payment_slip_url": dep_slip_url,
+            "rental_paid": rental_paid,
+            "remaining_rental": 0.0 if rental_paid else (max(0.0, net_price - deposit_amount) if deposit_paid else net_price),
+            "rental_ref": payload.get("rental_ref", ""),
+            "rental_slip": rent_slip_url,
+            "remaining_slip_link": rent_slip_url,
+            "created_by": payload.get("created_by", "admin"),
+            "status": "รอส่งมอบ" if deposit_paid else "รอชำระมัดจำ",
+            "dispatch_closed": False,
+            "return_closed": False,
+            "worker_delivery": payload.get("worker_delivery", ""),
+            "worker_return": payload.get("worker_return", ""),
+            "loc_delivery": payload.get("loc_delivery", "Sukhumvit"),
+            "loc_return": payload.get("loc_return", payload.get("loc_delivery", "Sukhumvit")),
+            "extension_history": [],
+            "is_fully_paid": rental_paid,
+            "rental_payment_method": payload.get("rental_payment_method", "เงินสด"),
+            "created_at": now.isoformat()
+        }
+        
+        with store.lock:
+            store.bookings.insert(0, booking)
+            c_key = get_car_key(car_id)
+            if c_key and c_key in store.cars:
+                norm_ck = re.sub(r"[\s\-_]", "", str(c_key)).strip().lower()
+                has_active_on_rent = any(
+                    re.sub(r"[\s\-_]", "", str(b.get("car_id", ""))).strip().lower() == norm_ck
+                    and b.get("status") in ("กำลังเช่า", "รอรับคืน")
+                    for b in store.bookings
+                )
+                if not has_active_on_rent and store.cars[c_key].get("status") != "ซ่อมบำรุง":
+                    store.cars[c_key]["status"] = "ติดจอง"
+                    store.async_sync_car(c_key, store.cars[c_key])
+                
+        store.async_sync_booking(booking)
+        return {"success": True, "booking_id": bk_id, "booking": booking}
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Error in create_booking: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=500,
+            detail=f"เกิดข้อผิดพลาดในการสร้างรายการจอง: {str(e)}"
+        )
 
 def record_booking_completion_income(target_bk: dict) -> bool:
     """
@@ -2538,6 +2597,7 @@ async def record_deposit(bk_id: str, payload: Dict[str, Any]):
     target["deposit_method"] = dep_method
     target["deposit_ref"] = dep_ref
     target["deposit_slip"] = dep_slip
+    target["payment_slip_url"] = dep_slip
     target["payment_type"] = pay_type
     target["google_drive_link"] = gdrive_link
     if "ชำระวันคืนรถ" in dep_method:
@@ -2551,6 +2611,7 @@ async def record_deposit(bk_id: str, payload: Dict[str, Any]):
         target["rental_payment_method"] = dep_method
         target["rental_ref"] = dep_ref
         target["rental_slip"] = dep_slip
+        target["remaining_slip_link"] = dep_slip
     else:
         # TARGET MISSION 3: ยอดเงินคงเหลือ = ราคาค่าเช่าที่ตกลง (net_price) - เงินมัดจำที่ชำระแล้ว (deposit_amount)
         target["remaining_rental"] = max(0.0, net_p - dep_amount)
@@ -2640,7 +2701,7 @@ async def settle_rental(bk_id: str, payload: Dict[str, Any]):
 
     settle_method = str(payload.get("payment_method", "โอนเงิน / สแกน QR"))
     settle_ref = str(payload.get("payment_ref") or payload.get("rental_ref") or "").strip()
-    settle_slip = convert_gdrive_url(str(payload.get("slip_url") or payload.get("rental_slip") or "").strip())
+    settle_slip = convert_gdrive_url(str(payload.get("slip_url") or payload.get("rental_slip") or payload.get("remaining_slip_link") or payload.get("slip_image_url") or "").strip())
     # Amount due = outstanding balance (covers extension top-ups); falls back to net_price - deposit
     rem_due = float(target.get("remaining_rental") if target.get("remaining_rental") is not None else 0.0)
     if rem_due <= 0.0 and not target.get("rental_paid"):
@@ -2659,6 +2720,7 @@ async def settle_rental(bk_id: str, payload: Dict[str, Any]):
         target["rental_ref"] = settle_ref
     if settle_slip:
         target["rental_slip"] = settle_slip
+        target["remaining_slip_link"] = settle_slip
     if "ชำระวันคืนรถ" in settle_method:
         target["payment_status_note"] = "รอชำระวันคืนรถ" 
 
@@ -2706,13 +2768,16 @@ async def update_payment_slip(bk_id: str, payload: Dict[str, Any]):
     if "payment_ref" in payload or "deposit_ref" in payload:
         ref_val = str(payload.get("payment_ref") or payload.get("deposit_ref") or "").strip()
         target["deposit_ref"] = ref_val
-    if "slip_url" in payload or "deposit_slip" in payload:
-        slip_val = str(payload.get("slip_url") or payload.get("deposit_slip") or "").strip()
+    if "slip_url" in payload or "deposit_slip" in payload or "payment_slip_url" in payload:
+        slip_val = str(payload.get("slip_url") or payload.get("deposit_slip") or payload.get("payment_slip_url") or "").strip()
         target["deposit_slip"] = convert_gdrive_url(slip_val)
+        target["payment_slip_url"] = convert_gdrive_url(slip_val)
     if "rental_ref" in payload:
         target["rental_ref"] = str(payload.get("rental_ref") or "").strip()
-    if "rental_slip" in payload:
-        target["rental_slip"] = convert_gdrive_url(str(payload.get("rental_slip") or "").strip())
+    if "rental_slip" in payload or "remaining_slip_link" in payload:
+        rent_slip_val = str(payload.get("rental_slip") or payload.get("remaining_slip_link") or "").strip()
+        target["rental_slip"] = convert_gdrive_url(rent_slip_val)
+        target["remaining_slip_link"] = convert_gdrive_url(rent_slip_val)
     if "payment_type" in payload:
         target["payment_type"] = str(payload.get("payment_type") or "").strip()
     if "google_drive_link" in payload:

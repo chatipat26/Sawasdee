@@ -499,6 +499,10 @@ class DataStore:
                                     b_copy["rental_ref"] = item["rental_ref"]
                                 if item.get("rental_slip") and not b_copy.get("rental_slip"):
                                     b_copy["rental_slip"] = item["rental_slip"]
+                                if item.get("remaining_slip_link") and not b_copy.get("remaining_slip_link"):
+                                    b_copy["remaining_slip_link"] = item["remaining_slip_link"]
+                                if item.get("payment_slip_url") and not b_copy.get("payment_slip_url"):
+                                    b_copy["payment_slip_url"] = item["payment_slip_url"]
                                 if item.get("deposit_method") and not b_copy.get("deposit_method"):
                                     b_copy["deposit_method"] = item["deposit_method"]
                                 if item.get("deposit_date") and not b_copy.get("deposit_date"):
@@ -518,6 +522,16 @@ class DataStore:
                                 for ik in ("car_diagram_out", "car_diagram_in", "damage_marks_out", "damage_marks_in", "odometer_out", "odometer_in", "fuel_out", "fuel_in", "inspection_notes_out", "inspection_notes_in"):
                                     if item.get(ik) and not b_copy.get(ik):
                                         b_copy[ik] = item[ik]
+                        
+                        # Harmonize deposit slip and rental slip fields across columns and metadata
+                        if b_copy.get("payment_slip_url") and not b_copy.get("deposit_slip"):
+                            b_copy["deposit_slip"] = b_copy["payment_slip_url"]
+                        if b_copy.get("deposit_slip") and not b_copy.get("payment_slip_url"):
+                            b_copy["payment_slip_url"] = b_copy["deposit_slip"]
+                        if b_copy.get("remaining_slip_link") and not b_copy.get("rental_slip"):
+                            b_copy["rental_slip"] = b_copy["remaining_slip_link"]
+                        if b_copy.get("rental_slip") and not b_copy.get("remaining_slip_link"):
+                            b_copy["remaining_slip_link"] = b_copy["rental_slip"]
                         
                         # TARGET MISSION 3: Safe balance calculation (net_price - deposit_amount)
                         if b_copy.get("rental_paid"):
@@ -854,9 +868,11 @@ class DataStore:
                 meta_item = {
                     "type": "payment_meta",
                     "deposit_ref": row.get("deposit_ref", ""),
-                    "deposit_slip": row.get("deposit_slip", ""),
+                    "deposit_slip": row.get("deposit_slip", "") or row.get("payment_slip_url", ""),
                     "rental_ref": row.get("rental_ref", ""),
-                    "rental_slip": row.get("rental_slip", ""),
+                    "rental_slip": row.get("rental_slip", "") or row.get("remaining_slip_link", ""),
+                    "remaining_slip_link": row.get("remaining_slip_link", "") or row.get("rental_slip", ""),
+                    "payment_slip_url": row.get("payment_slip_url", "") or row.get("deposit_slip", ""),
                     "deposit_method": row.get("deposit_method", ""),
                     "deposit_date": row.get("deposit_date", ""),
                     "payment_type": row.get("payment_type", ""),
@@ -901,10 +917,15 @@ class DataStore:
                     'remaining_rental', 'created_by', 'status', 'dispatch_closed',
                     'return_closed', 'worker_delivery', 'worker_return', 'loc_delivery',
                     'loc_return', 'extension_history', 'is_fully_paid', 'rental_payment_method',
-                    'payment_type', 'google_drive_link', 'contract_pdf_url', 'checkout_pdf_url', 'checkin_pdf_url',
+                    'payment_type', 'google_drive_link', 'payment_slip_url', 'remaining_slip_link',
+                    'contract_pdf_url', 'checkout_pdf_url', 'checkin_pdf_url',
                     'checkin_img_front', 'checkin_img_left', 'checkin_img_rear', 'checkin_img_right'
                 }
                 row["is_fully_paid"] = bool(row.get("is_fully_paid", False) or row.get("rental_paid", False))
+                if "payment_slip_url" in row:
+                    row["payment_slip_url"] = str(row["payment_slip_url"]).strip() if row["payment_slip_url"] else None
+                if "remaining_slip_link" in row:
+                    row["remaining_slip_link"] = str(row["remaining_slip_link"]).strip() if row["remaining_slip_link"] else None
                 if "contract_pdf_url" in row:
                     row["contract_pdf_url"] = str(row["contract_pdf_url"]) if row["contract_pdf_url"] else None
                 if "checkout_pdf_url" in row:

@@ -111,6 +111,8 @@ def init_db():
     booking_migrations = [
         "ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS payment_type VARCHAR(50);",
         "ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS google_drive_link TEXT;",
+        "ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS payment_slip_url TEXT;",
+        "ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS remaining_slip_link TEXT;",
         "ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS contract_pdf_url TEXT;",
         "ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS checkout_pdf_url VARCHAR(500);",
         "ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS checkin_pdf_url VARCHAR(500);",
