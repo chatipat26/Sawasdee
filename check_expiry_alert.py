@@ -29,17 +29,33 @@ def _get_db():
     return get_db_client()
 
 
+def _safe_float(val, default=0.0):
+    """แปลงค่าเป็น float อย่างปลอดภัย ไม่พังเมื่อเจอ None, '', หรือข้อความ"""
+    if val is None:
+        return default
+    try:
+        s = str(val).replace(",", "").strip()
+        if not s or s.lower() in ("-", "none", "null", "undefined"):
+            return default
+        return float(s)
+    except Exception:
+        return default
+
+
 def parse_date(d_str):
-    """แปลงข้อความวันที่เป็น datetime.date รองรับทั้ง DD/MM/YYYY และ YYYY-MM-DD"""
-    if not d_str or str(d_str).strip() in ["-", "", "None"]:
+    """แปลงข้อความวันที่เป็น datetime.date รองรับทั้ง DD/MM/YYYY และ YYYY-MM-DD แบบ Null-safe"""
+    if not d_str:
         return None
     if isinstance(d_str, (datetime, date)):
         return d_str if isinstance(d_str, date) else d_str.date()
-    
+
     d_clean = str(d_str).strip()
+    if not d_clean or d_clean in ("-", "None", "null", "undefined"):
+        return None
+
     for fmt in ("%d/%m/%Y", "%Y-%m-%d", "%d-%m-%Y"):
         try:
-            return datetime.strptime(d_clean, fmt).date()
+            return datetime.strptime(d_clean[:10], fmt).date()
         except ValueError:
             pass
     return None
@@ -135,30 +151,33 @@ def check_expiring_cars(cars_list, target_days=None, check_date=None):
         return st in ("ชำระแล้ว", "paid", "true")
 
     for car in (cars_list or []):
-        plate = car.get("plate", "-")
-        brand = car.get("brand", "").strip()
-        model = car.get("model", "").strip()
+        if not car or not isinstance(car, dict):
+            continue
+
+        plate = str(car.get("plate") or car.get("car_id") or "-").strip()
+        brand = str(car.get("brand") or "").strip()
+        model = str(car.get("model") or "").strip()
         model_name = f"{brand} {model}".strip() if (brand or model) else "ไม่ระบุรุ่น"
-        company = car.get("company", "").strip() or car.get("owner_company", "").strip()
+        company = str(car.get("company") or car.get("owner_company") or "").strip()
 
         # ตรวจสอบ 3 หมวดหลัก: ภาษีประจำปี, พ.ร.บ., ประกันภัย (และค่างวดผ่อนรถ)
         checks = [
             (
                 "ภาษีประจำปี (Tax)",
                 car.get("tax_expire_date") or car.get("tax_expiry"),
-                float(car.get("tax_price") or car.get("tax_amount") or 1500.0),
+                _safe_float(car.get("tax_price") or car.get("tax_amount"), 1500.0),
                 _is_paid(car.get("tax_status"), car.get("tax_paid"))
             ),
             (
                 "พ.ร.บ. คุ้มครอง (ACT)",
                 car.get("prb_expire_date") or car.get("act_expiry"),
-                float(car.get("prb_price") or car.get("act_price") or 645.21),
+                _safe_float(car.get("prb_price") or car.get("act_price"), 645.21),
                 _is_paid(car.get("act_status") or car.get("prb_status"), car.get("act_paid") or car.get("prb_paid"))
             ),
             (
                 "ประกันภัย (Insurance)",
                 car.get("insurance_expire_date") or car.get("ins_expiry"),
-                float(car.get("insurance_premium") or car.get("ins_premium") or 12000.0),
+                _safe_float(car.get("insurance_premium") or car.get("ins_premium"), 12000.0),
                 _is_paid(car.get("insurance_status") or car.get("ins_status"), car.get("insurance_paid") or car.get("ins_paid"))
             )
         ]
@@ -166,17 +185,21 @@ def check_expiring_cars(cars_list, target_days=None, check_date=None):
         # ผ่อนรถ (ถ้ายังมีภาระผ่อน)
         if not car.get("is_debt_free"):
             inst_raw = car.get("payment_due_date") or car.get("installment_due_date")
-            if inst_raw:
+            if inst_raw and str(inst_raw).strip() not in ("", "-", "None", "null", "undefined"):
                 checks.append((
                     "ค่างวดผ่อนรถ (Installment)",
                     inst_raw,
-                    float(car.get("installment_amount") or car.get("hp_installment") or 8500.0),
+                    _safe_float(car.get("installment_amount") or car.get("hp_installment"), 8500.0),
                     _is_paid(car.get("installment_status") or car.get("payment_status"), car.get("installment_paid"))
                 ))
 
         for doc_type, expiry_raw, amount, paid_status in checks:
             if paid_status:
                 continue  # ชำระแล้ว ข้ามไป
+
+            # Null-check ป้องกัน None, ค่าว่าง "", "-", "None", "null"
+            if not expiry_raw or str(expiry_raw).strip() in ("", "-", "None", "null", "undefined"):
+                continue  # ไม่มีข้อมูลวันหมดอายุ ข้ามคันนี้/รายการนี้ไปเลย
 
             exp_date = parse_date(expiry_raw)
             if not exp_date:
@@ -229,16 +252,23 @@ def check_expiring_cars(cars_list, target_days=None, check_date=None):
 
 def build_alert_message(expiring_items, cycle_info=None):
     """
-    สร้างข้อความแจ้งเตือนสำหรับส่งผ่าน LINE สั้นกระชับ:
-    - หัวข้อระบุรอบแจ้งเตือน
-    - ทะเบียนรถ + รุ่น
-    - เอกสารที่จะหมดอายุ (ประกันภัย, พ.ร.บ., ภาษี)
-    - วันที่หมดอายุ + สถานะ
+    สร้างข้อความแจ้งเตือนสำหรับส่งผ่าน LINE:
+    - หากมีรายการ (count > 0): แสดงรายการรถ ทะเบียน เอกสาร วันหมดอายุ สั้นกระชับ
+    - หากไม่มีรายการ (count == 0): ส่ง Fallback Message แจ้งว่ารถทุกคันยังไม่ครบกำหนด
     """
-    if not expiring_items:
-        return ""
+    round_name = (cycle_info.get("round_name") if cycle_info else None) or "รอบวันที่ 1 และ 16"
 
-    round_name = (cycle_info.get("round_name") if cycle_info else None) or expiring_items[0].get("cycle_round", "รอบวันที่ 1 และ 16")
+    # กรณีไม่มีรายการ (Fallback Message ตามข้อกำหนดระบบ)
+    if not expiring_items or len(expiring_items) == 0:
+        return (
+            "🚨 แจ้งเตือน: เอกสารรถยนต์ครบกำหนดต่ออายุ\n"
+            f"📅 {round_name}\n"
+            "────────────────────\n"
+            "รถทุกคันยังไม่ครบกำหนดต่อประกัน พ.ร.บ. และภาษี ในรอบนี้\n"
+            "────────────────────\n"
+            "ระบบบริหารจัดการ SawasdeeRental"
+        )
+
     lines = [
         "🚨 แจ้งเตือน: เอกสารรถยนต์ครบกำหนดต่ออายุ",
         f"📅 {round_name}",
@@ -248,9 +278,9 @@ def build_alert_message(expiring_items, cycle_info=None):
 
     for idx, item in enumerate(expiring_items, 1):
         lines.append("")
-        lines.append(f"{idx}. 🚗 ทะเบียน: {item['plate']} ({item['model']})")
-        lines.append(f"   📋 รายการ: {item['doc_type']}")
-        lines.append(f"   📅 หมดอายุ: {item['expiry_date']} ({item['status_desc']})")
+        lines.append(f"{idx}. 🚗 ทะเบียน: {item.get('plate', '-')} ({item.get('model', 'ไม่ระบุรุ่น')})")
+        lines.append(f"   📋 รายการ: {item.get('doc_type', '-')}")
+        lines.append(f"   📅 หมดอายุ: {item.get('expiry_date', '-')} ({item.get('status_desc', '-')})")
 
     lines.append("")
     lines.append("────────────────────")

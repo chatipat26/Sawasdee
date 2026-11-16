@@ -9563,7 +9563,11 @@ ${e.message}`);
       const res = await fetch("/api/line/check-expiry", { method: "POST" });
       const data = await res.json();
       if (data.sent) {
-        this.showToast(`🚨 ส่งแจ้งเตือน LINE สำเร็จ: ${data.count} รายการ (${data.cycle || 'รอบปัจจุบัน'})!`, "success");
+        if (data.count > 0) {
+          this.showToast(`🚨 ส่งแจ้งเตือน LINE สำเร็จ: ${data.count} รายการ (${data.cycle || 'รอบปัจจุบัน'})!`, "success");
+        } else {
+          this.showToast(`✅ ส่ง LINE สำเร็จ: ${data.message || 'รถทุกคันยังไม่ครบกำหนดต่อประกัน พ.ร.บ. และภาษี ในรอบนี้'}`, "success");
+        }
       } else {
         this.showToast(data.message || "ไม่มีรายการครบกำหนดแจ้งเตือนในรอบนี้", "info");
       }

@@ -346,21 +346,28 @@ def check_and_send_expiry_alerts(cars_dict=None, target_days=None, recipient_mod
         cars_list = []
         if cars_dict:
             for pl, c in cars_dict.items():
+                if not c or not isinstance(c, dict):
+                    continue
                 c_copy = dict(c)
-                c_copy["plate"] = pl
+                c_copy["plate"] = str(pl or c.get("plate") or c.get("car_id") or "-").strip()
                 cars_list.append(c_copy)
         else:
             from check_expiry_alert import fetch_cars_from_database
             cars_list = fetch_cars_from_database()
 
         expiring = check_expiring_cars(cars_list, check_date=ref_date)
-        if not expiring:
+        if not expiring or len(expiring) == 0:
+            # เงื่อนไขกรณีไม่มีรถเข้าเกณฑ์ (count == 0): ส่ง Fallback Message ทาง LINE
+            fallback_msg = build_alert_message([], cycle_info=cycle_info)
+            admin_uid = get_admin_line_id()
+            success = send_line_push_message(fallback_msg, to_user_id=admin_uid)
             return {
-                "sent": False,
+                "sent": success,
                 "count": 0,
                 "recipient_mode": mode,
                 "cycle": cycle_info["round_name"],
-                "message": f"ไม่มีรายการ พ.ร.บ./ประกันภัย/ภาษี ครบกำหนดแจ้งเตือนใน{cycle_info['round_name']}"
+                "items": [],
+                "message": "รถทุกคันยังไม่ครบกำหนดต่อประกัน พ.ร.บ. และภาษี ในรอบนี้"
             }
 
         if mode == "customer":
