@@ -327,15 +327,22 @@ def notify_line_expense(expense_obj: dict):
     return False
 
 
-def check_and_send_expiry_alerts(cars_dict=None, target_days=(30, 31, 7, 0), recipient_mode: str = None):
+def check_and_send_expiry_alerts(cars_dict=None, target_days=None, recipient_mode: str = None, check_date=None):
     """
-    แจ้งเตือนวันหมดอายุ พ.ร.บ. / ประกันภัย:
-    - ปัจจุบัน (recipient_mode="admin"): ยิงตรงหาแอดมินเท่านั้น (ไม่ใช้ Broadcast)
-    - อนาคต (recipient_mode="customer"): รองรับการยิงแยกหาลูกค้าของรถแต่ละคันโดยตรง
+    แจ้งเตือนวันหมดอายุ พ.ร.บ. / ประกันภัย / ภาษี (Direct Push 1:1 หาแอดมิน เพื่อประหยัดโควต้า):
+    - คัดกรองตาม 3 เงื่อนไข:
+      1) รอบวันที่ 1: หมดอายุเดือนปัจจุบัน (Current Month)
+      2) รอบวันที่ 16: หมดอายุเดือนหน้า (Next Month)
+      3) แจ้งเตือนรายสัปดาห์ (Weekly Warning): หมดอายุในสัปดาห์ จันทร์-อาทิตย์ ปัจจุบัน
+    - ป้องกัน 500 error ด้วย try-except ครอบคลุมรอบด้าน
     """
     try:
-        from check_expiry_alert import check_expiring_cars, build_alert_message
+        from check_expiry_alert import check_expiring_cars, build_alert_message, get_target_cycle_info
         mode = (recipient_mode or EXPIRY_ALERT_RECIPIENT_MODE or "admin").strip().lower()
+        now_bkk = datetime.utcnow() + timedelta(hours=7)
+        ref_date = check_date or now_bkk.date()
+        cycle_info = get_target_cycle_info(ref_date)
+
         cars_list = []
         if cars_dict:
             for pl, c in cars_dict.items():
@@ -346,9 +353,15 @@ def check_and_send_expiry_alerts(cars_dict=None, target_days=(30, 31, 7, 0), rec
             from check_expiry_alert import fetch_cars_from_database
             cars_list = fetch_cars_from_database()
 
-        expiring = check_expiring_cars(cars_list, target_days=target_days)
+        expiring = check_expiring_cars(cars_list, check_date=ref_date)
         if not expiring:
-            return {"sent": False, "count": 0, "recipient_mode": mode, "message": "ไม่มีรายการ พ.ร.บ. หรือ ประกันภัย ครบกำหนดแจ้งเตือนในวันนี้"}
+            return {
+                "sent": False,
+                "count": 0,
+                "recipient_mode": mode,
+                "cycle": cycle_info["round_name"],
+                "message": f"ไม่มีรายการ พ.ร.บ./ประกันภัย/ภาษี ครบกำหนดแจ้งเตือนใน{cycle_info['round_name']}"
+            }
 
         if mode == "customer":
             # โหมดอนาคต: แยกส่งหาลูกค้าของแต่ละคัน หากไม่มี LINE ID ของลูกค้าให้ส่งเข้าแอดมิน
@@ -360,20 +373,27 @@ def check_and_send_expiry_alerts(cars_dict=None, target_days=(30, 31, 7, 0), rec
 
             any_sent = False
             for uid, items_for_uid in grouped_by_target.items():
-                sub_msg = build_alert_message(items_for_uid)
+                sub_msg = build_alert_message(items_for_uid, cycle_info=cycle_info)
                 if send_line_push_message(sub_msg, to_user_id=uid):
                     any_sent = True
-            msg = build_alert_message(expiring)
-            return {"sent": any_sent, "count": len(expiring), "recipient_mode": mode, "items": expiring, "message": msg}
+            msg = build_alert_message(expiring, cycle_info=cycle_info)
+            return {"sent": any_sent, "count": len(expiring), "recipient_mode": mode, "cycle": cycle_info["round_name"], "items": expiring, "message": msg}
         else:
-            # โหมดปัจจุบัน: ส่งตรงหาแอดมินเท่านั้น (1 ข้อความ)
-            msg = build_alert_message(expiring)
+            # โหมดปัจจุบัน: ส่งตรงหาแอดมินเท่านั้น (Direct Push 1:1)
+            msg = build_alert_message(expiring, cycle_info=cycle_info)
             admin_uid = get_admin_line_id()
             success = send_line_push_message(msg, to_user_id=admin_uid)
-            return {"sent": success, "count": len(expiring), "recipient_mode": "admin", "items": expiring, "message": msg}
+            return {
+                "sent": success,
+                "count": len(expiring),
+                "recipient_mode": "admin",
+                "cycle": cycle_info["round_name"],
+                "items": expiring,
+                "message": msg if success else "ไม่สามารถส่งข้อความ LINE ได้ กรุณาตรวจสอบการตั้งค่า LINE ID"
+            }
     except Exception as e:
         print(f"Error in check_and_send_expiry_alerts: {e}")
-        return {"sent": False, "count": 0, "error": str(e)}
+        return {"sent": False, "count": 0, "error": str(e), "message": f"เกิดข้อผิดพลาดในการตรวจสอบวันหมดอายุ: {str(e)}"}
 
 
 _last_run_tag = None

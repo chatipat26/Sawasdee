@@ -1181,27 +1181,39 @@ async def get_hp_leasing_data():
 
 @app.get("/api/expenses/cycle-expiries")
 async def get_cycle_expiries():
-    """Returns expiring documents and expenses for the active notification cycle (1st or 16th of month)."""
-    from check_expiry_alert import get_target_cycle_info
-    cycle = get_target_cycle_info(now_th().date())
-    all_expenses_resp = compute_monthly_expenses()
-    items = all_expenses_resp.get("items", [])
+    """Returns expiring documents and expenses for the active notification cycle (1st or 16th of month) + weekly warning."""
+    try:
+        from check_expiry_alert import get_target_cycle_info
+        cycle = get_target_cycle_info(now_th().date())
+        all_expenses_resp = compute_monthly_expenses()
+        items = all_expenses_resp.get("items", [])
 
-    target_ym = cycle["target_ym"]
-    matched = []
-    for it in items:
-        iso_d = str(it.get("due_date_iso") or "")
-        if iso_d and iso_d.startswith(target_ym):
-            matched.append(it)
-        elif cycle["round_day"] == 1 and it.get("status_key") == "overdue":
-            matched.append(it)
+        target_ym = cycle["target_ym"]
+        w_start = cycle.get("week_start")
+        w_end = cycle.get("week_end")
+        matched = []
+        for it in items:
+            iso_d = str(it.get("due_date_iso") or "")
+            is_weekly = False
+            if iso_d and w_start and w_end:
+                try:
+                    it_date = datetime.strptime(iso_d[:10], "%Y-%m-%d").date()
+                    is_weekly = (w_start <= it_date <= w_end)
+                except Exception:
+                    pass
 
-    return {
-        "success": True,
-        "cycle": cycle,
-        "count": len(matched),
-        "items": matched
-    }
+            if (iso_d and iso_d.startswith(target_ym)) or (cycle["round_day"] == 1 and it.get("status_key") == "overdue") or is_weekly:
+                matched.append(it)
+
+        return {
+            "success": True,
+            "cycle": cycle,
+            "count": len(matched),
+            "items": matched
+        }
+    except Exception as e:
+        print(f"Error in get_cycle_expiries: {e}")
+        return {"success": False, "count": 0, "items": [], "error": str(e)}
 
 def compute_monthly_expenses():
     if not store.initial_sync_done:
@@ -4544,9 +4556,18 @@ async def trigger_line_broadcast(payload: Dict[str, Any]):
 
 @app.post("/api/line/check-expiry")
 async def trigger_expiry_alert_check(payload: Optional[Dict[str, Any]] = None):
-    mode = (payload or {}).get("recipient_mode")
-    res = check_and_send_expiry_alerts(store.cars, recipient_mode=mode)
-    return res
+    try:
+        mode = (payload or {}).get("recipient_mode")
+        if not store.cars or not store.initial_sync_done:
+            try:
+                store.sync_from_database(force=False)
+            except Exception as se:
+                print(f"Sync cars before expiry check note: {se}")
+        res = check_and_send_expiry_alerts(store.cars, recipient_mode=mode)
+        return res
+    except Exception as e:
+        print(f"Error in trigger_expiry_alert_check endpoint: {e}")
+        return {"sent": False, "count": 0, "message": f"เกิดข้อผิดพลาด: {str(e)}", "error": str(e)}
 
 @app.post("/api/line/webhook")
 @app.post("/webhook/line")

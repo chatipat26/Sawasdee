@@ -8207,6 +8207,16 @@ class App {
     const curYear = d.getFullYear();
     const curMonth = d.getMonth() + 1; // 1..12
 
+    // สัปดาห์ปัจจุบัน (Monday ถึง Sunday) สำหรับ Weekly Warning
+    const curr = new Date(d);
+    const dayOfWeek = (curr.getDay() + 6) % 7; // 0=Mon, 6=Sun
+    const monday = new Date(curr);
+    monday.setDate(curr.getDate() - dayOfWeek);
+    monday.setHours(0, 0, 0, 0);
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    sunday.setHours(23, 59, 59, 999);
+
     let roundDay, targetYear, targetMonth, roundName, roundNameEn, badgeText, badgeTextEn;
     if (day < 16) {
       roundDay = 1;
@@ -8243,7 +8253,9 @@ class App {
       roundName,
       roundNameEn,
       badgeText,
-      badgeTextEn
+      badgeTextEn,
+      weekStart: monday,
+      weekEnd: sunday
     };
   }
 
@@ -8285,7 +8297,14 @@ class App {
       const iso = String(item.due_date_iso || "");
       const isMatchYM = iso.startsWith(cycle.targetYM);
       const isOverdueInRound1 = (cycle.roundDay === 1 && item.status_key === "overdue");
-      return isMatchYM || isOverdueInRound1;
+      let isWeekly = false;
+      if (iso && cycle.weekStart && cycle.weekEnd) {
+        try {
+          const itemDate = new Date(iso);
+          isWeekly = (itemDate >= cycle.weekStart && itemDate <= cycle.weekEnd);
+        } catch (e) {}
+      }
+      return isMatchYM || isOverdueInRound1 || isWeekly;
     });
 
     const titleEl = document.getElementById("modal-cycle-title");
@@ -8503,7 +8522,14 @@ class App {
       const iso = String(item.due_date_iso || "");
       const isMatchYM = iso.startsWith(cycle.targetYM);
       const isOverdueInRound1 = (cycle.roundDay === 1 && item.status_key === "overdue");
-      return isMatchYM || isOverdueInRound1;
+      let isWeekly = false;
+      if (iso && cycle.weekStart && cycle.weekEnd) {
+        try {
+          const itemDate = new Date(iso);
+          isWeekly = (itemDate >= cycle.weekStart && itemDate <= cycle.weekEnd);
+        } catch (e) {}
+      }
+      return isMatchYM || isOverdueInRound1 || isWeekly;
     });
     const alertCountEl = document.getElementById("dash-alert-count");
     if (alertCountEl) alertCountEl.textContent = cycleMatched.length;
@@ -9532,14 +9558,14 @@ ${e.message}`);
   }
 
   async triggerLineExpiryCheck() {
-    this.showToast("📲 กำลังตรวจสอบวันหมดอายุ พ.ร.บ./ประกันภัย และส่ง LINE...", "info");
+    this.showToast("📲 กำลังตรวจสอบวันหมดอายุ พ.ร.บ./ประกันภัย/ภาษี และส่ง LINE...", "info");
     try {
       const res = await fetch("/api/line/check-expiry", { method: "POST" });
       const data = await res.json();
       if (data.sent) {
-        this.showToast(`🚨 ส่งการแจ้งเตือนทาง LINE สำเร็จ: ${data.count} รายการ!`, "success");
+        this.showToast(`🚨 ส่งแจ้งเตือน LINE สำเร็จ: ${data.count} รายการ (${data.cycle || 'รอบปัจจุบัน'})!`, "success");
       } else {
-        this.showToast(data.message || "ไม่มีรายการครบกำหนดแจ้งเตือนในวันนี้", "info");
+        this.showToast(data.message || "ไม่มีรายการครบกำหนดแจ้งเตือนในรอบนี้", "info");
       }
     } catch (e) {
       this.showToast("เกิดข้อผิดพลาด: " + e.message, "danger");
