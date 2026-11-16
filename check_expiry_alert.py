@@ -301,37 +301,58 @@ def build_alert_message(expiring_items, cycle_info=None, header_title=None):
 
 
 def send_line_broadcast(message, channel_access_token, to_user_id=None):
-    """ส่งข้อความ Direct Push ตรงไปยังแอดมิน (หรือผู้รับที่ระบุ) เพื่อประหยัดโควต้าข้อความ LINE"""
+    """
+    ส่งข้อความ Direct Push ตรงไปยังแอดมินหรือรายชื่อผู้รับที่ระบุ:
+    - รองรับผู้รับหลายคน (Comma-separated string หรือ list)
+    - มี try-except ระดับบุคคล หาก ID ใดมีปัญหาจะไม่กระทบผู้รับคนอื่น
+    """
     if not message or not channel_access_token:
         return False
 
-    target_uid = to_user_id or os.environ.get("LINE_TARGET_USER_ID", "Ub7b6353ba826c0ba5c3d9fac3531ef77")
+    raw_ids = (
+        to_user_id
+        or os.environ.get("LINE_TARGET_USER_ID")
+        or os.environ.get("LINE_ADMIN_ID")
+        or os.environ.get("LINE_USER_ID")
+        or "Ub7b6353ba826c0ba5c3d9fac3531ef77"
+    )
+
+    target_list = []
+    if isinstance(raw_ids, (list, tuple, set)):
+        for u in raw_ids:
+            if u:
+                for sub in str(u).split(","):
+                    c = sub.strip().strip("'\"")
+                    if c and c not in target_list:
+                        target_list.append(c)
+    else:
+        for sub in str(raw_ids).split(","):
+            c = sub.strip().strip("'\"")
+            if c and c not in target_list:
+                target_list.append(c)
+
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {channel_access_token}"
     }
 
-    payload = {
-        "to": target_uid,
-        "messages": [
-            {
-                "type": "text",
-                "text": message
+    success_count = 0
+    for uid in target_list:
+        try:
+            payload = {
+                "to": uid,
+                "messages": [{"type": "text", "text": message}]
             }
-        ]
-    }
+            res = requests.post("https://api.line.me/v2/bot/message/push", headers=headers, json=payload, timeout=10)
+            if res.status_code == 200:
+                print(f"✅ ส่งข้อความแจ้งเตือนตรงถึง ({uid}) สำเร็จ (HTTP 200 OK)")
+                success_count += 1
+            else:
+                print(f"⚠️ LINE Push Error (to={uid}): HTTP {res.status_code} - {res.text}")
+        except Exception as e:
+            print(f"❌ เกิดข้อผิดพลาดขณะส่ง LINE Push ถึง {uid}: {e}")
 
-    try:
-        res = requests.post("https://api.line.me/v2/bot/message/push", headers=headers, json=payload, timeout=10)
-        if res.status_code == 200:
-            print(f"✅ ส่งข้อความแจ้งเตือนตรงถึงแอดมิน ({target_uid}) สำเร็จ (HTTP 200 OK)")
-            return True
-        else:
-            print(f"⚠️ LINE Push Error: HTTP {res.status_code} - {res.text}")
-            return False
-    except Exception as e:
-        print(f"❌ เกิดข้อผิดพลาดขณะส่ง LINE Push: {e}")
-        return False
+    return success_count > 0
 
 
 def has_already_sent_today(today_tag):

@@ -28,22 +28,63 @@ def get_line_credentials():
     return token, user_id
 
 
-def get_admin_line_id() -> str:
+def get_admin_line_ids() -> list:
     """
-    ดึง LINE User ID ของแอดมินหลัก (ตรวจสอบจากตาราง users ก่อน หากไม่มีใช้ LINE_TARGET_USER_ID)
+    ดึงรายการ LINE IDs ของผู้รับทั้งหมด (รองรับหลาย ID คั่นด้วยจุลภาค Comma-separated)
+    ตรวจสอบจากตัวแปรสภาพแวดล้อม (.env):
+    - LINE_TARGET_USER_ID
+    - LINE_ADMIN_ID
+    - LINE_USER_ID
+    - LINE_ADMIN_USER_ID
+    - GROUP_ID
+    และดึงจากบัญชีผู้ใช้ในตาราง users ที่มี role == 'admin'
     """
-    _, default_admin_uid = get_line_credentials()
+    recipients = []
+
+    # 1. อ่านจาก Environment Variables
+    env_keys = ["LINE_TARGET_USER_ID", "LINE_ADMIN_ID", "LINE_USER_ID", "LINE_ADMIN_USER_ID", "GROUP_ID"]
+    for k in env_keys:
+        val = os.environ.get(k)
+        if val:
+            for item in str(val).split(","):
+                clean = item.strip().strip("'\"")
+                if clean and clean not in recipients:
+                    recipients.append(clean)
+
+    # 2. อ่านจากตาราง users สำหรับผู้ดูแลระบบ (Admin)
     try:
         from db import store
         admin_u = store.users.get("admin") or store.users.get("Admin")
         if admin_u and str(admin_u.get("line_user_id") or "").strip():
-            return str(admin_u.get("line_user_id")).strip()
+            for item in str(admin_u.get("line_user_id")).split(","):
+                clean = item.strip().strip("'\"")
+                if clean and clean not in recipients:
+                    recipients.append(clean)
+
         for u in store.users.values():
-            if str(u.get("role") or "").lower() == "admin" and str(u.get("line_user_id") or "").strip():
-                return str(u.get("line_user_id")).strip()
-    except Exception:
-        pass
-    return default_admin_uid
+            if str(u.get("role") or "").lower() == "admin":
+                l_uid = str(u.get("line_user_id") or "").strip()
+                if l_uid and l_uid not in ["-", "None", "null"]:
+                    for item in l_uid.split(","):
+                        clean = item.strip().strip("'\"")
+                        if clean and clean not in recipients:
+                            recipients.append(clean)
+    except Exception as e:
+        print(f"Lookup admin users LINE IDs note: {e}")
+
+    # 3. Fallback หากไม่มีการตั้งค่าใดๆ เลย
+    if not recipients:
+        recipients = [LINE_TARGET_USER_ID]
+
+    return recipients
+
+
+def get_admin_line_id() -> str:
+    """
+    ดึง LINE User ID ของแอดมินหลัก (สำหรับความเข้ากันได้ย้อนหลัง คืนค่า ID แรก)
+    """
+    ids = get_admin_line_ids()
+    return ids[0] if ids else LINE_TARGET_USER_ID
 
 
 def resolve_worker_line_id(worker_name: str) -> Optional[str]:
@@ -148,43 +189,72 @@ def send_line_broadcast_message(message: str, channel_access_token: str = None) 
     return send_line_push_message(message, to_user_id=get_admin_line_id(), channel_access_token=channel_access_token)
 
 
-def send_line_push_message(message: str, to_user_id: str = None, channel_access_token: str = None) -> bool:
+def send_line_push_message(message: str, to_user_id=None, channel_access_token: str = None) -> bool:
     """
-    ส่งข้อความแบบ Direct Push (1:1) ไปยังผู้รับที่ระบุเท่านั้น (หักโควต้าเพียง 1 ข้อความ/ครั้ง)
-    ห้าม Fallback ไปเป็น Broadcast เด็ดขาดเพื่อป้องกันโควต้ารั่วไหล
+    ส่งข้อความแบบ Direct Push ไปยังผู้รับ (รองรับทั้ง ID เดียว และหลาย ID แบบ List หรือ Comma-separated)
+    - รองรับทั้ง User ID ('U...'), Group ID ('C...'), และ Room ID ('R...')
+    - มี try-except ระดับบุคคล หาก ID ใดผิดพลาด/บล็อกบอท จะไม่ทำให้ระบบหยุดชะงักและส่งต่อให้คนอื่นจนครบ
     """
     token, _ = get_line_credentials()
     act = channel_access_token or token
-    target_uid = (to_user_id or "").strip() or get_admin_line_id()
-    if not act or not target_uid:
+    if not act or not message:
         return False
+
+    # รวมรายชื่อผู้รับทั้งหมด (กำจัดค่าซ้ำและตัด whitespace)
+    target_list = []
+    if to_user_id:
+        if isinstance(to_user_id, (list, tuple, set)):
+            for u in to_user_id:
+                if u:
+                    for sub in str(u).split(","):
+                        c = sub.strip().strip("'\"")
+                        if c and c not in target_list:
+                            target_list.append(c)
+        else:
+            for sub in str(to_user_id).split(","):
+                c = sub.strip().strip("'\"")
+                if c and c not in target_list:
+                    target_list.append(c)
+    else:
+        target_list = get_admin_line_ids()
+
+    if not target_list:
+        print("[LINE] No recipient IDs found.")
+        return False
+
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {act}"
     }
-    payload = {
-        "to": target_uid,
-        "messages": [{"type": "text", "text": message}]
-    }
-    try:
-        resp = requests.post(LINE_PUSH_URL, headers=headers, json=payload, timeout=10)
-        if resp.status_code == 200:
-            return True
-        print(f"LINE Direct Push Error (to={target_uid}): HTTP {resp.status_code} - {resp.text}")
-        return False
-    except Exception as e:
-        print(f"Error sending LINE push: {e}")
-        return False
+
+    success_count = 0
+    for uid in target_list:
+        try:
+            payload = {
+                "to": uid,
+                "messages": [{"type": "text", "text": message}]
+            }
+            resp = requests.post(LINE_PUSH_URL, headers=headers, json=payload, timeout=10)
+            if resp.status_code == 200:
+                success_count += 1
+                print(f"✅ ส่ง LINE Direct Push สำเร็จ (to={uid}) [HTTP 200]")
+            else:
+                print(f"⚠️ LINE Direct Push Error (to={uid}): HTTP {resp.status_code} - {resp.text}")
+        except Exception as e:
+            # ดักจับข้อผิดพลาดระดับบุคคล เพื่อไม่ให้กระทบผู้รับคนอื่นในรายการ
+            print(f"❌ Exception sending LINE push to {uid}: {e}")
+
+    return success_count > 0
 
 
-def send_line_push_async(message: str, to_user_id: str = None):
+def send_line_push_async(message: str, to_user_id=None):
     """
-    ส่งข้อความแบบ asynchronous ไปยัง to_user_id เท่านั้น (หากไม่ระบุจะส่งตรงหาแอดมิน ไม่ Broadcast)
+    ส่งข้อความแบบ asynchronous ไปยัง to_user_id (รองรับทั้ง ID เดี่ยวและหลายคน)
     """
-    target_uid = (to_user_id or "").strip() or get_admin_line_id()
+    targets = to_user_id or get_admin_line_ids()
 
     def _worker():
-        send_line_push_message(message, to_user_id=target_uid)
+        send_line_push_message(message, to_user_id=targets)
 
     try:
         t = threading.Thread(target=_worker, daemon=True)
@@ -195,13 +265,13 @@ def send_line_push_async(message: str, to_user_id: str = None):
 
 def send_line_to_admin_async(message: str):
     """
-    ส่งข้อความแจ้งเตือนตรงเข้าแอดมินเท่านั้น (เช่น เงินมัดจำ, ชำระค่าเช่า, ค่าใช้จ่าย, วันหมดอายุ)
+    ส่งข้อความแจ้งเตือนตรงเข้าแอดมินทุกคน
     """
-    admin_uid = get_admin_line_id()
-    if not admin_uid:
+    admin_uids = get_admin_line_ids()
+    if not admin_uids:
         print("[LINE] No Admin LINE User ID configured.")
         return
-    send_line_push_async(message, to_user_id=admin_uid)
+    send_line_push_async(message, to_user_id=admin_uids)
 
 
 def send_line_to_worker_async(message: str, worker_name: str) -> bool:
@@ -365,14 +435,15 @@ def check_and_send_expiry_alerts(cars_dict=None, target_days=None, recipient_mod
         if not expiring or len(expiring) == 0:
             # เงื่อนไขกรณีไม่มีรถเข้าเกณฑ์ (count == 0): ส่ง Fallback Message ทาง LINE
             fallback_msg = build_alert_message([], cycle_info=cycle_info, header_title=active_cycle_title)
-            admin_uid = get_admin_line_id()
-            success = send_line_push_message(fallback_msg, to_user_id=admin_uid)
+            admin_uids = get_admin_line_ids()
+            success = send_line_push_message(fallback_msg, to_user_id=admin_uids)
             return {
                 "sent": success,
                 "count": 0,
                 "recipient_mode": mode,
                 "check_mode": check_mode,
                 "cycle": active_cycle_title,
+                "recipients": admin_uids,
                 "items": [],
                 "message": "ไม่มีรถครบกำหนดต่ออายุประกัน พ.ร.บ. ภาษี ในรอบนี้"
             }
@@ -380,9 +451,10 @@ def check_and_send_expiry_alerts(cars_dict=None, target_days=None, recipient_mod
         if mode == "customer":
             # โหมดอนาคต: แยกส่งหาลูกค้าของแต่ละคัน หากไม่มี LINE ID ของลูกค้าให้ส่งเข้าแอดมิน
             grouped_by_target = {}
-            admin_uid = get_admin_line_id()
+            admin_uids = get_admin_line_ids()
+            fallback_admin = admin_uids[0] if admin_uids else LINE_TARGET_USER_ID
             for item in expiring:
-                cust_uid = resolve_customer_line_id_for_car(item.get("plate")) or admin_uid
+                cust_uid = resolve_customer_line_id_for_car(item.get("plate")) or fallback_admin
                 grouped_by_target.setdefault(cust_uid, []).append(item)
 
             any_sent = False
@@ -393,16 +465,17 @@ def check_and_send_expiry_alerts(cars_dict=None, target_days=None, recipient_mod
             msg = build_alert_message(expiring, cycle_info=cycle_info, header_title=active_cycle_title)
             return {"sent": any_sent, "count": len(expiring), "recipient_mode": mode, "check_mode": check_mode, "cycle": active_cycle_title, "items": expiring, "message": msg}
         else:
-            # โหมดปัจจุบัน: ส่งตรงหาแอดมินเท่านั้น (Direct Push 1:1)
+            # โหมดปัจจุบัน: ส่งตรงหาแอดมินทุกคนที่ลงทะเบียน (Direct Push Multi-Recipient)
             msg = build_alert_message(expiring, cycle_info=cycle_info, header_title=active_cycle_title)
-            admin_uid = get_admin_line_id()
-            success = send_line_push_message(msg, to_user_id=admin_uid)
+            admin_uids = get_admin_line_ids()
+            success = send_line_push_message(msg, to_user_id=admin_uids)
             return {
                 "sent": success,
                 "count": len(expiring),
                 "recipient_mode": "admin",
                 "check_mode": check_mode,
                 "cycle": active_cycle_title,
+                "recipients": admin_uids,
                 "items": expiring,
                 "message": msg if success else "ไม่สามารถส่งข้อความ LINE ได้ กรุณาตรวจสอบการตั้งค่า LINE ID"
             }
