@@ -1,23 +1,80 @@
 import os
 import sys
 import base64
+import hashlib
+import hmac
+import secrets
 import time
 import threading
 import re
 import json
 from datetime import datetime, date, time as d_time, timedelta
 
+from database import load_env_file
+
+load_env_file()
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-INTERNAL_DATABASE_URL = "postgresql://sawasdeedb:Sawasdee_Secure_2026_Db@svvconnectct-sawasdeedb-m78xfy:5432/sawasdee_db"
-DATABASE_URL = os.environ.get("DATABASE_URL", INTERNAL_DATABASE_URL)
+DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
+
+PASSWORD_HASH_PREFIX = "pbkdf2_sha256$"
+PASSWORD_HASH_ITERATIONS = 260000
+
+
+def is_password_hashed(stored_pw: str) -> bool:
+    """Return True if stored_pw already uses the PBKDF2-SHA256 hash format."""
+    return isinstance(stored_pw, str) and stored_pw.startswith(PASSWORD_HASH_PREFIX)
+
+
+def hash_password(plain_pw: str) -> str:
+    """Hash a plaintext password using PBKDF2-HMAC-SHA256 with a random 16-byte salt."""
+    if not plain_pw:
+        return ""
+    if is_password_hashed(plain_pw):
+        return plain_pw
+    salt = secrets.token_hex(16)
+    dk = hashlib.pbkdf2_hmac(
+        "sha256",
+        plain_pw.encode("utf-8"),
+        salt.encode("utf-8"),
+        PASSWORD_HASH_ITERATIONS,
+    ).hex()
+    return f"{PASSWORD_HASH_PREFIX}{PASSWORD_HASH_ITERATIONS}${salt}${dk}"
+
+
+def verify_password(plain_pw: str, stored_pw: str) -> tuple[bool, bool]:
+    """
+    Verify plain_pw against stored_pw.
+    Returns (is_valid, needs_migration) where needs_migration=True indicates a
+    legacy plaintext password matched and should be upgraded to a hash.
+    """
+    if not plain_pw or not stored_pw:
+        return False, False
+    if is_password_hashed(stored_pw):
+        try:
+            _, iter_str, salt, expected_hash = stored_pw.split("$", 3)
+            actual_hash = hashlib.pbkdf2_hmac(
+                "sha256",
+                plain_pw.encode("utf-8"),
+                salt.encode("utf-8"),
+                int(iter_str),
+            ).hex()
+            return hmac.compare_digest(actual_hash, expected_hash), False
+        except Exception:
+            return False, False
+    matched = hmac.compare_digest(stored_pw.encode("utf-8"), plain_pw.encode("utf-8"))
+    return (True, True) if matched else (False, False)
+
 
 _db_client = None
 def get_db_client():
     global _db_client
     if _db_client is not None:
         return _db_client
-    db_url = os.environ.get("DATABASE_URL", INTERNAL_DATABASE_URL)
+    db_url = (os.getenv("DATABASE_URL") or DATABASE_URL or "").strip()
+    if not db_url:
+        return None
     try:
         from pg_client import PgClient
         _db_client = PgClient(db_url)
@@ -276,8 +333,8 @@ DEFAULT_USERS = {
         "name": "ผู้ดูแลระบบ (Admin)",
         "role": "Admin",
         "status": "approved",
-        "password": "admin",
-        "line_user_id": os.environ.get("LINE_TARGET_USER_ID", "Ub7b6353ba826c0ba5c3d9fac3531ef77")
+        "password": os.getenv("DEFAULT_ADMIN_PASSWORD", ""),
+        "line_user_id": os.getenv("LINE_TARGET_USER_ID", "")
     }
 }
 
@@ -450,7 +507,9 @@ class DataStore:
                             else:
                                 merged_u[un] = dict(u_data)
                         if "admin" in merged_u and not merged_u["admin"].get("line_user_id"):
-                            merged_u["admin"]["line_user_id"] = os.environ.get("LINE_TARGET_USER_ID", "Ub7b6353ba826c0ba5c3d9fac3531ef77")
+                            admin_line_uid = os.getenv("LINE_TARGET_USER_ID", "").strip()
+                            if admin_line_uid:
+                                merged_u["admin"]["line_user_id"] = admin_line_uid
                         self.users = merged_u
                     self.save_local_users()
             except Exception as e:

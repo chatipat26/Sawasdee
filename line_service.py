@@ -6,26 +6,27 @@ import requests
 from datetime import datetime, date, timedelta
 from typing import Optional
 
+from database import load_env_file
+
+load_env_file()
+
 LINE_BROADCAST_URL = "https://api.line.me/v2/bot/message/broadcast"
 LINE_MULTICAST_URL = "https://api.line.me/v2/bot/message/multicast"
 LINE_PUSH_URL = "https://api.line.me/v2/bot/message/push"
 LINE_REPLY_URL = "https://api.line.me/v2/bot/message/reply"
 
-LINE_DEFAULT_CHANNEL_ACCESS_TOKEN = (
-    "V9Sc5Zmu4av4UzX+NbGNmkNCWM21aKchTJQw8ueOsGwilCWGv9c+AEqFtrKC4OG0fVwFy7l+"
-    "wa5FVw0nrBGx8mz6zAHcdBY5hn4eBJApNwQ7oXOhSfgvzKHjxh6UGkqytCrLndQQAcVxcI+FFcGxMwdB04t89/1O/w1cDnyilFU="
-)
-LINE_TARGET_USER_ID = "Ub7b6353ba826c0ba5c3d9fac3531ef77"
+LINE_DEFAULT_CHANNEL_ACCESS_TOKEN = os.getenv("LINE_CHANNEL_ACCESS_TOKEN", "")
+LINE_TARGET_USER_ID = os.getenv("LINE_TARGET_USER_ID", "")
 
 # โหมดผู้รับแจ้งเตือนวันหมดอายุ พ.ร.บ./ประกันภัย/ภาษี:
 # - "admin"    = ส่งหาแอดมินเท่านั้น (ค่าเริ่มต้นปัจจุบัน)
 # - "customer" = ส่งหาลูกค้าผู้เช่า/เจ้าของรถโดยตรง (สำหรับเปิดใช้งานในอนาคต)
-EXPIRY_ALERT_RECIPIENT_MODE = os.environ.get("EXPIRY_ALERT_RECIPIENT_MODE", "admin")
+EXPIRY_ALERT_RECIPIENT_MODE = os.getenv("EXPIRY_ALERT_RECIPIENT_MODE", "admin")
 
 
 def get_line_credentials():
-    token = str(os.environ.get("LINE_CHANNEL_ACCESS_TOKEN") or LINE_DEFAULT_CHANNEL_ACCESS_TOKEN).strip()
-    user_id = str(os.environ.get("LINE_TARGET_USER_ID") or LINE_TARGET_USER_ID).strip()
+    token = str(os.getenv("LINE_CHANNEL_ACCESS_TOKEN") or "").strip()
+    user_id = str(os.getenv("LINE_TARGET_USER_ID") or "").strip()
     return token, user_id
 
 
@@ -45,7 +46,7 @@ def get_admin_line_ids() -> list:
         # 1. อ่านจาก Environment Variables
         env_keys = ["LINE_TARGET_USER_ID", "LINE_ADMIN_ID", "LINE_USER_ID", "LINE_ADMIN_USER_ID", "GROUP_ID"]
         for k in env_keys:
-            val = os.environ.get(k)
+            val = os.getenv(k)
             if val:
                 for item in str(val).split(","):
                     clean = item.strip().strip("'\"")
@@ -78,7 +79,9 @@ def get_admin_line_ids() -> list:
 
     # 3. Fallback หากไม่มีการตั้งค่าใดๆ เลย
     if not recipients:
-        recipients = [LINE_TARGET_USER_ID]
+        default_uid = str(os.getenv("LINE_TARGET_USER_ID") or "").strip()
+        if default_uid:
+            recipients = [default_uid]
 
     return recipients
 
@@ -88,7 +91,7 @@ def get_admin_line_id() -> str:
     ดึง LINE User ID ของแอดมินหลัก (สำหรับความเข้ากันได้ย้อนหลัง คืนค่า ID แรก)
     """
     ids = get_admin_line_ids()
-    return ids[0] if ids else LINE_TARGET_USER_ID
+    return ids[0] if ids else str(os.getenv("LINE_TARGET_USER_ID") or "").strip()
 
 
 def resolve_worker_line_id(worker_name: str) -> Optional[str]:
@@ -554,10 +557,11 @@ def check_and_send_expiry_alerts(cars_dict=None, target_days=None, recipient_mod
         if mode == "customer":
             # โหมดอนาคต: แยกส่งหาลูกค้าของแต่ละคัน หากไม่มี LINE ID ของลูกค้าให้ส่งเข้าแอดมิน
             grouped_by_target = {}
-            fallback_admin = admin_uids[0] if admin_uids else LINE_TARGET_USER_ID
+            fallback_admin = admin_uids[0] if admin_uids else str(os.getenv("LINE_TARGET_USER_ID") or "").strip()
             for item in expiring:
                 cust_uid = resolve_customer_line_id_for_car(item.get("plate")) or fallback_admin
-                grouped_by_target.setdefault(cust_uid, []).append(item)
+                if cust_uid:
+                    grouped_by_target.setdefault(cust_uid, []).append(item)
 
             any_sent = False
             for uid, items_for_uid in grouped_by_target.items():

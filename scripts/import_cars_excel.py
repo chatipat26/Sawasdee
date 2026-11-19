@@ -51,10 +51,7 @@ try:
     import database
     PROJECT_DB_URL = database.DATABASE_URL
 except Exception:
-    PROJECT_DB_URL = os.environ.get(
-        "DATABASE_URL",
-        "postgresql://sawasdeedb:Sawasdee_Secure_2026_Db@svvconnectct-sawasdeedb-m78xfy:5432/sawasdee_db"
-    )
+    PROJECT_DB_URL = os.getenv("DATABASE_URL", "").strip()
 
 
 def clean_val(v):

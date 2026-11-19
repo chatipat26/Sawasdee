@@ -2,11 +2,16 @@ import os
 import pandas as pd
 import numpy as np
 from sqlalchemy import create_engine, text
+from database import load_env_file
 
-# 1. ใส่ URL ของ Database ตรงๆ (แก้ไขเป็น IP และ Port ตาม DBeaver)
-DATABASE_URL = "postgresql://sawasdeedb:Sawasdee_Secure_2026_Db@187.127.218.96:5433/sawasdee_db"
+load_env_file()
 
-print(f"🔗 กำลังเชื่อมต่อฐานข้อมูลที่ 187.127.218.96:5433...")
+DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
+if not DATABASE_URL:
+    print("❌ ยังไม่ได้ตั้งค่า DATABASE_URL ใน Environment / .env")
+    exit(1)
+
+print("🔗 กำลังเชื่อมต่อฐานข้อมูล PostgreSQL...")
 engine = create_engine(DATABASE_URL)
 
 # 2. ตั้งค่าชื่อไฟล์ Excel 

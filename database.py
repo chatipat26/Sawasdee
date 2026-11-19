@@ -2,25 +2,63 @@ import os
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, declarative_base
 
-INTERNAL_DATABASE_URL = "postgresql://sawasdeedb:Sawasdee_Secure_2026_Db@svvconnectct-sawasdeedb-m78xfy:5432/sawasdee_db"
-DATABASE_URL = os.environ.get("DATABASE_URL", INTERNAL_DATABASE_URL)
+
+def load_env_file(env_path=None):
+    """Load key-value pairs from .env into os.environ without overwriting existing env vars."""
+    target = env_path or os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+    try:
+        from dotenv import load_dotenv
+        load_dotenv(dotenv_path=target, override=False)
+        return
+    except ImportError:
+        pass
+
+    if not os.path.isfile(target):
+        return
+    try:
+        with open(target, "r", encoding="utf-8") as f:
+            for raw_line in f:
+                line = raw_line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                if line.startswith("export "):
+                    line = line[len("export "):].strip()
+                key, value = line.split("=", 1)
+                key = key.strip()
+                value = value.strip()
+                if len(value) >= 2 and value[0] == value[-1] and value[0] in ('"', "'"):
+                    value = value[1:-1]
+                if key:
+                    os.environ.setdefault(key, value)
+    except Exception as e:
+        print(f"Environment file load note: {e}")
+
+
+load_env_file()
+
+DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 
 if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
-try:
-    _connect_args = {"connect_timeout": 5} if DATABASE_URL.startswith("postgresql") else {}
-    engine = create_engine(
-        DATABASE_URL,
-        pool_pre_ping=True,
-        pool_recycle=300,
-        connect_args=_connect_args,
-    )
-    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-except Exception as e:
+if DATABASE_URL:
+    try:
+        _connect_args = {"connect_timeout": 5} if DATABASE_URL.startswith("postgresql") else {}
+        engine = create_engine(
+            DATABASE_URL,
+            pool_pre_ping=True,
+            pool_recycle=300,
+            connect_args=_connect_args,
+        )
+        SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    except Exception as e:
+        engine = None
+        SessionLocal = None
+        print(f"SQLAlchemy engine setup note: {e}")
+else:
     engine = None
     SessionLocal = None
-    print(f"SQLAlchemy engine setup note: {e}")
+    print("SQLAlchemy engine disabled: DATABASE_URL environment variable is not set.")
 
 Base = declarative_base()
 

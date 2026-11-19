@@ -3,6 +3,10 @@ import sys
 import requests
 from datetime import datetime, date, timedelta
 
+from database import load_env_file
+
+load_env_file()
+
 # ตั้งค่า encoding บน Windows CP874
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -10,14 +14,11 @@ if hasattr(sys.stderr, "reconfigure"):
     sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
 LINE_BROADCAST_URL = "https://api.line.me/v2/bot/message/broadcast"
-LINE_DEFAULT_CHANNEL_ACCESS_TOKEN = (
-    "V9Sc5Zmu4av4UzX+NbGNmkNCWM21aKchTJQw8ueOsGwilCWGv9c+AEqFtrKC4OG0fVwFy7l+"
-    "wa5FVw0nrBGx8mz6zAHcdBY5hn4eBJApNwQ7oXOhSfgvzKHjxh6UGkqytCrLndQQAcVxcI+FFcGxMwdB04t89/1O/w1cDnyilFU="
-)
+LINE_DEFAULT_CHANNEL_ACCESS_TOKEN = os.getenv("LINE_CHANNEL_ACCESS_TOKEN", "")
 
 
 def get_credentials():
-    return os.environ.get("LINE_CHANNEL_ACCESS_TOKEN", LINE_DEFAULT_CHANNEL_ACCESS_TOKEN)
+    return os.getenv("LINE_CHANNEL_ACCESS_TOKEN", "").strip()
 
 
 def _get_db():
@@ -311,10 +312,10 @@ def send_line_broadcast(message, channel_access_token, to_user_id=None):
 
     raw_ids = (
         to_user_id
-        or os.environ.get("LINE_TARGET_USER_ID")
-        or os.environ.get("LINE_ADMIN_ID")
-        or os.environ.get("LINE_USER_ID")
-        or "Ub7b6353ba826c0ba5c3d9fac3531ef77"
+        or os.getenv("LINE_TARGET_USER_ID")
+        or os.getenv("LINE_ADMIN_ID")
+        or os.getenv("LINE_USER_ID")
+        or ""
     )
 
     target_list = []

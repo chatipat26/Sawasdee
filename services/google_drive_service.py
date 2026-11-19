@@ -14,6 +14,10 @@ import re
 from datetime import datetime
 from typing import Optional, Dict, Any, Union, Tuple
 
+from database import load_env_file
+
+load_env_file()
+
 # =========================================================================
 # GOOGLE DRIVE TARGET SUB-FOLDERS (Strict Routing Rules)
 # =========================================================================
@@ -106,10 +110,7 @@ def resolve_folder_id(folder_id: Optional[str] = None, doc_type: Optional[str] =
         return folder_id.strip()
     return get_target_folder_by_doctype(doc_type)
 
-GOOGLE_APPS_SCRIPT_URL = os.environ.get(
-    "GOOGLE_DRIVE_WEBHOOK_URL",
-    "https://script.google.com/macros/s/AKfycbym7RQvghcv9rODPXp_Poc_wsAgR6sX1vQhchqSvW0P_QU7B5jPlZUiwMjGC2hnlUDlvg/exec"
-)
+GOOGLE_APPS_SCRIPT_URL = os.getenv("GOOGLE_DRIVE_WEBHOOK_URL", "").strip()
 
 try:
     from googleapiclient.http import MediaIoBaseUpload

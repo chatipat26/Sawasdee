@@ -43,7 +43,10 @@ from db import (
     DEFAULT_HP_LEASING,
     DEFAULT_HP_SUMMARY,
     DEFAULT_PROPERTY_INSURANCE,
-    deduplicate_cars_dict
+    deduplicate_cars_dict,
+    hash_password,
+    verify_password,
+    is_password_hashed
 )
 import pdf_engine
 from line_service import (
@@ -366,81 +369,42 @@ async def trigger_cars_migration():
 async def login(payload: Dict[str, Any]):
     un = str(payload.get("username", "")).strip()
     pw = str(payload.get("password", "")).strip()
-    
+
     if not un or not pw:
         raise HTTPException(status_code=400, detail="กรุณากรอกชื่อผู้ใช้งานและรหัสผ่าน")
 
     user_rec = None
+    needs_migration = False
+    db_checked_user = False
 
-    # 1. In-memory / users table match with real password check (instant response)
-    for k, v in store.users.items():
-        if k.lower() == un.lower() or (v.get("email") and v.get("email").lower() == un.lower()):
-            stored_pw = str(v.get("password", "")).strip()
-            is_admin = (k.lower() in ["admin", "administrator"])
-            pw_matched = (stored_pw and (stored_pw == pw or stored_pw.lower() == pw.lower()))
-            if not pw_matched and is_admin:
-                pw_matched = (pw in ["admin", "admin123", "sawasdee2024", "sawasdee", "A248624"])
-            elif not pw_matched and k.lower() in ["chatipat", "chati"]:
-                pw_matched = (pw in ["admin123", "admin", "sawasdee2024", "123456", "Chatipat@2024", "A248624"])
-            elif not pw_matched and k.lower() in ["chaiwat.u", "chaiwat"]:
-                pw_matched = (pw in ["A248624", "admin123", "123456"])
-            
-            if pw_matched:
-                user_rec = dict(v)
-                break
+    sb = get_db_client()
 
-    # 2. Standard fallback accounts before hitting external network
-    if not user_rec and un.lower() in ["admin", "administrator"] and pw in ["admin", "admin123", "sawasdee2024", "sawasdee", "A248624"]:
-        user_rec = {"username": "admin", "name": "ผู้ดูแลระบบ (Admin)", "role": "Admin", "status": "approved"}
-    elif not user_rec and un.lower() in ["chatipat", "chati"] and pw in ["admin123", "admin", "sawasdee2024", "123456", "Chatipat@2024", "A248624"]:
-        user_rec = {"username": "Chatipat", "name": "Chatipat", "role": "Admin", "status": "approved"}
-    elif not user_rec and un.lower() in ["chaiwat.u", "chaiwat"] and pw in ["A248624", "admin123", "123456"]:
-        user_rec = {"username": "chaiwat.u", "name": "chaiwat.u", "role": "Staff", "status": "approved"}
-
-    sb = get_db_client() if not user_rec else None
-
-    # 3. Direct query to PostgreSQL users table with password check
-    if not user_rec and sb:
+    # 1. Query PostgreSQL users table directly first (authoritative source)
+    if sb:
         try:
             res = sb.table("users").select("*").ilike("username", un).execute()
             if res.data:
+                db_checked_user = True
                 for row in res.data:
                     stored_pw = str(row.get("password", "")).strip()
-                    if stored_pw and (stored_pw == pw or stored_pw.lower() == pw.lower()):
+                    matched, needs_mig = verify_password(pw, stored_pw)
+                    if matched:
                         user_rec = dict(row)
+                        needs_migration = needs_mig
                         break
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"Login DB lookup note: {e}")
 
-    # 4. Standard admin credentials check if not in db table yet
-    if not user_rec and un.lower() in ["admin", "administrator"]:
-        if pw in ["admin", "admin123", "sawasdee2024", "sawasdee", "A248624"]:
-            user_rec = {
-                "username": "admin",
-                "name": "ผู้ดูแลระบบ (Admin)",
-                "role": "Admin",
-                "status": "approved"
-            }
-
-    # 5. Standard Chatipat credentials check
-    if not user_rec and un.lower() in ["chatipat", "chati"]:
-        if pw in ["admin123", "admin", "sawasdee2024", "123456", "Chatipat@2024", "A248624"]:
-            user_rec = {
-                "username": "Chatipat",
-                "name": "Chatipat",
-                "role": "Admin",
-                "status": "approved"
-            }
-
-    # 6. Standard chaiwat.u credentials check
-    if not user_rec and un.lower() in ["chaiwat.u", "chaiwat"]:
-        if pw in ["A248624", "admin123", "123456"]:
-            user_rec = {
-                "username": "chaiwat.u",
-                "name": "chaiwat.u",
-                "role": "Staff",
-                "status": "approved"
-            }
+    # 2. Fallback to local store only if user was not matched/found in PostgreSQL lookup
+    if not user_rec and not db_checked_user:
+        for k, v in store.users.items():
+            if k.lower() == un.lower() or (v.get("email") and str(v.get("email")).lower() == un.lower()):
+                stored_pw = str(v.get("password", "")).strip()
+                matched, needs_mig = verify_password(pw, stored_pw)
+                if matched:
+                    user_rec = dict(v)
+                    needs_migration = needs_mig
+                    break
 
     if not user_rec:
         raise HTTPException(status_code=401, detail="ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง")
@@ -459,8 +423,20 @@ async def login(payload: Dict[str, Any]):
         )
 
     canon_un = user_rec.get("username", un)
-    if canon_un not in store.users:
+    if needs_migration:
+        hashed_pw = hash_password(pw)
+        user_rec["password"] = hashed_pw
+        if sb:
+            try:
+                sb.table("users").update({"password": hashed_pw}).eq("username", canon_un).execute()
+            except Exception as e:
+                print(f"Password migration DB update note: {e}")
         store.async_sync_user(canon_un, user_rec)
+    elif canon_un not in store.users:
+        store.async_sync_user(canon_un, user_rec)
+    else:
+        with store.lock:
+            store.users[canon_un].update(user_rec)
 
     return {
         "success": True,
@@ -484,13 +460,24 @@ async def register(payload: Dict[str, Any]):
         raise HTTPException(status_code=400, detail="กรุณากรอกชื่อผู้ใช้งานและรหัสผ่าน")
     if not line_id:
         raise HTTPException(status_code=400, detail="กรุณากรอกไอดีไลน์ (LINE ID / LINE User ID) เพื่อใช้รับแจ้งเตือนใบงาน")
-    if un in store.users:
+    if any(k.lower() == un for k in store.users):
         raise HTTPException(status_code=400, detail="ชื่อผู้ใช้นี้มีในระบบแล้ว")
+
+    sb = get_db_client()
+    if sb:
+        try:
+            existing = sb.table("users").select("username").ilike("username", un).execute()
+            if existing.data:
+                raise HTTPException(status_code=400, detail="ชื่อผู้ใช้นี้มีในระบบแล้ว")
+        except HTTPException:
+            raise
+        except Exception as e:
+            print(f"Register DB check note: {e}")
 
     new_u = {
         "username": un,
         "name": fn or un,
-        "password": pw,
+        "password": hash_password(pw),
         "role": "Staff",
         "status": "pending",
         "line_user_id": line_id,
@@ -504,11 +491,38 @@ async def change_password(payload: Dict[str, Any]):
     un = str(payload.get("username", "")).strip()
     old_pw = str(payload.get("old_password", "")).strip()
     new_pw = str(payload.get("new_password", "")).strip()
-    user = store.users.get(un)
-    if not user or user.get("password") != old_pw:
+    if not un or not old_pw or not new_pw:
+        raise HTTPException(status_code=400, detail="กรุณากรอกข้อมูลให้ครบถ้วน")
+
+    user_key = next((k for k in store.users if k.lower() == un.lower()), None)
+    user = dict(store.users[user_key]) if user_key else None
+
+    sb = get_db_client()
+    if sb:
+        try:
+            res = sb.table("users").select("*").ilike("username", un).execute()
+            if res.data:
+                user = dict(res.data[0])
+                user_key = user.get("username", un)
+        except Exception as e:
+            print(f"Change password DB lookup note: {e}")
+
+    if not user:
         raise HTTPException(status_code=400, detail="รหัสผ่านเดิมไม่ถูกต้อง")
-    user["password"] = new_pw
-    store.async_sync_user(un, user)
+
+    matched, _ = verify_password(old_pw, str(user.get("password", "")).strip())
+    if not matched:
+        raise HTTPException(status_code=400, detail="รหัสผ่านเดิมไม่ถูกต้อง")
+
+    hashed_new_pw = hash_password(new_pw)
+    user["password"] = hashed_new_pw
+    canon_un = user_key or un
+    if sb:
+        try:
+            sb.table("users").update({"password": hashed_new_pw}).eq("username", canon_un).execute()
+        except Exception as e:
+            print(f"Change password DB update note: {e}")
+    store.async_sync_user(canon_un, user)
     return {"success": True, "message": "เปลี่ยนรหัสผ่านเรียบร้อย"}
 
 @app.get("/api/users")

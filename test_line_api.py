@@ -1,5 +1,10 @@
+import os
 import sys
 import requests
+
+from database import load_env_file
+
+load_env_file()
 
 # ตั้งค่า encoding ของ stdout/stderr ให้รองรับ UTF-8 (ป้องกัน UnicodeEncodeError บน Windows CP874)
 if hasattr(sys.stdout, "reconfigure"):
@@ -7,26 +12,27 @@ if hasattr(sys.stdout, "reconfigure"):
 if hasattr(sys.stderr, "reconfigure"):
     sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
-# ข้อมูลการตั้งค่า LINE Messaging API
-LINE_CHANNEL_ACCESS_TOKEN = (
-    "V9Sc5Zmu4av4UzX+NbGNmkNCWM21aKchTJQw8ueOsGwilCWGv9c+AEqFtrKC4OG0fVwFy7l+"
-    "wa5FVw0nrBGx8mz6zAHcdBY5hn4eBJApNwQ7oXOhSfgvzKHjxh6UGkqytCrLndQQAcVxcI+FFcGxMwdB04t89/1O/w1cDnyilFU="
-)
-LINE_TARGET_USER_ID = "Ub7b6353ba826c0ba5c3d9fac3531ef77"
+# ข้อมูลการตั้งค่า LINE Messaging API (อ่านจาก Environment Variables)
+LINE_CHANNEL_ACCESS_TOKEN = os.getenv("LINE_CHANNEL_ACCESS_TOKEN", "").strip()
+LINE_TARGET_USER_ID = os.getenv("LINE_TARGET_USER_ID", "").strip()
 LINE_PUSH_URL = "https://api.line.me/v2/bot/message/push"
 LINE_BROADCAST_URL = "https://api.line.me/v2/bot/message/broadcast"
 
 
 def send_line_broadcast_message(
     message: str,
-    channel_access_token: str = LINE_CHANNEL_ACCESS_TOKEN
+    channel_access_token: str = None
 ) -> bool:
     """
     ฟังก์ชันส่งข้อความบรอดแคสต์ไปยังทุกคนที่เป็นเพื่อนกับบอท (ไม่ต้องใช้ User ID)
     """
+    token = (channel_access_token or os.getenv("LINE_CHANNEL_ACCESS_TOKEN", "")).strip()
+    if not token:
+        print("❌ ยังไม่ได้ตั้งค่า LINE_CHANNEL_ACCESS_TOKEN ใน Environment / .env")
+        return False
     headers = {
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {channel_access_token}"
+        "Authorization": f"Bearer {token}"
     }
 
     payload = {
@@ -60,7 +66,7 @@ def send_line_broadcast_message(
 def send_line_push_message(
     to_user_id: str,
     message: str,
-    channel_access_token: str = LINE_CHANNEL_ACCESS_TOKEN
+    channel_access_token: str = None
 ) -> bool:
     """
     ฟังก์ชันส่งข้อความแจ้งเตือนไปยังผู้ใช้หรือกลุ่มผ่าน LINE Messaging API (Push Message)
@@ -70,9 +76,13 @@ def send_line_push_message(
     :param channel_access_token: LINE Channel Access Token
     :return: True หากส่งสำเร็จ, False หากเกิดข้อผิดพลาด
     """
+    token = (channel_access_token or os.getenv("LINE_CHANNEL_ACCESS_TOKEN", "")).strip()
+    if not token:
+        print("❌ ยังไม่ได้ตั้งค่า LINE_CHANNEL_ACCESS_TOKEN ใน Environment / .env")
+        return False
     headers = {
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {channel_access_token}"
+        "Authorization": f"Bearer {token}"
     }
 
     payload = {
