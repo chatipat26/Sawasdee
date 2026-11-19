@@ -68,20 +68,26 @@ def verify_password(plain_pw: str, stored_pw: str) -> tuple[bool, bool]:
 
 
 _db_client = None
+_db_client_lock = threading.Lock()
+
+
 def get_db_client():
     global _db_client
     if _db_client is not None:
         return _db_client
-    db_url = (os.getenv("DATABASE_URL") or DATABASE_URL or "").strip()
-    if not db_url:
-        return None
-    try:
-        from pg_client import PgClient
-        _db_client = PgClient(db_url)
-        return _db_client
-    except Exception as e:
-        print(f"PostgreSQL client init error: {e}")
-        return None
+    with _db_client_lock:
+        if _db_client is not None:
+            return _db_client
+        db_url = (os.getenv("DATABASE_URL") or DATABASE_URL or "").strip()
+        if not db_url:
+            return None
+        try:
+            from pg_client import PgClient
+            _db_client = PgClient(db_url)
+            return _db_client
+        except Exception as e:
+            print(f"PostgreSQL client init error: {e}")
+            return None
 
 # -------------------------------------------------------------------------
 # DATE & TIME HELPERS
@@ -380,6 +386,8 @@ class DataStore:
         self.is_syncing = False
         self.initial_sync_done = False
         self.lock = threading.RLock()
+        self.file_lock = threading.RLock()
+        self.sync_lock = threading.Lock()
         self.load_local_cars()
         self.load_local_users()
         self.load_local_maintenance()
@@ -396,20 +404,37 @@ class DataStore:
         self.insurance_records = []
         self.load_local_insurance_records()
 
+    def _write_json_snapshot(self, filepath, build_payload):
+        """Serialize in-memory state under self.lock and write to disk under self.file_lock."""
+        try:
+            with self.lock:
+                serialized = json.dumps(build_payload(), ensure_ascii=False, indent=2)
+            with self.file_lock:
+                with open(filepath, "w", encoding="utf-8") as f:
+                    f.write(serialized)
+        except Exception as e:
+            print(f"Error saving local cache ({os.path.basename(filepath)}): {e}")
+
+    def _read_json_file(self, filepath):
+        """Safely read and parse JSON file under self.file_lock."""
+        with self.file_lock:
+            if not os.path.exists(filepath):
+                return None
+            with open(filepath, "r", encoding="utf-8") as f:
+                return json.load(f)
+
     def load_local_users(self):
         merged = {k: dict(v) for k, v in DEFAULT_USERS.items()}
         try:
-            if os.path.exists(self.users_file):
-                with open(self.users_file, "r", encoding="utf-8") as f:
-                    data = json.load(f)
-                    if isinstance(data, dict):
-                        for k, v in data.items():
-                            if not isinstance(v, dict):
-                                continue
-                            if k in merged:
-                                merged[k].update(v)
-                            else:
-                                merged[k] = dict(v)
+            data = self._read_json_file(self.users_file)
+            if isinstance(data, dict):
+                for k, v in data.items():
+                    if not isinstance(v, dict):
+                        continue
+                    if k in merged:
+                        merged[k].update(v)
+                    else:
+                        merged[k] = dict(v)
         except Exception as e:
             print(f"Error loading local users: {e}")
         with self.lock:
@@ -417,32 +442,25 @@ class DataStore:
         self.save_local_users()
 
     def save_local_users(self):
-        try:
-            with self.lock:
-                payload = dict(self.users)
-            with open(self.users_file, "w", encoding="utf-8") as f:
-                json.dump(payload, f, ensure_ascii=False, indent=2)
-        except Exception as e:
-            print(f"Error saving local users: {e}")
+        self._write_json_snapshot(self.users_file, lambda: self.users)
 
     def load_local_cars(self):
         merged = {k: dict(v) for k, v in DEFAULT_CARS.items()}
         try:
-            if os.path.exists(self.cars_file):
-                with open(self.cars_file, "r", encoding="utf-8") as f:
-                    data = json.load(f)
-                    if isinstance(data, dict):
-                        deleted_saved = data.get("_deleted_car_plates")
-                        if isinstance(deleted_saved, list):
-                            self.deleted_car_plates.update(deleted_saved)
-                        cars_saved = data.get("cars") if "cars" in data and isinstance(data["cars"], dict) else data
-                        for k, v in cars_saved.items():
-                            if k == "_deleted_car_plates" or not isinstance(v, dict):
-                                continue
-                            if k in merged:
-                                merged[k].update(v)
-                            else:
-                                merged[k] = dict(v)
+            data = self._read_json_file(self.cars_file)
+            if isinstance(data, dict):
+                deleted_saved = data.get("_deleted_car_plates")
+                if isinstance(deleted_saved, list):
+                    with self.lock:
+                        self.deleted_car_plates.update(deleted_saved)
+                cars_saved = data.get("cars") if "cars" in data and isinstance(data["cars"], dict) else data
+                for k, v in cars_saved.items():
+                    if k == "_deleted_car_plates" or not isinstance(v, dict):
+                        continue
+                    if k in merged:
+                        merged[k].update(v)
+                    else:
+                        merged[k] = dict(v)
         except Exception as e:
             print(f"Error loading local cars: {e}")
         with self.lock:
@@ -450,16 +468,13 @@ class DataStore:
         self.save_local_cars()
 
     def save_local_cars(self):
-        try:
-            with self.lock:
-                payload = {
-                    "_deleted_car_plates": sorted(list(self.deleted_car_plates)),
-                    "cars": self.cars
-                }
-            with open(self.cars_file, "w", encoding="utf-8") as f:
-                json.dump(payload, f, ensure_ascii=False, indent=2)
-        except Exception as e:
-            print(f"Error saving local cars: {e}")
+        self._write_json_snapshot(
+            self.cars_file,
+            lambda: {
+                "_deleted_car_plates": sorted(list(self.deleted_car_plates)),
+                "cars": self.cars,
+            },
+        )
 
     def sync_from_database(self, force=False):
         """Synchronous full sync from PostgreSQL"""
@@ -471,10 +486,17 @@ class DataStore:
         t.start()
 
     def _sync_task(self, force=False):
-        if self.is_syncing and not force:
-            return
+        waited = False
+        if not self.sync_lock.acquire(blocking=False):
+            if not force:
+                return
+            waited = True
+            self.sync_lock.acquire()
+
         self.is_syncing = True
         try:
+            if waited and self.initial_sync_done and (time.time() - self.last_sync_time) < 5.0:
+                return
             sb = get_db_client()
             if not sb:
                 return
@@ -901,6 +923,7 @@ class DataStore:
             print(f"Sync task exception: {e}")
         finally:
             self.is_syncing = False
+            self.sync_lock.release()
 
     def async_sync_booking(self, b_obj):
         def _task():
@@ -1015,8 +1038,8 @@ class DataStore:
         threading.Thread(target=_task, daemon=True).start()
 
     def async_delete_booking(self, bk_id):
-        self.deleted_booking_ids.add(bk_id)
         with self.lock:
+            self.deleted_booking_ids.add(bk_id)
             self.bookings = [b for b in self.bookings if b.get("booking_id") != bk_id]
         def _task():
             sb = get_db_client()
@@ -1339,24 +1362,20 @@ class DataStore:
 
     def load_local_maintenance(self):
         try:
-            if os.path.exists(self.maintenance_file):
-                with open(self.maintenance_file, "r", encoding="utf-8") as f:
-                    data = json.load(f)
-                    if isinstance(data, list) and len(data) > 0:
-                        self.maintenance_records = data
-                        return
+            data = self._read_json_file(self.maintenance_file)
+            if isinstance(data, list) and len(data) > 0:
+                with self.lock:
+                    self.maintenance_records = data
+                return
         except Exception as e:
             print(f"Error loading local maintenance: {e}")
         # Default sample records
-        self.maintenance_records = list(DEFAULT_MAINTENANCE_RECORDS)
+        with self.lock:
+            self.maintenance_records = list(DEFAULT_MAINTENANCE_RECORDS)
         self.save_local_maintenance()
 
     def save_local_maintenance(self):
-        try:
-            with open(self.maintenance_file, "w", encoding="utf-8") as f:
-                json.dump(self.maintenance_records, f, ensure_ascii=False, indent=2)
-        except Exception as e:
-            print(f"Error saving local maintenance: {e}")
+        self._write_json_snapshot(self.maintenance_file, lambda: self.maintenance_records)
 
     def async_sync_maintenance(self, m_dict):
         m_id = m_dict.get("id")
@@ -1467,23 +1486,19 @@ class DataStore:
 
     def load_local_vehicle_maintenances(self):
         try:
-            if os.path.exists(self.vehicle_maintenances_file):
-                with open(self.vehicle_maintenances_file, "r", encoding="utf-8") as f:
-                    data = json.load(f)
-                    if isinstance(data, list):
-                        self.vehicle_maintenances = data
-                        return
+            data = self._read_json_file(self.vehicle_maintenances_file)
+            if isinstance(data, list):
+                with self.lock:
+                    self.vehicle_maintenances = data
+                return
         except Exception as e:
             print(f"Error loading local vehicle maintenances: {e}")
-        self.vehicle_maintenances = []
+        with self.lock:
+            self.vehicle_maintenances = []
         self.save_local_vehicle_maintenances()
 
     def save_local_vehicle_maintenances(self):
-        try:
-            with open(self.vehicle_maintenances_file, "w", encoding="utf-8") as f:
-                json.dump(self.vehicle_maintenances, f, ensure_ascii=False, indent=2)
-        except Exception as e:
-            print(f"Error saving local vehicle maintenances: {e}")
+        self._write_json_snapshot(self.vehicle_maintenances_file, lambda: self.vehicle_maintenances)
 
     def get_vehicle_maintenances(self, car_plate):
         p_clean = str(car_plate or "").strip()
@@ -1537,21 +1552,19 @@ class DataStore:
 
     def load_local_work_order_logs(self):
         try:
-            if os.path.exists(self.work_order_logs_file):
-                with open(self.work_order_logs_file, "r", encoding="utf-8") as f:
-                    self.work_order_logs = json.load(f)
+            data = self._read_json_file(self.work_order_logs_file)
+            if isinstance(data, list):
+                with self.lock:
+                    self.work_order_logs = data
                 return
         except Exception as e:
             print(f"Error loading work order logs: {e}")
-        self.work_order_logs = []
+        with self.lock:
+            self.work_order_logs = []
         self.save_local_work_order_logs()
 
     def save_local_work_order_logs(self):
-        try:
-            with open(self.work_order_logs_file, "w", encoding="utf-8") as f:
-                json.dump(self.work_order_logs, f, ensure_ascii=False, indent=2)
-        except Exception as e:
-            print(f"Error saving work order logs: {e}")
+        self._write_json_snapshot(self.work_order_logs_file, lambda: self.work_order_logs)
 
     def log_work_order(self, car_id=None, booking_id=None, work_type="Dispatch", description="", cost=0.0, staff_id="admin", appointment_datetime=None, location=None, job_status="Pending"):
         log_id = f"WOL{datetime.now().strftime('%y%m%d%H%M%S%f')[:15]}"
@@ -1591,39 +1604,35 @@ class DataStore:
 
     def load_local_maintenance_logs(self):
         try:
-            if os.path.exists(self.maintenance_logs_file):
-                with open(self.maintenance_logs_file, "r", encoding="utf-8") as f:
-                    self.maintenance_logs = json.load(f)
+            data = self._read_json_file(self.maintenance_logs_file)
+            if isinstance(data, list):
+                with self.lock:
+                    self.maintenance_logs = data
                 return
         except Exception as e:
             print(f"Error loading maintenance logs: {e}")
-        self.maintenance_logs = []
+        with self.lock:
+            self.maintenance_logs = []
         self.save_local_maintenance_logs()
 
     def save_local_maintenance_logs(self):
-        try:
-            with open(self.maintenance_logs_file, "w", encoding="utf-8") as f:
-                json.dump(self.maintenance_logs, f, ensure_ascii=False, indent=2)
-        except Exception as e:
-            print(f"Error saving maintenance logs: {e}")
+        self._write_json_snapshot(self.maintenance_logs_file, lambda: self.maintenance_logs)
 
     def load_local_insurance_records(self):
         try:
-            if os.path.exists(self.insurance_records_file):
-                with open(self.insurance_records_file, "r", encoding="utf-8") as f:
-                    self.insurance_records = json.load(f)
+            data = self._read_json_file(self.insurance_records_file)
+            if isinstance(data, list):
+                with self.lock:
+                    self.insurance_records = data
                 return
         except Exception as e:
             print(f"Error loading insurance records: {e}")
-        self.insurance_records = []
+        with self.lock:
+            self.insurance_records = []
         self.save_local_insurance_records()
 
     def save_local_insurance_records(self):
-        try:
-            with open(self.insurance_records_file, "w", encoding="utf-8") as f:
-                json.dump(self.insurance_records, f, ensure_ascii=False, indent=2)
-        except Exception as e:
-            print(f"Error saving insurance records: {e}")
+        self._write_json_snapshot(self.insurance_records_file, lambda: self.insurance_records)
 
     def log_maintenance(self, car_id, date=None, expense_type="ซ่อมบำรุง", description="", cost=0.0, recorded_by="admin"):
         log_id = f"ML{datetime.now().strftime('%y%m%d%H%M%S%f')[:15]}"

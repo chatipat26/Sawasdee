@@ -7,8 +7,11 @@ run against a plain PostgreSQL database (e.g. a Dokploy Postgres container).
 Supported query builder methods:
     select, eq, ilike, order, limit, insert, upsert, update, delete, execute
 """
+import os
+import time
 import threading
 import uuid
+from contextlib import contextmanager
 from datetime import date, datetime, time as d_time
 from decimal import Decimal
 
@@ -24,6 +27,198 @@ except ImportError:
         from psycopg2.extras import RealDictCursor as dict_row, Json as Jsonb
     except ImportError:
         psycopg = None
+
+
+def _is_conn_closed(conn) -> bool:
+    """Return True if a psycopg/psycopg2 connection is closed or broken."""
+    if conn is None:
+        return True
+    return bool(getattr(conn, "closed", False) or getattr(conn, "broken", False))
+
+
+def _close_quietly(conn) -> None:
+    if conn is None:
+        return
+    try:
+        conn.close()
+    except Exception:
+        pass
+
+
+class PsycopgConnectionPool:
+    """
+    Thread-safe PostgreSQL connection pool for psycopg v3 / psycopg2.
+    Maintains min_size..max_size connections with checkout timeout and
+    automatic health verification / recovery for dropped VPS connections.
+    """
+
+    def __init__(
+        self,
+        dsn: str,
+        min_size: int = 2,
+        max_size: int = 10,
+        timeout: float = 15.0,
+        connect_timeout: int = 5,
+        max_idle_check_seconds: float = 15.0,
+    ):
+        if psycopg is None:
+            raise RuntimeError("psycopg / psycopg2 driver is not installed")
+        self._dsn = dsn
+        self._min_size = max(0, int(min_size))
+        self._max_size = max(1, int(max_size))
+        if self._min_size > self._max_size:
+            self._min_size = self._max_size
+        self._timeout = float(timeout)
+        self._connect_timeout = int(connect_timeout)
+        self._max_idle_check_seconds = float(max_idle_check_seconds)
+        self._cond = threading.Condition(threading.RLock())
+        self._idle: list[tuple[object, float]] = []
+        self._total_created = 0
+        self._in_use = 0
+        self._closed = False
+        self._warm_up()
+
+    def _open_connection(self):
+        return psycopg.connect(
+            self._dsn,
+            autocommit=True,
+            row_factory=dict_row,
+            connect_timeout=self._connect_timeout,
+        )
+
+    def _ping_connection(self, conn) -> bool:
+        if _is_conn_closed(conn):
+            return False
+        try:
+            with conn.cursor() as cur:
+                cur.execute("SELECT 1")
+            return True
+        except Exception:
+            return False
+
+    def _warm_up(self) -> None:
+        """Best-effort warm-up up to min_size connections without failing on transient outages."""
+        for _ in range(self._min_size):
+            with self._cond:
+                if self._closed or self._total_created >= self._min_size:
+                    return
+                self._total_created += 1
+            try:
+                conn = self._open_connection()
+            except Exception as e:
+                with self._cond:
+                    self._total_created = max(0, self._total_created - 1)
+                print(f"[PgPool] Warm-up skipped: {e}")
+                return
+            with self._cond:
+                if self._closed:
+                    _close_quietly(conn)
+                    self._total_created = max(0, self._total_created - 1)
+                    return
+                self._idle.append((conn, time.time()))
+                self._cond.notify_all()
+
+    def acquire(self):
+        """Acquire a healthy connection from the pool, waiting up to self._timeout seconds."""
+        deadline = time.monotonic() + self._timeout
+        while True:
+            conn = None
+            last_used = 0.0
+            should_open = False
+
+            with self._cond:
+                if self._closed:
+                    raise RuntimeError("PostgreSQL connection pool is closed")
+
+                if self._idle:
+                    conn, last_used = self._idle.pop()
+                    self._in_use += 1
+                elif self._total_created < self._max_size:
+                    self._total_created += 1
+                    self._in_use += 1
+                    should_open = True
+                else:
+                    remaining = deadline - time.monotonic()
+                    if remaining <= 0:
+                        raise TimeoutError(
+                            f"PostgreSQL connection pool exhausted "
+                            f"(max_size={self._max_size}, timeout={self._timeout}s)"
+                        )
+                    self._cond.wait(timeout=remaining)
+                    continue
+
+            if should_open:
+                try:
+                    return self._open_connection()
+                except Exception:
+                    with self._cond:
+                        self._in_use = max(0, self._in_use - 1)
+                        self._total_created = max(0, self._total_created - 1)
+                        self._cond.notify_all()
+                    raise
+
+            # Validate idle connection outside the pool lock
+            needs_ping = (time.time() - last_used) > self._max_idle_check_seconds
+            if not _is_conn_closed(conn) and (not needs_ping or self._ping_connection(conn)):
+                return conn
+
+            _close_quietly(conn)
+            with self._cond:
+                self._in_use = max(0, self._in_use - 1)
+                self._total_created = max(0, self._total_created - 1)
+                self._cond.notify_all()
+
+    def release(self, conn, discard: bool = False) -> None:
+        """Return a connection back to the pool, or discard it if broken/closed."""
+        if conn is None:
+            return
+        broken = discard or _is_conn_closed(conn)
+        with self._cond:
+            self._in_use = max(0, self._in_use - 1)
+            if broken or self._closed:
+                _close_quietly(conn)
+                self._total_created = max(0, self._total_created - 1)
+            else:
+                self._idle.append((conn, time.time()))
+            self._cond.notify()
+
+    @contextmanager
+    def connection(self):
+        """Context manager that always returns or discards the checked-out connection."""
+        conn = self.acquire()
+        discard = False
+        try:
+            yield conn
+        except psycopg.OperationalError:
+            discard = True
+            raise
+        except Exception:
+            if _is_conn_closed(conn):
+                discard = True
+            raise
+        finally:
+            if not discard and _is_conn_closed(conn):
+                discard = True
+            self.release(conn, discard=discard)
+
+    def get_stats(self) -> dict:
+        with self._cond:
+            return {
+                "min_size": self._min_size,
+                "max_size": self._max_size,
+                "total_connections": self._total_created,
+                "idle_connections": len(self._idle),
+                "in_use_connections": self._in_use,
+            }
+
+    def close_all(self) -> None:
+        with self._cond:
+            self._closed = True
+            while self._idle:
+                conn, _ = self._idle.pop()
+                _close_quietly(conn)
+                self._total_created = max(0, self._total_created - 1)
+            self._cond.notify_all()
 
 
 class PgResult:
@@ -217,26 +412,52 @@ class PgQuery:
 
 
 class PgClient:
-    def __init__(self, dsn):
+    def __init__(self, dsn, min_size=None, max_size=None, timeout=None):
         self._dsn = dsn
-        self._conn = None
-        self._lock = threading.RLock()
+        pool_min = int(min_size if min_size is not None else os.getenv("DB_POOL_MIN_SIZE", "2"))
+        pool_max = int(max_size if max_size is not None else os.getenv("DB_POOL_MAX_SIZE", "10"))
+        pool_timeout = float(timeout if timeout is not None else os.getenv("DB_POOL_TIMEOUT", "15.0"))
+        connect_timeout = int(os.getenv("DB_CONNECT_TIMEOUT", "5"))
+        self._pool = PsycopgConnectionPool(
+            dsn,
+            min_size=pool_min,
+            max_size=pool_max,
+            timeout=pool_timeout,
+            connect_timeout=connect_timeout,
+        )
+        self._schema_lock = threading.Lock()
+        self._meta_lock = threading.RLock()
         self._pk_cache = {}
+        self._cols_cache = {}
         self._schema_checked = False
 
-    def _connection(self):
-        if self._conn is None or self._conn.closed:
-            self._conn = psycopg.connect(self._dsn, autocommit=True, row_factory=dict_row)
-            if not self._schema_checked:
-                self._schema_checked = True
+    @contextmanager
+    def connection(self):
+        """Checkout a pooled connection via context manager and return it on exit."""
+        with self._pool.connection() as conn:
+            yield conn
+
+    def get_pool_stats(self) -> dict:
+        return self._pool.get_stats()
+
+    def close(self) -> None:
+        self._pool.close_all()
+
+    def ensure_schema(self):
+        if self._schema_checked:
+            return
+        with self._schema_lock:
+            if self._schema_checked:
+                return
+            with self.connection() as conn:
                 try:
                     schema_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "schema.sql")
                     if os.path.exists(schema_path):
                         with open(schema_path, "r", encoding="utf-8") as sf:
                             schema_sql = sf.read()
-                        with self._conn.cursor() as cur:
+                        with conn.cursor() as cur:
                             cur.execute(schema_sql)
-                    with self._conn.cursor() as cur:
+                    with conn.cursor() as cur:
                         cur.execute("ALTER TABLE IF EXISTS public.users ADD COLUMN IF NOT EXISTS line_user_id TEXT;")
                         cur.execute("ALTER TABLE IF EXISTS public.customers ADD COLUMN IF NOT EXISTS line_user_id TEXT;")
                         # Force migration for all 34 vehicle columns
@@ -305,7 +526,8 @@ class PgClient:
                         ]
                         for m_sql in car_migrations:
                             cur.execute(m_sql)
-                        self._cols_cache = {}
+                        with self._meta_lock:
+                            self._cols_cache = {}
                         cur.execute("ALTER TABLE IF EXISTS public.bookings ADD COLUMN IF NOT EXISTS payment_type VARCHAR(50);")
                         cur.execute("ALTER TABLE IF EXISTS public.bookings ADD COLUMN IF NOT EXISTS google_drive_link TEXT;")
                         cur.execute("ALTER TABLE IF EXISTS public.bookings ADD COLUMN IF NOT EXISTS contract_pdf_url TEXT;")
@@ -317,16 +539,16 @@ class PgClient:
                     print("✅ PostgreSQL cars (34 cols) schema ensured via ALTER TABLE.")
                 except Exception as e:
                     print(f"PostgreSQL Schema check note: {e}")
-                self._migrate_customers()
-                self._migrate_bookings()
-                self._migrate_work_order_logs()
-                self._migrate_maintenance_logs()
-                self._migrate_insurance_records()
-        return self._conn
+                self._migrate_customers(conn)
+                self._migrate_bookings(conn)
+                self._migrate_work_order_logs(conn)
+                self._migrate_maintenance_logs(conn)
+                self._migrate_insurance_records(conn)
+                self._schema_checked = True
 
-    def _migrate_insurance_records(self):
+    def _migrate_insurance_records(self, conn):
         try:
-            with self._conn.cursor() as cur:
+            with conn.cursor() as cur:
                 cur.execute("""
                     CREATE TABLE IF NOT EXISTS public.insurance_records (
                         id VARCHAR(100) PRIMARY KEY,
@@ -352,9 +574,9 @@ class PgClient:
         except Exception as e:
             print(f"Insurance records migration note: {e}")
 
-    def _migrate_bookings(self):
+    def _migrate_bookings(self, conn):
         try:
-            with self._conn.cursor() as cur:
+            with conn.cursor() as cur:
                 cur.execute("ALTER TABLE IF EXISTS public.bookings ADD COLUMN IF NOT EXISTS payment_type VARCHAR(50);")
                 cur.execute("ALTER TABLE IF EXISTS public.bookings ADD COLUMN IF NOT EXISTS google_drive_link TEXT;")
                 cur.execute("ALTER TABLE IF EXISTS public.bookings ADD COLUMN IF NOT EXISTS contract_pdf_url TEXT;")
@@ -373,9 +595,9 @@ class PgClient:
         except Exception as e:
             print(f"PostgreSQL bookings migration note: {e}")
 
-    def _migrate_work_order_logs(self):
+    def _migrate_work_order_logs(self, conn):
         try:
-            with self._conn.cursor() as cur:
+            with conn.cursor() as cur:
                 cur.execute("""
                     CREATE TABLE IF NOT EXISTS public.work_order_logs (
                         id VARCHAR(100) PRIMARY KEY,
@@ -401,9 +623,9 @@ class PgClient:
         except Exception as e:
             print(f"Work order logs migration note: {e}")
 
-    def _migrate_maintenance_logs(self):
+    def _migrate_maintenance_logs(self, conn):
         try:
-            with self._conn.cursor() as cur:
+            with conn.cursor() as cur:
                 cur.execute("""
                     CREATE TABLE IF NOT EXISTS public.maintenance_logs (
                         id VARCHAR(100) PRIMARY KEY,
@@ -465,8 +687,7 @@ class PgClient:
         except Exception as e:
             print(f"Maintenance logs migration note: {e}")
 
-
-    def _migrate_customers(self):
+    def _migrate_customers(self, conn):
         """Add the 10 customer columns and backfill them from legacy columns.
         Each statement runs on its own so one failure cannot skip the rest."""
         cols = [
@@ -478,7 +699,7 @@ class PgClient:
         stmts = ["CREATE TABLE IF NOT EXISTS public.customers (full_name VARCHAR(150) PRIMARY KEY);"]
         stmts += [f"ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS {n} {t};" for n, t in cols]
         try:
-            with self._conn.cursor() as cur:
+            with conn.cursor() as cur:
                 cur.execute("SELECT column_name FROM information_schema.columns "
                             "WHERE table_schema='public' AND table_name='customers'")
                 existing = {r["column_name"] for r in cur.fetchall()}
@@ -486,12 +707,12 @@ class PgClient:
             existing = set()
         for s in stmts:
             try:
-                with self._conn.cursor() as cur:
+                with conn.cursor() as cur:
                     cur.execute(s)
             except Exception as e:
                 print(f"Customer migration note: {e}")
         try:
-            with self._conn.cursor() as cur:
+            with conn.cursor() as cur:
                 cur.execute("SELECT column_name FROM information_schema.columns "
                             "WHERE table_schema='public' AND table_name='customers'")
                 existing = {r["column_name"] for r in cur.fetchall()}
@@ -509,11 +730,13 @@ class PgClient:
             for old in olds:
                 if new in existing and old in existing:
                     try:
-                        with self._conn.cursor() as cur:
+                        with conn.cursor() as cur:
                             cur.execute(
-                                f"UPDATE public.customers SET {new} = {old} "
-                                f"WHERE ({new} IS NULL OR {new} IN ('', '-')) "
-                                f"AND {old} IS NOT NULL AND {old}::text NOT IN ('', '-')"
+                                sql.SQL(
+                                    "UPDATE public.customers SET {new} = {old} "
+                                    "WHERE ({new} IS NULL OR {new} IN ('', '-')) "
+                                    "AND {old} IS NOT NULL AND {old}::text NOT IN ('', '-')"
+                                ).format(new=sql.Identifier(new), old=sql.Identifier(old))
                             )
                     except Exception as e:
                         print(f"Customer backfill note: {e}")
@@ -523,18 +746,23 @@ class PgClient:
         for col, val in defaults.items():
             if col in existing:
                 try:
-                    with self._conn.cursor() as cur:
-                        cur.execute(f"UPDATE public.customers SET {col} = %s WHERE {col} IS NULL", (val,))
+                    with conn.cursor() as cur:
+                        cur.execute(
+                            sql.SQL("UPDATE public.customers SET {col} = %s WHERE {col} IS NULL").format(
+                                col=sql.Identifier(col)
+                            ),
+                            (val,),
+                        )
                 except Exception as e:
                     print(f"Customer default note: {e}")
         print("PostgreSQL customers (10 cols) schema ensured and backfilled.")
 
     def run(self, statements):
-        """Run statements in one transaction; reconnect once if the connection dropped."""
+        """Run statements in one transaction using a pooled connection; retry once on dropped link."""
+        self.ensure_schema()
         for attempt in (1, 2):
-            with self._lock:
-                try:
-                    conn = self._connection()
+            try:
+                with self.connection() as conn:
                     out = []
                     with conn.transaction():
                         with conn.cursor() as cur:
@@ -545,46 +773,49 @@ class PgClient:
                                         {k: _to_json_value(v) for k, v in r.items()} for r in cur.fetchall()
                                     )
                     return out
-                except psycopg.OperationalError:
-                    try:
-                        if self._conn is not None:
-                            self._conn.close()
-                    except Exception:
-                        pass
-                    self._conn = None
-                    if attempt == 2:
-                        raise
+            except psycopg.OperationalError:
+                if attempt == 2:
+                    raise
 
     def primary_key(self, table):
-        if table not in self._pk_cache:
-            rows = self.run([(
-                sql.SQL(
-                    "SELECT a.attname AS col FROM pg_index i "
-                    "JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = ANY(i.indkey) "
-                    "WHERE i.indrelid = %s::regclass AND i.indisprimary"
-                ),
-                [f"public.{table}"],
-            )])
-            self._pk_cache[table] = [r["col"] for r in rows]
-        return self._pk_cache[table]
+        with self._meta_lock:
+            cached = self._pk_cache.get(table)
+        if cached is not None:
+            return cached
+        rows = self.run([(
+            sql.SQL(
+                "SELECT a.attname AS col FROM pg_index i "
+                "JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = ANY(i.indkey) "
+                "WHERE i.indrelid = %s::regclass AND i.indisprimary"
+            ),
+            [f"public.{table}"],
+        )])
+        cols = [r["col"] for r in rows]
+        with self._meta_lock:
+            self._pk_cache[table] = cols
+        return cols
 
     def table_columns(self, table):
-        if not hasattr(self, "_cols_cache"):
-            self._cols_cache = {}
-        if table not in self._cols_cache:
-            try:
-                rows = self.run([(
-                    sql.SQL(
-                        "SELECT column_name FROM information_schema.columns "
-                        "WHERE table_schema = 'public' AND table_name = %s"
-                    ),
-                    [table]
-                )])
-                self._cols_cache[table] = [r["column_name"] for r in rows]
-            except Exception as e:
-                print(f"[pg_client] Error fetching columns for {table}: {e}")
-                self._cols_cache[table] = []
-        return self._cols_cache[table]
+        with self._meta_lock:
+            cached = self._cols_cache.get(table)
+        if cached is not None:
+            return cached
+        try:
+            rows = self.run([(
+                sql.SQL(
+                    "SELECT column_name FROM information_schema.columns "
+                    "WHERE table_schema = 'public' AND table_name = %s"
+                ),
+                [table]
+            )])
+            cols = [r["column_name"] for r in rows]
+            if cols:
+                with self._meta_lock:
+                    self._cols_cache[table] = cols
+            return cols
+        except Exception as e:
+            print(f"[pg_client] Error fetching columns for {table}: {e}")
+            return []
 
     def table(self, name):
         return PgQuery(self, name)

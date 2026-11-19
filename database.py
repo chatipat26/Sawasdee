@@ -43,12 +43,21 @@ if DATABASE_URL.startswith("postgres://"):
 
 if DATABASE_URL:
     try:
-        _connect_args = {"connect_timeout": 5} if DATABASE_URL.startswith("postgresql") else {}
+        _is_pg = DATABASE_URL.startswith("postgresql")
+        _connect_args = {"connect_timeout": int(os.getenv("DB_CONNECT_TIMEOUT", "5"))} if _is_pg else {}
+        _pool_kwargs = {}
+        if _is_pg:
+            _pool_kwargs = {
+                "pool_size": int(os.getenv("DB_POOL_MIN_SIZE", "2")),
+                "max_overflow": int(os.getenv("DB_POOL_MAX_OVERFLOW", "8")),
+                "pool_timeout": float(os.getenv("DB_POOL_TIMEOUT", "15")),
+            }
         engine = create_engine(
             DATABASE_URL,
             pool_pre_ping=True,
             pool_recycle=300,
             connect_args=_connect_args,
+            **_pool_kwargs,
         )
         SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     except Exception as e:

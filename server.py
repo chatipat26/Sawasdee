@@ -240,8 +240,8 @@ def startup_event():
         try:
             init_db()
             sb = get_db_client()
-            if sb and hasattr(sb, "_connection"):
-                sb._connection()
+            if sb and hasattr(sb, "ensure_schema"):
+                sb.ensure_schema()
         except Exception as e:
             print(f"Startup schema check note: {e}")
 
@@ -287,21 +287,30 @@ async def serve_index():
 # -------------------------------------------------------------------------
 @app.get("/api/status")
 async def get_system_status():
-    bk_sig = ",".join(sorted(f"{b.get('booking_id','')}:{b.get('status','')}:{b.get('deposit_paid','')}:{b.get('rental_paid','')}" for b in store.bookings))
-    cj_sig = str(len(store.completed_jobs))
-    car_sig = ",".join(sorted(f"{p}:{c.get('status','')}:{c.get('act_expiry','')}:{c.get('ins_expiry','')}" for p, c in store.cars.items()))
-    mnt_sig = ",".join(sorted(f"{m.get('id','')}:{m.get('status','')}:{m.get('cost','')}" for m in store.maintenance_records))
-    data_sig = f"{len(store.bookings)}|{bk_sig}|{cj_sig}|{len(store.customers)}|{len(store.financial_records)}|{len(store.maintenance_records)}|{hash(mnt_sig)}|{hash(car_sig)}"
+    with store.lock:
+        bookings_snap = [dict(b) for b in store.bookings]
+        cars_snap = [(p, dict(c)) for p, c in store.cars.items()]
+        mnt_snap = [dict(m) for m in store.maintenance_records]
+        cj_len = len(store.completed_jobs)
+        cust_len = len(store.customers)
+        fin_len = len(store.financial_records)
+        users_len = len(store.users)
+        last_sync = store.last_sync_time
+    bk_sig = ",".join(sorted(f"{b.get('booking_id','')}:{b.get('status','')}:{b.get('deposit_paid','')}:{b.get('rental_paid','')}" for b in bookings_snap))
+    cj_sig = str(cj_len)
+    car_sig = ",".join(sorted(f"{p}:{c.get('status','')}:{c.get('act_expiry','')}:{c.get('ins_expiry','')}" for p, c in cars_snap))
+    mnt_sig = ",".join(sorted(f"{m.get('id','')}:{m.get('status','')}:{m.get('cost','')}" for m in mnt_snap))
+    data_sig = f"{len(bookings_snap)}|{bk_sig}|{cj_sig}|{cust_len}|{fin_len}|{len(mnt_snap)}|{hash(mnt_sig)}|{hash(car_sig)}"
     return {
         "status": "online",
-        "last_sync_time": store.last_sync_time,
-        "last_sync_formatted": datetime.fromtimestamp(store.last_sync_time, tz=TH_TZ).strftime("%H:%M:%S") if store.last_sync_time else "เมื่อสักครู่",
-        "total_cars": len(store.cars),
-        "total_customers": len(store.customers),
-        "total_bookings": len(store.bookings),
-        "total_completed": len(store.completed_jobs),
-        "total_users": len(store.users),
-        "total_maintenance": len(store.maintenance_records),
+        "last_sync_time": last_sync,
+        "last_sync_formatted": datetime.fromtimestamp(last_sync, tz=TH_TZ).strftime("%H:%M:%S") if last_sync else "เมื่อสักครู่",
+        "total_cars": len(cars_snap),
+        "total_customers": cust_len,
+        "total_bookings": len(bookings_snap),
+        "total_completed": cj_len,
+        "total_users": users_len,
+        "total_maintenance": len(mnt_snap),
         "data_signature": data_sig,
         "timestamp": time.time()
     }
@@ -315,48 +324,48 @@ async def trigger_manual_sync():
 async def trigger_cars_migration():
     """Execute raw ALTER TABLE commands on PostgreSQL to guarantee all 34 columns."""
     sb = get_db_client()
-    if sb and hasattr(sb, "_connection"):
+    if sb and hasattr(sb, "connection"):
         try:
-            conn = sb._connection()
-            with conn.cursor() as cur:
-                car_sqls = [
-                    "CREATE TABLE IF NOT EXISTS public.cars (plate VARCHAR(50) PRIMARY KEY);",
-                    "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS brand VARCHAR(100);",
-                    "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS model VARCHAR(100);",
-                    "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS car_group VARCHAR(100);",
-                    "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS fuel_system VARCHAR(50);",
-                    "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS cc_ev VARCHAR(50);",
-                    "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS owner_company VARCHAR(150);",
-                    "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS color VARCHAR(50);",
-                    "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS mileage VARCHAR(50);",
-                    "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS daily_rate NUMERIC DEFAULT 0;",
-                    "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS weekly_rate NUMERIC DEFAULT 0;",
-                    "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS monthly_rate NUMERIC DEFAULT 0;",
-                    "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS vin VARCHAR(100);",
-                    "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS tax_expire_date VARCHAR(50);",
-                    "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS prb_expire_date VARCHAR(50);",
-                    "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS insurance_expire_date VARCHAR(50);",
-                    "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS insurance_company VARCHAR(150);",
-                    "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS car_owner VARCHAR(150);",
-                    "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS beneficiary VARCHAR(150);",
-                    "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS register_year VARCHAR(50);",
-                    "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS prb_price NUMERIC DEFAULT 0;",
-                    "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS insurance_premium NUMERIC DEFAULT 0;",
-                    "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS last_service_date VARCHAR(50);",
-                    "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS next_service_date VARCHAR(50);",
-                    "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS next_service_mileage NUMERIC DEFAULT 0;",
-                    "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS car_status VARCHAR(50);",
-                    "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS is_debt_free BOOLEAN DEFAULT FALSE;",
-                    "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS finance_company VARCHAR(150);",
-                    "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS installment_amount NUMERIC DEFAULT 0;",
-                    "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS total_installments INTEGER DEFAULT 0;",
-                    "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS current_installment INTEGER DEFAULT 0;",
-                    "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS payment_due_date VARCHAR(50);",
-                    "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS notes TEXT;",
-                    "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS image_url TEXT;"
-                ]
-                for q in car_sqls:
-                    cur.execute(q)
+            with sb.connection() as conn:
+                with conn.cursor() as cur:
+                    car_sqls = [
+                        "CREATE TABLE IF NOT EXISTS public.cars (plate VARCHAR(50) PRIMARY KEY);",
+                        "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS brand VARCHAR(100);",
+                        "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS model VARCHAR(100);",
+                        "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS car_group VARCHAR(100);",
+                        "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS fuel_system VARCHAR(50);",
+                        "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS cc_ev VARCHAR(50);",
+                        "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS owner_company VARCHAR(150);",
+                        "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS color VARCHAR(50);",
+                        "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS mileage VARCHAR(50);",
+                        "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS daily_rate NUMERIC DEFAULT 0;",
+                        "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS weekly_rate NUMERIC DEFAULT 0;",
+                        "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS monthly_rate NUMERIC DEFAULT 0;",
+                        "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS vin VARCHAR(100);",
+                        "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS tax_expire_date VARCHAR(50);",
+                        "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS prb_expire_date VARCHAR(50);",
+                        "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS insurance_expire_date VARCHAR(50);",
+                        "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS insurance_company VARCHAR(150);",
+                        "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS car_owner VARCHAR(150);",
+                        "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS beneficiary VARCHAR(150);",
+                        "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS register_year VARCHAR(50);",
+                        "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS prb_price NUMERIC DEFAULT 0;",
+                        "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS insurance_premium NUMERIC DEFAULT 0;",
+                        "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS last_service_date VARCHAR(50);",
+                        "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS next_service_date VARCHAR(50);",
+                        "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS next_service_mileage NUMERIC DEFAULT 0;",
+                        "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS car_status VARCHAR(50);",
+                        "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS is_debt_free BOOLEAN DEFAULT FALSE;",
+                        "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS finance_company VARCHAR(150);",
+                        "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS installment_amount NUMERIC DEFAULT 0;",
+                        "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS total_installments INTEGER DEFAULT 0;",
+                        "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS current_installment INTEGER DEFAULT 0;",
+                        "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS payment_due_date VARCHAR(50);",
+                        "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS notes TEXT;",
+                        "ALTER TABLE IF EXISTS public.cars ADD COLUMN IF NOT EXISTS image_url TEXT;"
+                    ]
+                    for q in car_sqls:
+                        cur.execute(q)
             return {"success": True, "message": "อัปเดต Schema ตาราง cars ครบทั้ง 34 คอลัมน์เรียบร้อย"}
         except Exception as e:
             return {"success": False, "error": str(e)}
@@ -603,15 +612,18 @@ async def test_user_line_push(username: str):
 async def list_cars(start_date: Optional[str] = None, end_date: Optional[str] = None):
     if not store.initial_sync_done:
         store.sync_from_database(force=True)
+    with store.lock:
+        cars_snapshot = [(plate, dict(car)) for plate, car in store.cars.items()]
+        bookings_snapshot = [dict(b) for b in store.bookings]
     cars_data = []
-    for plate, car in store.cars.items():
+    for plate, car in cars_snapshot:
         norm_p = re.sub(r"[\s\-_]", "", str(plate)).strip().lower()
 
         # Check if this car has an active booking that is truly On Rent
         has_real_on_rent = any(
             re.sub(r"[\s\-_]", "", str(_b.get("car_id", ""))).strip().lower() == norm_p
             and _b.get("status") in ("กำลังเช่า", "รอรับคืน")
-            for _b in store.bookings
+            for _b in bookings_snapshot
         )
 
         # Self-healing: if car.status is "กำลังเช่า" but NO booking is actually on rent, auto-correct
@@ -619,15 +631,20 @@ async def list_cars(start_date: Optional[str] = None, end_date: Optional[str] = 
             has_queue = any(
                 re.sub(r"[\s\-_]", "", str(_b.get("car_id", ""))).strip().lower() == norm_p
                 and _b.get("status") not in INACTIVE_BOOKING_STATUSES
-                for _b in store.bookings
+                for _b in bookings_snapshot
             )
             corrected_status = "ติดจอง" if has_queue else "ว่างพร้อมใช้งาน"
             car["status"] = corrected_status
-            store.cars[plate]["status"] = corrected_status
-            store.async_sync_car(plate, store.cars[plate])
+            with store.lock:
+                if plate in store.cars:
+                    store.cars[plate]["status"] = corrected_status
+                    car_to_sync = dict(store.cars[plate])
+                else:
+                    car_to_sync = dict(car)
+            store.async_sync_car(plate, car_to_sync)
 
         status_key, status_desc, color, bg, border = get_car_fleet_status(
-            plate, car, store.bookings, start_date, end_date
+            plate, car, bookings_snapshot, start_date, end_date
         )
         c_copy = dict(car)
         c_copy["fleet_status_key"] = status_key
@@ -1737,7 +1754,8 @@ async def upload_car_4_angles_endpoint(
 async def list_customers():
     if not store.initial_sync_done:
         store.sync_from_database(force=True)
-    return list(store.customers.values())
+    with store.lock:
+        return [dict(c) for c in store.customers.values()]
 
 @app.post("/api/customers")
 async def create_or_update_customer(payload: Union[CustomerCreate, Dict[str, Any]]):
@@ -1826,16 +1844,19 @@ async def delete_customer(name: str):
 async def list_bookings():
     if not store.initial_sync_done:
         store.sync_from_database(force=True)
+    with store.lock:
+        bookings_snap = [dict(b) for b in store.bookings]
+        cars_snap = {k: dict(v) for k, v in store.cars.items()}
+        customers_snap = {k: dict(v) for k, v in store.customers.items()}
     res = []
-    for b in store.bookings:
-        b_copy = dict(b)
-        b_copy["start_date_formatted"] = format_date_dmy(b.get("start_date"))
-        b_copy["end_date_formatted"] = format_date_dmy(b.get("end_date"))
-        c_obj = store.cars.get(b.get("car_id"), {})
+    for b_copy in bookings_snap:
+        b_copy["start_date_formatted"] = format_date_dmy(b_copy.get("start_date"))
+        b_copy["end_date_formatted"] = format_date_dmy(b_copy.get("end_date"))
+        c_obj = cars_snap.get(b_copy.get("car_id"), {})
         b_copy["car_brand"] = c_obj.get("brand", "")
         b_copy["car_model"] = c_obj.get("model", "")
         b_copy["car_image"] = c_obj.get("image", "")
-        cust_obj = store.customers.get(b.get("customer"), {})
+        cust_obj = customers_snap.get(b_copy.get("customer"), {})
         b_copy["customer_phone"] = cust_obj.get("contact_no", "-")
         # Robust data mapping for complex fields (JSON list, Boolean, PDF url)
         ext_val = b_copy.get("extension_history")
