@@ -1,6 +1,7 @@
 import os
 import io
 import time
+import asyncio
 from datetime import datetime, date, timedelta, timezone
 from typing import Optional, List, Dict, Any, Union
 from pydantic import BaseModel, Field
@@ -207,7 +208,7 @@ os.makedirs(os.path.join(static_dir, "pdf", "inspections"), exist_ok=True)
 
 # Inspection PDF route with automatic on-demand generation fallback (prevents 404 on Render restarts)
 @app.get("/static/pdf/inspections/{fname}")
-async def serve_static_inspection_pdf(fname: str):
+def serve_static_inspection_pdf(fname: str):
     insp_dir = os.path.join(static_dir, "pdf", "inspections")
     file_path = os.path.join(insp_dir, fname)
     if os.path.exists(file_path):
@@ -218,9 +219,9 @@ async def serve_static_inspection_pdf(fname: str):
         bk_id = m.group(2)
         try:
             if kind == "checklist":
-                return await get_job_pdf(bk_id=bk_id)
+                return get_job_pdf(bk_id=bk_id)
             else:
-                return await get_inspection_pdf(bk_id=bk_id, type=kind, download=0)
+                return get_inspection_pdf(bk_id=bk_id, type=kind, download=0)
         except Exception as e:
             print(f"[PDF Engine] On-demand fallback generation error for {fname}: {e}")
     raise HTTPException(status_code=404, detail="File Not Found")
@@ -270,7 +271,7 @@ def startup_event():
 # ROOT HTML (SPA)
 # -------------------------------------------------------------------------
 @app.api_route("/", methods=["GET", "HEAD"], response_class=HTMLResponse)
-async def serve_index():
+def serve_index():
     index_file = os.path.join(BASE_DIR, "templates", "index.html")
     no_cache_headers = {
         "Cache-Control": "no-cache, no-store, must-revalidate",
@@ -286,7 +287,7 @@ async def serve_index():
 # SYSTEM STATUS & SYNC
 # -------------------------------------------------------------------------
 @app.get("/api/status")
-async def get_system_status():
+def get_system_status():
     with store.lock:
         bookings_snap = [dict(b) for b in store.bookings]
         cars_snap = [(p, dict(c)) for p, c in store.cars.items()]
@@ -316,12 +317,12 @@ async def get_system_status():
     }
 
 @app.post("/api/sync")
-async def trigger_manual_sync():
+def trigger_manual_sync():
     store.sync_from_database(force=True)
     return {"success": True, "message": "ซิงค์ข้อมูลกับฐานข้อมูล PostgreSQL สำเร็จเรียบร้อย"}
 
 @app.post("/api/admin/migrate-cars")
-async def trigger_cars_migration():
+def trigger_cars_migration():
     """Execute raw ALTER TABLE commands on PostgreSQL to guarantee all 34 columns."""
     sb = get_db_client()
     if sb and hasattr(sb, "connection"):
@@ -375,7 +376,7 @@ async def trigger_cars_migration():
 # AUTHENTICATION & USERS
 # -------------------------------------------------------------------------
 @app.post("/api/auth/login")
-async def login(payload: Dict[str, Any]):
+def login(payload: Dict[str, Any]):
     un = str(payload.get("username", "")).strip()
     pw = str(payload.get("password", "")).strip()
 
@@ -460,7 +461,7 @@ async def login(payload: Dict[str, Any]):
     }
 
 @app.post("/api/auth/register")
-async def register(payload: Dict[str, Any]):
+def register(payload: Dict[str, Any]):
     un = str(payload.get("username", "")).strip().lower()
     fn = str(payload.get("name", "")).strip()
     pw = str(payload.get("password", "")).strip()
@@ -496,7 +497,7 @@ async def register(payload: Dict[str, Any]):
     return {"success": True, "message": "ลงทะเบียนสำเร็จ กรุณารอผู้ดูแลระบบ (Admin) อนุมัติการใช้งาน"}
 
 @app.post("/api/auth/change-password")
-async def change_password(payload: Dict[str, Any]):
+def change_password(payload: Dict[str, Any]):
     un = str(payload.get("username", "")).strip()
     old_pw = str(payload.get("old_password", "")).strip()
     new_pw = str(payload.get("new_password", "")).strip()
@@ -535,7 +536,7 @@ async def change_password(payload: Dict[str, Any]):
     return {"success": True, "message": "เปลี่ยนรหัสผ่านเรียบร้อย"}
 
 @app.get("/api/users")
-async def list_users():
+def list_users():
     if not store.initial_sync_done or len(store.users) <= 1:
         store.sync_from_database(force=True)
     users_list = []
@@ -548,7 +549,7 @@ async def list_users():
     return users_list
 
 @app.post("/api/users/{username}/approve")
-async def approve_user(username: str):
+def approve_user(username: str):
     if username not in store.users:
         raise HTTPException(status_code=404, detail="ไม่พบผู้ใช้นี้")
     store.users[username]["status"] = "approved"
@@ -557,7 +558,7 @@ async def approve_user(username: str):
     return {"success": True}
 
 @app.post("/api/users/{username}/reject")
-async def reject_user(username: str):
+def reject_user(username: str):
     if username not in store.users:
         raise HTTPException(status_code=404, detail="ไม่พบผู้ใช้นี้")
     store.users[username]["status"] = "suspended"
@@ -566,7 +567,7 @@ async def reject_user(username: str):
     return {"success": True}
 
 @app.delete("/api/users/{username}")
-async def delete_user(username: str):
+def delete_user(username: str):
     if username.lower() == "admin":
         raise HTTPException(status_code=400, detail="ไม่สามารถลบบัญชีผู้ดูแลระบบหลัก (admin) ได้")
     store.async_delete_user(username)
@@ -574,7 +575,7 @@ async def delete_user(username: str):
 
 @app.put("/api/users/{username}/line-id")
 @app.post("/api/users/{username}/line-id")
-async def update_user_line_id(username: str, payload: Dict[str, Any]):
+def update_user_line_id(username: str, payload: Dict[str, Any]):
     if username not in store.users:
         raise HTTPException(status_code=404, detail="ไม่พบผู้ใช้นี้ในระบบ")
     line_uid = str(payload.get("line_user_id") or "").strip()
@@ -587,7 +588,7 @@ async def update_user_line_id(username: str, payload: Dict[str, Any]):
     return {"success": True, "username": username, "line_user_id": line_uid}
 
 @app.post("/api/users/{username}/test-line")
-async def test_user_line_push(username: str):
+def test_user_line_push(username: str):
     if username not in store.users:
         raise HTTPException(status_code=404, detail="ไม่พบผู้ใช้นี้ในระบบ")
     u = store.users[username]
@@ -609,7 +610,7 @@ async def test_user_line_push(username: str):
 # -------------------------------------------------------------------------
 @app.get("/api/cars")
 @app.get("/api/vehicles")
-async def list_cars(start_date: Optional[str] = None, end_date: Optional[str] = None):
+def list_cars(start_date: Optional[str] = None, end_date: Optional[str] = None):
     if not store.initial_sync_done:
         store.sync_from_database(force=True)
     with store.lock:
@@ -682,7 +683,7 @@ async def list_cars(start_date: Optional[str] = None, end_date: Optional[str] = 
 @app.get("/api/finance-companies")
 @app.get("/api/cars/finance-companies")
 @app.get("/api/vehicles/finance-companies")
-async def get_finance_companies():
+def get_finance_companies():
     """Fetch existing finance companies from database and in-memory store."""
     companies = set()
     for c in store.cars.values():
@@ -717,7 +718,7 @@ async def get_finance_companies():
 
 @app.get("/api/cars/options")
 @app.get("/api/vehicles/options")
-async def get_vehicle_form_options():
+def get_vehicle_form_options():
     """Fetch unique values for Brand, Model, Company, Color, Insurance Co, Owner, Beneficiary, Year for Creatable Comboboxes."""
     brands = set()
     models = set()
@@ -794,7 +795,7 @@ from models import Vehicle, Customer
 @app.put("/api/vehicles")
 @app.put("/api/cars/{plate_param}")
 @app.put("/api/vehicles/{plate_param}")
-async def create_or_update_car(payload: Union[VehicleCreate, Dict[str, Any]], plate_param: Optional[str] = None):
+def create_or_update_car(payload: Union[VehicleCreate, Dict[str, Any]], plate_param: Optional[str] = None):
     if hasattr(payload, "model_dump"):
         payload = payload.model_dump(exclude_unset=False)
     elif hasattr(payload, "dict"):
@@ -1213,7 +1214,7 @@ async def create_or_update_car(payload: Union[VehicleCreate, Dict[str, Any]], pl
     return {"success": True, "car": store.cars.get(plate, payload)}
 
 @app.get("/api/cars/{plate:path}/insurance-records")
-async def get_car_insurance_records(plate: str):
+def get_car_insurance_records(plate: str):
     clean_plate = urllib.parse.unquote(plate).strip()
     norm = re.sub(r"[\s\-\.]+", "", clean_plate).lower()
     matched = [
@@ -1223,7 +1224,7 @@ async def get_car_insurance_records(plate: str):
     return {"success": True, "plate": clean_plate, "records": matched}
 
 @app.get("/api/hp-leasing")
-async def get_hp_leasing_data():
+def get_hp_leasing_data():
     return {
         "contracts": DEFAULT_HP_LEASING,
         "summary": DEFAULT_HP_SUMMARY,
@@ -1231,7 +1232,7 @@ async def get_hp_leasing_data():
     }
 
 @app.get("/api/expenses/cycle-expiries")
-async def get_cycle_expiries():
+def get_cycle_expiries():
     """Returns expiring documents and expenses for the active notification cycle (1st or 16th of month) + weekly warning."""
     try:
         from check_expiry_alert import get_target_cycle_info
@@ -1431,14 +1432,14 @@ def compute_monthly_expenses():
     }
 
 @app.get("/api/expenses/monthly")
-async def get_monthly_expenses(response: Response):
+def get_monthly_expenses(response: Response):
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0"
     response.headers["Pragma"] = "no-cache"
     response.headers["Expires"] = "0"
     return compute_monthly_expenses()
 
 @app.post("/api/expenses/pay")
-async def pay_monthly_expense(payload: Dict[str, Any]):
+def pay_monthly_expense(payload: Dict[str, Any]):
     import calendar
     plate = str(payload.get("plate") or payload.get("car_id") or "").strip()
     expense_type = str(payload.get("expense_type") or "").strip().lower()
@@ -1635,7 +1636,7 @@ async def pay_monthly_expense(payload: Dict[str, Any]):
         raise HTTPException(status_code=500, detail=f"เกิดข้อผิดพลาดในการบันทึกชำระเงิน: {str(e)}")
 
 @app.get("/api/cars/check-duplicates")
-async def check_car_duplicates():
+def check_car_duplicates():
     seen_plates = {}
     seen_chassis = {}
     duplicate_plates = []
@@ -1665,7 +1666,7 @@ async def check_car_duplicates():
     }
 
 @app.delete("/api/cars/{plate}")
-async def delete_car(plate: str):
+def delete_car(plate: str):
     plate = plate.strip()
     norm_target = normalize_plate(plate)
     target_key = None
@@ -1751,14 +1752,14 @@ async def upload_car_4_angles_endpoint(
 # CUSTOMERS
 # -------------------------------------------------------------------------
 @app.get("/api/customers")
-async def list_customers():
+def list_customers():
     if not store.initial_sync_done:
         store.sync_from_database(force=True)
     with store.lock:
         return [dict(c) for c in store.customers.values()]
 
 @app.post("/api/customers")
-async def create_or_update_customer(payload: Union[CustomerCreate, Dict[str, Any]]):
+def create_or_update_customer(payload: Union[CustomerCreate, Dict[str, Any]]):
     if hasattr(payload, "model_dump"):
         payload = payload.model_dump(exclude_unset=False)
     elif hasattr(payload, "dict"):
@@ -1831,7 +1832,7 @@ async def create_or_update_customer(payload: Union[CustomerCreate, Dict[str, Any
     return {"success": True, "customer": clean_payload}
 
 @app.delete("/api/customers/{name}")
-async def delete_customer(name: str):
+def delete_customer(name: str):
     if name == "ลูกค้าทั่วไป (Walk-in)":
         raise HTTPException(status_code=400, detail="ไม่สามารถลบลูกค้ารายการเริ่มต้นของระบบได้")
     store.async_delete_customer(name)
@@ -1841,7 +1842,7 @@ async def delete_customer(name: str):
 # BOOKINGS
 # -------------------------------------------------------------------------
 @app.get("/api/bookings")
-async def list_bookings():
+def list_bookings():
     if not store.initial_sync_done:
         store.sync_from_database(force=True)
     with store.lock:
@@ -1907,7 +1908,7 @@ async def list_bookings():
     return res
 
 @app.get("/api/bookings/{bk_id}")
-async def get_booking(bk_id: str):
+def get_booking(bk_id: str):
     target = next((b for b in store.bookings if b.get("booking_id") == bk_id), None)
     if not target:
         raise HTTPException(status_code=404, detail="ไม่พบรายการจอง")
@@ -1965,7 +1966,7 @@ async def get_booking(bk_id: str):
     return b_copy
 
 @app.post("/api/bookings")
-async def create_booking(payload: Dict[str, Any]):
+def create_booking(payload: Dict[str, Any]):
     try:
         # Generate booking ID in Thailand Time: MRC<YYMMDD><HHMMSS>
         now = now_th()
@@ -2176,7 +2177,7 @@ def record_booking_completion_income(target_bk: dict) -> bool:
     return True
 
 @app.put("/api/bookings/{bk_id}")
-async def update_booking(bk_id: str, payload: Dict[str, Any]):
+def update_booking(bk_id: str, payload: Dict[str, Any]):
     target = next((b for b in store.bookings if b.get("booking_id") == bk_id), None)
     if not target:
         raise HTTPException(status_code=404, detail="ไม่พบรายการจอง")
@@ -2255,7 +2256,7 @@ async def update_booking(bk_id: str, payload: Dict[str, Any]):
 
 @app.patch("/api/bookings/{bk_id}/contract-pdf")
 @app.put("/api/bookings/{bk_id}/contract-pdf")
-async def update_booking_contract_pdf(bk_id: str, payload: Dict[str, Any]):
+def update_booking_contract_pdf(bk_id: str, payload: Dict[str, Any]):
     """Decoupled update for contract_pdf_url without altering core booking logic."""
     target = next((b for b in store.bookings if b.get("booking_id") == bk_id), None)
     if not target:
@@ -2302,7 +2303,7 @@ def _update_car_mileage_on_return(car_id: Any, return_mileage: Any, dispatch_mil
     return clean_ret
 
 @app.post("/api/bookings/{bk_id}/generate-inspection-pdf")
-async def generate_booking_inspection_pdf(bk_id: str, payload: Optional[Dict[str, Any]] = None):
+def generate_booking_inspection_pdf(bk_id: str, payload: Optional[Dict[str, Any]] = None):
     """
     Generate official vehicle inspection checklist PDF from booking data.
     Accepts inspection data (Checkout/Checkin), marked car diagram (Base64), signatures, notes.
@@ -2495,7 +2496,7 @@ async def generate_booking_inspection_pdf(bk_id: str, payload: Optional[Dict[str
     }
 
 @app.post("/api/bookings/{bk_id}/extend")
-async def extend_booking(bk_id: str, payload: Dict[str, Any]):
+def extend_booking(bk_id: str, payload: Dict[str, Any]):
     """Flow 6.2: customer extends the contract -> overlap check -> new contract (PDF) -> payment."""
     target = next((b for b in store.bookings if b.get("booking_id") == bk_id), None)
     if not target:
@@ -2594,7 +2595,7 @@ async def extend_booking(bk_id: str, payload: Dict[str, Any]):
     }
 
 @app.get("/api/bookings/{bk_id}/extend-check")
-async def extend_check(bk_id: str, new_end_date: str):
+def extend_check(bk_id: str, new_end_date: str):
     """Pre-check for the Extend Contract dialog (overlap + price preview)."""
     target = next((b for b in store.bookings if b.get("booking_id") == bk_id), None)
     if not target:
@@ -2615,7 +2616,7 @@ async def extend_check(bk_id: str, new_end_date: str):
     return {"ok": True, "extra_days": days, "extra_price": price_day * days}
 
 @app.delete("/api/bookings/{bk_id}")
-async def delete_booking(bk_id: str):
+def delete_booking(bk_id: str):
     target = next((b for b in store.bookings if b.get("booking_id") == bk_id), None)
     if target and target.get("car_id") in store.cars:
         release_car_after_booking(target["car_id"], bk_id)
@@ -2627,7 +2628,7 @@ async def delete_booking(bk_id: str):
 # DEPOSIT & PAYMENT WORKFLOW
 # -------------------------------------------------------------------------
 @app.post("/api/bookings/{bk_id}/deposit")
-async def record_deposit(bk_id: str, payload: Dict[str, Any]):
+def record_deposit(bk_id: str, payload: Dict[str, Any]):
     target = next((b for b in store.bookings if b.get("booking_id") == bk_id), None)
     if not target:
         raise HTTPException(status_code=404, detail="ไม่พบรายการจอง")
@@ -2745,7 +2746,7 @@ async def record_deposit(bk_id: str, payload: Dict[str, Any]):
     return {"success": True, "booking": target}
 
 @app.post("/api/bookings/{bk_id}/settle")
-async def settle_rental(bk_id: str, payload: Dict[str, Any]):
+def settle_rental(bk_id: str, payload: Dict[str, Any]):
     target = next((b for b in store.bookings if b.get("booking_id") == bk_id), None)
     if not target:
         raise HTTPException(status_code=404, detail="ไม่พบรายการจอง")
@@ -2811,7 +2812,7 @@ async def settle_rental(bk_id: str, payload: Dict[str, Any]):
     return {"success": True, "booking": target}
 
 @app.post("/api/bookings/{bk_id}/payment-slip")
-async def update_payment_slip(bk_id: str, payload: Dict[str, Any]):
+def update_payment_slip(bk_id: str, payload: Dict[str, Any]):
     target = next((b for b in store.bookings if b.get("booking_id") == bk_id), None)
     if not target:
         raise HTTPException(status_code=404, detail="ไม่พบรายการจอง")
@@ -2877,7 +2878,7 @@ async def update_payment_slip(bk_id: str, payload: Dict[str, Any]):
 # DISPATCH & RETURN WORK ORDERS
 # -------------------------------------------------------------------------
 @app.post("/api/bookings/{bk_id}/assign")
-async def assign_worker(bk_id: str, payload: Dict[str, Any]):
+def assign_worker(bk_id: str, payload: Dict[str, Any]):
     target = next((b for b in store.bookings if b.get("booking_id") == bk_id), None)
     if not target:
         raise HTTPException(status_code=404, detail="ไม่พบรายการจอง")
@@ -3057,7 +3058,7 @@ async def assign_worker(bk_id: str, payload: Dict[str, Any]):
 # -------------------------------------------------------------------------
 @app.post("/api/work-orders")
 @app.post("/api/work-order-logs")
-async def create_work_order(payload: Dict[str, Any]):
+def create_work_order(payload: Dict[str, Any]):
     """Insert a new record into work_order_logs decoupled from booking logic."""
     bk_id = str(payload.get("booking_id") or "").strip() or None
     car_id = str(payload.get("car_id") or "").strip() or None
@@ -3100,7 +3101,7 @@ async def create_work_order(payload: Dict[str, Any]):
 # BACK OFFICE WORK ORDERS & INSPECTIONS
 # -------------------------------------------------------------------------
 @app.get("/api/backoffice/jobs")
-async def list_backoffice_jobs():
+def list_backoffice_jobs():
     jobs = []
     archived_ids = {cj.get("booking_id") for cj in store.completed_jobs}
     for b in store.bookings:
@@ -3203,7 +3204,7 @@ async def list_backoffice_jobs():
     return jobs
 
 @app.post("/api/bookings/{bk_id}/close-dispatch")
-async def close_dispatch(bk_id: str, payload: Dict[str, Any]):
+def close_dispatch(bk_id: str, payload: Dict[str, Any]):
     target = next((b for b in store.bookings if b.get("booking_id") == bk_id), None)
     if not target:
         raise HTTPException(status_code=404, detail="ไม่พบรายการจอง")
@@ -3242,7 +3243,7 @@ async def close_dispatch(bk_id: str, payload: Dict[str, Any]):
     return {"success": True, "booking": target}
 
 @app.post("/api/bookings/{bk_id}/close-return")
-async def close_return(bk_id: str, payload: Dict[str, Any]):
+def close_return(bk_id: str, payload: Dict[str, Any]):
     action = payload.get("action", "end_contract")
     fuel = payload.get("fuel_level", "⛽ เต็มถัง (Full - 8/8) [100%]")
     mileage = payload.get("mileage", "")
@@ -3366,39 +3367,42 @@ async def upload_photo(
     contents = await file.read()
     ext = file.filename.split(".")[-1] if "." in file.filename else "jpg"
 
-    # 1. Google Drive Auto-Upload (TARGET MISSION 2)
-    if gdrive_service.is_configured():
-        target_ref = ref_id or plate or "ref"
-        res = gdrive_service.upload_file(
-            file_bytes=contents,
-            category=category or "slip",
-            ref_or_plate=target_ref,
-            sub_type=sub_type,
-            original_filename=file.filename,
-            content_type=file.content_type or "image/jpeg"
-        )
-        if res.get("success"):
-            return {
-                "success": True,
-                "url": res["webViewLink"],
-                "webViewLink": res["webViewLink"],
-                "direct_url": res["direct_url"],
-                "filename": res["filename"],
-                "folder_id": res["folder_id"],
-                "is_gdrive": True
-            }
-        else:
-            print(f"[Upload] GDrive upload error, falling back to local base64: {res.get('error')}")
+    def _process_upload():
+        # 1. Google Drive Auto-Upload (TARGET MISSION 2)
+        if gdrive_service.is_configured():
+            target_ref = ref_id or plate or "ref"
+            res = gdrive_service.upload_file(
+                file_bytes=contents,
+                category=category or "slip",
+                ref_or_plate=target_ref,
+                sub_type=sub_type,
+                original_filename=file.filename,
+                content_type=file.content_type or "image/jpeg"
+            )
+            if res.get("success"):
+                return {
+                    "success": True,
+                    "url": res["webViewLink"],
+                    "webViewLink": res["webViewLink"],
+                    "direct_url": res["direct_url"],
+                    "filename": res["filename"],
+                    "folder_id": res["folder_id"],
+                    "is_gdrive": True
+                }
+            else:
+                print(f"[Upload] GDrive upload error, falling back to local base64: {res.get('error')}")
 
-    # 2. Resilient Base64 fallback (safe for current demo)
-    safe_fn = f"insp_{int(time.time()*1000)}.{ext}"
-    url = store.upload_photo(safe_fn, contents, file.content_type or "image/jpeg")
-    if not url:
-        raise HTTPException(status_code=500, detail="อัปโหลดรูปภาพไม่สำเร็จ")
-    return {"success": True, "url": url, "filename": safe_fn, "is_gdrive": False}
+        # 2. Resilient Base64 fallback (safe for current demo)
+        safe_fn = f"insp_{int(time.time()*1000)}.{ext}"
+        url = store.upload_photo(safe_fn, contents, file.content_type or "image/jpeg")
+        if not url:
+            raise HTTPException(status_code=500, detail="อัปโหลดรูปภาพไม่สำเร็จ")
+        return {"success": True, "url": url, "filename": safe_fn, "is_gdrive": False}
+
+    return await asyncio.to_thread(_process_upload)
 
 @app.get("/api/gdrive/status")
-async def get_gdrive_status():
+def get_gdrive_status():
     """Returns Google Drive service connection status and configured folder IDs."""
     return {
         "success": True,
@@ -3415,7 +3419,7 @@ async def get_gdrive_status():
 # FLEET MAINTENANCE & SERVICE WORK ORDERS
 # -------------------------------------------------------------------------
 @app.get("/api/maintenance/last-cost")
-async def get_last_maintenance_cost(car_id: str, type: Optional[str] = None):
+def get_last_maintenance_cost(car_id: str, type: Optional[str] = None):
     """
     Returns the latest historical cost or preset document cost for a car and order type.
     """
@@ -3496,7 +3500,7 @@ async def get_last_maintenance_cost(car_id: str, type: Optional[str] = None):
     return {"success": True, "car_id": clean_car, "order_type": clean_type, "cost": 0.0, "source": "none"}
 
 @app.get("/api/maintenance")
-async def list_maintenance(
+def list_maintenance(
     car_id: Optional[str] = None,
     status: Optional[str] = None,
     order_type: Optional[str] = None,
@@ -3524,7 +3528,7 @@ async def list_maintenance(
     return records
 
 @app.post("/api/maintenance")
-async def create_maintenance(payload: Dict[str, Any]):
+def create_maintenance(payload: Dict[str, Any]):
     car_id = str(payload.get("car_id", "")).strip()
     if not car_id:
         raise HTTPException(status_code=400, detail="กรุณาระบุทะเบียนรถ")
@@ -3615,14 +3619,14 @@ async def create_maintenance(payload: Dict[str, Any]):
     return {"success": True, "maintenance": record}
 
 @app.get("/api/maintenance/{mnt_id}")
-async def get_maintenance(mnt_id: str):
+def get_maintenance(mnt_id: str):
     target = next((m for m in store.maintenance_records if m.get("id") == mnt_id), None)
     if not target:
         raise HTTPException(status_code=404, detail="ไม่พบข้อมูลใบงานซ่อมบำรุง")
     return target
 
 @app.put("/api/maintenance/{mnt_id}")
-async def update_maintenance(mnt_id: str, payload: Dict[str, Any]):
+def update_maintenance(mnt_id: str, payload: Dict[str, Any]):
     target = next((m for m in store.maintenance_records if m.get("id") == mnt_id), None)
     if not target:
         raise HTTPException(status_code=404, detail="ไม่พบข้อมูลใบงานซ่อมบำรุง")
@@ -3635,7 +3639,7 @@ async def update_maintenance(mnt_id: str, payload: Dict[str, Any]):
     return {"success": True, "maintenance": target}
 
 @app.post("/api/maintenance/{mnt_id}/close")
-async def close_maintenance(mnt_id: str, payload: Dict[str, Any]):
+def close_maintenance(mnt_id: str, payload: Dict[str, Any]):
     actual_cost = payload.get("actual_cost")
     notes = payload.get("completion_notes", "")
     new_mileage = payload.get("mileage")
@@ -3748,7 +3752,7 @@ def execute_hard_delete_work_order_db(clean_id: str, found_car_id: Optional[str]
 @app.delete("/api/maintenance/{mnt_id}")
 @app.delete("/api/work-orders/{mnt_id}")
 @app.delete("/api/work-order-logs/{mnt_id}")
-async def delete_maintenance_or_work_order(mnt_id: str):
+def delete_maintenance_or_work_order(mnt_id: str):
     """TARGET MISSION 1 & 2: Hard delete from work_order_logs and revert car status in 1 transaction."""
     clean_id = urllib.parse.unquote(mnt_id).strip()
     car_id = store.hard_delete_work_order(clean_id)
@@ -3761,7 +3765,7 @@ async def delete_maintenance_or_work_order(mnt_id: str):
     }
 
 @app.get("/api/pdf/maintenance/{mnt_id}")
-async def get_maintenance_pdf(mnt_id: str):
+def get_maintenance_pdf(mnt_id: str):
     target = next((m for m in store.maintenance_records if m.get("id") == mnt_id), None)
     if not target:
         raise HTTPException(status_code=404, detail="ไม่พบข้อมูลใบงานซ่อมบำรุง")
@@ -3793,7 +3797,7 @@ def normalize_payment_channel(raw_method: str) -> str:
 
 @app.post("/api/financial-records")
 @app.post("/api/finance/records")
-async def create_financial_record(payload: Dict[str, Any]):
+def create_financial_record(payload: Dict[str, Any]):
     now_ts = now_th().strftime("%Y-%m-%d %H:%M:%S")
     f_rec = {
         "date": str(payload.get("date") or now_ts),
@@ -3811,7 +3815,7 @@ async def create_financial_record(payload: Dict[str, Any]):
     return {"success": True, "record": f_rec}
 
 @app.get("/api/finance/summary")
-async def get_finance_summary(month: Optional[str] = None, start_date: Optional[str] = None, end_date: Optional[str] = None):
+def get_finance_summary(month: Optional[str] = None, start_date: Optional[str] = None, end_date: Optional[str] = None):
     """
     Financial Dashboard & Shift Closing Summary (Read-Only)
     Aggregates income (deposit + rental + extensions) grouped by day and month,
@@ -4005,7 +4009,7 @@ async def get_finance_summary(month: Optional[str] = None, start_date: Optional[
 import urllib.parse
 
 @app.get("/api/cars/{plate:path}/maintenances")
-async def get_car_maintenances(plate: str):
+def get_car_maintenances(plate: str):
     clean_plate = urllib.parse.unquote(plate).strip()
     records = store.get_combined_maintenance_history(clean_plate)
     roi_data = store.get_car_financial_roi(clean_plate)
@@ -4017,7 +4021,7 @@ async def get_car_maintenances(plate: str):
     }
 
 @app.post("/api/cars/{plate:path}/maintenances")
-async def add_car_maintenance(plate: str, payload: Dict[str, Any]):
+def add_car_maintenance(plate: str, payload: Dict[str, Any]):
     clean_plate = urllib.parse.unquote(plate).strip()
     if not clean_plate:
         raise HTTPException(status_code=400, detail="ไม่พบทะเบียนรถ")
@@ -4090,7 +4094,7 @@ async def add_car_maintenance(plate: str, payload: Dict[str, Any]):
     }
 
 @app.delete("/api/cars/{plate:path}/maintenances/{m_id}")
-async def delete_car_maintenance(plate: str, m_id: str):
+def delete_car_maintenance(plate: str, m_id: str):
     clean_plate = urllib.parse.unquote(plate).strip()
     clean_id = urllib.parse.unquote(m_id).strip()
     store.hard_delete_work_order(clean_id, car_id=clean_plate)
@@ -4110,7 +4114,7 @@ async def delete_car_maintenance(plate: str, m_id: str):
 # EXECUTIVE DASHBOARD & REPORTS
 # -------------------------------------------------------------------------
 @app.get("/api/reports/car-profitability")
-async def get_car_profitability():
+def get_car_profitability():
     # Computes gross revenue, expenses (repairs/maintenance), and net profit per car
     rev_by_car = {}
     rentals_by_car = {}
@@ -4410,14 +4414,14 @@ def compute_dashboard_statistics():
 
 @app.get("/api/dashboard/stats")
 @app.get("/api/reports/kpis")
-async def get_dashboard_stats(response: Response):
+def get_dashboard_stats(response: Response):
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0"
     response.headers["Pragma"] = "no-cache"
     response.headers["Expires"] = "0"
     return compute_dashboard_statistics()
 
 @app.get("/api/reports/monthly")
-async def get_monthly_reports(month: Optional[str] = None):
+def get_monthly_reports(month: Optional[str] = None):
     # month format: "YYYY-MM"
     jobs = store.completed_jobs
     if month:
@@ -4437,7 +4441,7 @@ async def get_monthly_reports(month: Optional[str] = None):
     }
 
 @app.get("/api/reports/export-csv")
-async def export_csv(month: Optional[str] = None):
+def export_csv(month: Optional[str] = None):
     jobs = store.completed_jobs
     if month:
         filtered = []
@@ -4516,7 +4520,7 @@ def _resolve_cust_and_car(target):
 # -------------------------------------------------------------------------
 
 @app.get("/api/pdf/contract/{bk_id}")
-async def get_contract_pdf(bk_id: str, download: int = 0):
+def get_contract_pdf(bk_id: str, download: int = 0):
     target = next((b for b in store.bookings if b.get("booking_id") == bk_id), None)
     if not target:
         target = next((cj for cj in store.completed_jobs if cj.get("booking_id") == bk_id), None)
@@ -4562,7 +4566,7 @@ async def get_contract_pdf(bk_id: str, download: int = 0):
     )
 
 @app.get("/api/pdf/receipt/{bk_id}")
-async def get_receipt_pdf(bk_id: str):
+def get_receipt_pdf(bk_id: str):
     target = next((b for b in store.bookings if b.get("booking_id") == bk_id), None)
     if not target:
         target = next((cj for cj in store.completed_jobs if cj.get("booking_id") == bk_id), None)
@@ -4597,7 +4601,7 @@ async def get_receipt_pdf(bk_id: str):
     )
 
 @app.get("/api/pdf/deposit-receipt/{bk_id}")
-async def get_deposit_receipt_pdf(bk_id: str):
+def get_deposit_receipt_pdf(bk_id: str):
     target = next((b for b in store.bookings if b.get("booking_id") == bk_id), None)
     if not target:
         target = next((cj for cj in store.completed_jobs if cj.get("booking_id") == bk_id), None)
@@ -4632,7 +4636,7 @@ async def get_deposit_receipt_pdf(bk_id: str):
     )
 
 @app.get("/api/pdf/inspection/{bk_id}")
-async def get_inspection_pdf(bk_id: str, type: str = "checkout", download: int = 0):
+def get_inspection_pdf(bk_id: str, type: str = "checkout", download: int = 0):
     target = next((b for b in store.bookings if b.get("booking_id") == bk_id), None)
     if not target:
         target = next((cj for cj in store.completed_jobs if cj.get("booking_id") == bk_id), None)
@@ -4694,7 +4698,7 @@ async def get_inspection_pdf(bk_id: str, type: str = "checkout", download: int =
     )
 
 @app.get("/api/pdf/job/{bk_id}")
-async def get_job_pdf(bk_id: str, type: Optional[str] = None):
+def get_job_pdf(bk_id: str, type: Optional[str] = None):
     target = next((b for b in store.bookings if b.get("booking_id") == bk_id), None)
     if not target:
         target = next((cj for cj in store.completed_jobs if cj.get("booking_id") == bk_id), None)
@@ -4717,7 +4721,7 @@ async def get_job_pdf(bk_id: str, type: Optional[str] = None):
     )
 
 @app.get("/api/html/inspection/{bk_id}", response_class=HTMLResponse)
-async def get_inspection_html(bk_id: str, type: Optional[str] = None):
+def get_inspection_html(bk_id: str, type: Optional[str] = None):
     target = next((b for b in store.bookings if b.get("booking_id") == bk_id), None)
     if not target:
         target = next((cj for cj in store.completed_jobs if cj.get("booking_id") == bk_id), None)
@@ -4735,7 +4739,7 @@ async def get_inspection_html(bk_id: str, type: Optional[str] = None):
 # LINE MESSAGING (DIRECT PUSH & AUTO-LINK WEBHOOK)
 # -------------------------------------------------------------------------
 @app.post("/api/line/broadcast")
-async def trigger_line_broadcast(payload: Optional[Dict[str, Any]] = None):
+def trigger_line_broadcast(payload: Optional[Dict[str, Any]] = None):
     p = payload or {}
     msg = p.get("message", "ทดสอบการส่งข้อความจากระบบ Sawasdee Rental")
     to_uid = p.get("to_user_id")
@@ -4748,7 +4752,7 @@ async def trigger_line_broadcast(payload: Optional[Dict[str, Any]] = None):
 
 @app.post("/api/line/check-expiry")
 @app.post("/api/notify/expirations")
-async def trigger_expiry_alert_check(payload: Optional[Dict[str, Any]] = None):
+def trigger_expiry_alert_check(payload: Optional[Dict[str, Any]] = None):
     try:
         p = payload or {}
         recipient_mode = p.get("recipient_mode")
@@ -4783,52 +4787,58 @@ async def line_bot_webhook(request: Request):
     except Exception:
         return {"status": "ok"}
 
-    events = body.get("events") or []
-    for ev in events:
-        ev_type = ev.get("type")
-        source = ev.get("source") or {}
-        line_uid = source.get("userId")
-        reply_token = ev.get("replyToken")
+    def _handle_line_events():
+        events = body.get("events") or []
+        for ev in events:
+            ev_type = ev.get("type")
+            source = ev.get("source") or {}
+            line_uid = source.get("userId")
+            reply_token = ev.get("replyToken")
 
-        if ev_type == "message" and ev.get("message", {}).get("type") == "text" and line_uid:
-            raw_text = str(ev.get("message", {}).get("text") or "").strip()
-            clean_text = raw_text.replace("ผูกบัญชี", "").replace("link", "").strip()
-            matched_user = None
+            if ev_type == "message" and ev.get("message", {}).get("type") == "text" and line_uid:
+                raw_text = str(ev.get("message", {}).get("text") or "").strip()
+                clean_text = raw_text.replace("ผูกบัญชี", "").replace("link", "").strip()
+                matched_user = None
 
-            for uname, u_obj in store.users.items():
-                u_line = str(u_obj.get("line_user_id") or "").strip().lower()
-                if (
-                    uname.lower() == clean_text.lower()
-                    or str(u_obj.get("name") or "").strip().lower() == clean_text.lower()
-                    or (u_line and u_line == clean_text.lower())
-                ):
-                    matched_user = u_obj
-                    break
+                with store.lock:
+                    users_snap = [(uname, dict(u_obj)) for uname, u_obj in store.users.items()]
 
-            if matched_user:
-                uname = matched_user.get("username")
-                matched_user["line_user_id"] = line_uid
-                store.async_sync_user(uname, matched_user)
-                if reply_token:
+                for uname, u_obj in users_snap:
+                    u_line = str(u_obj.get("line_user_id") or "").strip().lower()
+                    if (
+                        uname.lower() == clean_text.lower()
+                        or str(u_obj.get("name") or "").strip().lower() == clean_text.lower()
+                        or (u_line and u_line == clean_text.lower())
+                    ):
+                        matched_user = u_obj
+                        break
+
+                if matched_user:
+                    uname = matched_user.get("username")
+                    matched_user["line_user_id"] = line_uid
+                    store.async_sync_user(uname, matched_user)
+                    if reply_token:
+                        send_line_reply_message(
+                            reply_token,
+                            "\n".join([
+                                "✅ ผูกบัญชีสำเร็จ!",
+                                f"👤 ชื่อผู้ใช้: {uname} ({matched_user.get('name', uname)})",
+                                f"📲 LINE ID: {line_uid}",
+                                "ระบบจะส่งใบงานส่งรถ/รับรถ/ซ่อมบำรุง ที่คุณเป็นผู้รับผิดชอบมาที่แชทนี้โดยตรงครับ"
+                            ])
+                        )
+                elif reply_token:
                     send_line_reply_message(
                         reply_token,
                         "\n".join([
-                            "✅ ผูกบัญชีสำเร็จ!",
-                            f"👤 ชื่อผู้ใช้: {uname} ({matched_user.get('name', uname)})",
-                            f"📲 LINE ID: {line_uid}",
-                            "ระบบจะส่งใบงานส่งรถ/รับรถ/ซ่อมบำรุง ที่คุณเป็นผู้รับผิดชอบมาที่แชทนี้โดยตรงครับ"
+                            "📲 รหัส LINE User ID ของคุณคือ:",
+                            line_uid,
+                            "",
+                            "💡 พิมพ์ชื่อผู้ใช้งาน (Username) ของคุณในระบบ (เช่น chaiwat.u) ส่งมาในแชทนี้เพื่อผูกบัญชีรับใบงานอัตโนมัติ หรือคัดลอกรหัสข้างต้นไปใส่ในหน้าจัดการผู้ใช้งานได้เลยครับ"
                         ])
                     )
-            elif reply_token:
-                send_line_reply_message(
-                    reply_token,
-                    "\n".join([
-                        "📲 รหัส LINE User ID ของคุณคือ:",
-                        line_uid,
-                        "",
-                        "💡 พิมพ์ชื่อผู้ใช้งาน (Username) ของคุณในระบบ (เช่น chaiwat.u) ส่งมาในแชทนี้เพื่อผูกบัญชีรับใบงานอัตโนมัติ หรือคัดลอกรหัสข้างต้นไปใส่ในหน้าจัดการผู้ใช้งานได้เลยครับ"
-                    ])
-                )
+
+    await asyncio.to_thread(_handle_line_events)
     return {"status": "ok"}
 
 if __name__ == "__main__":
@@ -4838,7 +4848,7 @@ if __name__ == "__main__":
 
 
 @app.get("/api/work-order-logs")
-async def list_work_order_logs(car_id: Optional[str] = None, booking_id: Optional[str] = None, limit: int = 100):
+def list_work_order_logs(car_id: Optional[str] = None, booking_id: Optional[str] = None, limit: int = 100):
     logs = list(store.work_order_logs)
     if car_id:
         logs = [l for l in logs if l.get("car_id") == car_id]
@@ -4848,10 +4858,10 @@ async def list_work_order_logs(car_id: Optional[str] = None, booking_id: Optiona
 
 @app.post("/api/inspections/checkin")
 @app.post("/api/inspections/{bk_id}/checkin")
-async def complete_inspection_checkin_direct(bk_id: Optional[str] = None, payload: Optional[Dict[str, Any]] = None):
+def complete_inspection_checkin_direct(bk_id: Optional[str] = None, payload: Optional[Dict[str, Any]] = None):
     """Dedicated endpoint for direct check-in inspection mileage update & PDF completion."""
     payload = payload or {}
     b_id = bk_id or payload.get("booking_id")
     if not b_id:
         raise HTTPException(status_code=400, detail="booking_id is required")
-    return await generate_booking_inspection_pdf(b_id, {**payload, "inspection_type": "checkin"})
+    return generate_booking_inspection_pdf(b_id, {**payload, "inspection_type": "checkin"})
