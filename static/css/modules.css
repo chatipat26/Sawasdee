@@ -1,0 +1,600 @@
+/* =========================================================================
+   APP SPLASH / BRAND LOADING SCREEN
+   ========================================================================= */
+.app-splash-wrapper {
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(circle at center, #FFFFFF 0%, #FBF8F3 60%, #F4EDE2 100%);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 100000;
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.app-splash-wrapper.fade-out {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.app-splash-content {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 440px;
+  padding: 24px;
+  animation: splashPopIn 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes splashPopIn {
+  0% { opacity: 0; transform: scale(0.9) translateY(12px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.app-splash-logo-circle {
+  width: 104px;
+  height: 104px;
+  border-radius: 50%;
+  background: #111111;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20px;
+  box-shadow: 0 10px 30px rgba(232, 88, 38, 0.28), 0 4px 16px rgba(0, 0, 0, 0.22);
+  position: relative;
+  animation: splashLogoPulse 2.4s infinite ease-in-out;
+}
+
+@keyframes splashLogoPulse {
+  0% { transform: scale(1); box-shadow: 0 10px 30px rgba(232, 88, 38, 0.25), 0 4px 16px rgba(0,0,0,0.2); }
+  50% { transform: scale(1.05); box-shadow: 0 16px 45px rgba(232, 88, 38, 0.45), 0 6px 22px rgba(0,0,0,0.28); }
+  100% { transform: scale(1); box-shadow: 0 10px 30px rgba(232, 88, 38, 0.25), 0 4px 16px rgba(0,0,0,0.2); }
+}
+
+.app-splash-logo-circle img {
+  width: 76px;
+  height: auto;
+  object-fit: contain;
+}
+
+.app-splash-title {
+  font-size: 21px;
+  font-weight: 800;
+  letter-spacing: 2.5px;
+  color: #1F2937;
+  margin-bottom: 6px;
+}
+
+.app-splash-subtitle {
+  font-size: 13px;
+  font-weight: 500;
+  color: #6B7280;
+  margin-bottom: 24px;
+}
+
+.app-splash-loader {
+  width: 220px;
+  height: 5px;
+  background: #E5DFD7;
+  border-radius: 999px;
+  overflow: hidden;
+  position: relative;
+  margin-bottom: 14px;
+}
+
+.app-splash-bar {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 45%;
+  background: var(--brand-gradient);
+  border-radius: 999px;
+  animation: splashIndeterminate 1.4s infinite ease-in-out;
+}
+
+@keyframes splashIndeterminate {
+  0% { left: -45%; width: 40%; }
+  50% { left: 30%; width: 60%; }
+  100% { left: 105%; width: 40%; }
+}
+
+.app-splash-status {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #9CA3AF;
+  letter-spacing: 0.3px;
+}
+
+/* =========================================================================
+   AUTHENTICATION GATE SCREEN (EXCLUSIVE LOGIN SCREEN)
+   ========================================================================= */
+.auth-gate-wrapper {
+  position: fixed;
+  inset: 0;
+  background-color: var(--bg-main);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 99999;
+  padding: 24px 16px;
+  overflow-y: auto;
+}
+
+.auth-gate-wrapper::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url('/static/sawasdee-logo.png');
+  background-repeat: no-repeat;
+  background-position: 50% 50%;
+  background-size: min(55vw, 500px);
+  opacity: 0.04;
+  pointer-events: none;
+}
+
+.auth-gate-card {
+  width: 100%;
+  max-width: 440px;
+  position: relative;
+  z-index: 1;
+}
+
+.auth-gate-logo-circle {
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  background: #111111;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px auto;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+  overflow: hidden;
+}
+
+.auth-gate-logo-circle img {
+  width: 70px;
+  height: auto;
+  object-fit: contain;
+}
+
+.auth-gate-box {
+  background: #FFFFFF;
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 4px 24px rgba(31, 41, 55, 0.06);
+  padding: 28px 26px;
+}
+
+.gate-form-group {
+  margin-bottom: 14px;
+}
+
+.gate-label {
+  display: block;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #374151;
+  margin-bottom: 6px;
+}
+
+.gate-input {
+  width: 100%;
+  padding: 11px 14px;
+  background: #FAF7F2;
+  border: 1.5px solid #E5DFD7;
+  border-radius: 8px;
+  font-size: 13.5px;
+  color: #1F2937;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.gate-input:focus {
+  border-color: var(--brand-primary);
+  background: #FFFFFF;
+  box-shadow: 0 0 0 3px var(--brand-glow);
+}
+
+.gate-alert {
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  margin-bottom: 14px;
+  display: none;
+}
+
+.gate-alert.error {
+  display: block;
+  background: #FEF2F2;
+  border: 1px solid #FECACA;
+  color: #DC2626;
+}
+
+.gate-alert.success {
+  display: block;
+  background: #F0FDF4;
+  border: 1px solid #BBF7D0;
+  color: #166534;
+}
+
+.gate-btn-submit {
+  width: 100%;
+  padding: 12px;
+  background: var(--brand-gradient);
+  color: #FFFFFF;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 12px var(--brand-glow);
+  margin-top: 4px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.gate-btn-submit:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(232, 88, 38, 0.3);
+}
+
+.gate-sub-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.gate-btn-sub {
+  flex: 1;
+  padding: 9.5px;
+  background: #FFFFFF;
+  border: 1px solid #D1D5DB;
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: center;
+}
+
+.gate-btn-sub:hover {
+  border-color: var(--brand-primary);
+  color: var(--brand-primary);
+  background: #FFF7ED;
+}
+
+.gate-form-title {
+  text-align: center;
+  color: var(--brand-primary);
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.gate-form-desc {
+  font-size: 12px;
+  color: #6B7280;
+  text-align: center;
+  margin-bottom: 16px;
+  line-height: 1.4;
+}
+
+/* Sidebar Custom User Card */
+.sb-user-card {
+  background: #FFFFFF;
+  border: 1px solid #EFEAE3;
+  border-left: 4px solid var(--brand-primary);
+  border-radius: 8px;
+  padding: 9px 12px;
+  margin-bottom: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+}
+
+.sb-admin-staff-btn {
+  background: #FFFFFF;
+  border: 1px solid #EFEAE3;
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #374151;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.sb-admin-staff-btn:hover {
+  border-color: var(--brand-primary);
+  color: var(--brand-primary);
+  background: #FFF7ED;
+}
+
+.sb-logout-btn {
+  width: 100%;
+  margin-top: auto;
+  padding: 8px 12px;
+  background: #FFFFFF;
+  border: 1px solid #FECACA;
+  color: #DC2626;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.sb-logout-btn:hover {
+  background: #FEE2E2;
+  border-color: #EF4444;
+}
+
+/* ========================================================================= */
+/* COLLAPSIBLE EXPANDER CARDS                                                */
+/* ========================================================================= */
+.expander-card {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  margin-bottom: 22px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+  transition: all 0.2s ease;
+}
+
+.expander-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 20px;
+  background: #FAF7F2;
+  cursor: pointer;
+  user-select: none;
+  border-bottom: 1px solid transparent;
+  transition: background 0.15s ease;
+}
+
+.expander-header:hover {
+  background: #F4EBE1;
+}
+
+.expander-header.open {
+  border-bottom: 1px solid var(--border);
+}
+
+.expander-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1F2937;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.expander-indicator {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #8C827A;
+}
+
+.expander-body {
+  padding: 20px;
+}
+
+/* Donut & Trend Cards */
+.donut-card {
+  background: #FFFFFF;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 18px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+}
+
+.donut-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: #1F2937;
+  margin-bottom: 4px;
+}
+
+.donut-sub {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+
+.donut-stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  padding: 5px 0;
+  border-bottom: 1px dashed #E5DFD7;
+}
+
+.donut-stat-row:last-child {
+  border-bottom: none;
+}
+
+
+/* Unified Work Order Card & Radio Toggle */
+.workorder-unified-card {
+  max-width: 900px;
+}
+.workorder-unified-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding-bottom: 12px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+.workorder-mode-toggle {
+  display: inline-flex;
+  gap: 8px;
+  background: #FAF5EE;
+  padding: 4px;
+  border-radius: 10px;
+  border: 1px solid #E7E0D6;
+}
+.workorder-mode-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #57534E;
+  cursor: pointer;
+  margin: 0;
+  transition: all 0.15s ease;
+}
+.workorder-mode-option input[type="radio"] {
+  accent-color: #C2410C;
+  cursor: pointer;
+}
+.workorder-mode-option:has(input:checked) {
+  background: #FFFFFF;
+  color: #C2410C;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+}
+
+/* Interactive Expiry Alert Card & Dashboard Proportions */
+.interactive-alert-card {
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.interactive-alert-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(234, 88, 12, 0.14) !important;
+  border-color: #FB923C !important;
+}
+
+.dashboard-charts-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  align-items: start;
+  margin-bottom: 20px;
+  width: 100%;
+}
+
+.dashboard-charts-grid > .card {
+  min-width: 0;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+@media (max-width: 1024px) {
+  .dashboard-charts-grid {
+    grid-template-columns: 1fr !important;
+    gap: 16px;
+  }
+}
+
+/* Pure White Modals Override (Modal Card & Inner Tables) */
+.modal-dialog,
+.modal-box,
+.modal-card {
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+}
+
+#modal-cycle-expiries .modal-card,
+#modal-cycle-expiries .table-responsive,
+#modal-cycle-expiries table,
+#modal-cycle-expiries thead,
+#modal-cycle-expiries tbody,
+#modal-cycle-expiries th,
+#modal-cycle-expiries td,
+#modal-cycle-expiries tr,
+#modal-top-expenses .modal-card,
+#modal-top-expenses .table-responsive,
+#modal-top-expenses table,
+#modal-top-expenses thead,
+#modal-top-expenses tbody,
+#modal-top-expenses th,
+#modal-top-expenses td,
+#modal-top-expenses tr {
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+}
+
+#modal-cycle-expiries .custom-table tr:hover td,
+#modal-top-expenses .custom-table tr:hover td {
+  background: #F8FAFC !important;
+}
+
+/* Maintenance Modal: Searchable Car Dropdown */
+.mnt-car-option-item {
+  padding: 8px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid #F1F5F9;
+  font-size: 12.5px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: background-color 0.15s ease;
+  user-select: none;
+}
+
+.mnt-car-option-item:last-child {
+  border-bottom: none;
+}
+
+.mnt-car-option-item:hover {
+  background-color: #FFF7ED !important;
+}
+
+.mnt-car-option-item.selected {
+  background-color: #FFEDD5 !important;
+  font-weight: 700;
+}
+
+/* Inspection Return Modal: Swap Vehicle Dropdown */
+.insp-swap-car-option-item {
+  padding: 8px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid #F1F5F9;
+  font-size: 12.5px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: background-color 0.15s ease;
+  user-select: none;
+}
+
+.insp-swap-car-option-item:last-child {
+  border-bottom: none;
+}
+
+.insp-swap-car-option-item:hover {
+  background-color: #FFF7ED !important;
+}
+
+.insp-swap-car-option-item.selected {
+  background-color: #FFEDD5 !important;
+  font-weight: 700;
+}

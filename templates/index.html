@@ -4,7 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sawasdee Rental - ระบบบริหารจัดการรถเช่าระดับพรีเมียม</title>
-  <link rel="stylesheet" href="/static/css/app.css?v=5.0">
+  <link rel="stylesheet" href="/static/css/base.css?v=5.1">
+  <link rel="stylesheet" href="/static/css/components.css?v=5.1">
+  <link rel="stylesheet" href="/static/css/modules.css?v=5.1">
   <link rel="icon" type="image/png" href="/static/sawasdee-logo.png">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
@@ -27,19 +29,6 @@
       <div id="app-splash-status" class="app-splash-status">กำลังเริ่มต้นระบบความปลอดภัย...</div>
     </div>
   </div>
-  <!-- Fail-safe Watchdog: Guarantees splash screen is dismissed even if scripts/CDNs/network lag -->
-  <script>
-    (function() {
-      var splashTimer = setTimeout(function() {
-        var splash = document.getElementById("app-splash-screen");
-        if (splash && splash.style.display !== "none") {
-          splash.classList.add("fade-out");
-          setTimeout(function() { if (splash) splash.style.display = "none"; }, 500);
-        }
-      }, 2500);
-      window.dismissSplashWatchdog = function() { clearTimeout(splashTimer); };
-    })();
-  </script>
 
   <!-- ========================================================================= -->
   <!-- 1. AUTHENTICATION GATE SCREEN (LOGIN SCREEN)                              -->
@@ -3165,9 +3154,6 @@
   <!-- Toast Notification Container -->
   <div class="toast-container" id="toast-container"></div>
 
-  <!-- Scripts with cache busting -->
-  <script src="/static/js/app.js?v=13.8"></script>
-
   <!-- ===================================================================== -->
   <!-- MODAL: ACTIVE RENTALS / CARS WITH CUSTOMERS (POPUP FOR CARD 1) -->
   <!-- ===================================================================== -->
@@ -3320,5 +3306,8 @@
     </div>
   </div>
 
+  <!-- Application Scripts (loaded after all DOM elements and Modals) -->
+  <script src="/static/js/watchdog.js?v=13.9"></script>
+  <script src="/static/js/app.js?v=13.9"></script>
 </body>
 </html>
