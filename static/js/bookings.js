@@ -2341,11 +2341,78 @@ Object.assign(App.prototype, {
             <a href="/api/pdf/deposit-receipt/${b.booking_id}" target="_blank" class="btn btn-sm btn-secondary" title="${isEn ? 'Deposit Receipt PDF' : 'ใบเสร็จมัดจำ (Deposit Receipt PDF)'}">🛡️</a>
             <a href="/api/pdf/receipt/${b.booking_id}" target="_blank" class="btn btn-sm btn-secondary" title="${isEn ? 'Rental Receipt PDF' : 'ใบเสร็จค่าเช่า (Rental Receipt PDF)'}">🧾</a>
             <a href="${b.checkout_pdf_url || b.checkin_pdf_url || `/api/pdf/job/${b.booking_id}`}" target="_blank" class="btn btn-sm btn-secondary" style="${(b.checkout_pdf_url || b.checkin_pdf_url) ? 'background:#EFF6FF; border-color:#93C5FD; color:#1D4ED8; font-weight:700;' : ''}" title="${isEn ? 'Inspection Job Sheet' : 'ใบงานตรวจสภาพรถ (Job Sheet)'}">📋</a>
+            <button type="button" onclick="app.copyCustomerPortalLink('${b.booking_id}')" class="btn btn-sm btn-secondary" style="background:#FAF5FF; border-color:#D8B4FE; color:#7E22CE; font-weight:700;" title="${isEn ? 'Copy Customer Portal Link' : 'คัดลอกลิงก์ Customer Portal ให้ลูกค้าเปิดดูสัญญา/ใบเสร็จ/ใบตรวจสภาพรถ'}">🔗</button>
             <button onclick="app.deleteBooking('${b.booking_id}')" class="btn btn-sm btn-danger" title="${isEn ? 'Delete Booking' : 'ลบรายการจอง'}">🗑️</button>
           </td>
         </tr>
       `;
     }).join("");
+  },
+
+  async getCustomerPortalUrl(bkId) {
+    const b = (this.bookings || []).find(x => x.booking_id === bkId);
+    if (b && b.portal_url) {
+      return b.portal_url;
+    }
+    const res = await fetch(`/api/bookings/${encodeURIComponent(bkId)}/portal-link`);
+    const data = await res.json();
+    if (!res.ok || !data.portal_url) {
+      throw new Error(data.detail || "ไม่สามารถสร้างลิงก์ Customer Portal ได้");
+    }
+    if (b) {
+      b.portal_url = data.portal_url;
+      b.portal_token = data.token;
+    }
+    return data.portal_url;
+  },
+
+  async copyCustomerPortalLink(bkId) {
+    try {
+      const portalPath = await this.getCustomerPortalUrl(bkId);
+      const fullUrl = `${window.location.origin}${portalPath}`;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(fullUrl);
+      } else {
+        const tmp = document.createElement("textarea");
+        tmp.value = fullUrl;
+        tmp.style.position = "fixed";
+        tmp.style.opacity = "0";
+        document.body.appendChild(tmp);
+        tmp.select();
+        document.execCommand("copy");
+        document.body.removeChild(tmp);
+      }
+      this.showToast(`🔗 คัดลอกลิงก์ Customer Portal (${bkId}) เรียบร้อยแล้ว`, "success");
+    } catch (e) {
+      this.showToast("คัดลอกลิงก์ไม่สำเร็จ: " + e.message, "danger");
+    }
+  },
+
+  async openCustomerPortal(bkId) {
+    try {
+      const portalPath = await this.getCustomerPortalUrl(bkId);
+      window.open(portalPath, "_blank");
+    } catch (e) {
+      this.showToast("เปิดลิงก์ Portal ไม่สำเร็จ: " + e.message, "danger");
+    }
+  },
+
+  async copyCurrentContractPortalLink() {
+    const bkId = document.getElementById("contract-sel-bk")?.value;
+    if (!bkId) {
+      this.showToast("⚠️ กรุณาเลือกรายการจองก่อน", "warning");
+      return;
+    }
+    await this.copyCustomerPortalLink(bkId);
+  },
+
+  async openCurrentContractPortal() {
+    const bkId = document.getElementById("contract-sel-bk")?.value;
+    if (!bkId) {
+      this.showToast("⚠️ กรุณาเลือกรายการจองก่อน", "warning");
+      return;
+    }
+    await this.openCustomerPortal(bkId);
   },
 
   openInspectionPdf(bkId, type = null) {

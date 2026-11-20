@@ -3,6 +3,17 @@
  * Prototype Mixin for App
  */
 Object.assign(App.prototype, {
+  _getCustomerTierBadge(tier) {
+    const t = String(tier || "ทั่วไป").trim();
+    if (t === "VIP") {
+      return `<span style="display:inline-block; background:#FEF3C7; color:#B45309; border:1px solid #F59E0B; border-radius:999px; font-size:10.5px; font-weight:800; padding:1px 7px; margin-left:4px;">👑 VIP</span>`;
+    }
+    if (t === "Blacklist") {
+      return `<span style="display:inline-block; background:#FEE2E2; color:#B91C1C; border:1px solid #EF4444; border-radius:999px; font-size:10.5px; font-weight:800; padding:1px 7px; margin-left:4px;">⛔ Blacklist</span>`;
+    }
+    return `<span style="display:inline-block; background:#F1F5F9; color:#475569; border:1px solid #CBD5E1; border-radius:999px; font-size:10px; font-weight:600; padding:1px 6px; margin-left:4px;">ทั่วไป</span>`;
+  },
+
   renderCustomersTable() {
     const tbody = document.getElementById("customers-table-tbody");
     if (!tbody) return;
@@ -10,7 +21,7 @@ Object.assign(App.prototype, {
     const kw = (document.getElementById("cust-search-input")?.value || "").toLowerCase().trim();
     const filtered = this.customers.filter(c => {
       if (kw) {
-        const s = `${c.full_name} ${c.contact_no} ${c.passport_id} ${c.licence_no}`.toLowerCase();
+        const s = `${c.full_name} ${c.contact_no} ${c.passport_id} ${c.licence_no} ${c.crm_tier || ''} ${c.watchlist_note || ''}`.toLowerCase();
         if (!s.includes(kw)) return false;
       }
       return true;
@@ -19,9 +30,21 @@ Object.assign(App.prototype, {
     tbody.innerHTML = filtered.map(c => {
       const safeName = String(c.full_name || '').replace(/'/g, "\\'");
       const isDefault = c.full_name === "ลูกค้าทั่วไป (Walk-in)";
+      const tier = c.crm_tier || c.customer_tier || "ทั่วไป";
+      const tierBadge = this._getCustomerTierBadge(tier);
+      const note = c.watchlist_note || c.blacklist_reason || "";
+      const rentals = Number(c.total_rentals || 0);
+      const spent = Number(c.total_spent || 0);
+      const dmg = Number(c.damage_count || 0);
+      const historyLine = `<div style="font-size:10.5px; color:#475569; margin-top:3px;">📊 เช่า <b>${rentals}</b> ครั้ง | ฿${spent.toLocaleString()}${dmg > 0 ? ` <span style="color:#DC2626; font-weight:700;">• เสียหาย/ล่าช้า ${dmg}</span>` : ''}</div>`;
+      const noteLine = note ? `<div style="font-size:10.5px; color:${tier === 'Blacklist' ? '#B91C1C' : '#92400E'}; margin-top:2px;">📝 ${note}</div>` : '';
       return `
-        <tr>
-          <td><b>${c.full_name}</b></td>
+        <tr style="${tier === 'Blacklist' ? 'background:#FEF2F2;' : ''}">
+          <td>
+            <b>${c.full_name}</b> ${tierBadge}
+            ${historyLine}
+            ${noteLine}
+          </td>
           <td>
             📞 ${c.contact_no || '-'}<br/>
             ${c.whatsapp && c.whatsapp !== '-' ? `<span style="font-size:11px; color:#10B981;">WA: ${c.whatsapp}</span>` : ''}
@@ -143,18 +166,21 @@ Object.assign(App.prototype, {
     menu.innerHTML = filtered.map(c => {
       const isSelected = c.full_name === selectedName;
       const safeName = String(c.full_name || "").replace(/'/g, "\\'");
+      const tier = c.crm_tier || c.customer_tier || "ทั่วไป";
+      const tierBadge = tier !== "ทั่วไป" ? this._getCustomerTierBadge(tier) : "";
+      const rowBg = tier === "Blacklist" ? "#FEF2F2" : (isSelected ? "#EFF6FF" : "#FFF");
       return `
         <div class="cust-drop-item" 
           onclick="app.selectBookingCustomer('${safeName}')"
-          style="padding:9px 12px; cursor:pointer; border-bottom:1px solid #F1F5F9; display:flex; justify-content:space-between; align-items:center; background:${isSelected ? '#EFF6FF' : '#FFF'}; transition:background 0.15s;"
-          onmouseover="this.style.background='${isSelected ? '#DBEAFE' : '#FFF7ED'}'"
-          onmouseout="this.style.background='${isSelected ? '#EFF6FF' : '#FFF'}'">
+          style="padding:9px 12px; cursor:pointer; border-bottom:1px solid #F1F5F9; display:flex; justify-content:space-between; align-items:center; background:${rowBg}; transition:background 0.15s;"
+          onmouseover="this.style.background='${tier === 'Blacklist' ? '#FEE2E2' : (isSelected ? '#DBEAFE' : '#FFF7ED')}'"
+          onmouseout="this.style.background='${rowBg}'">
           <div>
-            <div style="font-weight:700; font-size:12.5px; color:${isSelected ? '#1D4ED8' : '#1E293B'};">
-              👤 ${c.full_name} ${isSelected ? '<span style="font-size:10.5px; color:#2563EB; font-weight:700;">(เลือกอยู่)</span>' : ''}
+            <div style="font-weight:700; font-size:12.5px; color:${tier === 'Blacklist' ? '#B91C1C' : (isSelected ? '#1D4ED8' : '#1E293B')};">
+              👤 ${c.full_name} ${tierBadge} ${isSelected ? '<span style="font-size:10.5px; color:#2563EB; font-weight:700;">(เลือกอยู่)</span>' : ''}
             </div>
             <div style="font-size:11px; color:#64748B; margin-top:2px;">
-              📞 ${c.contact_no || c.phone_number || '-'} ${c.passport_id && c.passport_id !== '-' ? `| บัตร/ID: ${c.passport_id}` : ''}
+              📞 ${c.contact_no || c.phone_number || '-'} ${c.passport_id && c.passport_id !== '-' ? `| บัตร/ID: ${c.passport_id}` : ''} | เช่า ${Number(c.total_rentals || 0)} ครั้ง
             </div>
           </div>
           ${isSelected ? '<span style="color:#2563EB; font-weight:800; font-size:14px;">✓</span>' : ''}
@@ -191,20 +217,46 @@ Object.assign(App.prototype, {
   onSelectBookingCustomer() {
     const sel = document.getElementById("book-cust-select");
     const badge = document.getElementById("book-cust-info-badge");
+    const blAlert = document.getElementById("book-cust-blacklist-alert");
     if (!sel || !badge) return;
     const name = sel.value;
     const cust = this.customers.find(c => c.full_name === name);
     if (!cust) {
       badge.style.display = "none";
+      if (blAlert) {
+        blAlert.style.display = "none";
+        blAlert.innerHTML = "";
+      }
       return;
     }
+    const tier = cust.crm_tier || cust.customer_tier || "ทั่วไป";
+    const tierBadge = this._getCustomerTierBadge(tier);
+    const rentals = Number(cust.total_rentals || 0);
+    const spent = Number(cust.total_spent || 0);
+    const dmg = Number(cust.damage_count || 0);
+    const note = cust.watchlist_note || cust.blacklist_reason || "";
+
     badge.style.display = "block";
     badge.innerHTML = `
       <div style="line-height:1.5;">
-        <b>${cust.full_name}</b> | เบอร์โทร: <b>${cust.contact_no || '-'}</b> | เลขบัตร/Passport: <b style="color:#2563EB;">${cust.passport_id || '-'}</b> | ใบขับขี่: <b>${cust.licence_no || '-'}</b><br/>
-        ที่อยู่: <span style="color:#64748B;">${cust.thai_address || cust.home_address || '-'}</span>
+        <b>${cust.full_name}</b> ${tierBadge} | เบอร์โทร: <b>${cust.contact_no || '-'}</b> | เลขบัตร/Passport: <b style="color:#2563EB;">${cust.passport_id || '-'}</b> | ใบขับขี่: <b>${cust.licence_no || '-'}</b><br/>
+        ที่อยู่: <span style="color:#64748B;">${cust.thai_address || cust.home_address || '-'}</span> • <span style="color:#334155;">ประวัติเช่า ${rentals} ครั้ง (฿${spent.toLocaleString()})</span>
       </div>
     `;
+
+    if (blAlert) {
+      if (tier === "Blacklist") {
+        blAlert.style.display = "block";
+        blAlert.innerHTML = `
+          ⛔ <b>แจ้งเตือนลูกค้า Blacklist (บัญชีดำ / เฝ้าระวังพิเศษ)!</b><br/>
+          สาเหตุ / หมายเหตุ: <b>${note || 'มีความเสี่ยง / ประวัติค้างชำระหรือทำความเสียหาย'}</b><br/>
+          <span style="font-size:11.5px;">📊 ประวัติเช่าสะสม ${rentals} ครั้ง • ประวัติเสียหาย/คืนล่าช้า ${dmg} ครั้ง — กรุณาตรวจสอบเอกสารและพิจารณาเงินมัดจำอย่างละเอียดก่อนปล่อยรถ</span>
+        `;
+      } else {
+        blAlert.style.display = "none";
+        blAlert.innerHTML = "";
+      }
+    }
   },
 
   onSelectWalkinCustomer() {
@@ -217,10 +269,17 @@ Object.assign(App.prototype, {
       badge.style.display = "none";
       return;
     }
+    const tier = cust.crm_tier || cust.customer_tier || "ทั่วไป";
+    const tierBadge = this._getCustomerTierBadge(tier);
+    const note = cust.watchlist_note || cust.blacklist_reason || "";
+    const blWarn = tier === "Blacklist"
+      ? `<div style="margin-top:6px; padding:6px 8px; background:#FEF2F2; border:1px solid #DC2626; border-radius:6px; color:#991B1B; font-weight:700;">⛔ แจ้งเตือนลูกค้า Blacklist: ${note || 'เฝ้าระวังพิเศษ'}</div>`
+      : "";
     badge.style.display = "block";
     badge.innerHTML = `
       <div style="line-height:1.5;">
-        <b>${cust.full_name}</b> | เบอร์โทร: <b>${cust.contact_no || '-'}</b> | เลขบัตร/Passport: <b style="color:#2563EB;">${cust.passport_id || '-'}</b> | ใบขับขี่: <b>${cust.licence_no || '-'}</b>
+        <b>${cust.full_name}</b> ${tierBadge} | เบอร์โทร: <b>${cust.contact_no || '-'}</b> | เลขบัตร/Passport: <b style="color:#2563EB;">${cust.passport_id || '-'}</b> | ใบขับขี่: <b>${cust.licence_no || '-'}</b>
+        ${blWarn}
       </div>
     `;
   },
@@ -253,6 +312,10 @@ Object.assign(App.prototype, {
     const lineVal = cust.line_user_id || cust.line_id;
     const lineEl = document.getElementById("cust-line-in");
     if (lineEl) lineEl.value = (lineVal && lineVal !== "-") ? lineVal : "";
+    const tierEl = document.getElementById("cust-tier-in");
+    if (tierEl) tierEl.value = cust.crm_tier || cust.customer_tier || "ทั่วไป";
+    const noteEl = document.getElementById("cust-note-in");
+    if (noteEl) noteEl.value = cust.watchlist_note || cust.blacklist_reason || cust.notes || "";
 
     document.getElementById("modal-cust-title").textContent = `✏️ ดูและแก้ไขข้อมูลลูกค้า (${cust.full_name})`;
     const btnSave = document.getElementById("btn-modal-cust-save");
@@ -385,6 +448,10 @@ Object.assign(App.prototype, {
     if (dobEl) dobEl.value = "";
     const licExpEl = document.getElementById("cust-licexp-in");
     if (licExpEl) licExpEl.value = "";
+    const tierEl = document.getElementById("cust-tier-in");
+    if (tierEl) tierEl.value = "ทั่วไป";
+    const noteEl = document.getElementById("cust-note-in");
+    if (noteEl) noteEl.value = "";
 
     this.openModal("modal-add-customer");
     setTimeout(() => document.getElementById("cust-name-in")?.focus(), 80);
@@ -460,6 +527,8 @@ Object.assign(App.prototype, {
     const currAddr = document.getElementById("cust-thai-in")?.value.trim() || "-";
     const email = document.getElementById("cust-email-in")?.value.trim() || "-";
     const lineId = document.getElementById("cust-line-in")?.value.trim() || "-";
+    const crmTier = document.getElementById("cust-tier-in")?.value || "ทั่วไป";
+    const watchlistNote = document.getElementById("cust-note-in")?.value.trim() || "";
 
     const payload = {
       // 10 Standard Customer Fields
@@ -476,6 +545,11 @@ Object.assign(App.prototype, {
       email: email,
       line_user_id: lineId,
       line_id: lineId,
+      crm_tier: crmTier,
+      customer_tier: crmTier,
+      watchlist_note: watchlistNote,
+      blacklist_reason: watchlistNote,
+      notes: watchlistNote,
 
       // Compatibility Aliases
       original_name: origName || name,
@@ -508,11 +582,12 @@ Object.assign(App.prototype, {
       if (origName && origName !== name) {
         this.customers = this.customers.filter(c => c.full_name !== origName);
       }
+      const savedCust = data.customer || payload;
       const existIdx = this.customers.findIndex(c => c.full_name === name);
       if (existIdx >= 0) {
-        this.customers[existIdx] = payload;
+        this.customers[existIdx] = savedCust;
       } else {
-        this.customers.unshift(payload);
+        this.customers.unshift(savedCust);
       }
       this.populateCustomerDropdowns(name);
       this.closeModal("modal-add-customer");

@@ -149,6 +149,10 @@ class CustomerBase(BaseModel):
     line_id: Optional[str] = "-"
     line_user_id: Optional[str] = None
     notes: Optional[str] = ""
+    crm_tier: Optional[str] = "ทั่วไป"
+    customer_tier: Optional[str] = "ทั่วไป"
+    watchlist_note: Optional[str] = ""
+    blacklist_reason: Optional[str] = ""
 
     model_config = ConfigDict(extra="allow", populate_by_name=True)
 

@@ -132,6 +132,47 @@ def verify_session_token(token: str) -> Optional[Dict[str, Any]]:
     return {"username": username, "role": role}
 
 
+def create_booking_portal_token(booking_id: str) -> str:
+    """Generate a URL-safe HMAC-SHA256 signed read-only portal token for a booking."""
+    bid = str(booking_id or "").strip()
+    if not bid:
+        return ""
+    b64_bid = base64.urlsafe_b64encode(bid.encode("utf-8")).decode("ascii").rstrip("=")
+    sig = hmac.new(
+        AUTH_SECRET_KEY.encode("utf-8"),
+        f"portal:{bid}".encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()[:24]
+    return f"{b64_bid}.{sig}"
+
+
+def verify_booking_portal_token(token: str) -> Optional[str]:
+    """Verify a signed booking portal token and return the original booking_id if valid."""
+    if not token or not isinstance(token, str) or "." not in token:
+        return None
+    parts = token.strip().split(".")
+    if len(parts) != 2:
+        return None
+    b64_bid, sig = parts
+    if not b64_bid or not sig:
+        return None
+    try:
+        padded = b64_bid + "=" * (-len(b64_bid) % 4)
+        bid = base64.urlsafe_b64decode(padded.encode("ascii")).decode("utf-8").strip()
+    except Exception:
+        return None
+    if not bid:
+        return None
+    expected_sig = hmac.new(
+        AUTH_SECRET_KEY.encode("utf-8"),
+        f"portal:{bid}".encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()[:24]
+    if not hmac.compare_digest(sig, expected_sig):
+        return None
+    return bid
+
+
 def require_auth(request: Request) -> Dict[str, Any]:
     """FastAPI dependency requiring a valid Bearer or X-Auth-Token session token."""
     auth_hdr = request.headers.get("Authorization", "").strip()

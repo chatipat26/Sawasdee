@@ -1239,7 +1239,8 @@ class DataStore:
                 'contact_no', 'phone', 'passport_id', 'id_card', 'licence_no',
                 'driver_license', 'licence_expiry', 'thai_address', 'address',
                 'nickname', 'email', 'line_id', 'line_user_id', 'notes', 'id_card_photo',
-                'driver_license_photo'
+                'driver_license_photo', 'crm_tier', 'customer_tier', 'watchlist_note',
+                'blacklist_reason'
             }
             try:
                 row = {k: v for k, v in cust_dict.items() if k in ALL_CUSTOMER_COLS}

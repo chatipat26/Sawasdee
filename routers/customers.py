@@ -2,7 +2,7 @@
 Customers API Router for SawasdeeRental.
 """
 
-from typing import Dict, Any, Union
+from typing import Dict, Any, List, Union
 from fastapi import APIRouter, Depends, HTTPException
 
 from db import store
@@ -12,12 +12,70 @@ from schemas import CustomerCreate
 router = APIRouter(tags=["customers"])
 
 
+def _normalize_crm_tier(raw_tier: Any) -> str:
+    val = str(raw_tier or "ทั่วไป").strip().lower()
+    if val == "vip":
+        return "VIP"
+    if val in ("blacklist", "บัญชีดำ", "blocked", "watchlist"):
+        return "Blacklist"
+    return "ทั่วไป"
+
+
+def _enrich_customer_with_crm_stats(
+    c_dict: Dict[str, Any],
+    bookings_list: List[Dict[str, Any]],
+    completed_list: List[Dict[str, Any]],
+) -> Dict[str, Any]:
+    tier = _normalize_crm_tier(c_dict.get("crm_tier") or c_dict.get("customer_tier"))
+    note = str(c_dict.get("watchlist_note") or c_dict.get("blacklist_reason") or c_dict.get("notes") or "").strip()
+    c_dict["crm_tier"] = tier
+    c_dict["customer_tier"] = tier
+    c_dict["watchlist_note"] = note
+    c_dict["blacklist_reason"] = note
+
+    c_name = str(c_dict.get("full_name") or "").strip().lower()
+    seen_bids = set()
+    total_rentals = 0
+    total_spent = 0.0
+    damage_count = 0
+
+    for src in (bookings_list or [], completed_list or []):
+        for b in src:
+            if str(b.get("customer") or "").strip().lower() != c_name or not c_name:
+                continue
+            bid = str(b.get("booking_id") or "")
+            if bid and bid in seen_bids:
+                continue
+            if bid:
+                seen_bids.add(bid)
+            if str(b.get("status") or "").strip() == "ยกเลิก":
+                continue
+            total_rentals += 1
+            total_spent += float(b.get("net_price") or 0.0)
+            has_damage = (
+                float(b.get("repair_cost") or 0.0) > 0
+                or float(b.get("pending_damage_cost") or 0.0) > 0
+                or bool(b.get("needs_repair"))
+                or float(b.get("late_fee") or 0.0) > 0
+            )
+            if has_damage:
+                damage_count += 1
+
+    c_dict["total_rentals"] = total_rentals
+    c_dict["total_spent"] = round(total_spent, 2)
+    c_dict["damage_count"] = damage_count
+    return c_dict
+
+
 @router.get("/api/customers")
 def list_customers():
     if not store.initial_sync_done:
         store.sync_from_database(force=True)
     with store.lock:
-        return [dict(c) for c in store.customers.values()]
+        cust_snap = [dict(c) for c in store.customers.values()]
+        bookings_snap = [dict(b) for b in store.bookings]
+        completed_snap = [dict(cj) for cj in store.completed_jobs]
+    return [_enrich_customer_with_crm_stats(c, bookings_snap, completed_snap) for c in cust_snap]
 
 
 @router.post("/api/customers")
@@ -90,8 +148,21 @@ def create_or_update_customer(payload: Union[CustomerCreate, Dict[str, Any]], _u
                          ("email", "-"), ("line_user_id", "-"), ("line_id", "-")):
         if clean_payload.get(_k) is None or str(clean_payload.get(_k)).strip() == "":
             clean_payload[_k] = _default
+
+    norm_tier = _normalize_crm_tier(clean_payload.get("crm_tier") or clean_payload.get("customer_tier"))
+    clean_note = str(clean_payload.get("watchlist_note") or clean_payload.get("blacklist_reason") or clean_payload.get("notes") or "").strip()
+    clean_payload["crm_tier"] = norm_tier
+    clean_payload["customer_tier"] = norm_tier
+    clean_payload["watchlist_note"] = clean_note
+    clean_payload["blacklist_reason"] = clean_note
+    clean_payload["notes"] = clean_note
+
     store.async_sync_customer(name, clean_payload)
-    return {"success": True, "customer": clean_payload}
+    with store.lock:
+        bookings_snap = [dict(b) for b in store.bookings]
+        completed_snap = [dict(cj) for cj in store.completed_jobs]
+    enriched = _enrich_customer_with_crm_stats(dict(clean_payload), bookings_snap, completed_snap)
+    return {"success": True, "customer": enriched}
 
 
 @router.delete("/api/customers/{name}")

@@ -97,7 +97,10 @@ def init_db():
         "ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS dob VARCHAR(50);",
         "ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS license_expire_date VARCHAR(50);",
         "ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS home_address TEXT;",
-        "ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS current_address TEXT;"
+        "ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS current_address TEXT;",
+        "ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS notes TEXT;",
+        "ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS crm_tier VARCHAR(50);",
+        "ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS watchlist_note TEXT;"
     ]
     car_migrations = [
         "CREATE TABLE IF NOT EXISTS public.cars (plate VARCHAR(50) PRIMARY KEY);",

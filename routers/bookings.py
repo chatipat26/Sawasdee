@@ -23,6 +23,7 @@ from dependencies import (
     convert_gdrive_url,
     get_car_key,
     require_auth,
+    create_booking_portal_token,
 )
 from services.google_drive_service import async_upload_pdf_to_drive
 from services.booking_service import (
@@ -101,6 +102,11 @@ def list_bookings():
             cur_rem = float(b_copy.get("remaining_rental") or 0.0)
             if (cur_rem >= np_val and np_val > 0) or b_copy.get("remaining_rental") is None:
                 b_copy["remaining_rental"] = max(0.0, np_val - dep_val)
+
+        bk_id_val = str(b_copy.get("booking_id") or "").strip()
+        ptok = create_booking_portal_token(bk_id_val) if bk_id_val else ""
+        b_copy["portal_token"] = ptok
+        b_copy["portal_url"] = f"/portal/booking/{ptok}" if ptok else ""
         res.append(b_copy)
     return res
 
@@ -161,7 +167,28 @@ def get_booking(bk_id: str):
         cur_rem = float(b_copy.get("remaining_rental") or 0.0)
         if (cur_rem >= np_val and np_val > 0) or b_copy.get("remaining_rental") is None:
             b_copy["remaining_rental"] = max(0.0, np_val - dep_val)
+
+    bk_id_val = str(b_copy.get("booking_id") or "").strip()
+    ptok = create_booking_portal_token(bk_id_val) if bk_id_val else ""
+    b_copy["portal_token"] = ptok
+    b_copy["portal_url"] = f"/portal/booking/{ptok}" if ptok else ""
     return b_copy
+
+
+@router.get("/api/bookings/{bk_id}/portal-link")
+def get_booking_portal_link(bk_id: str):
+    target = next((b for b in store.bookings if b.get("booking_id") == bk_id), None)
+    if not target:
+        target = next((cj for cj in store.completed_jobs if cj.get("booking_id") == bk_id), None)
+    if not target:
+        raise HTTPException(status_code=404, detail="ไม่พบรายการจอง")
+    token = create_booking_portal_token(bk_id)
+    return {
+        "success": True,
+        "booking_id": bk_id,
+        "token": token,
+        "portal_url": f"/portal/booking/{token}",
+    }
 
 
 @router.post("/api/bookings")
