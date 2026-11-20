@@ -262,6 +262,48 @@ Object.assign(App.prototype, {
     return { plateNo, province, isRed };
   },
 
+  getCarServiceAlert(c, lang = null) {
+    if (!c) return null;
+    const isEn = (lang === "EN" || (!lang && this.currentLang === "EN"));
+    const rawCur = c.mileage !== undefined && c.mileage !== null ? c.mileage : c.current_mileage;
+    const rawNext = (c.next_service_mileage !== undefined && c.next_service_mileage !== null && Number(c.next_service_mileage) > 0)
+      ? c.next_service_mileage
+      : c.next_engine_oil_mileage;
+    const curKm = parseFloat(String(rawCur || "0").replace(/,/g, "").replace(/km|กม\./gi, "").trim()) || 0;
+    const nextKm = parseFloat(String(rawNext || "0").replace(/,/g, "").replace(/km|กม\./gi, "").trim()) || 0;
+    if (nextKm <= 0) return null;
+
+    const remKm = Math.round(nextKm - curKm);
+    if (remKm <= 0) {
+      const overKm = Math.abs(remKm);
+      return {
+        key: "service_mileage",
+        status: "overdue",
+        kmRemaining: remKm,
+        text: isEn ? `🔧 Service Overdue (${overKm.toLocaleString()} km)` : `🔧 เกินเช็กระยะ ${overKm.toLocaleString()} กม.`,
+        bg: "#FEE2E2",
+        border: "#FECACA",
+        color: "#991B1B",
+        dot: "#EF4444",
+        diff: -50
+      };
+    }
+    if (remKm <= 500) {
+      return {
+        key: "service_mileage",
+        status: "due_soon",
+        kmRemaining: remKm,
+        text: isEn ? `🔧 Service Due (${remKm.toLocaleString()} km left)` : `🔧 ใกล้เช็กระยะ (เหลือ ${remKm.toLocaleString()} กม.)`,
+        bg: "#FEF3C7",
+        border: "#FDE68A",
+        color: "#92400E",
+        dot: "#F59E0B",
+        diff: 2
+      };
+    }
+    return null;
+  },
+
   getCarExpiryAlerts(c, lang = null) {
     const isEn = (lang === "EN" || (!lang && this.currentLang === "EN"));
     const l = isEn ? "EN" : "TH";
@@ -350,6 +392,11 @@ Object.assign(App.prototype, {
         }
         if (badge) alerts.push(badge);
       }
+    }
+
+    const srvAlert = this.getCarServiceAlert(c, lang);
+    if (srvAlert) {
+      alerts.push(srvAlert);
     }
 
     // Sort by diff ascending (expired / most urgent first)

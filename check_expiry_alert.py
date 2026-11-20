@@ -1,7 +1,7 @@
 import os
 import sys
 import requests
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 
 from database import load_env_file
 
@@ -82,7 +82,7 @@ def get_target_cycle_info(ref_date=None):
     * ปลอดภัยจากปัญหาข้ามปี (Year-end safe: เดือน 12 -> เดือน 1 ของปีถัดไป)
     """
     if not ref_date:
-        now_bkk = datetime.utcnow() + timedelta(hours=7)
+        now_bkk = datetime.now(timezone.utc) + timedelta(hours=7)
         ref = now_bkk.date()
     elif isinstance(ref_date, datetime):
         ref = ref_date.date()
@@ -390,7 +390,7 @@ def run_daily_check(force_send=False):
     - ถ้ามีรายการ -> ส่งข้อความ Broadcast ไปหาพนักงานทุกคนเพียง 1 ครั้งต่อวัน
     """
     token = get_credentials()
-    now_bkk = datetime.utcnow() + timedelta(hours=7)
+    now_bkk = datetime.now(timezone.utc) + timedelta(hours=7)
     today = now_bkk.date()
     today_tag = today.strftime("%Y-%m-%d")
     print("=" * 60)

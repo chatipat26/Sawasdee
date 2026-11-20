@@ -2,7 +2,7 @@
 Authentication & Users API Router for SawasdeeRental.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Any
 from fastapi import APIRouter, Depends, HTTPException
 
@@ -135,7 +135,7 @@ def register(payload: Dict[str, Any]):
         "role": "Staff",
         "status": "pending",
         "line_user_id": line_id,
-        "created_at": datetime.utcnow().isoformat()
+        "created_at": datetime.now(timezone.utc).isoformat()
     }
     store.async_sync_user(un, new_u)
     return {"success": True, "message": "ลงทะเบียนสำเร็จ กรุณารอผู้ดูแลระบบ (Admin) อนุมัติการใช้งาน"}

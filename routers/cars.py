@@ -42,6 +42,46 @@ def normalize_plate_key(plate: Optional[str]) -> str:
         return ""
     return re.sub(r"[\s\-_./]+", "", str(plate)).strip().lower()
 
+
+def compute_service_mileage_alert(car: Dict[str, Any]) -> Dict[str, Any]:
+    """Compare current mileage against next_service_mileage (alert when remaining <= 500 km or overdue)."""
+    raw_cur = car.get("mileage") if car.get("mileage") is not None else car.get("current_mileage")
+    raw_next = car.get("next_service_mileage") if car.get("next_service_mileage") is not None else car.get("next_engine_oil_mileage")
+    try:
+        cur_km = float(str(raw_cur or "0").replace(",", "").replace("km", "").replace("กม.", "").strip() or 0)
+    except (ValueError, TypeError):
+        cur_km = 0.0
+    try:
+        next_km = float(str(raw_next or "0").replace(",", "").replace("km", "").replace("กม.", "").strip() or 0)
+    except (ValueError, TypeError):
+        next_km = 0.0
+
+    if next_km <= 0:
+        return {
+            "service_alert_status": "none",
+            "service_km_remaining": None,
+            "service_alert_label": "",
+        }
+
+    rem_km = int(round(next_km - cur_km))
+    if rem_km <= 0:
+        return {
+            "service_alert_status": "overdue",
+            "service_km_remaining": rem_km,
+            "service_alert_label": f"เกินเช็กระยะ {abs(rem_km):,} กม.",
+        }
+    if rem_km <= 500:
+        return {
+            "service_alert_status": "due_soon",
+            "service_km_remaining": rem_km,
+            "service_alert_label": f"ใกล้เช็กระยะ (เหลือ {rem_km:,} กม.)",
+        }
+    return {
+        "service_alert_status": "ok",
+        "service_km_remaining": rem_km,
+        "service_alert_label": "",
+    }
+
 def _is_file(obj: Any) -> bool:
     """Helper to check if an object is a valid file upload (duck-typing compatible)."""
     if obj is None:
@@ -516,6 +556,7 @@ def list_cars(start_date: Optional[str] = None, end_date: Optional[str] = None):
         c_copy["status_color"] = color
         c_copy["status_bg"] = bg
         c_copy["status_border"] = border
+        c_copy.update(compute_service_mileage_alert(c_copy))
         cars_data.append(c_copy)
     return cars_data
 

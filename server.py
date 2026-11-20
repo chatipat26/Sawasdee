@@ -3,6 +3,7 @@ SawasdeeRental Web App — FastAPI Application Entrypoint.
 """
 
 import os
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -30,35 +31,7 @@ from routers.cars import list_cars, create_or_update_car  # noqa: F401
 from routers.customers import list_customers, create_or_update_customer  # noqa: F401
 from routers.bookings import list_bookings, create_booking  # noqa: F401
 
-app = FastAPI(title="SawasdeeRental Web App", version="2.0.0")
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_origin_regex=r"https?://.*",
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# Register API & PDF fallback routers BEFORE mounting /static so /static/pdf/inspections/{fname} matches first
-app.include_router(cars_router)
-app.include_router(auth_router)
-app.include_router(customers_router)
-app.include_router(line_router)
-app.include_router(system_router)
-app.include_router(finance_router)
-app.include_router(reports_router)
-app.include_router(maintenance_router)
-app.include_router(pdf_router)
-app.include_router(bookings_router)
-
-app.mount("/static", StaticFiles(directory=static_dir), name="static")
-
-
-# Start background sync and scheduler on startup
-@app.on_event("startup")
-def startup_event():
+def run_startup_tasks():
     print("🚀 Starting SawasdeeRental Web App server...")
     import threading
 
@@ -92,6 +65,38 @@ def startup_event():
         init_expiry_scheduler_thread()
     except Exception as e:
         print(f"Expiry scheduler start note: {e}")
+
+
+@asynccontextmanager
+async def lifespan(app_instance: FastAPI):
+    run_startup_tasks()
+    yield
+
+
+app = FastAPI(title="SawasdeeRental Web App", version="2.0.0", lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_origin_regex=r"https?://.*",
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Register API & PDF fallback routers BEFORE mounting /static so /static/pdf/inspections/{fname} matches first
+app.include_router(cars_router)
+app.include_router(auth_router)
+app.include_router(customers_router)
+app.include_router(line_router)
+app.include_router(system_router)
+app.include_router(finance_router)
+app.include_router(reports_router)
+app.include_router(maintenance_router)
+app.include_router(pdf_router)
+app.include_router(bookings_router)
+
+app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
 
 if __name__ == "__main__":

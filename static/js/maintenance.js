@@ -118,12 +118,19 @@ Object.assign(App.prototype, {
       const finishBtnText = isRenewal ? (isEn ? 'Submit & Renew' : 'ส่งงาน/อัปเดตวัน') : (isEn ? 'Close Job' : 'ปิดงาน');
       const finishBtnTitle = isRenewal ? (isEn ? 'Submit job & specify new expiry date' : 'ส่งงาน & ระบุวันหมดอายุใหม่') : (isEn ? 'Inspect car & close work order' : 'ตรวจรับรถ & ปิดงาน');
 
+      const carObj = (this.cars || []).find(c => c.plate === m.car_id);
+      const srvAlert = (carObj && typeof this.getCarServiceAlert === "function") ? this.getCarServiceAlert(carObj) : null;
+      const srvBadgeHtml = srvAlert
+        ? `<div style="margin-top:2px;"><span style="display:inline-block; background:${srvAlert.bg}; color:${srvAlert.color}; border:1px solid ${srvAlert.border}; padding:1px 6px; border-radius:8px; font-size:10.5px; font-weight:700;">${srvAlert.text}</span></div>`
+        : "";
+
       return `
         <tr>
           <td><b style="color:#C2410C;">${m.id}</b></td>
           <td>
             <b style="font-size:13px; color:#1F2937;">${m.car_id}</b><br/>
             <span style="font-size:11.5px; color:#64748B;">${m.car_brand || ''} ${m.car_model || ''} (${m.car_color || '-'})</span>
+            ${srvBadgeHtml}
           </td>
           <td>${typeBadge}</td>
           <td style="max-width:200px; white-space:pre-wrap; font-size:12px; line-height:1.4;">${m.service_items || '-'}</td>
@@ -183,6 +190,10 @@ Object.assign(App.prototype, {
       const isSelected = c.plate === currentCarId;
       const statusBg = c.status === "ว่างพร้อมใช้งาน" ? "#ECFDF5" : (c.status === "สถานะซ่อมบำรุง" ? "#FEF2F2" : "#FFFBEB");
       const statusColor = c.status === "ว่างพร้อมใช้งาน" ? "#065F46" : (c.status === "สถานะซ่อมบำรุง" ? "#991B1B" : "#92400E");
+      const srvAlert = typeof this.getCarServiceAlert === "function" ? this.getCarServiceAlert(c) : null;
+      const srvPill = srvAlert
+        ? `<span style="font-size:10.5px; padding:1px 6px; border-radius:6px; font-weight:700; background:${srvAlert.bg}; color:${srvAlert.color}; border:1px solid ${srvAlert.border}; margin-right:4px; white-space:nowrap;">${srvAlert.text}</span>`
+        : "";
       return `
         <div class="mnt-car-option-item ${isSelected ? 'selected' : ''}" 
              onclick="app.selectMaintenanceCar('${c.plate}')"
@@ -192,6 +203,7 @@ Object.assign(App.prototype, {
             <span style="color:#334155; font-weight:600;">${c.brand || ''} ${c.model || ''}</span>
             ${c.color ? `<span style="color:#64748B; font-size:11.5px; margin-left:4px;">(${c.color})</span>` : ''}
           </div>
+          ${srvPill}
           <span style="font-size:11px; padding:2px 6px; border-radius:4px; font-weight:700; background:${statusBg}; color:${statusColor}; white-space:nowrap;">
             ${c.status || '-'}
           </span>

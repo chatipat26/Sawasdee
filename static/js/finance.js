@@ -300,6 +300,10 @@ Object.assign(App.prototype, {
       const srvHtml = srvInfo.length > 0
         ? `<div style="font-size:10.5px; color:#475569;">${srvInfo.join(" | ")}</div>`
         : "";
+      const srvAlert = typeof this.getCarServiceAlert === "function" ? this.getCarServiceAlert(c) : null;
+      const srvBadgeHtml = srvAlert
+        ? `<div style="margin-top:3px;"><span onclick="app.openNewMaintenanceModal('${safePlate}', 'ซ่อมบำรุงทั่วไป / เช็คระยะ')" style="cursor:pointer; display:inline-flex; align-items:center; gap:4px; background:${srvAlert.bg}; color:${srvAlert.color}; border:1px solid ${srvAlert.border}; padding:2px 7px; border-radius:10px; font-size:10.5px; font-weight:700;" title="คลิกเพื่อเปิดใบงานเช็กระยะ">${srvAlert.text}</span></div>`
+        : "";
 
       const hpBadge = c.hp_contract_no
         ? `<div style="font-size:10.5px; color:#7C3AED; font-weight:700;">สัญญา: ${c.hp_contract_no}${c.hp_installment ? ` (฿${Number(c.hp_installment).toLocaleString()}/ด.)` : ''}</div>`
@@ -338,6 +342,7 @@ Object.assign(App.prototype, {
           <td style="white-space:nowrap;">
             <div style="font-weight:700; font-size:12px;">${c.mileage || '15,000'} km</div>
             ${srvHtml}
+            ${srvBadgeHtml}
           </td>
           <td>
             ${hpBadge}
@@ -1358,5 +1363,25 @@ ${e.message}`);
         </table>
       </div>
     `;
+  },
+
+  exportShiftClosingCSV() {
+    const filterInput = document.getElementById("shift-month-filter");
+    const monthVal = filterInput ? filterInput.value.trim() : "";
+    const mode = this.shiftClosingMode || "daily";
+    const params = new URLSearchParams();
+    if (monthVal) params.set("month", monthVal);
+    params.set("mode", mode);
+    const url = `/api/finance/export-csv?${params.toString()}`;
+    window.open(url, "_blank");
+  },
+
+  printShiftClosingSlip() {
+    const filterInput = document.getElementById("shift-month-filter");
+    const monthVal = filterInput ? filterInput.value.trim() : "";
+    const params = new URLSearchParams();
+    if (monthVal) params.set("month", monthVal);
+    const url = `/api/finance/print-slip?${params.toString()}`;
+    window.open(url, "_blank");
   }
 });

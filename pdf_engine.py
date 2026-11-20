@@ -1654,8 +1654,8 @@ def generate_inspection_checklist_pdf(template_path="car_inspection_updated.pdf"
         can0.save()
         packet0.seek(0)
         overlay0 = PdfReader(packet0)
-        page0.merge_page(overlay0.pages[0])
-        writer.add_page(page0)
+        added_page0 = writer.add_page(page0)
+        added_page0.merge_page(overlay0.pages[0])
 
         # Process Page 1 (Check In) if template has 2 pages
         if len(reader.pages) > 1:
@@ -1666,8 +1666,8 @@ def generate_inspection_checklist_pdf(template_path="car_inspection_updated.pdf"
             can1.save()
             packet1.seek(0)
             overlay1 = PdfReader(packet1)
-            page1.merge_page(overlay1.pages[0])
-            writer.add_page(page1)
+            added_page1 = writer.add_page(page1)
+            added_page1.merge_page(overlay1.pages[0])
 
         out_buf = io.BytesIO()
         writer.write(out_buf)

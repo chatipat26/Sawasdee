@@ -2,11 +2,14 @@
 Finance & Monthly Expenses API Router for SawasdeeRental.
 """
 
+import io
+import csv
 import re
 import calendar
 from datetime import datetime, date, timedelta
 from typing import Optional, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi.responses import HTMLResponse, StreamingResponse
 
 from db import store, get_db_client, to_date
 from dependencies import now_th, normalize_plate, require_auth
@@ -481,3 +484,153 @@ def get_finance_summary(month: Optional[str] = None, start_date: Optional[str] =
         "monthly": monthly_list,
         "total_transactions": len(tx_list)
     }
+
+
+@router.get("/api/finance/export-csv")
+def export_finance_shift_csv(
+    month: Optional[str] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    mode: str = "daily",
+):
+    summary = get_finance_summary(month=month, start_date=start_date, end_date=end_date)
+    buf = io.StringIO()
+    fieldnames = [
+        "วันที่",
+        "งวดเดือน",
+        "รหัสการจอง/อ้างอิง",
+        "ทะเบียนรถ",
+        "ลูกค้า",
+        "หมวดหมู่",
+        "ช่องทางชำระเงิน",
+        "จำนวนเงิน (THB)",
+        "หมายเหตุ",
+    ]
+    writer = csv.DictWriter(buf, fieldnames=fieldnames)
+    writer.writeheader()
+
+    for day in summary.get("daily", []):
+        for rec in day.get("records", []):
+            writer.writerow({
+                "วันที่": rec.get("date", "-"),
+                "งวดเดือน": rec.get("month", "-"),
+                "รหัสการจอง/อ้างอิง": rec.get("ref", "-"),
+                "ทะเบียนรถ": rec.get("car_id", "-"),
+                "ลูกค้า": rec.get("customer", "-"),
+                "หมวดหมู่": rec.get("category", "-"),
+                "ช่องทางชำระเงิน": rec.get("payment_method", "-"),
+                "จำนวนเงิน (THB)": f"{float(rec.get('amount') or 0.0):.2f}",
+                "หมายเหตุ": rec.get("note", ""),
+            })
+
+    csv_bytes = buf.getvalue().encode("utf-8-sig")
+    tag = month or start_date or "all"
+    return StreamingResponse(
+        io.BytesIO(csv_bytes),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f"attachment; filename=shift_closing_{tag}.csv"},
+    )
+
+
+@router.get("/api/finance/print-slip", response_class=HTMLResponse)
+def print_finance_shift_slip(
+    month: Optional[str] = None,
+    date: Optional[str] = None,
+):
+    summary = get_finance_summary(month=month, start_date=date, end_date=date)
+    by_m = summary.get("by_method", {})
+    total_rev = float(summary.get("total_revenue") or 0.0)
+    total_tx = int(summary.get("total_transactions") or 0)
+    period_label = date or month or now_th().strftime("%d/%m/%Y")
+    printed_at = now_th().strftime("%d/%m/%Y %H:%M น.")
+
+    rows_html = ""
+    for day in summary.get("daily", []):
+        for rec in day.get("records", []):
+            rows_html += (
+                f"<tr>"
+                f"<td>{rec.get('date', '-')}</td>"
+                f"<td><b>{rec.get('ref', '-')}</b></td>"
+                f"<td>{rec.get('car_id', '-')}</td>"
+                f"<td>{rec.get('customer', '-')}</td>"
+                f"<td>{rec.get('category', '-')}</td>"
+                f"<td>{rec.get('payment_method', '-')}</td>"
+                f"<td style='text-align:right; font-weight:700;'>฿{float(rec.get('amount') or 0.0):,.2f}</td>"
+                f"</tr>"
+            )
+    if not rows_html:
+        rows_html = "<tr><td colspan='7' style='text-align:center; padding:16px; color:#64748B;'>ไม่มีรายการรับชำระเงินในงวดที่เลือก</td></tr>"
+
+    cash_val = float(by_m.get("เงินสด") or 0.0)
+    qr_val = float(by_m.get("โอนเงิน / สแกน QR") or 0.0)
+    card_val = float(by_m.get("บัตรเครดิต") or 0.0)
+    paypal_val = float(by_m.get("PayPal") or 0.0)
+
+    html = f"""<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<title>ใบสรุปส่งกะประจำวัน - Sawasdee Car Rent</title>
+<style>
+  body {{ font-family: 'Sarabun', 'Segoe UI', Tahoma, sans-serif; color: #1E293B; margin: 24px; background: #FFF; }}
+  .header {{ display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #EA580C; padding-bottom: 12px; margin-bottom: 18px; }}
+  h1 {{ margin: 0; font-size: 20px; color: #0F172A; }}
+  .sub {{ font-size: 12.5px; color: #475569; margin-top: 4px; }}
+  .summary-grid {{ display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 18px; }}
+  .sum-box {{ border: 1px solid #CBD5E1; border-radius: 8px; padding: 10px; text-align: center; background: #F8FAFC; }}
+  .sum-box.total {{ border-color: #EA580C; background: #FFF7ED; }}
+  .sum-lbl {{ font-size: 11px; color: #475569; font-weight: 700; }}
+  .sum-val {{ font-size: 16px; font-weight: 800; margin-top: 4px; color: #0F172A; }}
+  table {{ width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 26px; }}
+  th, td {{ border: 1px solid #CBD5E1; padding: 7px 8px; text-align: left; }}
+  th {{ background: #F1F5F9; font-weight: 700; }}
+  .sigs {{ display: flex; justify-content: space-between; gap: 32px; margin-top: 40px; }}
+  .sig-box {{ flex: 1; text-align: center; border-top: 1px solid #334155; padding-top: 8px; font-size: 12.5px; }}
+  .no-print {{ margin-bottom: 16px; text-align: right; }}
+  .btn-print {{ background: #EA580C; color: #FFF; border: none; padding: 8px 16px; border-radius: 6px; font-weight: 700; cursor: pointer; }}
+  @media print {{ .no-print {{ display: none; }} body {{ margin: 10mm; }} }}
+</style>
+</head>
+<body>
+  <div class="no-print">
+    <button class="btn-print" onclick="window.print()">🖨️ พิมพ์ใบสรุปส่งกะประจำวัน</button>
+  </div>
+  <div class="header">
+    <div>
+      <h1>ใบสรุปส่งกะประจำวัน (Daily Shift Closing Slip)</h1>
+      <div class="sub">บริษัท สวัสดี คาร์เร้นท์ จำกัด | งวดที่ตรวจสอบ: <b>{period_label}</b> ({total_tx} รายการ)</div>
+    </div>
+    <div style="text-align:right; font-size:12px; color:#475569;">
+      <div>พิมพ์เมื่อ: {printed_at}</div>
+    </div>
+  </div>
+  <div class="summary-grid">
+    <div class="sum-box total"><div class="sum-lbl">รวมทั้งสิ้น</div><div class="sum-val" style="color:#EA580C;">฿{total_rev:,.2f}</div></div>
+    <div class="sum-box"><div class="sum-lbl">เงินสด</div><div class="sum-val" style="color:#059669;">฿{cash_val:,.2f}</div></div>
+    <div class="sum-box"><div class="sum-lbl">โอนเงิน / สแกน QR</div><div class="sum-val" style="color:#2563EB;">฿{qr_val:,.2f}</div></div>
+    <div class="sum-box"><div class="sum-lbl">บัตรเครดิต</div><div class="sum-val" style="color:#DB2777;">฿{card_val:,.2f}</div></div>
+    <div class="sum-box"><div class="sum-lbl">PayPal</div><div class="sum-val" style="color:#7C3AED;">฿{paypal_val:,.2f}</div></div>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>วันที่</th>
+        <th>รหัสจอง / อ้างอิง</th>
+        <th>ทะเบียนรถ</th>
+        <th>ลูกค้า</th>
+        <th>หมวดหมู่</th>
+        <th>ช่องทางชำระเงิน</th>
+        <th style="text-align:right;">จำนวนเงิน (THB)</th>
+      </tr>
+    </thead>
+    <tbody>
+      {rows_html}
+    </tbody>
+  </table>
+  <div class="sigs">
+    <div class="sig-box"><b>พนักงานส่งกะ / ผู้ส่งมอบเงิน (Handed Over By)</b><br><br>วันที่ _______/_______/_______</div>
+    <div class="sig-box"><b>ผู้รับมอบเงิน / ฝ่ายบัญชี (Received &amp; Verified By)</b><br><br>วันที่ _______/_______/_______</div>
+  </div>
+</body>
+</html>"""
+    return HTMLResponse(content=html)

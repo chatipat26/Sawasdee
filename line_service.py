@@ -3,7 +3,7 @@ import sys
 import threading
 import time
 import requests
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from typing import Optional
 
 from database import load_env_file
@@ -501,7 +501,7 @@ def check_and_send_expiry_alerts(cars_dict=None, target_days=None, recipient_mod
     try:
         from check_expiry_alert import check_expiring_cars, build_alert_message, get_target_cycle_info
         mode = (recipient_mode or EXPIRY_ALERT_RECIPIENT_MODE or "admin").strip().lower()
-        now_bkk = datetime.utcnow() + timedelta(hours=7)
+        now_bkk = datetime.now(timezone.utc) + timedelta(hours=7)
         ref_date = check_date or now_bkk.date()
         cycle_info = get_target_cycle_info(ref_date)
 
@@ -640,14 +640,14 @@ def init_expiry_scheduler_thread():
     """
     def _scheduler_loop():
         global _last_run_tag
-        now_init = datetime.utcnow() + timedelta(hours=7)
+        now_init = datetime.now(timezone.utc) + timedelta(hours=7)
         init_tag = now_init.strftime("%Y-%m-%d")
         if now_init.hour > 19 or (now_init.hour == 19 and now_init.minute >= 5):
             _mark_sent_expiry_today(init_tag)
 
         while True:
             try:
-                now_bkk = datetime.utcnow() + timedelta(hours=7)
+                now_bkk = datetime.now(timezone.utc) + timedelta(hours=7)
                 today_tag = now_bkk.strftime("%Y-%m-%d")
 
                 # รันอัตโนมัติเฉพาะวันที่ 1 และ 16 เวลา 19:00 น. (ICT)
