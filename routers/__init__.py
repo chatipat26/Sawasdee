@@ -10,6 +10,8 @@ from .system import router as system_router
 from .finance import router as finance_router
 from .reports import router as reports_router
 from .maintenance import router as maintenance_router
+from .pdf import router as pdf_router
+from .bookings import router as bookings_router
 
 __all__ = [
     "cars_router",
@@ -20,4 +22,6 @@ __all__ = [
     "finance_router",
     "reports_router",
     "maintenance_router",
+    "pdf_router",
+    "bookings_router",
 ]
