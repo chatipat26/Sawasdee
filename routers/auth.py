@@ -4,9 +4,10 @@ Authentication & Users API Router for SawasdeeRental.
 
 from datetime import datetime
 from typing import Dict, Any
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
 from db import store, get_db_client, hash_password, verify_password
+from dependencies import create_session_token, require_auth, require_admin
 from line_service import resolve_worker_line_id, send_line_push_message
 
 router = APIRouter(tags=["auth"])
@@ -70,6 +71,7 @@ def login(payload: Dict[str, Any]):
         )
 
     canon_un = user_rec.get("username", un)
+    user_role = user_rec.get("role", "Staff")
     if needs_migration:
         hashed_pw = hash_password(pw)
         user_rec["password"] = hashed_pw
@@ -85,15 +87,19 @@ def login(payload: Dict[str, Any]):
         with store.lock:
             store.users[canon_un].update(user_rec)
 
+    token = create_session_token(canon_un, user_role)
+
     return {
         "success": True,
         "is_pending": False,
+        "token": token,
         "user": {
             "username": canon_un,
             "name": user_rec.get("name") or canon_un,
-            "role": user_rec.get("role", "Staff"),
+            "role": user_role,
             "status": user_rec.get("status", "approved"),
-            "line_user_id": user_rec.get("line_user_id", "")
+            "line_user_id": user_rec.get("line_user_id", ""),
+            "token": token
         }
     }
 
@@ -190,7 +196,7 @@ def list_users():
 
 
 @router.post("/api/users/{username}/approve")
-def approve_user(username: str):
+def approve_user(username: str, _admin: Dict[str, Any] = Depends(require_admin)):
     if username not in store.users:
         raise HTTPException(status_code=404, detail="ไม่พบผู้ใช้นี้")
     store.users[username]["status"] = "approved"
@@ -200,7 +206,7 @@ def approve_user(username: str):
 
 
 @router.post("/api/users/{username}/reject")
-def reject_user(username: str):
+def reject_user(username: str, _admin: Dict[str, Any] = Depends(require_admin)):
     if username not in store.users:
         raise HTTPException(status_code=404, detail="ไม่พบผู้ใช้นี้")
     store.users[username]["status"] = "suspended"
@@ -210,7 +216,7 @@ def reject_user(username: str):
 
 
 @router.delete("/api/users/{username}")
-def delete_user(username: str):
+def delete_user(username: str, _admin: Dict[str, Any] = Depends(require_admin)):
     if username.lower() == "admin":
         raise HTTPException(status_code=400, detail="ไม่สามารถลบบัญชีผู้ดูแลระบบหลัก (admin) ได้")
     store.async_delete_user(username)
@@ -219,7 +225,7 @@ def delete_user(username: str):
 
 @router.put("/api/users/{username}/line-id")
 @router.post("/api/users/{username}/line-id")
-def update_user_line_id(username: str, payload: Dict[str, Any]):
+def update_user_line_id(username: str, payload: Dict[str, Any], _admin: Dict[str, Any] = Depends(require_admin)):
     if username not in store.users:
         raise HTTPException(status_code=404, detail="ไม่พบผู้ใช้นี้ในระบบ")
     line_uid = str(payload.get("line_user_id") or "").strip()
@@ -233,7 +239,7 @@ def update_user_line_id(username: str, payload: Dict[str, Any]):
 
 
 @router.post("/api/users/{username}/test-line")
-def test_user_line_push(username: str):
+def test_user_line_push(username: str, _user: Dict[str, Any] = Depends(require_auth)):
     if username not in store.users:
         raise HTTPException(status_code=404, detail="ไม่พบผู้ใช้นี้ในระบบ")
     u = store.users[username]

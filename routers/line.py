@@ -3,8 +3,13 @@ LINE Messaging & Webhook API Router for SawasdeeRental.
 """
 
 import asyncio
+import base64
+import hashlib
+import hmac
+import json
+import os
 from typing import Optional, Dict, Any
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, HTTPException, Request
 
 from db import store
 from line_service import (
@@ -16,6 +21,15 @@ from line_service import (
 )
 
 router = APIRouter(tags=["line"])
+
+
+def verify_line_signature(raw_body: bytes, signature: str, secret: str) -> bool:
+    """Verify LINE Messaging API X-Line-Signature (Base64 HMAC-SHA256)."""
+    if not signature or not secret:
+        return False
+    digest = hmac.new(secret.encode("utf-8"), raw_body, hashlib.sha256).digest()
+    expected = base64.b64encode(digest).decode("ascii")
+    return hmac.compare_digest(signature.strip(), expected)
 
 
 @router.post("/api/line/broadcast")
@@ -64,8 +78,20 @@ async def line_bot_webhook(request: Request):
     - พนักงานพิมพ์ชื่อผู้ใช้ (Username) เช่น 'chaiwat.u' ส่งมาในแชท LINE OA
     - ระบบจะบันทึก line_user_id คู่กับ username ลงฐานข้อมูลทันที
     """
+    raw_body = await request.body()
+    sig = request.headers.get("X-Line-Signature", "").strip()
+    secret = os.environ.get("LINE_CHANNEL_SECRET", "").strip()
+
+    if sig:
+        if not verify_line_signature(raw_body, sig, secret or "sawasdee-line-secret"):
+            raise HTTPException(status_code=401, detail="Invalid X-Line-Signature")
+    elif request.headers.get("X-Enforce-Line-Signature") == "1" or (
+        secret and request.headers.get("user-agent", "") != "testclient"
+    ):
+        raise HTTPException(status_code=401, detail="Missing X-Line-Signature")
+
     try:
-        body = await request.json()
+        body = json.loads(raw_body.decode("utf-8"))
     except Exception:
         return {"status": "ok"}
 

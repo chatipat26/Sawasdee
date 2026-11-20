@@ -59,6 +59,7 @@ def get_car_profitability():
         f_amt = float(f.get("amount", 0.0) or 0.0)
         f_ref = str(f.get("ref", ""))
         f_det = str(f.get("detail", ""))
+        f_cat = str(f.get("category", ""))
 
         matched_pl = None
         for pl in store.cars.keys():
@@ -67,11 +68,18 @@ def get_car_profitability():
                 break
 
         if matched_pl:
-            if f_type == "รายรับ" and f.get("category") == "ค่าเช่ารถ":
+            if f_type == "รายรับ" and f_cat == "ค่าเช่ารถ":
                 if f_ref not in completed_bids:
                     rev_by_car[matched_pl] = rev_by_car.get(matched_pl, 0.0) + f_amt
             elif f_type == "รายจ่าย":
-                if f_ref not in mnt_ids:
+                # Do NOT count customer security deposit refunds as vehicle operating/maintenance expenses
+                is_deposit_refund = (
+                    ("คืนเงินมัดจำ" in f_cat)
+                    or ("คืนมัดจำ" in f_cat)
+                    or ("คืนเงินมัดจำ" in f_det)
+                    or ("คืนมัดจำ" in f_det)
+                )
+                if not is_deposit_refund and f_ref not in mnt_ids:
                     exp_by_car[matched_pl] = exp_by_car.get(matched_pl, 0.0) + f_amt
 
     profitability = []

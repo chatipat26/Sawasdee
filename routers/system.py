@@ -6,12 +6,12 @@ import os
 import time
 import asyncio
 from datetime import datetime
-from typing import Optional
-from fastapi import APIRouter, HTTPException, UploadFile, File
+from typing import Optional, Dict, Any
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from fastapi.responses import HTMLResponse
 
 from db import store, get_db_client
-from dependencies import BASE_DIR, TH_TZ
+from dependencies import BASE_DIR, TH_TZ, require_auth, require_admin, validate_upload_bytes
 from gdrive_service import (
     gdrive_service,
     FOLDER_INSURANCE_ACT,
@@ -74,7 +74,7 @@ def trigger_manual_sync():
 
 
 @router.post("/api/admin/migrate-cars")
-def trigger_cars_migration():
+def trigger_cars_migration(_admin: Dict[str, Any] = Depends(require_admin)):
     """Execute raw ALTER TABLE commands on PostgreSQL to guarantee all 34 columns."""
     sb = get_db_client()
     if sb and hasattr(sb, "connection"):
@@ -131,7 +131,8 @@ async def upload_photo(
     category: Optional[str] = None,
     ref_id: Optional[str] = None,
     plate: Optional[str] = None,
-    sub_type: Optional[str] = None
+    sub_type: Optional[str] = None,
+    _user: Dict[str, Any] = Depends(require_auth),
 ):
     """
     Unified upload endpoint:
@@ -143,7 +144,8 @@ async def upload_photo(
     - Fallback: Safe compressed Base64 photo storage if GDrive is not yet configured
     """
     contents = await file.read()
-    ext = file.filename.split(".")[-1] if "." in file.filename else "jpg"
+    validate_upload_bytes(file.filename, file.content_type, contents, allow_pdf=True)
+    ext = (file.filename or "").split(".")[-1] if "." in (file.filename or "") else "jpg"
 
     def _process_upload():
         # 1. Google Drive Auto-Upload (TARGET MISSION 2)

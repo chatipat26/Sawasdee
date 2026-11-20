@@ -3,9 +3,10 @@ Customers API Router for SawasdeeRental.
 """
 
 from typing import Dict, Any, Union
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
 from db import store
+from dependencies import require_auth
 from schemas import CustomerCreate
 
 router = APIRouter(tags=["customers"])
@@ -20,7 +21,7 @@ def list_customers():
 
 
 @router.post("/api/customers")
-def create_or_update_customer(payload: Union[CustomerCreate, Dict[str, Any]]):
+def create_or_update_customer(payload: Union[CustomerCreate, Dict[str, Any]], _user: Dict[str, Any] = Depends(require_auth)):
     if hasattr(payload, "model_dump"):
         payload = payload.model_dump(exclude_unset=False)
     elif hasattr(payload, "dict"):
@@ -94,7 +95,7 @@ def create_or_update_customer(payload: Union[CustomerCreate, Dict[str, Any]]):
 
 
 @router.delete("/api/customers/{name}")
-def delete_customer(name: str):
+def delete_customer(name: str, _user: Dict[str, Any] = Depends(require_auth)):
     if name == "ลูกค้าทั่วไป (Walk-in)":
         raise HTTPException(status_code=400, detail="ไม่สามารถลบลูกค้ารายการเริ่มต้นของระบบได้")
     store.async_delete_customer(name)

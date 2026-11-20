@@ -6,10 +6,10 @@ import re
 import calendar
 from datetime import datetime, date, timedelta
 from typing import Optional, Dict, Any
-from fastapi import APIRouter, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Response
 
 from db import store, get_db_client, to_date
-from dependencies import now_th, normalize_plate
+from dependencies import now_th, normalize_plate, require_auth
 from services.finance_service import compute_monthly_expenses, normalize_payment_channel
 
 router = APIRouter(tags=["finance"])
@@ -61,7 +61,7 @@ def get_monthly_expenses(response: Response):
 
 
 @router.post("/api/expenses/pay")
-def pay_monthly_expense(payload: Dict[str, Any]):
+def pay_monthly_expense(payload: Dict[str, Any], _user: Dict[str, Any] = Depends(require_auth)):
     plate = str(payload.get("plate") or payload.get("car_id") or "").strip()
     expense_type = str(payload.get("expense_type") or "").strip().lower()
 
@@ -259,7 +259,7 @@ def pay_monthly_expense(payload: Dict[str, Any]):
 
 @router.post("/api/financial-records")
 @router.post("/api/finance/records")
-def create_financial_record(payload: Dict[str, Any]):
+def create_financial_record(payload: Dict[str, Any], _user: Dict[str, Any] = Depends(require_auth)):
     now_ts = now_th().strftime("%Y-%m-%d %H:%M:%S")
     f_rec = {
         "date": str(payload.get("date") or now_ts),
@@ -312,9 +312,19 @@ def get_finance_summary(month: Optional[str] = None, start_date: Optional[str] =
                 "note": f"มัดจำจองรถ {b.get('car_id', '')}"
             })
 
+        ext_list = [
+            e for e in (b.get("extension_history") or [])
+            if isinstance(e, dict) and e.get("type", "extension") == "extension"
+        ]
+        ext_total_in_net = sum(
+            float(e.get("extra_price") if e.get("extra_price") is not None else (e.get("amount") or 0.0))
+            for e in ext_list
+        )
+
         rent_paid = b.get("rental_paid") or b.get("is_fully_paid") or b.get("status") in ["เสร็จสิ้น", "กำลังเช่า", "รอส่งมอบ", "รอรับคืน"]
         rent_amt = float(b.get("net_price") or b.get("rental_rate") or 0.0)
-        if rent_amt > 0 and rent_paid:
+        base_rent_amt = max(0.0, rent_amt - ext_total_in_net)
+        if base_rent_amt > 0 and rent_paid:
             r_date = b.get("rental_payment_date") or str(b.get("start_date") or "")
             r_date_clean = str(to_date(r_date) or r_date or "").strip()
             if not r_date_clean or len(r_date_clean) < 10:
@@ -331,17 +341,23 @@ def get_finance_summary(month: Optional[str] = None, start_date: Optional[str] =
                 "customer": b.get("customer_name", "-"),
                 "category": "ค่าเช่ารถ",
                 "payment_method": r_method,
-                "amount": rent_amt,
+                "amount": base_rent_amt,
                 "note": f"ค่าเช่ารถ {b.get('car_id', '')}"
             })
 
-        ext_list = b.get("extension_history") or []
         for idx, ext in enumerate(ext_list):
-            if ext.get("paid"):
-                e_amt = float(ext.get("amount") or 0.0)
+            is_ext_paid = bool(ext.get("paid") or ext.get("paid_at_extend") or b.get("rental_paid") or b.get("is_fully_paid"))
+            if is_ext_paid:
+                e_amt = float(ext.get("extra_price") if ext.get("extra_price") is not None else (ext.get("amount") or 0.0))
                 if e_amt > 0:
-                    e_date = str(to_date(ext.get("extended_at") or ext.get("date") or "") or now_th().date().isoformat())
-                    e_method = normalize_payment_channel(ext.get("payment_method") or "โอนเงิน / สแกน QR")
+                    e_date = str(to_date(ext.get("extended_at") or ext.get("date") or ext.get("created_at") or "") or now_th().date().isoformat())
+                    e_method = normalize_payment_channel(
+                        ext.get("payment_method")
+                        or b.get("last_extension_payment_method")
+                        or b.get("rental_payment_method")
+                        or "โอนเงิน / สแกน QR"
+                    )
+                    seen_refs.add(f"ext_{bid}")
                     tx_list.append({
                         "id": f"ext_{bid}_{idx}",
                         "ref": bid,
@@ -352,7 +368,7 @@ def get_finance_summary(month: Optional[str] = None, start_date: Optional[str] =
                         "category": "ค่าต่อสัญญา",
                         "payment_method": e_method,
                         "amount": e_amt,
-                        "note": f"ต่อสัญญา #{ext.get('extension_no', idx+1)}"
+                        "note": f"ต่อสัญญา #{ext.get('extension_no', ext.get('no', idx+1))}"
                     })
 
     for cj in store.completed_jobs:
@@ -380,7 +396,7 @@ def get_finance_summary(month: Optional[str] = None, start_date: Optional[str] =
     for f in store.financial_records:
         if f.get("type") in ["รายรับ", "Income", "income"]:
             f_ref = f.get("ref_id") or f.get("ref", "")
-            if not f_ref or (f"rent_{f_ref}" not in seen_refs and f"dep_{f_ref}" not in seen_refs):
+            if not f_ref or (f"rent_{f_ref}" not in seen_refs and f"dep_{f_ref}" not in seen_refs and f"ext_{f_ref}" not in seen_refs):
                 f_amt = float(f.get("amount") or 0.0)
                 if f_amt > 0:
                     f_date = str(to_date(f.get("date")) or f.get("date") or now_th().date().isoformat())

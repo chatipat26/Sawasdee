@@ -199,7 +199,12 @@ Object.assign(App.prototype, {
         throw new Error(data.detail || "บัญชีของคุณกำลังรอการอนุมัติจากแอดมิน");
       }
 
-      this.user = data.user;
+      this.user = data.user || {};
+      const authToken = data.token || this.user.token || "";
+      if (authToken) {
+        this.user.token = authToken;
+        sessionStorage.setItem("sawasdee_token", authToken);
+      }
       sessionStorage.setItem("sawasdee_user", JSON.stringify(this.user));
       sessionStorage.setItem("sawasdee_login_time", Date.now().toString());
       localStorage.removeItem("sawasdee_user");
@@ -562,6 +567,7 @@ Object.assign(App.prototype, {
 
   logout() {
     this.user = null;
+    sessionStorage.removeItem("sawasdee_token");
     sessionStorage.removeItem("sawasdee_user");
     sessionStorage.removeItem("sawasdee_login_time");
     localStorage.removeItem("sawasdee_user");

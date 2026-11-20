@@ -11,7 +11,7 @@ import asyncio
 import urllib.parse
 from datetime import datetime
 from typing import Optional, Dict, Any, List, Tuple, Union
-from fastapi import APIRouter, UploadFile, File, Form, Query, HTTPException, Path, Request
+from fastapi import APIRouter, Depends, UploadFile, File, Form, Query, HTTPException, Path, Request
 from fastapi.responses import JSONResponse
 
 from services.google_drive_service import (
@@ -30,7 +30,7 @@ from db import (
     DEFAULT_HP_SUMMARY,
     DEFAULT_PROPERTY_INSURANCE,
 )
-from dependencies import INACTIVE_BOOKING_STATUSES, now_th, normalize_plate
+from dependencies import INACTIVE_BOOKING_STATUSES, now_th, normalize_plate, validate_upload_bytes, require_auth, require_admin
 from schemas import VehicleCreate
 from services.maintenance_service import execute_hard_delete_work_order_db
 
@@ -54,7 +54,8 @@ async def upload_car_image(
     car_id: str = Path(..., description="Car license plate or ID"),
     file: UploadFile = File(...),
     angle: Optional[str] = Form(None),
-    view: Optional[str] = Query(None)
+    view: Optional[str] = Query(None),
+    _user: Dict[str, Any] = Depends(require_auth),
 ):
     """
     Car Image Upload Endpoint (TARGET MISSION 2):
@@ -75,8 +76,7 @@ async def upload_car_image(
     )
 
     file_bytes = await file.read()
-    if not file_bytes:
-        raise HTTPException(status_code=400, detail="ไฟล์รูปภาพว่างเปล่า (0 bytes)")
+    validate_upload_bytes(file.filename, file.content_type, file_bytes, allow_pdf=False)
 
     file_name_orig = file.filename
     file_content_type = file.content_type or "image/jpeg"
@@ -209,7 +209,8 @@ async def upload_car_4_angles(
     front: Optional[UploadFile] = File(None),
     left: Optional[UploadFile] = File(None),
     rear: Optional[UploadFile] = File(None),
-    right: Optional[UploadFile] = File(None)
+    right: Optional[UploadFile] = File(None),
+    _user: Dict[str, Any] = Depends(require_auth),
 ):
     """
     Car 4-Angle Batch Upload Endpoint:
@@ -308,8 +309,7 @@ async def upload_car_4_angles(
                 date_str=today_str
             )
             file_bytes = await file_obj.read()
-            if not file_bytes:
-                continue
+            validate_upload_bytes(file_obj.filename, file_obj.content_type, file_bytes, allow_pdf=False)
             angle_items.append((
                 angle_key,
                 target_filename,
@@ -318,6 +318,8 @@ async def upload_car_4_angles(
                 file_obj.content_type or "image/jpeg",
                 file_obj.filename,
             ))
+        except HTTPException:
+            raise
         except Exception as e:
             print(f"[Cars 4-Angles API] Error reading angle {angle_key} for {clean_plate}: {e}")
 
@@ -619,7 +621,11 @@ def get_vehicle_form_options():
 @router.put("/api/vehicles")
 @router.put("/api/cars/{plate_param}")
 @router.put("/api/vehicles/{plate_param}")
-def create_or_update_car(payload: Union[VehicleCreate, Dict[str, Any]], plate_param: Optional[str] = None):
+def create_or_update_car(
+    payload: Union[VehicleCreate, Dict[str, Any]],
+    plate_param: Optional[str] = None,
+    _user: Dict[str, Any] = Depends(require_auth),
+):
     if hasattr(payload, "model_dump"):
         payload = payload.model_dump(exclude_unset=False)
     elif hasattr(payload, "dict"):
@@ -1089,7 +1095,7 @@ def check_car_duplicates():
 
 
 @router.delete("/api/cars/{plate}")
-def delete_car(plate: str):
+def delete_car(plate: str, _admin: Dict[str, Any] = Depends(require_admin)):
     plate = plate.strip()
     norm_target = normalize_plate(plate)
     target_key = None
@@ -1131,7 +1137,8 @@ async def upload_car_image_endpoint(
     car_id: str,
     file: UploadFile = File(...),
     angle: Optional[str] = Form(None),
-    view: Optional[str] = Query(None)
+    view: Optional[str] = Query(None),
+    _user: Dict[str, Any] = Depends(require_auth),
 ):
     """
     Dedicated endpoint for uploading car 4-angle images to Google Drive.
@@ -1154,7 +1161,8 @@ async def upload_car_4_angles_endpoint(
     front: Optional[UploadFile] = File(None),
     left: Optional[UploadFile] = File(None),
     rear: Optional[UploadFile] = File(None),
-    right: Optional[UploadFile] = File(None)
+    right: Optional[UploadFile] = File(None),
+    _user: Dict[str, Any] = Depends(require_auth),
 ):
     return await upload_car_4_angles(
         request=request,
@@ -1189,7 +1197,7 @@ def get_car_maintenances(plate: str):
 
 
 @router.post("/api/cars/{plate:path}/maintenances")
-def add_car_maintenance(plate: str, payload: Dict[str, Any]):
+def add_car_maintenance(plate: str, payload: Dict[str, Any], _user: Dict[str, Any] = Depends(require_auth)):
     clean_plate = urllib.parse.unquote(plate).strip()
     if not clean_plate:
         raise HTTPException(status_code=400, detail="ไม่พบทะเบียนรถ")
@@ -1263,7 +1271,7 @@ def add_car_maintenance(plate: str, payload: Dict[str, Any]):
 
 
 @router.delete("/api/cars/{plate:path}/maintenances/{m_id}")
-def delete_car_maintenance(plate: str, m_id: str):
+def delete_car_maintenance(plate: str, m_id: str, _user: Dict[str, Any] = Depends(require_auth)):
     clean_plate = urllib.parse.unquote(plate).strip()
     clean_id = urllib.parse.unquote(m_id).strip()
     store.hard_delete_work_order(clean_id, car_id=clean_plate)

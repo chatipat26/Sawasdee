@@ -6,12 +6,12 @@ import io
 import urllib.parse
 from datetime import date
 from typing import Optional, Dict, Any
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 
 import pdf_engine
 from db import store
-from dependencies import now_th
+from dependencies import now_th, require_auth
 from services.maintenance_service import execute_hard_delete_work_order_db
 
 router = APIRouter(tags=["maintenance"])
@@ -19,7 +19,7 @@ router = APIRouter(tags=["maintenance"])
 
 @router.post("/api/work-orders")
 @router.post("/api/work-order-logs")
-def create_work_order(payload: Dict[str, Any]):
+def create_work_order(payload: Dict[str, Any], _user: Dict[str, Any] = Depends(require_auth)):
     """Insert a new record into work_order_logs decoupled from booking logic."""
     bk_id = str(payload.get("booking_id") or "").strip() or None
     car_id = str(payload.get("car_id") or "").strip() or None
@@ -181,7 +181,7 @@ def list_maintenance(
 
 
 @router.post("/api/maintenance")
-def create_maintenance(payload: Dict[str, Any]):
+def create_maintenance(payload: Dict[str, Any], _user: Dict[str, Any] = Depends(require_auth)):
     car_id = str(payload.get("car_id", "")).strip()
     if not car_id:
         raise HTTPException(status_code=400, detail="กรุณาระบุทะเบียนรถ")
@@ -281,7 +281,7 @@ def get_maintenance(mnt_id: str):
 
 
 @router.put("/api/maintenance/{mnt_id}")
-def update_maintenance(mnt_id: str, payload: Dict[str, Any]):
+def update_maintenance(mnt_id: str, payload: Dict[str, Any], _user: Dict[str, Any] = Depends(require_auth)):
     target = next((m for m in store.maintenance_records if m.get("id") == mnt_id), None)
     if not target:
         raise HTTPException(status_code=404, detail="ไม่พบข้อมูลใบงานซ่อมบำรุง")
@@ -295,7 +295,7 @@ def update_maintenance(mnt_id: str, payload: Dict[str, Any]):
 
 
 @router.post("/api/maintenance/{mnt_id}/close")
-def close_maintenance(mnt_id: str, payload: Dict[str, Any]):
+def close_maintenance(mnt_id: str, payload: Dict[str, Any], _user: Dict[str, Any] = Depends(require_auth)):
     actual_cost = payload.get("actual_cost")
     notes = payload.get("completion_notes", "")
     new_mileage = payload.get("mileage")
@@ -349,7 +349,7 @@ def close_maintenance(mnt_id: str, payload: Dict[str, Any]):
 @router.delete("/api/maintenance/{mnt_id}")
 @router.delete("/api/work-orders/{mnt_id}")
 @router.delete("/api/work-order-logs/{mnt_id}")
-def delete_maintenance_or_work_order(mnt_id: str):
+def delete_maintenance_or_work_order(mnt_id: str, _user: Dict[str, Any] = Depends(require_auth)):
     """TARGET MISSION 1 & 2: Hard delete from work_order_logs and revert car status in 1 transaction."""
     clean_id = urllib.parse.unquote(mnt_id).strip()
     car_id = store.hard_delete_work_order(clean_id)

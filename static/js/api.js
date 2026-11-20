@@ -2,6 +2,37 @@
  * Sawasdee Rental - API Data Loaders & Live Sync Poller
  * Prototype Mixin for App
  */
+if (typeof window !== "undefined" && typeof window.fetch === "function" && !window.__sawasdeeAuthFetchInstalled) {
+  window.__sawasdeeAuthFetchInstalled = true;
+  const _origFetch = window.fetch.bind(window);
+  window.fetch = function(input, init) {
+    const urlStr = (typeof input === "string") ? input : (input && input.url ? input.url : "");
+    let isApiUrl = urlStr.startsWith("/api/");
+    if (!isApiUrl && urlStr.startsWith(window.location.origin + "/api/")) {
+      isApiUrl = true;
+    }
+    if (isApiUrl) {
+      let token = "";
+      try {
+        token = sessionStorage.getItem("sawasdee_token") || (window.app && window.app.user && window.app.user.token) || "";
+      } catch (e) {}
+      if (token) {
+        const nextInit = init ? { ...init } : {};
+        const headers = new Headers((init && init.headers) || (typeof input !== "string" && input && input.headers) || undefined);
+        if (!headers.has("Authorization")) {
+          headers.set("Authorization", `Bearer ${token}`);
+        }
+        if (!headers.has("X-Auth-Token")) {
+          headers.set("X-Auth-Token", token);
+        }
+        nextInit.headers = headers;
+        return _origFetch(input, nextInit);
+      }
+    }
+    return _origFetch(input, init);
+  };
+}
+
 Object.assign(App.prototype, {
   async fetchInitialData() {
     try {

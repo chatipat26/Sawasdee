@@ -379,5 +379,7 @@ def isolated_store(monkeypatch):
 
 @pytest.fixture()
 def client():
-    """FastAPI TestClient wrapping server.app without triggering external startup threads."""
-    return TestClient(server.app)
+    """FastAPI TestClient wrapping server.app with default Admin session token."""
+    from dependencies import create_session_token
+    token = create_session_token("admin", "Admin")
+    return TestClient(server.app, headers={"Authorization": f"Bearer {token}"})

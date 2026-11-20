@@ -6,7 +6,7 @@ import os
 import re
 from datetime import datetime, date
 from typing import Optional, Dict, Any
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
 import pdf_engine
 from db import (
@@ -22,6 +22,7 @@ from dependencies import (
     now_th,
     convert_gdrive_url,
     get_car_key,
+    require_auth,
 )
 from services.google_drive_service import async_upload_pdf_to_drive
 from services.booking_service import (
@@ -164,7 +165,7 @@ def get_booking(bk_id: str):
 
 
 @router.post("/api/bookings")
-def create_booking(payload: Dict[str, Any]):
+def create_booking(payload: Dict[str, Any], _user: Dict[str, Any] = Depends(require_auth)):
     try:
         # Generate booking ID in Thailand Time: MRC<YYMMDD><HHMMSS>
         now = now_th()
@@ -305,7 +306,7 @@ def create_booking(payload: Dict[str, Any]):
 
 
 @router.put("/api/bookings/{bk_id}")
-def update_booking(bk_id: str, payload: Dict[str, Any]):
+def update_booking(bk_id: str, payload: Dict[str, Any], _user: Dict[str, Any] = Depends(require_auth)):
     target = next((b for b in store.bookings if b.get("booking_id") == bk_id), None)
     if not target:
         raise HTTPException(status_code=404, detail="ไม่พบรายการจอง")
@@ -385,7 +386,7 @@ def update_booking(bk_id: str, payload: Dict[str, Any]):
 
 @router.patch("/api/bookings/{bk_id}/contract-pdf")
 @router.put("/api/bookings/{bk_id}/contract-pdf")
-def update_booking_contract_pdf(bk_id: str, payload: Dict[str, Any]):
+def update_booking_contract_pdf(bk_id: str, payload: Dict[str, Any], _user: Dict[str, Any] = Depends(require_auth)):
     """Decoupled update for contract_pdf_url without altering core booking logic."""
     target = next((b for b in store.bookings if b.get("booking_id") == bk_id), None)
     if not target:
@@ -397,7 +398,11 @@ def update_booking_contract_pdf(bk_id: str, payload: Dict[str, Any]):
 
 
 @router.post("/api/bookings/{bk_id}/generate-inspection-pdf")
-def generate_booking_inspection_pdf(bk_id: str, payload: Optional[Dict[str, Any]] = None):
+def generate_booking_inspection_pdf(
+    bk_id: str,
+    payload: Optional[Dict[str, Any]] = None,
+    _user: Dict[str, Any] = Depends(require_auth),
+):
     """
     Generate official vehicle inspection checklist PDF from booking data.
     Accepts inspection data (Checkout/Checkin), marked car diagram (Base64), signatures, notes.
@@ -590,7 +595,7 @@ def generate_booking_inspection_pdf(bk_id: str, payload: Optional[Dict[str, Any]
 
 
 @router.post("/api/bookings/{bk_id}/extend")
-def extend_booking(bk_id: str, payload: Dict[str, Any]):
+def extend_booking(bk_id: str, payload: Dict[str, Any], _user: Dict[str, Any] = Depends(require_auth)):
     """Flow 6.2: customer extends the contract -> overlap check -> new contract (PDF) -> payment."""
     target = next((b for b in store.bookings if b.get("booking_id") == bk_id), None)
     if not target:
@@ -622,27 +627,36 @@ def extend_booking(bk_id: str, payload: Dict[str, Any]):
     extra_price = float(extra_price) if extra_price not in (None, "") else price_day * extra_days
 
     also_pay_rental = bool(payload.get("also_pay_rental", False))
+    was_rental_already_paid = bool(target.get("rental_paid"))
+    orig_rental_method = target.get("rental_payment_method")
     pay_method = str(payload.get("payment_method") or target.get("rental_payment_method") or "โอนเงิน / สแกน QR")
     pay_ref = str(payload.get("payment_ref") or "").strip()
 
+    th_today = now_th().date().isoformat()
     ext_list = list(target.get("extension_history") or [])
     ext_no = len([x for x in ext_list if isinstance(x, dict) and x.get("type") == "extension"]) + 1
     ext_list.append({
         "type": "extension",
         "no": ext_no,
+        "extension_no": ext_no,
         "old_end_date": str(old_end),
         "old_end_time": old_end_t,
         "new_end_date": str(new_end),
         "new_end_time": new_end_t,
         "extra_days": extra_days,
         "extra_price": extra_price,
+        "amount": extra_price,
         "paid_at_extend": also_pay_rental,
+        "paid": also_pay_rental,
+        "payment_method": pay_method,
+        "payment_ref": pay_ref,
+        "extended_at": th_today,
+        "date": th_today,
         "created_at": now_th().isoformat()
     })
 
     prev_outstanding = 0.0 if target.get("rental_paid") else float(target.get("remaining_rental") or 0.0)
     total_due = prev_outstanding + extra_price
-    th_today = now_th().date().isoformat()
     target["extension_history"] = ext_list
     target["end_date"] = new_end
     target["end_time"] = new_end_t
@@ -653,7 +667,9 @@ def extend_booking(bk_id: str, payload: Dict[str, Any]):
         target["rental_paid"] = True
         target["is_fully_paid"] = True
         target["rental_payment_date"] = th_today
-        target["rental_payment_method"] = pay_method
+        target["last_extension_payment_method"] = pay_method
+        if not was_rental_already_paid or not orig_rental_method:
+            target["rental_payment_method"] = pay_method
         if pay_ref:
             target["rental_ref"] = pay_ref
         if "ชำระวันคืนรถ" in pay_method:
@@ -712,7 +728,7 @@ def extend_check(bk_id: str, new_end_date: str):
 
 
 @router.delete("/api/bookings/{bk_id}")
-def delete_booking(bk_id: str):
+def delete_booking(bk_id: str, _user: Dict[str, Any] = Depends(require_auth)):
     target = next((b for b in store.bookings if b.get("booking_id") == bk_id), None)
     if target and target.get("car_id") in store.cars:
         release_car_after_booking(target["car_id"], bk_id)
@@ -725,7 +741,7 @@ def delete_booking(bk_id: str):
 # DEPOSIT & PAYMENT WORKFLOW
 # -------------------------------------------------------------------------
 @router.post("/api/bookings/{bk_id}/deposit")
-def record_deposit(bk_id: str, payload: Dict[str, Any]):
+def record_deposit(bk_id: str, payload: Dict[str, Any], _user: Dict[str, Any] = Depends(require_auth)):
     target = next((b for b in store.bookings if b.get("booking_id") == bk_id), None)
     if not target:
         raise HTTPException(status_code=404, detail="ไม่พบรายการจอง")
@@ -844,7 +860,7 @@ def record_deposit(bk_id: str, payload: Dict[str, Any]):
 
 
 @router.post("/api/bookings/{bk_id}/settle")
-def settle_rental(bk_id: str, payload: Dict[str, Any]):
+def settle_rental(bk_id: str, payload: Dict[str, Any], _user: Dict[str, Any] = Depends(require_auth)):
     target = next((b for b in store.bookings if b.get("booking_id") == bk_id), None)
     if not target:
         raise HTTPException(status_code=404, detail="ไม่พบรายการจอง")
@@ -911,7 +927,7 @@ def settle_rental(bk_id: str, payload: Dict[str, Any]):
 
 
 @router.post("/api/bookings/{bk_id}/payment-slip")
-def update_payment_slip(bk_id: str, payload: Dict[str, Any]):
+def update_payment_slip(bk_id: str, payload: Dict[str, Any], _user: Dict[str, Any] = Depends(require_auth)):
     target = next((b for b in store.bookings if b.get("booking_id") == bk_id), None)
     if not target:
         raise HTTPException(status_code=404, detail="ไม่พบรายการจอง")
@@ -981,7 +997,7 @@ def update_payment_slip(bk_id: str, payload: Dict[str, Any]):
 # DISPATCH & RETURN WORK ORDERS
 # -------------------------------------------------------------------------
 @router.post("/api/bookings/{bk_id}/assign")
-def assign_worker(bk_id: str, payload: Dict[str, Any]):
+def assign_worker(bk_id: str, payload: Dict[str, Any], _user: Dict[str, Any] = Depends(require_auth)):
     target = next((b for b in store.bookings if b.get("booking_id") == bk_id), None)
     if not target:
         raise HTTPException(status_code=404, detail="ไม่พบรายการจอง")
@@ -1265,7 +1281,7 @@ def list_backoffice_jobs():
 
 
 @router.post("/api/bookings/{bk_id}/close-dispatch")
-def close_dispatch(bk_id: str, payload: Dict[str, Any]):
+def close_dispatch(bk_id: str, payload: Dict[str, Any], _user: Dict[str, Any] = Depends(require_auth)):
     target = next((b for b in store.bookings if b.get("booking_id") == bk_id), None)
     if not target:
         raise HTTPException(status_code=404, detail="ไม่พบรายการจอง")
@@ -1305,7 +1321,7 @@ def close_dispatch(bk_id: str, payload: Dict[str, Any]):
 
 
 @router.post("/api/bookings/{bk_id}/close-return")
-def close_return(bk_id: str, payload: Dict[str, Any]):
+def close_return(bk_id: str, payload: Dict[str, Any], _user: Dict[str, Any] = Depends(require_auth)):
     action = payload.get("action", "end_contract")
     fuel = payload.get("fuel_level", "⛽ เต็มถัง (Full - 8/8) [100%]")
     mileage = payload.get("mileage", "")
@@ -1412,7 +1428,11 @@ def close_return(bk_id: str, payload: Dict[str, Any]):
 
 @router.post("/api/inspections/checkin")
 @router.post("/api/inspections/{bk_id}/checkin")
-def complete_inspection_checkin_direct(bk_id: Optional[str] = None, payload: Optional[Dict[str, Any]] = None):
+def complete_inspection_checkin_direct(
+    bk_id: Optional[str] = None,
+    payload: Optional[Dict[str, Any]] = None,
+    _user: Dict[str, Any] = Depends(require_auth),
+):
     """Dedicated endpoint for direct check-in inspection mileage update & PDF completion."""
     payload = payload or {}
     b_id = bk_id or payload.get("booking_id")

@@ -476,6 +476,10 @@ class DataStore:
             },
         )
 
+    def save_local_bookings(self):
+        """Backward-compatible no-op; bookings persist asynchronously via async_sync_booking."""
+        pass
+
     def sync_from_database(self, force=False):
         """Synchronous full sync from PostgreSQL"""
         self._sync_task(force=force)
@@ -1975,7 +1979,8 @@ class DataStore:
 
                 # Car transitions to Maintenance status if current vehicle has damage
                 if repair_cost > 0 and car_id in self.cars:
-                    self.cars[car_id]["status"] = "สถานะซ่อมบำรุง"
+                    self.cars[car_id]["status"] = "ซ่อมบำรุง"
+                    self.cars[car_id]["car_status"] = "ซ่อมบำรุง"
                     if mileage:
                         self.cars[car_id]["mileage"] = mileage
                     self.async_sync_car(car_id, self.cars[car_id])
@@ -2144,7 +2149,8 @@ class DataStore:
             # 1. Update Old Car -> Maintenance
             b_old_car = self.cars.get(old_car_id, {})
             if old_car_id in self.cars:
-                self.cars[old_car_id]["status"] = "สถานะซ่อมบำรุง"
+                self.cars[old_car_id]["status"] = "ซ่อมบำรุง"
+                self.cars[old_car_id]["car_status"] = "ซ่อมบำรุง"
                 if mileage:
                     self.cars[old_car_id]["mileage"] = mileage
                 self.async_sync_car(old_car_id, self.cars[old_car_id])
@@ -2201,7 +2207,6 @@ class DataStore:
             })
 
             self.save_local_cars()
-            self.save_local_bookings()
             self.async_sync_booking(target)
             return True
 
