@@ -445,3 +445,44 @@ def upload_pdf_to_drive(
         file_name=file_name,
         content_type="application/pdf"
     )
+
+
+def async_upload_pdf_to_drive(
+    doc_type: str,
+    ref_id: str,
+    pdf_bytes: bytes,
+    folder_id: Optional[str],
+    booking_dict: Optional[Dict[str, Any]] = None,
+    db_col: Optional[str] = None
+):
+    """
+    Safely uploads generated PDF to Google Drive in a daemon thread.
+    Returns HTTP response immediately to user without any delay or timeout risk.
+    """
+    def _task():
+        try:
+            from db import store, get_db_client
+            target_folder = resolve_folder_id(folder_id, doc_type)
+            fname = build_pdf_filename(doc_type, ref_id)
+            res = upload_pdf_to_drive(pdf_bytes, target_folder, fname, doc_type=doc_type)
+            if res.get("success") and res.get("webViewLink"):
+                gdrive_url = res.get("webViewLink")
+                print(f"[PDF GDrive Auto-Upload] Success: {fname} -> {gdrive_url}")
+                if booking_dict and db_col:
+                    booking_dict[db_col] = gdrive_url
+                    store.async_sync_booking(booking_dict)
+                if db_col and ref_id:
+                    try:
+                        sb = get_db_client()
+                        if sb:
+                            sb.table("bookings").update({db_col: gdrive_url}).eq("booking_id", ref_id).execute()
+                            print(f"[PDF GDrive Auto-Upload] Updated bookings.{db_col} for {ref_id}")
+                    except Exception as dberr:
+                        print(f"[PDF GDrive Auto-Upload] DB update notice: {dberr}")
+            else:
+                print(f"[PDF GDrive Auto-Upload] Result: {res.get('error')}")
+        except Exception as e:
+            print(f"[PDF GDrive Auto-Upload] Warning: {e}")
+
+    import threading
+    threading.Thread(target=_task, daemon=True).start()

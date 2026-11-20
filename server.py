@@ -11,19 +11,6 @@ from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse, Fil
 from fastapi.middleware.cors import CORSMiddleware
 import re
 
-def convert_gdrive_url(url: str) -> str:
-    """Convert Google Drive share link to direct image view URL to save server storage."""
-    if not url or not isinstance(url, str):
-        return url
-    u = url.strip()
-    m = re.search(r'drive\.google\.com/file/d/([a-zA-Z0-9_-]+)', u)
-    if m:
-        return f"https://lh3.googleusercontent.com/d/{m.group(1)}"
-    m = re.search(r'drive\.google\.com/(?:open|uc)\?(?:[^&]*&)*id=([a-zA-Z0-9_-]+)', u)
-    if m:
-        return f"https://lh3.googleusercontent.com/d/{m.group(1)}"
-    return u
-
 from gdrive_service import (
     gdrive_service,
     build_gdrive_filename,
@@ -67,123 +54,32 @@ from line_service import (
     init_expiry_scheduler_thread
 )
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-TH_TZ = timezone(timedelta(hours=7))
-
-def now_th():
-    return datetime.now(TH_TZ)
-
-def async_upload_pdf_to_drive(
-    doc_type: str,
-    ref_id: str,
-    pdf_bytes: bytes,
-    folder_id: Optional[str],
-    booking_dict: Optional[Dict[str, Any]] = None,
-    db_col: Optional[str] = None
-):
-    """
-    Safely uploads generated PDF to Google Drive in a daemon thread.
-    Returns HTTP response immediately to user without any delay or timeout risk.
-    """
-    def _task():
-        try:
-            from services.google_drive_service import upload_pdf_to_drive, build_pdf_filename, resolve_folder_id
-            target_folder = resolve_folder_id(folder_id, doc_type)
-            fname = build_pdf_filename(doc_type, ref_id)
-            res = upload_pdf_to_drive(pdf_bytes, target_folder, fname, doc_type=doc_type)
-            if res.get("success") and res.get("webViewLink"):
-                gdrive_url = res.get("webViewLink")
-                print(f"[PDF GDrive Auto-Upload] Success: {fname} -> {gdrive_url}")
-                if booking_dict and db_col:
-                    booking_dict[db_col] = gdrive_url
-                    store.async_sync_booking(booking_dict)
-                if db_col and ref_id:
-                    try:
-                        from db import get_db_client
-                        sb = get_db_client()
-                        if sb:
-                            sb.table("bookings").update({db_col: gdrive_url}).eq("booking_id", ref_id).execute()
-                            print(f"[PDF GDrive Auto-Upload] Updated bookings.{db_col} for {ref_id}")
-                    except Exception as dberr:
-                        print(f"[PDF GDrive Auto-Upload] DB update notice: {dberr}")
-            else:
-                print(f"[PDF GDrive Auto-Upload] Result: {res.get('error')}")
-        except Exception as e:
-            print(f"[PDF GDrive Auto-Upload] Warning: {e}")
-
-    import threading
-    threading.Thread(target=_task, daemon=True).start()
-
-# -------------------------------------------------------------------------
-# BUSINESS FLOW GUARDS (state machine / overlap protection)
-# -------------------------------------------------------------------------
-INACTIVE_BOOKING_STATUSES = ("เสร็จสิ้น", "ยกเลิก")
-
-def find_booking_overlap(car_id, start_d, end_d, exclude_booking_id=None):
-    """Return the first active booking of car_id whose date range overlaps [start_d, end_d], else None."""
-    if not car_id or not start_d or not end_d:
-        return None
-    for b in store.bookings:
-        if b.get("car_id") != car_id:
-            continue
-        if exclude_booking_id and b.get("booking_id") == exclude_booking_id:
-            continue
-        if b.get("status") in INACTIVE_BOOKING_STATUSES:
-            continue
-        b_s = to_date(b.get("start_date"))
-        b_e = to_date(b.get("end_date"))
-        if b_s and b_e and not (b_e < start_d or b_s > end_d):
-            return b
-    return None
-
-def raise_overlap_error(conflict, action="จองรถ"):
-    raise HTTPException(
-        status_code=409,
-        detail=(
-            f"⚠️ ไม่สามารถ{action}ได้: วันที่ทับซ้อนกับคิวเดิมของรถคันนี้ "
-            f"(รหัส {conflict.get('booking_id')} / ลูกค้า {conflict.get('customer')} / "
-            f"{format_date_dmy(conflict.get('start_date'))} - {format_date_dmy(conflict.get('end_date'))})"
-        )
-    )
-
-def get_car_key(car_id):
-    """Resolve car key from store.cars matching raw car_id, plate, or normalized string."""
-    if not car_id:
-        return None
-    if car_id in store.cars:
-        return car_id
-    clean_target = re.sub(r"[\s\-_]", "", str(car_id)).strip().lower()
-    for k, v in store.cars.items():
-        if re.sub(r"[\s\-_]", "", str(k)).strip().lower() == clean_target:
-            return k
-        if re.sub(r"[\s\-_]", "", str(v.get("plate", ""))).strip().lower() == clean_target:
-            return k
-    return None
-
-def release_car_after_booking(car_id, finished_booking_id=None):
-    """Return car to Available, or back to Reserved if another active queue still exists."""
-    c_key = get_car_key(car_id)
-    if not c_key or c_key not in store.cars:
-        return
-    norm_ck = re.sub(r"[\s\-_]", "", str(c_key)).strip().lower()
-    has_queue = any(
-        re.sub(r"[\s\-_]", "", str(b.get("car_id", ""))).strip().lower() == norm_ck
-        and b.get("booking_id") != finished_booking_id
-        and b.get("status") not in INACTIVE_BOOKING_STATUSES
-        for b in store.bookings
-    )
-    store.cars[c_key]["status"] = "ติดจอง" if has_queue else "ว่างพร้อมใช้งาน"
-    store.async_sync_car(c_key, store.cars[c_key])
-
-def require_contract_before_rent(booking):
-    """On-Rent status may only be reached after the rental contract has been issued."""
-    if not booking.get("contract_issued"):
-        raise HTTPException(
-            status_code=400,
-            detail="⚠️ ไม่สามารถเปลี่ยนสถานะเป็น \"กำลังเช่า\" ได้: ต้องออกสัญญาเช่าให้เรียบร้อยก่อน (จอง ➔ มัดจำ ➔ ใบงาน ➔ ชำระค่าเช่า ➔ สัญญา)"
-        )
-    if not booking.get("deposit_paid"):
-        raise HTTPException(status_code=400, detail="⚠️ ยังไม่ได้ชำระเงินมัดจำ ไม่สามารถส่งมอบรถได้")
+from dependencies import (
+    BASE_DIR,
+    TH_TZ,
+    static_dir,
+    INACTIVE_BOOKING_STATUSES,
+    now_th,
+    convert_gdrive_url,
+    normalize_plate,
+    get_car_key,
+)
+from services.google_drive_service import async_upload_pdf_to_drive
+from services.booking_service import (
+    find_booking_overlap,
+    raise_overlap_error,
+    release_car_after_booking,
+    require_contract_before_rent,
+    record_booking_completion_income,
+    _update_car_mileage_on_return,
+    _resolve_cust_and_car,
+)
+from services.finance_service import (
+    compute_monthly_expenses,
+    normalize_payment_channel,
+    compute_dashboard_statistics,
+)
+from services.maintenance_service import execute_hard_delete_work_order_db
 
 from routers.cars import router as cars_router
 app = FastAPI(title="SawasdeeRental Web App", version="2.0.0")
@@ -197,14 +93,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Static and Templates directories
-static_dir = os.path.join(BASE_DIR, "static")
-os.makedirs(static_dir, exist_ok=True)
-os.makedirs(os.path.join(static_dir, "css"), exist_ok=True)
-os.makedirs(os.path.join(static_dir, "js"), exist_ok=True)
-os.makedirs(os.path.join(static_dir, "pdf"), exist_ok=True)
-os.makedirs(os.path.join(static_dir, "pdf", "inspections"), exist_ok=True)
 
 # Inspection PDF route with automatic on-demand generation fallback (prevents 404 on Render restarts)
 @app.get("/static/pdf/inspections/{fname}")
@@ -773,12 +661,6 @@ def get_vehicle_form_options():
         "reg_years": sorted(list(reg_years))
     }
 
-def normalize_plate(plate: str) -> str:
-    if not plate:
-        return ""
-    import re
-    return re.sub(r"[\s\-\.]+", "", str(plate)).lower()
-
 from schemas import (
     VehicleCreate,
     VehicleUpdate,
@@ -1266,170 +1148,6 @@ def get_cycle_expiries():
     except Exception as e:
         print(f"Error in get_cycle_expiries: {e}")
         return {"success": False, "count": 0, "items": [], "error": str(e)}
-
-def compute_monthly_expenses():
-    if not store.initial_sync_done:
-        try:
-            store.sync_from_database(force=False)
-        except Exception:
-            pass
-
-    today = now_th().date()
-    items = []
-
-    def classify_expense(days_left: int, db_status: Optional[str] = None):
-        st_clean = str(db_status or "").strip().lower()
-        if st_clean in ("ชำระแล้ว", "paid", "true", "ok"):
-            return "ชำระแล้ว", "paid", False
-        if st_clean in ("รอชำระ", "pending", "pending_near", "overdue"):
-            if days_left < 0:
-                return "เกินกำหนด", "overdue", True
-            elif days_left <= 15:
-                return "รอชำระ (ใกล้ครบกำหนด)", "pending_near", True
-            else:
-                return "รอชำระ", "pending", True
-        
-        # When no explicit status in DB, classify by days left:
-        if days_left > 30:
-            return "ชำระแล้ว", "paid", False
-        elif days_left < 0:
-            return "เกินกำหนด", "overdue", True
-        elif days_left <= 15:
-            return "รอชำระ (ใกล้ครบกำหนด)", "pending_near", True
-        else:
-            return "รอชำระ", "pending", True
-
-    for plate, car in store.cars.items():
-        brand = car.get("brand") or ""
-        model = car.get("model") or ""
-        car_name = f"{brand} {model}".strip() or "-"
-        company = car.get("owner_company") or car.get("company") or "-"
-
-        # 1. ภาษี (Tax)
-        tax_d_raw = car.get("tax_expire_date") or car.get("tax_expiry")
-        tax_d = to_date(tax_d_raw)
-        if tax_d:
-            days_left = (tax_d - today).days
-            amount = float(car.get("tax_price") or car.get("tax_amount") or 1500.0)
-            db_st = car.get("tax_status") or ("paid" if car.get("tax_paid") else None)
-            status, status_key, is_pending = classify_expense(days_left, db_st)
-            items.append({
-                "plate": plate,
-                "model": car_name,
-                "company": company,
-                "expense_type": "ภาษีประจำปี (Tax)",
-                "expense_key": "tax",
-                "due_date": tax_d.strftime("%d/%m/%Y"),
-                "due_date_iso": tax_d.isoformat(),
-                "days_left": days_left,
-                "amount": amount,
-                "status": status,
-                "status_key": status_key,
-                "notes": f"เหลืออีก {days_left} วัน" if days_left >= 0 else f"เกินกำหนด {abs(days_left)} วัน"
-            })
-
-        # 2. พ.ร.บ. (ACT / PRB)
-        act_d_raw = car.get("prb_expire_date") or car.get("act_expiry")
-        act_d = to_date(act_d_raw)
-        if act_d:
-            days_left = (act_d - today).days
-            amount = float(car.get("prb_price") or car.get("act_price") or 645.21)
-            db_st = car.get("prb_status") or car.get("act_status") or ("paid" if (car.get("act_paid") or car.get("prb_paid")) else None)
-            status, status_key, is_pending = classify_expense(days_left, db_st)
-            items.append({
-                "plate": plate,
-                "model": car_name,
-                "company": company,
-                "expense_type": "พ.ร.บ. คุ้มครอง (ACT)",
-                "expense_key": "act",
-                "due_date": act_d.strftime("%d/%m/%Y"),
-                "due_date_iso": act_d.isoformat(),
-                "days_left": days_left,
-                "amount": amount,
-                "status": status,
-                "status_key": status_key,
-                "notes": f"เหลืออีก {days_left} วัน" if days_left >= 0 else f"เกินกำหนด {abs(days_left)} วัน"
-            })
-
-        # 3. ประกันภัย (Insurance)
-        ins_d_raw = car.get("insurance_expire_date") or car.get("ins_expiry")
-        ins_d = to_date(ins_d_raw)
-        if ins_d:
-            days_left = (ins_d - today).days
-            amount = float(car.get("insurance_premium") or car.get("ins_premium") or 12000.0)
-            ins_comp = car.get("insurance_company") or car.get("ins_company") or "-"
-            db_st = car.get("insurance_status") or car.get("ins_status") or ("paid" if (car.get("insurance_paid") or car.get("ins_paid")) else None)
-            status, status_key, is_pending = classify_expense(days_left, db_st)
-            items.append({
-                "plate": plate,
-                "model": car_name,
-                "company": company,
-                "expense_type": f"ประกันภัย ({ins_comp})",
-                "expense_key": "insurance",
-                "due_date": ins_d.strftime("%d/%m/%Y"),
-                "due_date_iso": ins_d.isoformat(),
-                "days_left": days_left,
-                "amount": amount,
-                "status": status,
-                "status_key": status_key,
-                "notes": f"เหลืออีก {days_left} วัน" if days_left >= 0 else f"เกินกำหนด {abs(days_left)} วัน"
-            })
-
-        # 4. ผ่อนรถ (Installment)
-        is_debt_free = car.get("is_debt_free")
-        if not is_debt_free:
-            inst_d_raw = car.get("payment_due_date") or car.get("installment_due_date")
-            inst_d = to_date(inst_d_raw)
-            if inst_d:
-                days_left = (inst_d - today).days
-                amount = float(car.get("installment_amount") or car.get("hp_installment") or 8500.0)
-                cur_term = car.get("current_installment", 0) or 0
-                tot_term = car.get("total_installments", 0) or 0
-                term_desc = f" (งวดที่ {cur_term}/{tot_term})" if tot_term else ""
-                db_st = car.get("installment_status") or car.get("payment_status") or ("paid" if car.get("installment_paid") else None)
-                status, status_key, is_pending = classify_expense(days_left, db_st)
-                items.append({
-                    "plate": plate,
-                    "model": car_name,
-                    "company": company,
-                    "expense_type": f"ค่างวดผ่อนรถ{term_desc}",
-                    "expense_key": "installment",
-                    "due_date": inst_d.strftime("%d/%m/%Y"),
-                    "due_date_iso": inst_d.isoformat(),
-                    "days_left": days_left,
-                    "amount": amount,
-                    "status": status,
-                    "status_key": status_key,
-                    "notes": f"เหลืออีก {days_left} วัน" if days_left >= 0 else f"เกินกำหนด {abs(days_left)} วัน"
-                })
-
-    # Sort items: Overdue first (0), near-due (1), pending (2), paid (3)
-    order_map = {"overdue": 0, "pending_near": 1, "pending": 2, "paid": 3}
-    items.sort(key=lambda x: (order_map.get(x["status_key"], 9), x["days_left"]))
-
-    # SINGLE SOURCE OF TRUTH: Aggregation strictly derived from items' status_key
-    tax_pending = sum(1 for it in items if it["expense_key"] == "tax" and it["status_key"] != "paid")
-    act_pending = sum(1 for it in items if it["expense_key"] == "act" and it["status_key"] != "paid")
-    ins_pending = sum(1 for it in items if it["expense_key"] == "insurance" and it["status_key"] != "paid")
-    inst_pending = sum(1 for it in items if it["expense_key"] == "installment" and it["status_key"] != "paid")
-    tot_pending_amount = sum(float(it.get("amount") or 0.0) for it in items if it["status_key"] != "paid")
-
-    summary = {
-        "total_items": len(items),
-        "tax_pending": tax_pending,
-        "act_pending": act_pending,
-        "insurance_pending": ins_pending,
-        "installment_pending": inst_pending,
-        "total_pending_count": tax_pending + act_pending + ins_pending + inst_pending,
-        "total_pending_amount": tot_pending_amount
-    }
-
-    return {
-        "success": True,
-        "summary": summary,
-        "expenses": items,
-        "items": items
-    }
 
 @app.get("/api/expenses/monthly")
 def get_monthly_expenses(response: Response):
@@ -2105,77 +1823,6 @@ def create_booking(payload: Dict[str, Any]):
             detail=f"เกิดข้อผิดพลาดในการสร้างรายการจอง: {str(e)}"
         )
 
-def record_booking_completion_income(target_bk: dict) -> bool:
-    """
-    TARGET MISSION 2: Auto-log rental income into financial_records upon booking completion for dashboard analytics.
-    Ensures idempotency (no duplicate entries) and safe transaction recording.
-    """
-    if not target_bk:
-        return False
-    bid = str(target_bk.get("booking_id") or "").strip()
-    if not bid:
-        return False
-
-    # Prevent double-logging if already recorded in memory
-    has_income = any(
-        (str(f.get("ref", "")).strip() == bid and (str(f.get("category", "")).strip() == "ค่าเช่ารถ" or str(f.get("type", "")).strip().lower() in ["income", "รายรับ"]))
-        or (bid in str(f.get("description", "")) and "ค่าเช่า" in str(f.get("category", "")))
-        for f in getattr(store, "financial_records", [])
-    )
-    if has_income:
-        return False
-
-    plate = str(target_bk.get("car_id") or "-").strip()
-    raw_net = target_bk.get("net_price") if target_bk.get("net_price") is not None else (target_bk.get("total_price") or target_bk.get("rental_rate") or 0.0)
-    try:
-        net_p = float(raw_net or 0.0)
-    except Exception:
-        net_p = 0.0
-
-    ret_date = target_bk.get("return_date") or target_bk.get("end_date") or now_th().date().isoformat()
-    if isinstance(ret_date, (datetime, date)):
-        c_date = ret_date.strftime("%Y-%m-%d")
-    else:
-        c_date = str(ret_date).split("T")[0].split(" ")[0].strip() or now_th().date().isoformat()
-
-    comp = str(target_bk.get("company") or (store.cars.get(plate) or {}).get("company") or "บจก.สวัสดี เรนทัล (Sawasdee Rental)").strip()
-    desc_str = f"รายได้ค่าเช่ารถ รหัสการจอง [{bid}] - ทะเบียน [{plate}]"
-
-    f_item = {
-        "company": comp,
-        "type": "income",
-        "category": "ค่าเช่ารถ",
-        "amount": round(net_p, 2),
-        "ref": bid,
-        "date": c_date,
-        "description": desc_str,
-        "detail": desc_str
-    }
-
-    # Direct DB execution with transaction/error handling
-    sb = get_db_client()
-    if sb:
-        try:
-            existing_db = sb.table("financial_records").select("id, category, type").eq("ref", bid).execute()
-            if existing_db and existing_db.data and len(existing_db.data) > 0:
-                has_db_income = any(
-                    (str(r.get("category", "")) == "ค่าเช่ารถ" or str(r.get("type", "")).lower() in ["income", "รายรับ"])
-                    for r in existing_db.data
-                )
-                if has_db_income:
-                    return False
-
-            row = dict(f_item)
-            sb.table("financial_records").insert(row).execute()
-            print(f"[Financial] Inserted completion revenue for booking {bid}: ฿{net_p:,.2f}")
-        except Exception as e:
-            print(f"[Financial Error] Failed to insert completion revenue to financial_records: {e}")
-
-    with store.lock:
-        store.financial_records.insert(0, f_item)
-
-    return True
-
 @app.put("/api/bookings/{bk_id}")
 def update_booking(bk_id: str, payload: Dict[str, Any]):
     target = next((b for b in store.bookings if b.get("booking_id") == bk_id), None)
@@ -2265,42 +1912,6 @@ def update_booking_contract_pdf(bk_id: str, payload: Dict[str, Any]):
     target["contract_pdf_url"] = str(pdf_url)
     store.async_sync_booking(target)
     return {"success": True, "booking_id": bk_id, "contract_pdf_url": target["contract_pdf_url"]}
-
-def _update_car_mileage_on_return(car_id: Any, return_mileage: Any, dispatch_mileage: Any = None) -> float:
-    """
-    Validates and automatically updates vehicle mileage upon check-in completion.
-    Ensures return mileage is not less than dispatch mileage.
-    Updates store.cars[car_id]['mileage'] and syncs to database.
-    """
-    if not return_mileage:
-        return 0.0
-    try:
-        clean_ret = float(str(return_mileage).replace(",", "").replace("km", "").strip())
-    except (ValueError, TypeError):
-        return 0.0
-
-    if dispatch_mileage:
-        try:
-            clean_disp = float(str(dispatch_mileage).replace(",", "").replace("km", "").strip())
-            if clean_disp > 0 and clean_ret < clean_disp:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"⚠️ เลขไมล์ตอนรับคืน ({int(clean_ret):,} km) ต้องไม่น้อยกว่าเลขไมล์ตอนส่งมอบ ({int(clean_disp):,} km)"
-                )
-        except HTTPException:
-            raise
-        except Exception:
-            pass
-
-    c_key = str(car_id or "").strip()
-    if c_key and c_key in store.cars:
-        car_obj = store.cars[c_key]
-        fmt_km = f"{int(clean_ret):,}" if clean_ret.is_integer() else f"{clean_ret:,.1f}"
-        car_obj["mileage"] = fmt_km
-        if "current_mileage" in car_obj:
-            car_obj["current_mileage"] = fmt_km
-        store.async_sync_car(c_key, car_obj)
-    return clean_ret
 
 @app.post("/api/bookings/{bk_id}/generate-inspection-pdf")
 def generate_booking_inspection_pdf(bk_id: str, payload: Optional[Dict[str, Any]] = None):
@@ -3689,66 +3300,6 @@ def close_maintenance(mnt_id: str, payload: Dict[str, Any]):
 
     return {"success": True, "maintenance": closed, "car": store.cars.get(closed.get("car_id"))}
 
-def execute_hard_delete_work_order_db(clean_id: str, found_car_id: Optional[str] = None):
-    """Execute SQL hard delete in work_order_logs and revert car status in 1 atomic transaction."""
-    try:
-        from database import engine
-        from sqlalchemy import text
-        if engine:
-            with engine.begin() as conn:
-                # 1. Hard delete from work_order_logs
-                conn.execute(
-                    text("DELETE FROM public.work_order_logs WHERE id = :id OR booking_id = :id"),
-                    {"id": clean_id}
-                )
-                conn.execute(
-                    text("DELETE FROM public.work_order_logs WHERE description LIKE :pat"),
-                    {"pat": f"%{clean_id}%"}
-                )
-                # 2. Hard delete from maintenance_records, maintenance_logs, vehicle_maintenances
-                conn.execute(text("DELETE FROM public.maintenance_records WHERE id = :id"), {"id": clean_id})
-                conn.execute(text("DELETE FROM public.maintenance_logs WHERE id = :id"), {"id": clean_id})
-                try:
-                    conn.execute(text("DELETE FROM public.vehicle_maintenances WHERE id::text = :id"), {"id": clean_id})
-                except Exception:
-                    pass
-
-                # 3. Revert car status in cars table if car_id is identified
-                if found_car_id:
-                    conn.execute(
-                        text("""
-                            UPDATE public.cars 
-                            SET car_status = 'ว่างพร้อมใช้งาน' 
-                            WHERE (plate = :car_id OR plate = REPLACE(:car_id, ' ', ''))
-                              AND car_status IN ('ซ่อมบำรุง', 'ต่อทะเบียน/ประกัน', 'สถานะซ่อมบำรุง', 'กำลังซ่อมบำรุง', 'กำลังต่อภาษี/ประกัน')
-                        """),
-                        {"car_id": found_car_id}
-                    )
-                    try:
-                        conn.execute(
-                            text("""
-                                UPDATE public.cars 
-                                SET status = 'ว่างพร้อมใช้งาน' 
-                                WHERE (plate = :car_id OR plate = REPLACE(:car_id, ' ', ''))
-                                  AND status IN ('ซ่อมบำรุง', 'ต่อทะเบียน/ประกัน', 'สถานะซ่อมบำรุง', 'กำลังซ่อมบำรุง', 'กำลังต่อภาษี/ประกัน')
-                            """),
-                            {"car_id": found_car_id}
-                        )
-                    except Exception:
-                        pass
-                    # Clean up any remaining orphan maintenance work orders for this car
-                    conn.execute(
-                        text("""
-                            DELETE FROM public.work_order_logs 
-                            WHERE car_id = :car_id 
-                              AND work_type IN ('Maintenance', 'Renew Tax')
-                              AND (booking_id IS NULL OR booking_id = '' OR booking_id = :id)
-                        """),
-                        {"car_id": found_car_id, "id": clean_id}
-                    )
-    except Exception as e:
-        print(f"SQLAlchemy hard_delete error: {e}")
-
 @app.delete("/api/maintenance/{mnt_id}")
 @app.delete("/api/work-orders/{mnt_id}")
 @app.delete("/api/work-order-logs/{mnt_id}")
@@ -3781,20 +3332,6 @@ def get_maintenance_pdf(mnt_id: str):
 # -------------------------------------------------------------------------
 # FINANCIAL SUMMARY & SHIFT CLOSING (MISSION 1)
 # -------------------------------------------------------------------------
-def normalize_payment_channel(raw_method: str) -> str:
-    m = str(raw_method or "").strip().lower()
-    if any(k in m for k in ["คืนรถ", "return", "pay on return"]):
-        return "ชำระวันคืนรถ"
-    if any(k in m for k in ["โอน", "qr", "transfer", "scan", "bank"]):
-        return "โอนเงิน / สแกน QR"
-    if any(k in m for k in ["สด", "cash"]):
-        return "เงินสด"
-    if any(k in m for k in ["เครดิต", "credit", "card", "edc"]):
-        return "บัตรเครดิต"
-    if "paypal" in m:
-        return "PayPal"
-    return "โอนเงิน / สแกน QR"
-
 @app.post("/api/financial-records")
 @app.post("/api/finance/records")
 def create_financial_record(payload: Dict[str, Any]):
@@ -4201,217 +3738,6 @@ def get_car_profitability():
 
     return profitability
 
-def compute_dashboard_statistics():
-    # 1. Ensure database sync has run
-    if not getattr(store, "initial_sync_done", False) or not getattr(store, "cars", {}):
-        try:
-            store.sync_from_database(force=True)
-        except Exception as e:
-            print(f"Dashboard sync_from_database note: {e}")
-
-    sb = get_db_client()
-    cars_data = []
-    bookings_data = []
-    
-    if sb:
-        try:
-            c_res = sb.table("cars").select("*").execute()
-            if c_res and c_res.data:
-                cars_data = c_res.data
-        except Exception as e:
-            print(f"Dashboard cars DB fetch note: {e}")
-        try:
-            b_res = sb.table("bookings").select("*").execute()
-            if b_res and b_res.data:
-                bookings_data = b_res.data
-        except Exception as e:
-            print(f"Dashboard bookings DB fetch note: {e}")
-
-    # Fallback / merge with store in memory
-    cars_dict = {}
-    for c in cars_data:
-        pl = c.get("plate")
-        if pl:
-            cars_dict[pl] = dict(c)
-    for pl, c in getattr(store, "cars", {}).items():
-        if pl not in cars_dict:
-            cars_dict[pl] = dict(c)
-        else:
-            cars_dict[pl].update({k: v for k, v in c.items() if v is not None})
-    fleet_cars = list(cars_dict.values()) if cars_dict else list(getattr(store, "cars", {}).values())
-
-    bookings_dict = {}
-    for b in bookings_data:
-        bid = b.get("booking_id") or b.get("id")
-        if bid:
-            bookings_dict[bid] = dict(b)
-    for b in getattr(store, "bookings", []):
-        bid = b.get("booking_id") or b.get("id")
-        if bid:
-            bookings_dict[bid] = {**bookings_dict.get(bid, {}), **b}
-    all_bookings = list(bookings_dict.values()) if bookings_dict else list(getattr(store, "bookings", []))
-
-    today = now_th().date()
-    total_fleet = len(fleet_cars)
-    avail_count = 0
-    on_rent_count = 0
-    booked_count = 0
-    maint_count = 0
-
-    # Group cars strictly with robust status matching + fleet bookings verification
-    for c in fleet_cars:
-        pl = str(c.get("plate") or "").strip()
-        norm_p = normalize_plate_str(pl)
-        c_st = str(c.get("status") or c.get("car_status") or "").strip().lower()
-
-        # Check bookings for this car from fleet data
-        car_bks = [
-            b for b in all_bookings
-            if normalize_plate_str(b.get("car_id", "")) == norm_p
-            and str(b.get("status") or "").strip() not in ["เสร็จสิ้น", "ยกเลิก", "Completed", "Canceled", "completed", "canceled"]
-        ]
-        has_real_on_rent = any(b.get("status") in ("กำลังเช่า", "รอรับคืน") for b in car_bks)
-        has_queue = any(b.get("status") not in ("เสร็จสิ้น", "ยกเลิก") for b in car_bks)
-
-        # 1. Maintenance / Workshop / Renewal
-        has_active_maint = any(
-            (m.get("car_id") == pl or normalize_plate_str(m.get("car_id", "")) == norm_p)
-            and str(m.get("status") or "").strip() not in ["เสร็จสิ้น", "ยกเลิก", "Completed", "Canceled"]
-            for m in getattr(store, "maintenance_records", [])
-        )
-        has_active_wo_maint = any(
-            (wo.get("car_id") == pl or normalize_plate_str(wo.get("car_id", "")) == norm_p)
-            and str(wo.get("job_status") or "").strip() not in ["เสร็จสิ้น", "ยกเลิก", "Completed", "Canceled"]
-            and any(w_kw in str(wo.get("work_type", "")).lower() for w_kw in ["tax", "repair", "maintenance", "ซ่อม", "ภาษี", "พ.ร.บ."])
-            for wo in getattr(store, "work_order_logs", [])
-        )
-        is_maint = has_active_maint or has_active_wo_maint
-
-        if is_maint:
-            maint_count += 1
-        # 2. On Rent / Renting (checks status strings AND active rental from fleet)
-        elif any(k in c_st for k in ["เช่า", "rent", "กำลังเช่า", "on_rent", "on rent", "rented", "รอรับคืน"]) or has_real_on_rent:
-            on_rent_count += 1
-        # 3. Booked / Reserved (checks status strings AND booking queue from fleet)
-        elif any(k in c_st for k in ["จอง", "book", "reserv", "ติดจอง", "booked", "reserved", "ส่งมอบ", "queue"]) or has_queue:
-            booked_count += 1
-        # 4. If c_st indicates maintenance but no actual active maintenance order
-        elif any(k in c_st for k in ["ซ่อม", "ไม่พร้อม", "ระงับ", "maint", "ต่อทะเบียน", "ต่อภาษี", "workshop", "renewal"]):
-            # Auto-repair orphan maintenance status in memory
-            target_st = "กำลังเช่า" if has_real_on_rent else ("ติดจอง" if has_queue else "ว่างพร้อมใช้งาน")
-            if isinstance(c, dict):
-                c["car_status"] = target_st
-                c["status"] = target_st
-            if has_real_on_rent:
-                on_rent_count += 1
-            elif has_queue:
-                booked_count += 1
-            else:
-                avail_count += 1
-        # 5. Otherwise Available (ว่างพร้อมใช้งาน)
-        else:
-            avail_count += 1
-
-    # Active rentals: on_rent + booked (strictly never including available)
-    active_rentals = on_rent_count + booked_count
-    utilization_rate = round((active_rentals / max(1, total_fleet)) * 100, 1) if total_fleet > 0 else 0.0
-
-    # Clean standardized status_counts dict
-    status_counts = {
-        "available": avail_count,
-        "on_rent": on_rent_count,
-        "booked": booked_count,
-        "maintenance": maint_count
-    }
-
-    # Real-time revenue calculation from jobs and bookings
-    total_rev = 0.0
-    seen_bids = set()
-    for cj in getattr(store, "completed_jobs", []):
-        bid = cj.get("booking_id")
-        if bid: seen_bids.add(bid)
-        total_rev += float(cj.get("net_price") or 0.0) + float(cj.get("late_fee") or 0.0)
-
-    for b in all_bookings:
-        bid = b.get("booking_id")
-        if bid and bid not in seen_bids:
-            if b.get("rental_paid") or b.get("is_fully_paid") or str(b.get("status")) in ["กำลังเช่า", "รอรับคืน", "เสร็จสิ้น"]:
-                total_rev += float(b.get("net_price") or b.get("rental_rate") or 0.0)
-                seen_bids.add(bid)
-
-    if total_rev == 0.0:
-        for f in getattr(store, "financial_records", []):
-            if f.get("type") in ["รายรับ", "income", "Income"] or str(f.get("type", "")).strip().lower() in ["รายรับ", "income"]:
-                total_rev += float(f.get("amount", 0) or 0)
-
-    # Monthly revenue trend (past 6 months)
-    th_months = ["", "ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."]
-    monthly_trend = []
-    curr_m = today.month
-    curr_y = today.year
-    for i in range(5, -1, -1):
-        m = curr_m - i
-        y = curr_y
-        while m <= 0:
-            m += 12
-            y -= 1
-        m_str = f"{y}-{m:02d}"
-        m_label = f"{m}. {th_months[m]}"
-        rev_m = 0.0
-        for cj in getattr(store, "completed_jobs", []):
-            c_d = to_date(cj.get("completed_date") or cj.get("end_date"))
-            if c_d and c_d.year == y and c_d.month == m:
-                rev_m += float(cj.get("net_price") or 0.0)
-        for b in all_bookings:
-            b_d = to_date(b.get("start_date") or b.get("created_at"))
-            if b_d and b_d.year == y and b_d.month == m:
-                if b.get("rental_paid") or b.get("is_fully_paid") or str(b.get("status")) in ["กำลังเช่า", "รอรับคืน"]:
-                    rev_m += float(b.get("net_price") or b.get("rental_rate") or 0.0)
-        for f in getattr(store, "financial_records", []):
-            if f.get("type") in ["รายรับ", "income", "Income"]:
-                f_d = to_date(f.get("date") or f.get("created_at"))
-                if f_d and f_d.year == y and f_d.month == m:
-                    f_ref = f.get("ref")
-                    if not f_ref or f_ref not in seen_bids:
-                        rev_m += float(f.get("amount") or 0.0)
-        monthly_trend.append({
-            "label": m_label,
-            "month": m,
-            "year": y,
-            "month_key": m_str,
-            "revenue": round(rev_m, 2)
-        })
-
-    company_counts = {}
-    for c in fleet_cars:
-        comp = c.get("company", "อื่นๆ")
-        company_counts[comp] = company_counts.get(comp, 0) + 1
-
-    return {
-        "success": True,
-        "total_fleet": total_fleet,
-        "available": avail_count,
-        "on_rent": on_rent_count,
-        "booked": booked_count,
-        "maintenance": maint_count,
-        "status_counts": status_counts,
-        "status_breakdown": status_counts,
-        "fleet_status_breakdown": status_counts,
-        "active_rentals": active_rentals,
-        "utilization_rate": utilization_rate,
-        "total_revenue": round(total_rev, 2),
-        "total_cars": total_fleet,
-        "available_cars": avail_count,
-        "rented_cars": on_rent_count,
-        "booked_cars": booked_count,
-        "maintenance_cars": maint_count,
-        "monthly_trend": monthly_trend,
-        "company_distribution": company_counts,
-        "total_bookings": len(all_bookings),
-        "total_completed": len(getattr(store, "completed_jobs", [])),
-        "financial_records": getattr(store, "financial_records", [])
-    }
-
 @app.get("/api/dashboard/stats")
 @app.get("/api/reports/kpis")
 def get_dashboard_stats(response: Response):
@@ -4484,36 +3810,6 @@ def export_csv(month: Optional[str] = None):
         media_type="text/csv",
         headers={"Content-Disposition": f"attachment; filename=completed_jobs_{month or 'all'}.csv"}
     )
-
-def _resolve_cust_and_car(target):
-    cust = store.customers.get(target.get("customer"))
-    if not cust and target.get("customer"):
-        target_cname = str(target.get("customer")).strip().lower()
-        for k, v in store.customers.items():
-            if str(k).strip().lower() == target_cname:
-                cust = v
-                break
-    if not cust:
-        cust = {
-            "full_name": target.get("customer", "-"),
-            "contact_no": target.get("customer_phone", "-"),
-            "passport_id": target.get("customer_id_card", "-")
-        }
-
-    car = store.cars.get(target.get("car_id"))
-    if not car and target.get("car_id"):
-        target_plate = str(target.get("car_id")).strip().lower()
-        for k, v in store.cars.items():
-            if str(k).strip().lower() == target_plate:
-                car = v
-                break
-    if not car:
-        car = {
-            "plate": target.get("car_id", "-"),
-            "brand": target.get("car_brand", ""),
-            "model": target.get("car_model", "")
-        }
-    return cust, car
 
 # -------------------------------------------------------------------------
 # PDF DOCUMENT STREAMING ENDPOINTS
