@@ -55,6 +55,61 @@ Object.assign(App.prototype, {
     }
   },
 
+  async syncDeltaModules(newSigs, prevSigs) {
+    if (!newSigs || !prevSigs) {
+      await this.fetchInitialData();
+      return [];
+    }
+    const changed = [];
+    const loaders = [];
+
+    const carsChanged = newSigs.cars !== prevSigs.cars;
+    const bookingsChanged = newSigs.bookings !== prevSigs.bookings;
+    const customersChanged = newSigs.customers !== prevSigs.customers;
+    const maintChanged = newSigs.maintenance !== prevSigs.maintenance;
+    const usersChanged = newSigs.users !== prevSigs.users;
+    const financeChanged = newSigs.finance !== prevSigs.finance;
+
+    if (usersChanged) {
+      changed.push("users");
+      loaders.push(this.loadUsers().catch(e => console.error("delta loadUsers err:", e)));
+    }
+    if (carsChanged) {
+      changed.push("cars");
+      loaders.push(this.loadCars().catch(e => console.error("delta loadCars err:", e)));
+      if (typeof this.loadHpLeasingData === "function") {
+        loaders.push(this.loadHpLeasingData().catch(e => console.error("delta loadHpLeasing err:", e)));
+      }
+    }
+    if (customersChanged) {
+      changed.push("customers");
+      loaders.push(this.loadCustomers().catch(e => console.error("delta loadCustomers err:", e)));
+    }
+    if (bookingsChanged) {
+      changed.push("bookings");
+      loaders.push(this.loadBookings().catch(e => console.error("delta loadBookings err:", e)));
+    }
+    if (maintChanged) {
+      changed.push("maintenance");
+      loaders.push(this.loadMaintenanceRecords().catch(e => console.error("delta loadMaintenance err:", e)));
+    }
+    if (bookingsChanged || maintChanged) {
+      loaders.push(this.loadBackOfficeJobs().catch(e => console.error("delta loadBackOfficeJobs err:", e)));
+    }
+    if (financeChanged || bookingsChanged || maintChanged || carsChanged) {
+      if (financeChanged) changed.push("finance");
+      loaders.push(this.loadDashboardKPIs().catch(e => console.error("delta loadDashboardKPIs err:", e)));
+    }
+
+    if (loaders.length > 0) {
+      await Promise.all(loaders);
+      if ((carsChanged || bookingsChanged) && typeof this.onFilterChange === "function") {
+        this.onFilterChange();
+      }
+    }
+    return changed;
+  },
+
   startLiveSyncPoller() {
     setInterval(async () => {
       try {
@@ -65,13 +120,18 @@ Object.assign(App.prototype, {
           const syncTxt = document.getElementById("sync-time-txt");
           if (syncTxt) syncTxt.textContent = st.last_sync_formatted || "เมื่อสักครู่";
           if (st.data_signature && this.lastDataSignature && st.data_signature !== this.lastDataSignature) {
+            const prevSigs = this.lastCategorySignatures || null;
             this.lastDataSignature = st.data_signature;
-            await this.fetchInitialData();
+            if (st.signatures) this.lastCategorySignatures = { ...st.signatures };
+            await this.syncDeltaModules(st.signatures, prevSigs);
           } else if (st.data_signature && !this.lastDataSignature) {
             this.lastDataSignature = st.data_signature;
+            if (st.signatures) this.lastCategorySignatures = { ...st.signatures };
             if (typeof st.total_bookings === "number" && st.total_bookings !== this.bookings.length) {
               await this.fetchInitialData();
             }
+          } else if (st.signatures && !this.lastCategorySignatures) {
+            this.lastCategorySignatures = { ...st.signatures };
           }
         }
       } catch (e) {}

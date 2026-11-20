@@ -565,6 +565,37 @@ Object.assign(App.prototype, {
     this.openEditCustomerModal(custName);
   },
 
+  async downloadAdminBackupSnapshot() {
+    try {
+      this.showToast("⏳ กำลังสร้างไฟล์สำรองข้อมูลระบบ (JSON Snapshot)...", "info");
+      const res = await fetch("/api/admin/backup-snapshot");
+      if (!res.ok) {
+        let errTxt = `HTTP ${res.status}`;
+        try {
+          const errJson = await res.json();
+          errTxt = errJson.detail || errTxt;
+        } catch (e) {}
+        throw new Error(errTxt);
+      }
+      const blob = await res.blob();
+      const disp = res.headers.get("Content-Disposition") || "";
+      const match = disp.match(/filename=([^;\s]+)/i);
+      const fname = match ? match[1].replace(/["']/g, "") : `sawasdee_backup_${new Date().toISOString().slice(0, 10)}.json`;
+
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = fname;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      this.showToast(`💾 ดาวน์โหลดไฟล์สำรองข้อมูล ${fname} เรียบร้อยแล้ว`, "success");
+    } catch (e) {
+      this.showToast("❌ สำรองข้อมูลไม่สำเร็จ: " + e.message, "danger");
+    }
+  },
+
   logout() {
     this.user = null;
     sessionStorage.removeItem("sawasdee_token");

@@ -952,8 +952,51 @@ Object.assign(App.prototype, {
     const sortSel = document.getElementById("prof-sort-select");
     if (sortSel) sortSel.value = "profit_desc";
 
+    if (!this.profitabilityViewMode) {
+      this.profitabilityViewMode = "operating";
+    }
+    this.setProfitabilityViewMode(this.profitabilityViewMode, false);
     this.renderCarProfitabilityTable();
     this.openModal("modal-car-profitability");
+  },
+
+  setProfitabilityViewMode(mode = "operating", rerender = true) {
+    const cleanMode = (mode === "net_roi") ? "net_roi" : "operating";
+    this.profitabilityViewMode = cleanMode;
+
+    const btnOp = document.getElementById("btn-prof-mode-operating");
+    const btnRoi = document.getElementById("btn-prof-mode-net-roi");
+    if (btnOp) {
+      btnOp.style.background = cleanMode === "operating" ? "#EA580C" : "transparent";
+      btnOp.style.color = cleanMode === "operating" ? "#FFF" : "#475569";
+    }
+    if (btnRoi) {
+      btnRoi.style.background = cleanMode === "net_roi" ? "#1E3A8A" : "transparent";
+      btnRoi.style.color = cleanMode === "net_roi" ? "#FFF" : "#475569";
+    }
+
+    const sub = document.getElementById("prof-mode-subtitle");
+    if (sub) {
+      sub.textContent = cleanMode === "net_roi"
+        ? "โหมด Net Fleet ROI: ค่าเช่า − ค่าซ่อม − ค่างวดไฟแนนซ์ − ภาษี/พ.ร.บ./ประกัน"
+        : "โหมดดำเนินงาน: ค่าเช่า − ค่าซ่อมบำรุง/ดูแลรักษา (ไม่หักเงินคืนมัดจำ)";
+    }
+    const thExp = document.getElementById("th-prof-expense");
+    const thNet = document.getElementById("th-prof-net");
+    if (thExp) {
+      thExp.textContent = cleanMode === "net_roi"
+        ? "💸 ต้นทุนรวมทั้งหมด (ซ่อม+คงที่)"
+        : "💸 ค่าใช้จ่าย/ซ่อมบำรุง";
+    }
+    if (thNet) {
+      thNet.textContent = cleanMode === "net_roi"
+        ? "🏦 Net Fleet ROI (สุทธิรวมต้นทุนคงที่)"
+        : "🏆 กำไรดำเนินงาน (หลังหัก คชจ.)";
+    }
+
+    if (rerender) {
+      this.renderCarProfitabilityTable();
+    }
   },
 
   calculateCarProfitabilityList() {
@@ -995,13 +1038,14 @@ Object.assign(App.prototype, {
       if (m.id) mntIds.add(m.id);
     });
 
-    // In case rawKpiData or financial_records has standalone expenses
+    // In case rawKpiData or financial_records has standalone expenses (excluding deposit refunds)
     const finRecords = this.rawKpiData?.financial_records || [];
     finRecords.forEach(f => {
       const fType = f.type;
       const fAmt = parseFloat(f.amount || 0);
       const fRef = String(f.ref || "");
       const fDet = String(f.detail || "");
+      const fCat = String(f.category || "");
 
       let matchedPl = null;
       for (const c of (this.cars || [])) {
@@ -1012,10 +1056,16 @@ Object.assign(App.prototype, {
       }
 
       if (matchedPl) {
-        if (fType === "รายรับ" && f.category === "ค่าเช่ารถ" && !completedBids.has(fRef)) {
+        if (fType === "รายรับ" && fCat === "ค่าเช่ารถ" && !completedBids.has(fRef)) {
           revByCar[matchedPl] = (revByCar[matchedPl] || 0) + fAmt;
-        } else if (fType === "รายจ่าย" && !mntIds.has(fRef)) {
-          expByCar[matchedPl] = (expByCar[matchedPl] || 0) + fAmt;
+        } else if (fType === "รายจ่าย") {
+          const isDepositRefund = (
+            fCat.includes("คืนเงินมัดจำ") || fCat.includes("คืนมัดจำ") ||
+            fDet.includes("คืนเงินมัดจำ") || fDet.includes("คืนมัดจำ")
+          );
+          if (!isDepositRefund && !mntIds.has(fRef)) {
+            expByCar[matchedPl] = (expByCar[matchedPl] || 0) + fAmt;
+          }
         }
       }
     });
@@ -1025,6 +1075,20 @@ Object.assign(App.prototype, {
       const exp = Math.round((expByCar[c.plate] || 0) * 100) / 100;
       const net = Math.round((gross - exp) * 100) / 100;
       const rCnt = rentalsByCar[c.plate] || 0;
+
+      const installmentCost = c.is_debt_free ? 0 : Math.round(parseFloat(c.installment_amount || c.hp_installment || 0) * 100) / 100;
+      const taxCost = Math.round(parseFloat(c.tax_price || c.tax_amount || 0) * 100) / 100;
+      const actCost = Math.round(parseFloat(c.prb_price || c.act_price || 0) * 100) / 100;
+      const insuranceCost = Math.round(parseFloat(c.insurance_premium || c.ins_premium || 0) * 100) / 100;
+      const annualFixedCost = Math.round((taxCost + actCost + insuranceCost) * 100) / 100;
+      const fixedCostTotal = Math.round((installmentCost + annualFixedCost) * 100) / 100;
+      const totalCostAll = Math.round((exp + fixedCostTotal) * 100) / 100;
+      const netFleetRoi = Math.round((gross - totalCostAll) * 100) / 100;
+      const roiPercent = totalCostAll > 0
+        ? Math.round((gross / totalCostAll) * 1000) / 10
+        : (gross > 0 ? 100.0 : 0.0);
+      const breakEvenReached = gross >= totalCostAll;
+      const breakEvenGap = Math.round(Math.max(0, totalCostAll - gross) * 100) / 100;
       const margin = gross > 0 ? Math.round((net / gross) * 100) : (net < 0 ? -100 : 0);
 
       return {
@@ -1038,6 +1102,19 @@ Object.assign(App.prototype, {
         gross_revenue: gross,
         total_expense: exp,
         net_profit: net,
+        operating_expense: exp,
+        operating_profit: net,
+        installment_cost: installmentCost,
+        tax_cost: taxCost,
+        act_cost: actCost,
+        insurance_cost: insuranceCost,
+        annual_fixed_cost: annualFixedCost,
+        fixed_cost_total: fixedCostTotal,
+        total_cost_all: totalCostAll,
+        net_fleet_roi: netFleetRoi,
+        roi_percent: roiPercent,
+        break_even_reached: breakEvenReached,
+        break_even_gap: breakEvenGap,
         margin: margin
       };
     });
@@ -1049,11 +1126,17 @@ Object.assign(App.prototype, {
     const tbody = document.getElementById("car-profitability-tbody");
     if (!tbody) return;
 
+    const mode = this.profitabilityViewMode || "operating";
+    const isNetRoiMode = (mode === "net_roi");
     const kw = (document.getElementById("prof-search-input")?.value || "").toLowerCase().trim();
     const compFilter = document.getElementById("prof-company-filter")?.value || "ทั้งหมด";
     const sortMode = document.getElementById("prof-sort-select")?.value || "profit_desc";
 
-    let list = this.calculateCarProfitabilityList();
+    let list = this.calculateCarProfitabilityList().map(item => ({
+      ...item,
+      display_expense: isNetRoiMode ? item.total_cost_all : item.operating_expense,
+      display_profit: isNetRoiMode ? item.net_fleet_roi : item.operating_profit
+    }));
 
     // 1. Filter by company and keyword
     list = list.filter(item => {
@@ -1065,19 +1148,20 @@ Object.assign(App.prototype, {
       return true;
     });
 
-    // 2. Sort: Highest net profit first down to lowest (default)
+    // 2. Sort: Highest profit in active mode first by default
     if (sortMode === "revenue_desc") {
-      list.sort((a, b) => b.gross_revenue - a.gross_revenue || b.net_profit - a.net_profit);
+      list.sort((a, b) => b.gross_revenue - a.gross_revenue || b.display_profit - a.display_profit);
     } else if (sortMode === "rentals_desc") {
-      list.sort((a, b) => b.total_rentals - a.total_rentals || b.net_profit - a.net_profit);
+      list.sort((a, b) => b.total_rentals - a.total_rentals || b.display_profit - a.display_profit);
+    } else if (sortMode === "roi_desc") {
+      list.sort((a, b) => b.roi_percent - a.roi_percent || b.display_profit - a.display_profit);
     } else {
-      // Default: Highest Net Profit first
-      list.sort((a, b) => b.net_profit - a.net_profit || b.gross_revenue - a.gross_revenue || b.total_rentals - a.total_rentals);
+      list.sort((a, b) => b.display_profit - a.display_profit || b.gross_revenue - a.gross_revenue || b.total_rentals - a.total_rentals);
     }
 
     // 3. Update top summary metrics in the modal
     const totalGross = list.reduce((acc, x) => acc + x.gross_revenue, 0);
-    const totalExp = list.reduce((acc, x) => acc + x.total_expense, 0);
+    const totalExp = list.reduce((acc, x) => acc + x.display_expense, 0);
     const totalNet = totalGross - totalExp;
 
     const elGross = document.getElementById("prof-kpi-gross-rev");
@@ -1091,7 +1175,7 @@ Object.assign(App.prototype, {
     if (elCars) elCars.textContent = `${list.length} คัน`;
 
     if (list.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:32px; color:#64748B;">🔍 ไม่พบข้อมูลรถยนต์ตรงกับเงื่อนไขที่ค้นหา</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:32px; color:#64748B;">🔍 ไม่พบข้อมูลรถยนต์ตรงกับเงื่อนไขที่ค้นหา</td></tr>`;
       return;
     }
 
@@ -1112,9 +1196,18 @@ Object.assign(App.prototype, {
         statusBadge = '<span class="badge" style="background:#FEE2E2; color:#991B1B;">ซ่อมบำรุง</span>';
       }
 
-      const netColor = item.net_profit > 0 ? "#15803D" : (item.net_profit < 0 ? "#DC2626" : "#475569");
-      const netBg = item.net_profit > 0 ? "#F0FDF4" : (item.net_profit < 0 ? "#FEF2F2" : "#F8FAFC");
-      const netBorder = item.net_profit > 0 ? "#BBF7D0" : (item.net_profit < 0 ? "#FECACA" : "#E2E8F0");
+      const profVal = item.display_profit;
+      const netColor = profVal > 0 ? "#15803D" : (profVal < 0 ? "#DC2626" : "#475569");
+      const netBg = profVal > 0 ? "#F0FDF4" : (profVal < 0 ? "#FEF2F2" : "#F8FAFC");
+      const netBorder = profVal > 0 ? "#BBF7D0" : (profVal < 0 ? "#FECACA" : "#E2E8F0");
+
+      const fixedDetailLine = item.fixed_cost_total > 0
+        ? `<div style="font-size:10px; color:#64748B; margin-top:2px;">ค่างวด ฿${item.installment_cost.toLocaleString()} • ภาษี/พรบ./ประกัน ฿${item.annual_fixed_cost.toLocaleString()}</div>`
+        : '';
+
+      const roiBadge = item.break_even_reached
+        ? `<span style="display:inline-block; background:#DCFCE7; color:#166534; border:1px solid #86EFAC; border-radius:999px; font-size:11px; font-weight:700; padding:2px 8px;">🎯 คุ้มทุนแล้ว (${item.roi_percent}%)</span>`
+        : `<span style="display:inline-block; background:#FEF3C7; color:#92400E; border:1px solid #FCD34D; border-radius:999px; font-size:11px; font-weight:700; padding:2px 8px;">⏳ ${item.roi_percent}% (ขาด ฿${item.break_even_gap.toLocaleString()})</span>`;
 
       return `
         <tr>
@@ -1132,12 +1225,16 @@ Object.assign(App.prototype, {
             <b style="color:#15803D; font-size:13px;">+฿${item.gross_revenue.toLocaleString('th-TH', { minimumFractionDigits: 2 })}</b>
           </td>
           <td style="text-align:right;">
-            <span style="color:#DC2626; font-size:12.5px;">${item.total_expense > 0 ? `-฿${item.total_expense.toLocaleString('th-TH', { minimumFractionDigits: 2 })}` : '฿0.00'}</span>
+            <span style="color:#DC2626; font-size:12.5px;">${item.display_expense > 0 ? `-฿${item.display_expense.toLocaleString('th-TH', { minimumFractionDigits: 2 })}` : '฿0.00'}</span>
+            ${isNetRoiMode ? fixedDetailLine : ''}
           </td>
           <td style="text-align:right; background:${netBg};">
             <span style="display:inline-block; padding:3px 10px; border-radius:8px; border:1px solid ${netBorder}; font-weight:800; font-size:14px; color:${netColor};">
-              ฿${item.net_profit.toLocaleString('th-TH', { minimumFractionDigits: 2 })}
+              ฿${profVal.toLocaleString('th-TH', { minimumFractionDigits: 2 })}
             </span>
+          </td>
+          <td style="text-align:center;">
+            ${roiBadge}
           </td>
           <td style="text-align:center;">
             <button onclick="app.closeModal('modal-car-profitability'); app.jumpToCarInFrontOffice('${item.plate}')" class="btn btn-sm btn-secondary" style="padding:2px 8px; font-size:11px;" title="ดูข้อมูลรถคันนี้ในหน้าเลือกรถ">

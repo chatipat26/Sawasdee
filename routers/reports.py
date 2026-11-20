@@ -15,8 +15,8 @@ router = APIRouter(tags=["reports"])
 
 
 @router.get("/api/reports/car-profitability")
-def get_car_profitability():
-    # Computes gross revenue, expenses (repairs/maintenance), and net profit per car
+def get_car_profitability(mode: str = "operating"):
+    # Computes operating profit (revenue - repairs/ops) and full Net Fleet ROI (including fixed costs & break-even)
     rev_by_car = {}
     rentals_by_car = {}
     completed_bids = set()
@@ -89,6 +89,24 @@ def get_car_profitability():
         net = round(gross - exp, 2)
         r_cnt = rentals_by_car.get(plate, 0)
 
+        installment_cost = 0.0 if car.get("is_debt_free") else round(
+            float(car.get("installment_amount") or car.get("hp_installment") or 0.0), 2
+        )
+        tax_cost = round(float(car.get("tax_price") or car.get("tax_amount") or 0.0), 2)
+        act_cost = round(float(car.get("prb_price") or car.get("act_price") or 0.0), 2)
+        insurance_cost = round(float(car.get("insurance_premium") or car.get("ins_premium") or 0.0), 2)
+        annual_fixed_cost = round(tax_cost + act_cost + insurance_cost, 2)
+        fixed_cost_total = round(installment_cost + annual_fixed_cost, 2)
+        total_cost_all = round(exp + fixed_cost_total, 2)
+        net_fleet_roi = round(gross - total_cost_all, 2)
+        roi_percent = (
+            round((gross / total_cost_all) * 100.0, 1)
+            if total_cost_all > 0
+            else (100.0 if gross > 0 else 0.0)
+        )
+        break_even_reached = bool(gross >= total_cost_all)
+        break_even_gap = round(max(0.0, total_cost_all - gross), 2)
+
         profitability.append({
             "plate": plate,
             "brand": car.get("brand", ""),
@@ -100,11 +118,27 @@ def get_car_profitability():
             "total_rentals": r_cnt,
             "gross_revenue": gross,
             "total_expense": exp,
-            "net_profit": net
+            "net_profit": net,
+            "operating_expense": exp,
+            "operating_profit": net,
+            "installment_cost": installment_cost,
+            "tax_cost": tax_cost,
+            "act_cost": act_cost,
+            "insurance_cost": insurance_cost,
+            "annual_fixed_cost": annual_fixed_cost,
+            "fixed_cost_total": fixed_cost_total,
+            "total_cost_all": total_cost_all,
+            "net_fleet_roi": net_fleet_roi,
+            "roi_percent": roi_percent,
+            "break_even_reached": break_even_reached,
+            "break_even_gap": break_even_gap,
         })
 
-    # Sort descending: Highest net profit first, then revenue, then rentals count
-    profitability.sort(key=lambda x: (x["net_profit"], x["gross_revenue"], x["total_rentals"]), reverse=True)
+    # Sort descending by selected view mode
+    if str(mode).strip().lower() == "net_roi":
+        profitability.sort(key=lambda x: (x["net_fleet_roi"], x["gross_revenue"], x["total_rentals"]), reverse=True)
+    else:
+        profitability.sort(key=lambda x: (x["net_profit"], x["gross_revenue"], x["total_rentals"]), reverse=True)
     for idx, item in enumerate(profitability, 1):
         item["rank"] = idx
 

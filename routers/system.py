@@ -2,12 +2,14 @@
 System, SPA Index, DB Migration, and Photo Upload API Router for SawasdeeRental.
 """
 
+import hashlib
+import json
 import os
 import time
 import asyncio
 from datetime import datetime
 from typing import Optional, Dict, Any
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, Response, UploadFile, File
 from fastapi.responses import HTMLResponse
 
 from db import store, get_db_client
@@ -36,32 +38,80 @@ def serve_index():
     return HTMLResponse("<h1>Sawasdee Rental</h1><p>Building client application...</p>", headers=no_cache_headers)
 
 
+def _md5_sig(raw: str) -> str:
+    return hashlib.md5(raw.encode("utf-8")).hexdigest()[:12]
+
+
 @router.get("/api/status")
 def get_system_status():
     with store.lock:
         bookings_snap = [dict(b) for b in store.bookings]
         cars_snap = [(p, dict(c)) for p, c in store.cars.items()]
         mnt_snap = [dict(m) for m in store.maintenance_records]
-        cj_len = len(store.completed_jobs)
-        cust_len = len(store.customers)
-        fin_len = len(store.financial_records)
-        users_len = len(store.users)
+        cj_snap = [dict(cj) for cj in store.completed_jobs]
+        cust_snap = [(k, dict(v)) for k, v in store.customers.items()]
+        fin_snap = [dict(f) for f in store.financial_records]
+        users_snap = [(k, dict(u)) for k, u in store.users.items()]
         last_sync = store.last_sync_time
-    bk_sig = ",".join(sorted(f"{b.get('booking_id','')}:{b.get('status','')}:{b.get('deposit_paid','')}:{b.get('rental_paid','')}" for b in bookings_snap))
-    cj_sig = str(cj_len)
-    car_sig = ",".join(sorted(f"{p}:{c.get('status','')}:{c.get('act_expiry','')}:{c.get('ins_expiry','')}" for p, c in cars_snap))
-    mnt_sig = ",".join(sorted(f"{m.get('id','')}:{m.get('status','')}:{m.get('cost','')}" for m in mnt_snap))
-    data_sig = f"{len(bookings_snap)}|{bk_sig}|{cj_sig}|{cust_len}|{fin_len}|{len(mnt_snap)}|{hash(mnt_sig)}|{hash(car_sig)}"
+
+    cars_raw = "|".join(sorted(
+        f"{p}:{c.get('status','')}:{c.get('mileage','')}:{c.get('next_service_mileage','')}"
+        f":{c.get('tax_expire_date') or c.get('tax_expiry','')}"
+        f":{c.get('prb_expire_date') or c.get('act_expiry','')}"
+        f":{c.get('insurance_expire_date') or c.get('ins_expiry','')}"
+        f":{c.get('installment_amount',0)}:{c.get('is_debt_free',False)}"
+        for p, c in cars_snap
+    ))
+    bk_raw = "|".join(sorted(
+        f"{b.get('booking_id','')}:{b.get('status','')}:{b.get('car_id','')}"
+        f":{b.get('net_price',0)}:{b.get('deposit_paid','')}:{b.get('rental_paid','')}"
+        f":{b.get('contract_issued','')}:{b.get('dispatch_closed','')}:{b.get('return_closed','')}"
+        for b in bookings_snap
+    )) + f"|cj:{len(cj_snap)}"
+    cust_raw = "|".join(sorted(
+        f"{k}:{v.get('contact_no') or v.get('phone_number','')}:{v.get('crm_tier','')}:{v.get('watchlist_note','')}"
+        for k, v in cust_snap
+    ))
+    mnt_raw = "|".join(sorted(
+        f"{m.get('id','')}:{m.get('car_id','')}:{m.get('status','')}:{m.get('cost',0)}:{m.get('actual_cost',0)}"
+        for m in mnt_snap
+    ))
+    users_raw = "|".join(sorted(
+        f"{k}:{u.get('role','')}:{u.get('status','')}:{u.get('is_approved','')}:{u.get('line_user_id','')}"
+        for k, u in users_snap
+    ))
+
+    cars_sig = _md5_sig(cars_raw)
+    bookings_sig = _md5_sig(bk_raw)
+    customers_sig = _md5_sig(cust_raw)
+    maintenance_sig = _md5_sig(mnt_raw)
+    users_sig = _md5_sig(users_raw)
+
+    total_fin_amt = sum(float(f.get("amount") or 0.0) for f in fin_snap)
+    finance_raw = f"fin:{len(fin_snap)}:{total_fin_amt:.2f}|cj:{len(cj_snap)}|bk:{bookings_sig}|mnt:{maintenance_sig}"
+    finance_sig = _md5_sig(finance_raw)
+
+    signatures = {
+        "cars": cars_sig,
+        "bookings": bookings_sig,
+        "customers": customers_sig,
+        "maintenance": maintenance_sig,
+        "users": users_sig,
+        "finance": finance_sig,
+    }
+    data_sig = f"{cars_sig}|{bookings_sig}|{customers_sig}|{maintenance_sig}|{users_sig}|{finance_sig}"
+
     return {
         "status": "online",
         "last_sync_time": last_sync,
         "last_sync_formatted": datetime.fromtimestamp(last_sync, tz=TH_TZ).strftime("%H:%M:%S") if last_sync else "เมื่อสักครู่",
         "total_cars": len(cars_snap),
-        "total_customers": cust_len,
+        "total_customers": len(cust_snap),
         "total_bookings": len(bookings_snap),
-        "total_completed": cj_len,
-        "total_users": users_len,
+        "total_completed": len(cj_snap),
+        "total_users": len(users_snap),
         "total_maintenance": len(mnt_snap),
+        "signatures": signatures,
         "data_signature": data_sig,
         "timestamp": time.time()
     }
@@ -71,6 +121,56 @@ def get_system_status():
 def trigger_manual_sync():
     store.sync_from_database(force=True)
     return {"success": True, "message": "ซิงค์ข้อมูลกับฐานข้อมูล PostgreSQL สำเร็จเรียบร้อย"}
+
+
+@router.get("/api/admin/backup-snapshot")
+def download_admin_backup_snapshot(_admin: Dict[str, Any] = Depends(require_admin)):
+    """Export full system operational snapshot (excluding user passwords) as downloadable JSON for Admin DR."""
+    with store.lock:
+        cars_list = [dict(c) for c in store.cars.values()]
+        customers_list = [dict(c) for c in store.customers.values()]
+        bookings_list = [dict(b) for b in store.bookings]
+        completed_list = [dict(cj) for cj in store.completed_jobs]
+        maint_list = [dict(m) for m in store.maintenance_records]
+        fin_list = [dict(f) for f in store.financial_records]
+        raw_users = [dict(u) for u in store.users.values()]
+
+    sanitized_users = []
+    for u in raw_users:
+        clean_u = {k: v for k, v in u.items() if k not in ("password", "password_hash", "hashed_password")}
+        sanitized_users.append(clean_u)
+
+    now_dt = datetime.now(TH_TZ)
+    snapshot_payload = {
+        "backup_version": "1.0",
+        "generated_at": now_dt.isoformat(),
+        "generated_by": _admin.get("username", "admin"),
+        "counts": {
+            "cars": len(cars_list),
+            "customers": len(customers_list),
+            "bookings": len(bookings_list),
+            "completed_jobs": len(completed_list),
+            "maintenance_records": len(maint_list),
+            "financial_records": len(fin_list),
+            "users": len(sanitized_users),
+        },
+        "data": {
+            "cars": cars_list,
+            "customers": customers_list,
+            "bookings": bookings_list,
+            "completed_jobs": completed_list,
+            "maintenance_records": maint_list,
+            "financial_records": fin_list,
+            "users": sanitized_users,
+        },
+    }
+    json_bytes = json.dumps(snapshot_payload, ensure_ascii=False, indent=2, default=str).encode("utf-8")
+    fname = f"sawasdee_backup_{now_dt.strftime('%Y%m%d_%H%M%S')}.json"
+    return Response(
+        content=json_bytes,
+        media_type="application/json; charset=utf-8",
+        headers={"Content-Disposition": f"attachment; filename={fname}"},
+    )
 
 
 @router.post("/api/admin/migrate-cars")
