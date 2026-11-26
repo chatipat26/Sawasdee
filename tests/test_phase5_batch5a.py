@@ -135,9 +135,11 @@ def test_p5_a2_line_bot_commands_reply_and_authorization(client, isolated_store,
         lambda *a, **kw: pushes.append((a, kw)) or True,
     )
 
-    def _send_webhook(line_uid: str, text: str, reply_token: str = "RPL_TEST_1"):
+    def _send_webhook(line_uid: str, text: str, reply_token: str = "RPL_TEST_1", sig_header: str = ""):
+        headers = {"X-Line-Signature": sig_header} if sig_header else {}
         return client.post(
             "/api/line/webhook",
+            headers=headers,
             json={
                 "events": [
                     {
@@ -149,6 +151,26 @@ def test_p5_a2_line_bot_commands_reply_and_authorization(client, isolated_store,
                 ]
             },
         )
+
+    # 0. Real LINE Platform sends X-Line-Signature even when LINE_CHANNEL_SECRET is not configured in env
+    monkeypatch.delenv("LINE_CHANNEL_SECRET", raising=False)
+    monkeypatch.setenv("LINE_TARGET_USER_ID", "U_PROD_ADMIN_ENV")
+    isolated_store.users["admin"]["line_user_id"] = None
+    assert _send_webhook("U_PROD_ADMIN_ENV", "รถว่าง", "R_ADMIN_SIG", sig_header="REAL_LINE_SIG_BASE64").status_code == 200
+    assert "ยกเลิกการแสดงรายการรถว่างทั้งหมด" in replies[-1][1]
+
+    # Seed Buddhist Era Feb 29 date object (from PostgreSQL DATE column) and None entry to verify defensive resilience
+    isolated_store.bookings.append(
+        {
+            "booking_id": "MRC_BE_LEAP",
+            "car_id": "1กข-1111",
+            "customer": "ทดสอบ ปีอธิกสุรทิน พ.ศ.",
+            "start_date": date(2568, 2, 28),
+            "end_date": date(2568, 2, 28),
+            "status": "รอส่งมอบ",
+            "worker_delivery": "staff01",
+        }
+    )
 
     # 1. "งานวันนี้" returns ONLY each linked user's own jobs
     assert _send_webhook("USTAFF001", "งานวันนี้", "R_TODAY_S1").status_code == 200

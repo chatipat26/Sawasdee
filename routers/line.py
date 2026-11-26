@@ -19,6 +19,7 @@ from dependencies import INACTIVE_BOOKING_STATUSES, normalize_plate, now_th
 from line_service import (
     resolve_worker_line_id,
     get_admin_line_id,
+    get_admin_line_ids,
     send_line_push_message,
     send_line_reply_message,
     check_and_send_expiry_alerts,
@@ -36,12 +37,63 @@ _DATE_YMD_RE = re.compile(r"^(\d{4})[/\-.](\d{1,2})[/\-.](\d{1,2})$")
 
 
 def _ensure_store_synced() -> None:
-    """Ensure in-memory DataStore is synced from PostgreSQL on cold start."""
-    if not store.initial_sync_done:
-        try:
-            store.sync_from_database(force=False)
-        except Exception as exc:
-            print(f"[LINE Webhook] Cold-start sync warning: {exc}")
+    """Ensure in-memory DataStore is synced from PostgreSQL on cold start without blocking webhook replyToken."""
+    try:
+        if getattr(store, "initial_sync_done", False) or getattr(store, "is_syncing", False):
+            return
+        has_cached_data = bool(getattr(store, "cars", None) or getattr(store, "bookings", None))
+        async_sync_fn = getattr(store, "sync_from_database_async", None)
+        sync_fn = getattr(store, "sync_from_database", None)
+        if has_cached_data and callable(async_sync_fn):
+            async_sync_fn(force=False)
+        elif callable(sync_fn):
+            sync_fn(force=False)
+    except Exception as exc:
+        print(f"[LINE Webhook] Cold-start sync warning: {exc}")
+
+
+def _get_store_dict(attr_name: str) -> Dict[str, Dict[str, Any]]:
+    """Safely snapshot a dict attribute from store using getattr and type guards."""
+    lock_obj = getattr(store, "lock", None)
+    try:
+        if lock_obj is not None:
+            with lock_obj:
+                raw = getattr(store, attr_name, None)
+                if isinstance(raw, dict):
+                    return {str(k): dict(v) for k, v in raw.items() if isinstance(v, dict)}
+                if isinstance(raw, list):
+                    return {
+                        str(item.get("plate") or item.get("username") or idx): dict(item)
+                        for idx, item in enumerate(raw)
+                        if isinstance(item, dict)
+                    }
+        else:
+            raw = getattr(store, attr_name, None)
+            if isinstance(raw, dict):
+                return {str(k): dict(v) for k, v in raw.items() if isinstance(v, dict)}
+    except Exception as exc:
+        print(f"[LINE Webhook] Snapshot dict '{attr_name}' warning: {exc}")
+    return {}
+
+
+def _get_store_list(attr_name: str) -> List[Dict[str, Any]]:
+    """Safely snapshot a list attribute from store using getattr and type guards."""
+    lock_obj = getattr(store, "lock", None)
+    try:
+        if lock_obj is not None:
+            with lock_obj:
+                raw = getattr(store, attr_name, None)
+                if isinstance(raw, list):
+                    return [dict(item) for item in raw if isinstance(item, dict)]
+                if isinstance(raw, dict):
+                    return [dict(item) for item in raw.values() if isinstance(item, dict)]
+        else:
+            raw = getattr(store, attr_name, None)
+            if isinstance(raw, list):
+                return [dict(item) for item in raw if isinstance(item, dict)]
+    except Exception as exc:
+        print(f"[LINE Webhook] Snapshot list '{attr_name}' warning: {exc}")
+    return []
 
 
 def _clean_text(val: Any, default: str = "-") -> str:
@@ -103,14 +155,28 @@ def _normalize_year(year_val: int) -> int:
     return year_val
 
 
+def _safe_construct_date(year_val: int, month_val: int, day_val: int) -> Optional[date]:
+    """Construct a CE date safely, handling Buddhist Era years and BE Feb 29 leap-year mismatch."""
+    norm_y = _normalize_year(year_val)
+    try:
+        return date(norm_y, month_val, day_val)
+    except ValueError:
+        if month_val == 2 and day_val == 29:
+            try:
+                return date(norm_y, 2, 28)
+            except ValueError:
+                return None
+        return None
+
+
 def _parse_flexible_date(val: Any) -> Optional[date]:
     """Parse DB date values across ISO, DD/MM/YYYY, and Buddhist Era formats."""
     if val is None:
         return None
     if isinstance(val, datetime):
-        return date(_normalize_year(val.year), val.month, val.day)
+        return _safe_construct_date(val.year, val.month, val.day)
     if isinstance(val, date):
-        return date(_normalize_year(val.year), val.month, val.day)
+        return _safe_construct_date(val.year, val.month, val.day)
 
     s = _clean_text(val, default="")
     if not s:
@@ -120,28 +186,19 @@ def _parse_flexible_date(val: Any) -> Optional[date]:
     m_ymd = _DATE_YMD_RE.match(s)
     if m_ymd:
         y, m, d = int(m_ymd.group(1)), int(m_ymd.group(2)), int(m_ymd.group(3))
-        try:
-            return date(_normalize_year(y), m, d)
-        except ValueError:
-            return None
+        return _safe_construct_date(y, m, d)
 
     m_dmy = _DATE_DMY_RE.match(s)
     if m_dmy:
         d, m, y = int(m_dmy.group(1)), int(m_dmy.group(2)), int(m_dmy.group(3))
-        try:
-            return date(_normalize_year(y), m, d)
-        except ValueError:
-            return None
+        return _safe_construct_date(y, m, d)
 
     # Handle 2-digit year fallback in legacy DB strings (e.g. 27/11/69)
     m_short = re.match(r"^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{2})$", s)
     if m_short:
         d, m, y2 = int(m_short.group(1)), int(m_short.group(2)), int(m_short.group(3))
         full_y = (2500 + y2 - 543) if y2 >= 50 else (2000 + y2)
-        try:
-            return date(full_y, m, d)
-        except ValueError:
-            return None
+        return _safe_construct_date(full_y, m, d)
 
     return None
 
@@ -230,9 +287,9 @@ def _extract_plate_query(raw_text: str) -> Optional[str]:
 
     q_norm = _norm_plate(cmd)
     if len(q_norm) >= 3:
-        with store.lock:
-            car_keys = list(store.cars.keys())
-            car_plates = [c.get("plate", "") for c in store.cars.values()]
+        cars_map = _get_store_dict("cars")
+        car_keys = list(cars_map.keys())
+        car_plates = [c.get("plate", "") for c in cars_map.values()]
         for pk in car_keys + car_plates:
             if _norm_plate(pk) == q_norm:
                 return cmd
@@ -250,19 +307,38 @@ def verify_line_signature(raw_body: bytes, signature: str, secret: str) -> bool:
 
 
 def _find_linked_user_by_line_uid(line_uid: str) -> Optional[Dict[str, Any]]:
-    """Find user record linked to a given LINE userId (supports comma-separated multi-IDs)."""
+    """Find user record linked to a given LINE userId (supports comma-separated multi-IDs and Admin env fallback)."""
     target = str(line_uid or "").strip()
     if not target:
         return None
-    with store.lock:
-        users_snap = [dict(u) for u in store.users.values()]
-    for u_obj in users_snap:
-        raw_ids = _clean_text(u_obj.get("line_user_id"), default="")
-        if not raw_ids:
-            continue
-        id_parts = [p.strip() for p in raw_ids.split(",") if p.strip()]
-        if target in id_parts:
-            return u_obj
+    users_map = _get_store_dict("users")
+    for u_obj in users_map.values():
+        for field_name in ("line_user_id", "line_id"):
+            raw_ids = _clean_text(u_obj.get(field_name), default="")
+            if not raw_ids:
+                continue
+            id_parts = [p.strip() for p in raw_ids.split(",") if p.strip()]
+            if target in id_parts:
+                return u_obj
+
+    # Fallback: if sender's LINE userId matches configured Admin LINE IDs in environment (.env / Dokploy)
+    try:
+        admin_ids = get_admin_line_ids() or []
+        if target in admin_ids:
+            admin_user = users_map.get("admin") or users_map.get("Admin")
+            if admin_user:
+                return admin_user
+            return {
+                "username": "admin",
+                "name": "ผู้ดูแลระบบ (Admin)",
+                "role": "Admin",
+                "status": "approved",
+                "is_approved": True,
+                "line_user_id": target,
+            }
+    except Exception as exc:
+        print(f"[LINE Webhook] Admin ID fallback check warning: {exc}")
+
     return None
 
 
@@ -400,14 +476,13 @@ def build_line_command_reply(raw_text: str, user_obj: Dict[str, Any]) -> Optiona
 
     today_date = now_th().date()
     today_dmy = today_date.strftime("%d/%m/%Y")
-    staff_label = _clean_text(user_obj.get("name") or user_obj.get("username"), default="Staff")
+    staff_label = _clean_text((user_obj or {}).get("name") or (user_obj or {}).get("username"), default="Staff")
 
-    with store.lock:
-        bookings_snap = [dict(b) for b in store.bookings]
-        cars_snap = {k: dict(v) for k, v in store.cars.items()}
-        maint_snap = [dict(m) for m in (store.maintenance_records or [])]
-        work_orders_snap = [dict(w) for w in (store.work_order_logs or [])]
-        ins_records_snap = [dict(ir) for ir in (store.insurance_records or [])]
+    bookings_snap = _get_store_list("bookings")
+    cars_snap = _get_store_dict("cars")
+    maint_snap = _get_store_list("maintenance_records")
+    work_orders_snap = _get_store_list("work_order_logs")
+    ins_records_snap = _get_store_list("insurance_records")
 
     known_ref_ids = {
         _clean_text(b.get("booking_id"), default="") for b in bookings_snap if _clean_text(b.get("booking_id"), default="")
@@ -713,13 +788,15 @@ def trigger_expiry_alert_check(payload: Optional[Dict[str, Any]] = None):
         recipient_mode = p.get("recipient_mode")
         delivery_mode = p.get("delivery_mode") or p.get("mode") or "broadcast"
         check_mode = p.get("check_mode", "weekly")
-        if not store.cars or not store.initial_sync_done:
+        if not getattr(store, "cars", None) or not getattr(store, "initial_sync_done", False):
             try:
-                store.sync_from_database(force=False)
+                sync_fn = getattr(store, "sync_from_database", None)
+                if callable(sync_fn):
+                    sync_fn(force=False)
             except Exception as se:
                 print(f"Sync cars before expiry check note: {se}")
         res = check_and_send_expiry_alerts(
-            store.cars,
+            _get_store_dict("cars"),
             recipient_mode=recipient_mode,
             check_mode=check_mode,
             delivery_mode=delivery_mode
@@ -732,23 +809,28 @@ def trigger_expiry_alert_check(payload: Optional[Dict[str, Any]] = None):
 
 @router.post("/api/line/webhook")
 @router.post("/webhook/line")
+@router.post("/line/webhook")
 async def line_bot_webhook(request: Request):
     """
-    Webhook สำหรับผูกบัญชี LINE ของพนักงานอัตโนมัติ (ใช้ replyToken ฟรี 0 โควต้า):
+    Webhook สำหรับผูกบัญชี LINE ของพนักงานอัตโนมัติและศูนย์คำสั่งบอท (ใช้ replyToken ฟรี 0 โควต้า):
     - พนักงานพิมพ์ชื่อผู้ใช้ (Username) เช่น 'chaiwat.u' ส่งมาในแชท LINE OA
     - ระบบจะบันทึก line_user_id คู่กับ username ลงฐานข้อมูลทันที
     """
     raw_body = await request.body()
     sig = request.headers.get("X-Line-Signature", "").strip()
     secret = os.environ.get("LINE_CHANNEL_SECRET", "").strip()
+    enforce_sig = request.headers.get("X-Enforce-Line-Signature") == "1"
 
-    if sig:
-        if not verify_line_signature(raw_body, sig, secret or "sawasdee-line-secret"):
-            raise HTTPException(status_code=401, detail="Invalid X-Line-Signature")
-    elif request.headers.get("X-Enforce-Line-Signature") == "1" or (
-        secret and request.headers.get("user-agent", "") != "testclient"
-    ):
-        raise HTTPException(status_code=401, detail="Missing X-Line-Signature")
+    # Only enforce signature verification when LINE_CHANNEL_SECRET is configured or explicitly enforced
+    if secret:
+        if sig:
+            if not verify_line_signature(raw_body, sig, secret):
+                raise HTTPException(status_code=401, detail="Invalid X-Line-Signature")
+        elif enforce_sig or request.headers.get("user-agent", "") != "testclient":
+            raise HTTPException(status_code=401, detail="Missing X-Line-Signature")
+    elif enforce_sig:
+        if not sig or not verify_line_signature(raw_body, sig, "sawasdee-line-secret"):
+            raise HTTPException(status_code=401, detail="Missing or Invalid X-Line-Signature")
 
     try:
         body = json.loads(raw_body.decode("utf-8"))
@@ -759,68 +841,77 @@ async def line_bot_webhook(request: Request):
         _ensure_store_synced()
         events = body.get("events") or []
         for ev in events:
-            ev_type = ev.get("type")
-            source = ev.get("source") or {}
-            line_uid = source.get("userId")
-            reply_token = ev.get("replyToken")
+            try:
+                if not isinstance(ev, dict):
+                    continue
+                ev_type = ev.get("type")
+                source = ev.get("source") or {}
+                line_uid = source.get("userId") or source.get("groupId") or source.get("roomId")
+                reply_token = ev.get("replyToken")
 
-            if ev_type == "message" and ev.get("message", {}).get("type") == "text" and line_uid:
-                raw_text = str(ev.get("message", {}).get("text") or "").strip()
+                if ev_type == "message" and (ev.get("message") or {}).get("type") == "text" and line_uid:
+                    raw_text = str((ev.get("message") or {}).get("text") or "").strip()
 
-                if _is_line_bot_command(raw_text):
-                    linked_user = _find_linked_user_by_line_uid(line_uid)
-                    if not _is_user_approved(linked_user):
+                    if _is_line_bot_command(raw_text):
+                        linked_user = _find_linked_user_by_line_uid(line_uid)
+                        if not _is_user_approved(linked_user):
+                            if reply_token:
+                                send_line_reply_message(
+                                    reply_token,
+                                    "⛔ บัญชี LINE นี้ยังไม่ได้รับอนุมัติหรือยังไม่ได้ผูกกับผู้ใช้งานในระบบ กรุณาพิมพ์ชื่อผู้ใช้งาน (Username) เพื่อผูกบัญชีและรอแอดมินอนุมัติก่อนใช้คำสั่งบอท"
+                                )
+                            continue
+                        try:
+                            reply_msg = build_line_command_reply(raw_text, linked_user)
+                        except Exception as cmd_exc:
+                            print(f"[LINE Webhook] Command reply error for '{raw_text}': {cmd_exc}")
+                            reply_msg = "⚠️ ระบบเกิดข้อผิดพลาดชั่วคราวขณะดึงข้อมูล กรุณาลองใหม่อีกครั้งครับ"
+                        if reply_token and reply_msg:
+                            send_line_reply_message(reply_token, reply_msg)
+                        continue
+
+                    clean_text = raw_text.replace("ผูกบัญชี", "").replace("link", "").strip()
+                    matched_user = None
+                    users_snap = list(_get_store_dict("users").items())
+
+                    for uname, u_obj in users_snap:
+                        u_line = _clean_text(u_obj.get("line_user_id") or u_obj.get("line_id"), default="").lower()
+                        if (
+                            uname.lower() == clean_text.lower()
+                            or _clean_text(u_obj.get("name"), default="").lower() == clean_text.lower()
+                            or (u_line and u_line == clean_text.lower())
+                        ):
+                            matched_user = u_obj
+                            break
+
+                    if matched_user:
+                        uname = matched_user.get("username")
+                        matched_user["line_user_id"] = line_uid
+                        sync_user_fn = getattr(store, "async_sync_user", None)
+                        if callable(sync_user_fn) and uname:
+                            sync_user_fn(uname, matched_user)
                         if reply_token:
                             send_line_reply_message(
                                 reply_token,
-                                "⛔ บัญชี LINE นี้ยังไม่ได้รับอนุมัติหรือยังไม่ได้ผูกกับผู้ใช้งานในระบบ กรุณาพิมพ์ชื่อผู้ใช้งาน (Username) เพื่อผูกบัญชีและรอแอดมินอนุมัติก่อนใช้คำสั่งบอท"
+                                "\n".join([
+                                    "✅ ผูกบัญชีสำเร็จ!",
+                                    f"👤 ชื่อผู้ใช้: {uname} ({matched_user.get('name', uname)})",
+                                    f"📲 LINE ID: {line_uid}",
+                                    "ระบบจะส่งใบงานส่งรถ/รับรถ/ซ่อมบำรุง ที่คุณเป็นผู้รับผิดชอบมาที่แชทนี้โดยตรงครับ"
+                                ])
                             )
-                        continue
-                    reply_msg = build_line_command_reply(raw_text, linked_user)
-                    if reply_token and reply_msg:
-                        send_line_reply_message(reply_token, reply_msg)
-                    continue
-
-                clean_text = raw_text.replace("ผูกบัญชี", "").replace("link", "").strip()
-                matched_user = None
-
-                with store.lock:
-                    users_snap = [(uname, dict(u_obj)) for uname, u_obj in store.users.items()]
-
-                for uname, u_obj in users_snap:
-                    u_line = str(u_obj.get("line_user_id") or "").strip().lower()
-                    if (
-                        uname.lower() == clean_text.lower()
-                        or str(u_obj.get("name") or "").strip().lower() == clean_text.lower()
-                        or (u_line and u_line == clean_text.lower())
-                    ):
-                        matched_user = u_obj
-                        break
-
-                if matched_user:
-                    uname = matched_user.get("username")
-                    matched_user["line_user_id"] = line_uid
-                    store.async_sync_user(uname, matched_user)
-                    if reply_token:
+                    elif reply_token:
                         send_line_reply_message(
                             reply_token,
                             "\n".join([
-                                "✅ ผูกบัญชีสำเร็จ!",
-                                f"👤 ชื่อผู้ใช้: {uname} ({matched_user.get('name', uname)})",
-                                f"📲 LINE ID: {line_uid}",
-                                "ระบบจะส่งใบงานส่งรถ/รับรถ/ซ่อมบำรุง ที่คุณเป็นผู้รับผิดชอบมาที่แชทนี้โดยตรงครับ"
+                                "📲 รหัส LINE User ID ของคุณคือ:",
+                                str(line_uid),
+                                "",
+                                "💡 พิมพ์ชื่อผู้ใช้งาน (Username) ของคุณในระบบ (เช่น chaiwat.u) ส่งมาในแชทนี้เพื่อผูกบัญชีรับใบงานอัตโนมัติ หรือคัดลอกรหัสข้างต้นไปใส่ในหน้าจัดการผู้ใช้งานได้เลยครับ"
                             ])
                         )
-                elif reply_token:
-                    send_line_reply_message(
-                        reply_token,
-                        "\n".join([
-                            "📲 รหัส LINE User ID ของคุณคือ:",
-                            line_uid,
-                            "",
-                            "💡 พิมพ์ชื่อผู้ใช้งาน (Username) ของคุณในระบบ (เช่น chaiwat.u) ส่งมาในแชทนี้เพื่อผูกบัญชีรับใบงานอัตโนมัติ หรือคัดลอกรหัสข้างต้นไปใส่ในหน้าจัดการผู้ใช้งานได้เลยครับ"
-                        ])
-                    )
+            except Exception as ev_exc:
+                print(f"[LINE Webhook] Event processing error: {ev_exc}")
 
     await asyncio.to_thread(_handle_line_events)
     return {"status": "ok"}
