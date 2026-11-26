@@ -167,10 +167,12 @@ def send_line_reply_message(reply_token: str, message: str, channel_access_token
     ตอบกลับข้อความอัตโนมัติด้วย replyToken (ฟรี 100% ไม่เสียโควต้าข้อความรายเดือนของ LINE OA)
     """
     if not reply_token or not message:
+        print(f"⚠️ [LINE_REPLY] Missing reply_token or message (token={bool(reply_token)}, msg_len={len(message or '')})", flush=True)
         return False
     token, _ = get_line_credentials()
-    act = channel_access_token or token
+    act = (channel_access_token or token or os.getenv("LINE_CHANNEL_ACCESS_TOKEN", "")).strip()
     if not act:
+        print("❌ [LINE_REPLY] LINE_CHANNEL_ACCESS_TOKEN is empty or not set in environment!", flush=True)
         return False
     headers = {
         "Content-Type": "application/json",
@@ -182,9 +184,14 @@ def send_line_reply_message(reply_token: str, message: str, channel_access_token
     }
     try:
         resp = requests.post(LINE_REPLY_URL, headers=headers, json=payload, timeout=10)
+        print(f"[LINE_REPLY] HTTP {resp.status_code} - {resp.text}", flush=True)
+        if resp.status_code != 200:
+            print(f"❌ [LINE_REPLY_FAIL] Status: {resp.status_code}, Body: {resp.text}", flush=True)
         return resp.status_code == 200
     except Exception as e:
-        print(f"Error sending LINE reply: {e}")
+        import traceback
+        traceback.print_exc()
+        print(f"[LINE_REPLY_ERR] Error sending LINE reply: {e}", flush=True)
         return False
 
 

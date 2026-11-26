@@ -851,23 +851,29 @@ async def line_bot_webhook(request: Request):
 
                 if ev_type == "message" and (ev.get("message") or {}).get("type") == "text" and line_uid:
                     raw_text = str((ev.get("message") or {}).get("text") or "").strip()
+                    print(f"[LINE_EVENT] Received text: '{raw_text}', from: {line_uid}, replyToken: {reply_token}", flush=True)
 
                     if _is_line_bot_command(raw_text):
                         linked_user = _find_linked_user_by_line_uid(line_uid)
+                        print(f"[LINE_MATCH] Command '{raw_text}', linked_user: {linked_user.get('username') if linked_user else None}, approved: {_is_user_approved(linked_user)}", flush=True)
                         if not _is_user_approved(linked_user):
                             if reply_token:
-                                send_line_reply_message(
+                                ok = send_line_reply_message(
                                     reply_token,
                                     "⛔ บัญชี LINE นี้ยังไม่ได้รับอนุมัติหรือยังไม่ได้ผูกกับผู้ใช้งานในระบบ กรุณาพิมพ์ชื่อผู้ใช้งาน (Username) เพื่อผูกบัญชีและรอแอดมินอนุมัติก่อนใช้คำสั่งบอท"
                                 )
+                                print(f"[LINE_REPLY_RESULT] Unauthorized prompt sent: {ok}", flush=True)
                             continue
                         try:
                             reply_msg = build_line_command_reply(raw_text, linked_user)
                         except Exception as cmd_exc:
-                            print(f"[LINE Webhook] Command reply error for '{raw_text}': {cmd_exc}")
+                            import traceback
+                            traceback.print_exc()
+                            print(f"[LINE_WEBHOOK_ERR] Command reply error for '{raw_text}': {cmd_exc}", flush=True)
                             reply_msg = "⚠️ ระบบเกิดข้อผิดพลาดชั่วคราวขณะดึงข้อมูล กรุณาลองใหม่อีกครั้งครับ"
                         if reply_token and reply_msg:
-                            send_line_reply_message(reply_token, reply_msg)
+                            ok = send_line_reply_message(reply_token, reply_msg)
+                            print(f"[LINE_REPLY_RESULT] Command reply sent: {ok}", flush=True)
                         continue
 
                     clean_text = raw_text.replace("ผูกบัญชี", "").replace("link", "").strip()
@@ -884,6 +890,7 @@ async def line_bot_webhook(request: Request):
                             matched_user = u_obj
                             break
 
+                    print(f"[LINE_BIND_MATCH] text: '{clean_text}', matched_user: {matched_user.get('username') if matched_user else None}", flush=True)
                     if matched_user:
                         uname = matched_user.get("username")
                         matched_user["line_user_id"] = line_uid
@@ -891,7 +898,7 @@ async def line_bot_webhook(request: Request):
                         if callable(sync_user_fn) and uname:
                             sync_user_fn(uname, matched_user)
                         if reply_token:
-                            send_line_reply_message(
+                            ok = send_line_reply_message(
                                 reply_token,
                                 "\n".join([
                                     "✅ ผูกบัญชีสำเร็จ!",
@@ -900,8 +907,9 @@ async def line_bot_webhook(request: Request):
                                     "ระบบจะส่งใบงานส่งรถ/รับรถ/ซ่อมบำรุง ที่คุณเป็นผู้รับผิดชอบมาที่แชทนี้โดยตรงครับ"
                                 ])
                             )
+                            print(f"[LINE_REPLY_RESULT] Binding success sent: {ok}", flush=True)
                     elif reply_token:
-                        send_line_reply_message(
+                        ok = send_line_reply_message(
                             reply_token,
                             "\n".join([
                                 "📲 รหัส LINE User ID ของคุณคือ:",
@@ -910,8 +918,11 @@ async def line_bot_webhook(request: Request):
                                 "💡 พิมพ์ชื่อผู้ใช้งาน (Username) ของคุณในระบบ (เช่น chaiwat.u) ส่งมาในแชทนี้เพื่อผูกบัญชีรับใบงานอัตโนมัติ หรือคัดลอกรหัสข้างต้นไปใส่ในหน้าจัดการผู้ใช้งานได้เลยครับ"
                             ])
                         )
+                        print(f"[LINE_REPLY_RESULT] Help UID sent: {ok}", flush=True)
             except Exception as ev_exc:
-                print(f"[LINE Webhook] Event processing error: {ev_exc}")
+                import traceback
+                traceback.print_exc()
+                print(f"[LINE_WEBHOOK_ERR] {ev_exc}", flush=True)
 
     await asyncio.to_thread(_handle_line_events)
     return {"status": "ok"}
