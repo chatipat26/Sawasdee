@@ -61,9 +61,66 @@ def test_p5_a1_customer_portal_token_and_readonly_view(client, isolated_store):
 
 
 def test_p5_a2_line_bot_commands_reply_and_authorization(client, isolated_store, monkeypatch):
+    from datetime import date
+
     today_th = now_th().date()
+    target_dt = date(2026, 11, 27)
+
+    # Seed staff02 with their own jobs to verify strict per-user isolation on "งานวันนี้"
+    isolated_store.users["staff02"] = {
+        "username": "staff02",
+        "name": "พนักงาน 02",
+        "role": "Staff",
+        "status": "approved",
+        "is_approved": True,
+        "line_user_id": "USTAFF002",
+    }
+
+    # Booking 1 belongs to staff01 today (dispatch); add a booking belonging to staff02 today
     isolated_store.bookings[1]["start_date"] = today_th
+    isolated_store.bookings[1]["worker_delivery"] = "staff01"
+    isolated_store.bookings.append(
+        {
+            "booking_id": "MRC2611269999",
+            "car_id": "1กข-1111",
+            "customer": "ลูกค้า พนักงานสอง",
+            "start_date": today_th,
+            "end_date": target_dt,
+            "start_time": "13:30",
+            "end_time": "15:00",
+            "status": "รอส่งมอบ",
+            "dispatch_closed": False,
+            "return_closed": False,
+            "worker_delivery": "staff02",
+            "worker_return": "พนักงาน 02",  # matched by full name
+            "loc_delivery": "สนามบินสุวรรณภูมิ",
+            "loc_return": "สาขาสุขุมวิท",
+            "delivery_mode": "offsite",
+            "delivery_fee": 500.0,
+        }
+    )
     isolated_store.maintenance_records[0]["schedule_date"] = today_th.isoformat()
+    isolated_store.maintenance_records[0]["assigned_worker"] = "staff01"
+
+    # Seed a car with NaN/null artifacts, daily_rate, ACT/Tax/Insurance expiring on target_dt (27/11/2026 = 27/11/2569)
+    isolated_store.cars["7ขช 8613"] = {
+        "plate": "7ขช 8613",
+        "brand": "Honda",
+        "model": "HR-V",
+        "color": "nan",
+        "status": "ว่างพร้อมใช้งาน",
+        "car_status": "ว่างพร้อมใช้งาน",
+        "daily_rate": 1800.0,
+        "price_day": 0.0,
+        "mileage": "nan",
+        "next_service_mileage": float("nan"),
+        "tax_expire_date": "2026-11-27",
+        "prb_expire_date": "27/11/2569",  # Buddhist Era input in DB
+        "insurance_expire_date": "NaT",
+        "insurance_company": "None",
+    }
+    isolated_store.cars["1กข-1111"]["insurance_expire_date"] = "2026-11-27"
+    isolated_store.cars["1กข-1111"]["insurance_company"] = "วิริยะประกันภัย"
 
     replies = []
     pushes = []
@@ -93,34 +150,76 @@ def test_p5_a2_line_bot_commands_reply_and_authorization(client, isolated_store,
             },
         )
 
-    # 1. Approved linked user ("staff01" -> "USTAFF001") sends all 4 commands
-    assert _send_webhook("USTAFF001", "งานวันนี้", "R1").status_code == 200
-    assert _send_webhook("USTAFF001", "คิวส่งรถ", "R2").status_code == 200
-    assert _send_webhook("USTAFF001", "รถว่าง", "R3").status_code == 200
-    assert _send_webhook("USTAFF001", "ทะเบียน 1กข1111", "R4").status_code == 200
-    assert _send_webhook("USTAFF001", "ทะเบียน 2กข-2222", "R5").status_code == 200
+    # 1. "งานวันนี้" returns ONLY each linked user's own jobs
+    assert _send_webhook("USTAFF001", "งานวันนี้", "R_TODAY_S1").status_code == 200
+    msg_s1 = replies[-1][1]
+    assert "พนักงาน 01" in msg_s1
+    assert "3กข-3333" in msg_s1 and "4กข-4444" in msg_s1
+    assert "MRC2611269999" not in msg_s1  # staff02's job must NOT appear for staff01
 
-    assert len(pushes) == 0  # Strictly 0 push quota used
-    assert len(replies) == 5
+    assert _send_webhook("USTAFF002", "งานวันนี้", "R_TODAY_S2").status_code == 200
+    msg_s2 = replies[-1][1]
+    assert "พนักงาน 02" in msg_s2
+    assert "MRC2611269999" in msg_s2
+    assert "3กข-3333" not in msg_s2 and "4กข-4444" not in msg_s2
 
-    assert replies[0][0] == "R1" and "งานวันนี้" in replies[0][1]
-    assert "3กข-3333" in replies[0][1] or "4กข-4444" in replies[0][1]
+    # 2. "คิวส่งรถ" preserved as-is
+    assert _send_webhook("USTAFF001", "คิวส่งรถ", "R_QUEUE").status_code == 200
+    assert "คิวรอส่งมอบรถทั้งหมด" in replies[-1][1]
+    assert "MRC2611200001" in replies[-1][1]
 
-    assert replies[1][0] == "R2" and "คิวรอส่งมอบรถ" in replies[1][1]
-    assert "MRC2611200001" in replies[1][1] and "2กข-2222" in replies[1][1]
+    # 3. "รถว่าง" retired: short guidance reply without listing available cars
+    assert _send_webhook("USTAFF001", "รถว่าง", "R_AVAIL_OFF").status_code == 200
+    msg_avail = replies[-1][1]
+    assert "ยกเลิกการแสดงรายการรถว่างทั้งหมด" in msg_avail
+    assert "1กข-1111" not in msg_avail and "7ขช 8613" not in msg_avail
+    assert "Toyota Yaris" not in msg_avail and "Honda HR-V" not in msg_avail
 
-    assert replies[2][0] == "R3" and "รถว่างพร้อมใช้งาน" in replies[2][1]
-    assert "1กข-1111" in replies[2][1]
+    # 4. Date command supports CE ("27/11/2026"), Buddhist Era ("27/11/2569"), and ISO ("2026-11-27")
+    for idx, dt_text in enumerate(("27/11/2026", "27/11/2569", "2026-11-27")):
+        assert _send_webhook("USTAFF001", dt_text, f"R_DATE_{idx}").status_code == 200
+        dt_msg = replies[-1][1]
+        assert "27/11/2026" in dt_msg
+        assert "MRC2611269999" in dt_msg  # return job on 27/11/2026
+        assert "7ขช 8613" in dt_msg and "พ.ร.บ." in dt_msg and "ภาษี" in dt_msg
+        assert "1กข-1111" in dt_msg and "ประกันภัย (วิริยะประกันภัย)" in dt_msg
 
-    assert replies[3][0] == "R4" and "1กข-1111" in replies[3][1] and "Toyota Yaris" in replies[3][1]
-    assert replies[4][0] == "R5" and "MRC2611200001" in replies[4][1]
+    # 5. License plate search: both bare ("7ขช 8613", "7ขช8613") and prefixed ("ทะเบียน 7ขช 8613", "ทะเบียน7ขช 8613")
+    for idx, plate_cmd in enumerate(("7ขช 8613", "7ขช8613", "ทะเบียน 7ขช 8613", "ทะเบียน7ขช 8613")):
+        assert _send_webhook("USTAFF001", plate_cmd, f"R_PLATE_{idx}").status_code == 200
+        p_msg = replies[-1][1]
+        assert "7ขช 8613" in p_msg
+        assert "Honda HR-V (สี: -)" in p_msg
+        assert "฿1,800/วัน" in p_msg
+        assert "พ.ร.บ.หมดอายุ: 27/11/2026" in p_msg
+        assert "ภาษีหมดอายุ: 27/11/2026" in p_msg
+        assert "ประกันหมดอายุ: -" in p_msg
+        assert "nan" not in p_msg.lower()
+        assert "nat" not in p_msg.lower()
+        assert "none" not in p_msg.lower()
 
-    # 2. Unlinked user must be denied and not leak data
-    assert _send_webhook("U_STRANGER_999", "รถว่าง", "R_DENY1").status_code == 200
-    assert "⛔" in replies[-1][1]
-    assert "1กข-1111" not in replies[-1][1]
+    assert _send_webhook("USTAFF001", "2กข2222", "R_PLATE_ACTIVE").status_code == 200
+    assert "MRC2611200001" in replies[-1][1] and "฿1,200/วัน" in replies[-1][1]
 
-    # 3. Pending user must be denied even if line_user_id is set
+    # 6. Unlinked user binding by username still works without colliding with bare plate matching
+    isolated_store.users["newstaff_bind"] = {
+        "username": "newstaff_bind",
+        "name": "พนักงานใหม่ ผูกบัญชี",
+        "role": "Staff",
+        "status": "approved",
+        "is_approved": True,
+        "line_user_id": "",
+    }
+    assert _send_webhook("U_NEW_BIND_01", "newstaff_bind", "R_BIND").status_code == 200
+    assert "ผูกบัญชีสำเร็จ" in replies[-1][1]
+    assert isolated_store.users["newstaff_bind"]["line_user_id"] == "U_NEW_BIND_01"
+
+    # 7. Unlinked / Pending / Suspended users must be denied on all commands (including bare plate & date)
+    for bad_cmd in ("รถว่าง", "7ขช 8613", "27/11/2569"):
+        assert _send_webhook("U_STRANGER_999", bad_cmd, "R_DENY1").status_code == 200
+        assert "⛔" in replies[-1][1]
+        assert "Honda HR-V" not in replies[-1][1]
+
     isolated_store.users["pending_u"] = {
         "username": "pending_u",
         "name": "Pending User",
@@ -133,7 +232,6 @@ def test_p5_a2_line_bot_commands_reply_and_authorization(client, isolated_store,
     assert "⛔" in replies[-1][1]
     assert "MRC2611200001" not in replies[-1][1]
 
-    # 4. Suspended user must be denied
     isolated_store.users["susp_u"] = {
         "username": "susp_u",
         "name": "Suspended User",
@@ -144,7 +242,7 @@ def test_p5_a2_line_bot_commands_reply_and_authorization(client, isolated_store,
     }
     assert _send_webhook("U_SUSP_01", "งานวันนี้", "R_DENY3").status_code == 200
     assert "⛔" in replies[-1][1]
-    assert len(pushes) == 0
+    assert len(pushes) == 0  # Strictly 0 push quota used
 
 
 def test_p5_b1_crm_tiering_rental_history_and_blacklist_alert(client, isolated_store):
