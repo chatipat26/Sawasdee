@@ -196,20 +196,169 @@ CONTRACT_COORDINATES = {
 
     # 3. Section 03: RENTAL PERIOD & DELIVERY (ระยะเวลาเช่าและส่งมอบ)
     "start_datetime": {"x": 37, "y": 474, "font": "regular", "size": 8.5, "color": (0.15, 0.15, 0.15)},
-    "loc_delivery": {"x": 170, "y": 474, "font": "regular", "size": 8.5, "color": (0.15, 0.15, 0.15), "max_chars": 30},
+    "loc_delivery": {"x": 170, "y": 474, "font": "regular", "size": 8.0, "color": (0.15, 0.15, 0.15), "max_w": 122},
     "end_datetime": {"x": 304, "y": 474, "font": "regular", "size": 8.5, "color": (0.15, 0.15, 0.15)},
-    "loc_return": {"x": 437, "y": 474, "font": "regular", "size": 8.5, "color": (0.15, 0.15, 0.15), "max_chars": 30},
+    "loc_return": {"x": 437, "y": 474, "font": "regular", "size": 8.0, "color": (0.15, 0.15, 0.15), "max_w": 122},
 
-    # 4. Section 04: CHARGES (ตารางสรุปค่าเช่าและยอดรวม ตรงตาม Original)
+    # 4. Section 04: CHARGES (ตารางสรุปค่าเช่าและยอดรวม — พิกัดสำหรับเทมเพลต v4 ที่เพิ่มแถว Delivery fee & Pickup fee)
     "charges_days": {"x": 365.5, "y": 431, "font": "bold", "size": 8.5, "align": "left", "color": (0.15, 0.15, 0.15)},
     "charges_subtotal": {"x": 550.8, "y": 430.5, "font": "bold", "size": 13.0, "align": "right", "color": (0.1, 0.1, 0.1)},
     "charges_daily_rate": {"x": 550.8, "y": 412.5, "font": "regular", "size": 7.5, "align": "right", "color": (0.2, 0.2, 0.2)},
-    "net_price": {"x": 550.8, "y": 303.5, "font": "bold", "size": 13.0, "align": "right", "color": (1.0, 1.0, 1.0)}, # สีขาวบนแถบสีส้ม
+    "charges_delivery_fee": {"x": 550.8, "y": 393.5, "font": "regular", "size": 8.0, "align": "right", "color": (0.2, 0.2, 0.2)},
+    "net_price": {"x": 550.8, "y": 282.5, "font": "bold", "size": 13.0, "align": "right", "color": (1.0, 1.0, 1.0)}, # สีขาวบนแถบสีส้ม v4 (ขยับลง 21pt จาก 303.5)
+    "net_price_v3": {"x": 550.8, "y": 303.5, "font": "bold", "size": 13.0, "align": "right", "color": (1.0, 1.0, 1.0)},
 
     # 5. Section 05: PAYMENT CONFIRMATION (ยืนยันการชำระเงิน)
     "confirm_ref": {"x": 37, "y": 259, "font": "regular", "size": 8.0, "color": (0.15, 0.15, 0.15)},
     "confirm_amount": {"x": 231, "y": 259, "font": "bold", "size": 8.5, "color": (0.15, 0.15, 0.15)},
+    "confirm_received_by": {"x": 37, "y": 205.5, "font": "regular", "size": 8.5, "color": (0.15, 0.15, 0.15)},
+    "confirm_date": {"x": 231.5, "y": 205.5, "font": "regular", "size": 8.5, "color": (0.15, 0.15, 0.15)},
+    "deposit_collected_amt": {"x": 141.4, "y": 242.2, "font": "regular", "size": 7.4, "color": (0.1, 0.1, 0.1)},
+
+    # Authorised driver (แถว NAME / LICENCE # / DATE OF BIRTH เหนือกล่อง Insurance) — เส้นกรอกอยู่ที่ y≈427
+    "drv_name": {"x": 38, "y": 430, "font": "regular", "size": 8.5, "color": (0.15, 0.15, 0.15), "max_w": 96},
+    "drv_licence": {"x": 144.5, "y": 430, "font": "regular", "size": 8.5, "color": (0.15, 0.15, 0.15), "max_w": 96},
+    "drv_dob": {"x": 250.5, "y": 430, "font": "regular", "size": 8.5, "color": (0.15, 0.15, 0.15), "max_w": 96},
+    # แถวที่ 2 = ผู้ขับขี่ร่วม (เส้นกรอกอยู่ที่ y≈403) พิมพ์เฉพาะเมื่อมีข้อมูล driver2_*
+    "drv2_name": {"x": 38, "y": 406, "font": "regular", "size": 8.5, "color": (0.15, 0.15, 0.15), "max_w": 96},
+    "drv2_licence": {"x": 144.5, "y": 406, "font": "regular", "size": 8.5, "color": (0.15, 0.15, 0.15), "max_w": 96},
+    "drv2_dob": {"x": 250.5, "y": 406, "font": "regular", "size": 8.5, "color": (0.15, 0.15, 0.15), "max_w": 96},
+
+    # ตาราง CHARGES แถวย่อย (พื้นขาว) — จัดชิดขวาที่ x=550.8 (ใน v4 ขยับลง 21pt ต่อจาก Delivery fee)
+    "charges_damage": {"x": 550.8, "y": 372.5, "font": "regular", "size": 8.0, "align": "right", "color": (0.2, 0.2, 0.2)},
+    "charges_fuel": {"x": 550.8, "y": 351.5, "font": "regular", "size": 8.0, "align": "right", "color": (0.2, 0.2, 0.2)},
+    "charges_cleaning": {"x": 550.8, "y": 330.5, "font": "regular", "size": 8.0, "align": "right", "color": (0.2, 0.2, 0.2)},
+    "charges_pickup_fee": {"x": 550.8, "y": 308.8, "font": "regular", "size": 8.0, "align": "right", "color": (0.2, 0.2, 0.2)},
+    # Fallback coordinates for v3/v2
+    "charges_damage_v3": {"x": 550.8, "y": 393.5, "font": "regular", "size": 8.0, "align": "right", "color": (0.2, 0.2, 0.2)},
+    "charges_fuel_v3": {"x": 550.8, "y": 372.5, "font": "regular", "size": 8.0, "align": "right", "color": (0.2, 0.2, 0.2)},
+    "charges_cleaning_v3": {"x": 550.8, "y": 351.5, "font": "regular", "size": 8.0, "align": "right", "color": (0.2, 0.2, 0.2)},
+    "charges_booking_deposit": {"x": 550.8, "y": 330.5, "font": "regular", "size": 8.0, "align": "right", "color": (0.2, 0.2, 0.2)},
 }
+
+# เทมเพลตสัญญา: v4 = เพิ่มแถว Delivery fee & Pickup fee + ลบขีดตัวอย่างที่อยู่ (สร้างด้วย scripts/build_contract_template_v4.py)
+# v3 และ v2 เก็บไว้เป็น fallback
+CONTRACT_TEMPLATE_V2 = "rental_template_blank_v2.pdf"
+CONTRACT_TEMPLATE_V3 = "rental_template_clean_v3.pdf"
+CONTRACT_TEMPLATE_V4 = "rental_template_clean_v4.pdf"
+
+# จุดกึ่งกลางช่องติ๊ก (ระบบพิกัด reportlab, ตรวจจากเทมเพลตจริง)
+CONTRACT_CHECKBOX_CENTERS = {
+    "cash": (39.75, 284.65),
+    "bank": (73.55, 284.65),
+    "paypal": (129.75, 284.65),
+    "deposit_collected": (108.05, 244.15),
+    "deposit_waived": (177.0, 244.15),
+}
+
+
+def _draw_box_tick(can, cx, cy):
+    """วาดเครื่องหมายถูกให้อยู่กึ่งกลางช่องติ๊กขนาด 5.3pt พอดี"""
+    can.saveState()
+    can.setStrokeColorRGB(0.1, 0.1, 0.1)
+    can.setLineWidth(1.1)
+    can.setLineCap(1)
+    can.setLineJoin(1)
+    p = can.beginPath()
+    p.moveTo(cx - 1.9, cy + 0.1)
+    p.lineTo(cx - 0.5, cy - 1.5)
+    p.lineTo(cx + 2.0, cy + 1.9)
+    can.drawPath(p, stroke=1, fill=0)
+    can.restoreState()
+
+
+def _payment_channel_key(raw_method):
+    """แปลงชื่อวิธีชำระเงินเป็นช่องติ๊ก: cash / bank / paypal / None (จ่ายวันคืนรถ, บัตร, ไม่ระบุ)"""
+    m = str(raw_method or "").strip().lower()
+    if not m or "คืนรถ" in m or "return" in m:
+        return None
+    if "paypal" in m:
+        return "paypal"
+    if any(k in m for k in ("โอน", "qr", "transfer", "scan", "bank")):
+        return "bank"
+    if any(k in m for k in ("เงินสด", "สด", "cash")):
+        return "cash"
+    return None
+
+
+def _to_amount(val):
+    try:
+        return float(str(val).replace(",", "").strip())
+    except Exception:
+        return 0.0
+
+
+def draw_field_fit(can, field_key, value):
+    """วาดข้อความโดยย่อฟอนต์อัตโนมัติ (ต่ำสุด 6pt) ให้ไม่เกินความกว้าง max_w ของช่อง"""
+    cfg = CONTRACT_COORDINATES.get(field_key)
+    text = str(value or "").strip()
+    if not cfg or not text or text == "-":
+        return
+    font_name = FONT_BOLD if cfg.get("font") == "bold" else FONT_REGULAR
+    size = cfg.get("size", 9)
+    max_w = cfg.get("max_w")
+    if max_w:
+        while size > 6.0 and pdfmetrics.stringWidth(text, font_name, size) > max_w:
+            size -= 0.25
+        while len(text) > 1 and pdfmetrics.stringWidth(text, font_name, size) > max_w:
+            text = text[:-1]
+    can.setFont(font_name, size)
+    can.setFillColorRGB(*cfg.get("color", (0.15, 0.15, 0.15)))
+    can.drawString(cfg["x"], cfg["y"], text)
+
+
+def draw_location_two_lines(can, field_key, value):
+    """
+    วาดข้อความสถานที่ส่ง/รับรถ (loc_delivery / loc_return) โดยไม่ตัดที่ 30 ตัวอักษร:
+    - ถ้ายาวไม่เกินช่อง (max_w = 122pt) วาดบรรทัดเดียวที่ y=474 (ขนาด 8.0pt)
+    - ถ้ายาวเกิน ให้แบ่งเป็น 2 บรรทัดเหนือเส้นคั่น (บรรทัดบน y=477.5, บรรทัดล่าง y=470.3, ขนาด 6.8pt)
+      โดยตัดตามคำ/ช่องว่าง หรือตัดตัวอักษรภาษาไทยเมื่อไม่มีช่องว่าง
+    """
+    cfg = CONTRACT_COORDINATES.get(field_key)
+    text = str(value or "").strip()
+    if not cfg or not text or text == "-":
+        return
+    font_name = FONT_BOLD if cfg.get("font") == "bold" else FONT_REGULAR
+    max_w = cfg.get("max_w", 122)
+    x = cfg["x"]
+    can.setFillColorRGB(*cfg.get("color", (0.15, 0.15, 0.15)))
+
+    # 1. ถ้ายาวพอดีใน 1 บรรทัด (ขนาด 8.0 -> 7.2pt)
+    for single_sz in (8.0, 7.5, 7.2):
+        if pdfmetrics.stringWidth(text, font_name, single_sz) <= max_w:
+            can.setFont(font_name, single_sz)
+            can.drawString(x, cfg["y"], text)
+            return
+
+    # 2. แบ่งเป็น 2 บรรทัด (ขนาด 6.8pt, ถ้ายาวมากลดเป็น 6.2pt)
+    two_sz = 6.8 if pdfmetrics.stringWidth(text, font_name, 6.8) <= max_w * 1.95 else 6.2
+
+    # หาจุดตัดบรรทัดที่ 1 ให้ไม่เกิน max_w (ให้ความสำคัญกับช่องว่างก่อน)
+    split_idx = len(text)
+    last_space = -1
+    for i in range(1, len(text) + 1):
+        sub = text[:i]
+        if text[i - 1] in (" ", ",", "/"):
+            last_space = i
+        if pdfmetrics.stringWidth(sub, font_name, two_sz) > max_w:
+            split_idx = last_space if last_space > max(3, i // 2) else (i - 1)
+            break
+
+    line1 = text[:split_idx].strip()
+    line2 = text[split_idx:].strip()
+
+    # หากบรรทัดที่ 2 ยังยาวเกิน max_w ให้ตัดท้ายพร้อมเติม "…"
+    if line2 and pdfmetrics.stringWidth(line2, font_name, two_sz) > max_w:
+        while len(line2) > 1 and pdfmetrics.stringWidth(line2 + "…", font_name, two_sz) > max_w:
+            line2 = line2[:-1]
+        line2 = line2.rstrip() + "…"
+
+    can.setFont(font_name, two_sz)
+    if line2:
+        can.drawString(x, 477.5, line1)
+        can.drawString(x, 470.3, line2)
+    else:
+        can.drawString(x, cfg["y"], line1)
 
 def draw_field(can, field_key, value):
     """Draw a text string at specified coordinates from CONTRACT_COORDINATES with left/right alignment support"""
@@ -253,7 +402,15 @@ def generate_filled_pdf(template_path="rental_template_blank_v2.pdf", booking_in
     Strictly NO HTML-to-PDF tables.
     """
     try:
-        candidate_paths = [
+        # P4: ใช้เทมเพลตสะอาด v4 ก่อนเสมอ (ถ้าไม่พบค่อยถอยกลับไป v3 -> v2)
+        tpl_base = os.path.basename(str(template_path or ""))
+        preferred_candidates = [
+            os.path.join(BASE_DIR, CONTRACT_TEMPLATE_V4),
+            os.path.join(os.getcwd(), CONTRACT_TEMPLATE_V4),
+            os.path.join(BASE_DIR, CONTRACT_TEMPLATE_V3),
+            os.path.join(os.getcwd(), CONTRACT_TEMPLATE_V3),
+        ] if tpl_base in (CONTRACT_TEMPLATE_V2, CONTRACT_TEMPLATE_V3, CONTRACT_TEMPLATE_V4) else []
+        candidate_paths = preferred_candidates + [
             template_path,
             os.path.join(BASE_DIR, template_path or ""),
             os.path.join(os.getcwd(), template_path or ""),
@@ -280,6 +437,9 @@ def generate_filled_pdf(template_path="rental_template_blank_v2.pdf", booking_in
             print(f"PDF Error: {err_msg}")
             raise FileNotFoundError(err_msg)
 
+        resolved_name = os.path.basename(resolved_path)
+        is_v4_tpl = resolved_name == CONTRACT_TEMPLATE_V4
+        is_clean_tpl = resolved_name in (CONTRACT_TEMPLATE_V3, CONTRACT_TEMPLATE_V4)
         booking_info = booking_info or {}
         customer_info = customer_info or {}
         car_info = car_info or {}
@@ -335,6 +495,15 @@ def generate_filled_pdf(template_path="rental_template_blank_v2.pdf", booking_in
         draw_field(can, "contact_no", c_phone)
         draw_field(can, "whatsapp", c_wa)
 
+        # Authorised drivers: แถวที่ 1 = ผู้เช่าหลัก (ค่าเริ่มต้น), แถวที่ 2 = ผู้ขับขี่ร่วมถ้ามี (driver2_*)
+        draw_field_fit(can, "drv_name", c_name)
+        draw_field_fit(can, "drv_licence", c_lic)
+        draw_field_fit(can, "drv_dob", c_dob)
+        draw_field_fit(can, "drv2_name", booking_info.get("driver2_name"))
+        draw_field_fit(can, "drv2_licence", booking_info.get("driver2_licence"))
+        if booking_info.get("driver2_dob"):
+            draw_field_fit(can, "drv2_dob", format_date_dmy(booking_info.get("driver2_dob")))
+
         # 3. Section 03: RENTAL PERIOD & DELIVERY
         s_time_pdf = booking_info.get('start_time') or th_now.strftime('%H:%M')
         e_time_pdf = booking_info.get('end_time') or th_now.strftime('%H:%M')
@@ -345,47 +514,122 @@ def generate_filled_pdf(template_path="rental_template_blank_v2.pdf", booking_in
 
         draw_field(can, "start_datetime", s_date)
         if loc_del and loc_del != "-":
-            clear_dash_box(can, CONTRACT_COORDINATES["loc_delivery"]["x"], CONTRACT_COORDINATES["loc_delivery"]["y"])
-            draw_field(can, "loc_delivery", loc_del)
+            if not is_v4_tpl:
+                clear_dash_box(can, CONTRACT_COORDINATES["loc_delivery"]["x"], CONTRACT_COORDINATES["loc_delivery"]["y"])
+            draw_location_two_lines(can, "loc_delivery", loc_del)
 
         draw_field(can, "end_datetime", e_date)
         if loc_ret and loc_ret != "-":
-            clear_dash_box(can, CONTRACT_COORDINATES["loc_return"]["x"], CONTRACT_COORDINATES["loc_return"]["y"])
-            draw_field(can, "loc_return", loc_ret)
+            if not is_v4_tpl:
+                clear_dash_box(can, CONTRACT_COORDINATES["loc_return"]["x"], CONTRACT_COORDINATES["loc_return"]["y"])
+            draw_location_two_lines(can, "loc_return", loc_ret)
 
         # 4. Section 04: CHARGES (ตารางค่าเช่าและยอดรวม)
-        net_price = booking_info.get('net_price', 0)
+        net_price = _to_amount(booking_info.get('net_price', 0))
+        del_mode = str(booking_info.get("delivery_mode") or "branch").strip().lower()
+        pic_mode = str(booking_info.get("pickup_mode") or "branch").strip().lower()
+        del_fee = 0.0 if (del_mode == "branch" and "delivery_mode" in booking_info) else max(0.0, _to_amount(booking_info.get("delivery_fee")))
+        pic_fee = 0.0 if (pic_mode == "branch" and "pickup_mode" in booking_info) else max(0.0, _to_amount(booking_info.get("pickup_fee")))
+        fees_total = round(del_fee + pic_fee, 2)
+        rental_subtotal = round(max(0.0, net_price - fees_total), 2) if fees_total > 0 else net_price
+
         days_count, duration_text = get_rental_days_and_duration(booking_info)
-        daily_rate = get_daily_rate(booking_info, car_info, days=days_count, net_price=net_price)
+        daily_rate = get_daily_rate(booking_info, car_info, days=days_count, net_price=rental_subtotal)
 
-        # Clear background areas in template CHARGES table
-        can.setFillColorRGB(1, 1, 1)
-        can.rect(363, 426, 80, 15, fill=1, stroke=0) # Clear row 1 left (1 month)
-        can.rect(460, 425, 96, 18, fill=1, stroke=0) # Clear row 1 right (39,000)
-        can.rect(480, 408, 76, 15, fill=1, stroke=0) # Clear row 2 right (2,600)
+        if not is_clean_tpl:
+            # Fallback เฉพาะเทมเพลต v2 เดิม (v3/v4 ไม่มีข้อความตัวอย่างจึงไม่ต้องปะทับ)
+            can.setFillColorRGB(1, 1, 1)
+            can.rect(363, 426, 80, 15, fill=1, stroke=0)
+            can.rect(460, 425, 96, 18, fill=1, stroke=0)
+            can.rect(480, 408, 76, 15, fill=1, stroke=0)
+            can.setFillColorRGB(0.9098, 0.3843, 0.1765)
+            can.rect(488, 296, 68, 22, fill=1, stroke=0)
 
-        # Mask over template's white box on orange bar with exact orange color to restore solid bar
-        can.setFillColorRGB(0.9098, 0.3843, 0.1765)
-        can.rect(488, 296, 68, 22, fill=1, stroke=0)
-
-        # Draw row 1: duration in days (left) and total rental amount (right)
+        # Draw row 1: duration in days (left) and pure rental amount (right, excluding delivery/pickup fees)
         draw_field(can, "charges_days", duration_text)
-        draw_field(can, "charges_subtotal", format_currency(net_price, prefix="฿"))
+        draw_field(can, "charges_subtotal", format_currency(rental_subtotal, prefix="฿"))
 
         # Draw row 2: daily rate (right)
         if daily_rate is not None:
             draw_field(can, "charges_daily_rate", format_currency(daily_rate, prefix="฿"))
 
-        # Draw bottom orange bar: TO BE INVOICED total amount in white
-        draw_field(can, "net_price", format_currency(net_price, prefix="฿"))
+        damage_amt = _to_amount(booking_info.get("pending_damage_cost"))
+        fuel_amt = _to_amount(booking_info.get("fuel_charge"))
+        clean_amt = _to_amount(booking_info.get("cleaning_charge"))
+
+        if is_v4_tpl:
+            # เทมเพลต v4: พิมพ์ Delivery fee และ Pickup fee (ถ้าเป็น 0 หรือรับที่สาขา จะเว้นว่าง)
+            if del_fee > 0:
+                draw_field(can, "charges_delivery_fee", format_currency(del_fee, prefix="฿"))
+            if pic_fee > 0:
+                draw_field(can, "charges_pickup_fee", format_currency(pic_fee, prefix="฿"))
+            for key, amt in (("charges_damage", damage_amt), ("charges_fuel", fuel_amt), ("charges_cleaning", clean_amt)):
+                if amt > 0:
+                    draw_field(can, key, format_currency(amt, prefix="฿"))
+            invoice_total = net_price + damage_amt + fuel_amt + clean_amt
+            draw_field(can, "net_price", format_currency(invoice_total, prefix="฿"))
+        else:
+            # Fallback เทมเพลต v3 / v2
+            for key, amt in (("charges_damage_v3", damage_amt), ("charges_fuel_v3", fuel_amt), ("charges_cleaning_v3", clean_amt)):
+                if amt > 0:
+                    draw_field(can, key, format_currency(amt, prefix="฿"))
+            invoice_total = net_price + damage_amt + fuel_amt + clean_amt
+            draw_field(can, "net_price_v3", format_currency(invoice_total, prefix="฿"))
 
         # 5. Section 05: PAYMENT CONFIRMATION
-        can.setFillColorRGB(1, 1, 1)
-        can.rect(34, 254, 150, 16, fill=1, stroke=0)
-        can.rect(225, 254, 75, 16, fill=1, stroke=0)
+        if not is_clean_tpl:
+            can.setFillColorRGB(1, 1, 1)
+            can.rect(34, 254, 150, 16, fill=1, stroke=0)
+            can.rect(225, 254, 75, 16, fill=1, stroke=0)
 
-        draw_field(can, "confirm_ref", b_id)
-        draw_field(can, "confirm_amount", format_currency(net_price, prefix="THB "))
+        rental_paid = bool(booking_info.get("rental_paid") or booking_info.get("is_fully_paid"))
+        deposit_paid = bool(booking_info.get("deposit_paid"))
+        dep_amount = _to_amount(booking_info.get("deposit_amount"))
+
+        # วิธีชำระ: ใช้วิธีของรายการล่าสุดที่ชำระแล้ว (ค่าเช่า > มัดจำ)
+        if rental_paid:
+            pay_method = booking_info.get("rental_payment_method") or booking_info.get("deposit_method")
+            pay_ref = booking_info.get("rental_ref") or booking_info.get("deposit_ref")
+            pay_date = booking_info.get("rental_payment_date") or booking_info.get("deposit_date")
+        elif deposit_paid:
+            pay_method = booking_info.get("deposit_method") or booking_info.get("rental_payment_method")
+            pay_ref = booking_info.get("deposit_ref") or booking_info.get("rental_ref")
+            pay_date = booking_info.get("deposit_date")
+        else:
+            pay_method = pay_ref = pay_date = None
+
+        channel = _payment_channel_key(pay_method)
+        if channel:
+            _draw_box_tick(can, *CONTRACT_CHECKBOX_CENTERS[channel])
+
+        # REFERENCE NO. = เลขอ้างอิงสลิป/รายการ (ไม่ใช่เลขสัญญา)
+        draw_field(can, "confirm_ref", str(pay_ref or "").strip())
+
+        # AMOUNT PAID = เงินที่รับแล้วจริง (ใช้ฟังก์ชันกลาง rental_cash_received รองรับทั้ง v1 และ v2)
+        try:
+            from services.booking_service import rental_cash_received
+            amount_paid = rental_cash_received(booking_info)
+        except Exception:
+            if rental_paid:
+                amount_paid = _to_amount(net_price)
+            elif deposit_paid:
+                amount_paid = dep_amount
+            else:
+                amount_paid = 0.0
+        if amount_paid > 0:
+            draw_field(can, "confirm_amount", format_currency(amount_paid, prefix="THB "))
+
+        # SECURITY DEPOSIT: Collected (พร้อมยอด) หรือ Waived
+        if booking_info.get("deposit_waived"):
+            _draw_box_tick(can, *CONTRACT_CHECKBOX_CENTERS["deposit_waived"])
+        elif deposit_paid and dep_amount > 0:
+            _draw_box_tick(can, *CONTRACT_CHECKBOX_CENTERS["deposit_collected"])
+            draw_field(can, "deposit_collected_amt", format_currency(dep_amount, prefix="฿"))
+
+        # RECEIVED BY / DATE (received_by ยังไม่มีคอลัมน์ใน DB -> เว้นว่างให้เซ็น/เขียนมือจนกว่าจะทำ P3)
+        draw_field(can, "confirm_received_by", booking_info.get("received_by"))
+        if pay_date:
+            draw_field(can, "confirm_date", format_date_dmy(pay_date))
 
         can.save()
         packet.seek(0)
@@ -435,13 +679,13 @@ def generate_filled_pdf(template_path="rental_template_blank_v2.pdf", booking_in
 
 def generate_pdf_bytes(booking_info=None, customer_info=None, car_info=None):
     """
-    Directly delegates to generate_filled_pdf using rental_template_blank_v2.pdf.
+    Directly delegates to generate_filled_pdf using rental_template_clean_v4.pdf.
     HTML tables for rental agreements are completely deprecated.
     """
-    return generate_filled_pdf("rental_template_blank_v2.pdf", booking_info, customer_info, car_info)
+    return generate_filled_pdf(CONTRACT_TEMPLATE_V4, booking_info, customer_info, car_info)
 
 def generate_receipt_bytes(receipt_no, booking_info, customer_info, car_info, amount, method, item_desc="ค่าเช่ารถยนต์ (Vehicle Rental Fee)", ref_no=None):
-    """Generate official receipt PDF"""
+    """Generate official receipt PDF with itemized off-site delivery/pickup fee breakdown when present."""
     pdf_buffer = io.BytesIO()
     doc = SimpleDocTemplate(pdf_buffer, pagesize=A4, rightMargin=40, leftMargin=40, topMargin=40, bottomMargin=40)
     elements = []
@@ -460,8 +704,17 @@ def generate_receipt_bytes(receipt_no, booking_info, customer_info, car_info, am
     elements.append(Paragraph("OFFICIAL RECEIPT / ใบเสร็จรับเงิน", title_style))
     elements.append(Spacer(1, 15))
     
+    booking_info = booking_info or {}
     c_name = customer_info.get("full_name", "-") if customer_info else "-"
     car_name = f"{car_info.get('brand', '')} {car_info.get('model', '')} ({car_info.get('plate', '')})" if car_info else "-"
+
+    is_rental_receipt = str(receipt_no or "").upper().startswith("REC") or "ค่าเช่า" in str(item_desc or "")
+    del_mode = str(booking_info.get("delivery_mode") or "branch").strip().lower()
+    pic_mode = str(booking_info.get("pickup_mode") or "branch").strip().lower()
+    del_fee = 0.0 if (del_mode == "branch" and "delivery_mode" in booking_info) else max(0.0, _to_amount(booking_info.get("delivery_fee")))
+    pic_fee = 0.0 if (pic_mode == "branch" and "pickup_mode" in booking_info) else max(0.0, _to_amount(booking_info.get("pickup_fee")))
+    fees_total = round(del_fee + pic_fee, 2)
+    total_amt = float(amount or 0.0)
     
     data = [
         ["Receipt No. (เลขที่ใบเสร็จ):", receipt_no],
@@ -470,16 +723,40 @@ def generate_receipt_bytes(receipt_no, booking_info, customer_info, car_info, am
         ["Customer Name (ชื่อลูกค้า):", c_name],
         ["Vehicle (รถยนต์):", car_name],
         ["Description (รายการ):", item_desc],
-        ["Payment Method (ช่องทางชำระ):", method]
     ]
+    if is_rental_receipt and fees_total > 0:
+        rental_only = max(0.0, total_amt - fees_total)
+        disc_val = max(0.0, _to_amount(booking_info.get("discount")))
+        base_val = _to_amount(booking_info.get("base_price"))
+        if base_val > 0 and disc_val > 0:
+            data.append(["  • ค่าเช่ารถยนต์ (Base Rental Fee):", f"THB {base_val:,.2f}"])
+            data.append(["  • ส่วนลด (Discount):", f"-THB {disc_val:,.2f}"])
+        else:
+            data.append(["  • ค่าเช่ารถยนต์สุทธิ (Net Vehicle Rental):", f"THB {rental_only:,.2f}"])
+        if del_fee > 0:
+            loc_del = str(booking_info.get("loc_delivery") or "").strip()
+            del_val = f"THB {del_fee:,.2f}" + (f" ({loc_del})" if loc_del and loc_del != "-" else "")
+            data.append(["  • ค่าส่งรถนอกสถานที่ (Delivery Fee):", del_val])
+        if pic_fee > 0:
+            loc_ret = str(booking_info.get("loc_return") or "").strip()
+            pic_val = f"THB {pic_fee:,.2f}" + (f" ({loc_ret})" if loc_ret and loc_ret != "-" else "")
+            data.append(["  • ค่ารับรถคืนนอกสถานที่ (Pickup Fee):", pic_val])
+
+    data.append(["Payment Method (ช่องทางชำระ):", method])
     if ref_no:
         data.append(["Slip / Ref No. (เลขอ้างอิงสลิป/รายการ):", str(ref_no)])
-    data.append(["Amount Received (ยอดเงินที่รับชำระ):", f"THB {float(amount):,.2f}"])
-    t = Table(data, colWidths=[200, 300])
+    if booking_info.get("received_by"):
+        data.append(["Received By (ผู้รับเงิน):", str(booking_info.get("received_by"))])
+    data.append(["Amount Received (ยอดเงินที่รับชำระรวม):", f"THB {total_amt:,.2f}"])
+    cell_lbl_style = ParagraphStyle('ReceiptLbl', parent=styles['Normal'], fontName=FONT_BOLD, fontSize=10, leading=13.5, textColor=colors.HexColor('#2D2D2D'))
+    cell_val_style = ParagraphStyle('ReceiptVal', parent=styles['Normal'], fontName=FONT_REGULAR, fontSize=10, leading=13.5, textColor=colors.HexColor('#2D2D2D'))
+    wrapped_data = [[Paragraph(str(r[0]), cell_lbl_style), Paragraph(str(r[1]), cell_val_style)] for r in data]
+    t = Table(wrapped_data, colWidths=[215, 285])
     t.setStyle(TableStyle([
         ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#FFFFFF')),
         ('TEXTCOLOR', (0,0), (-1,-1), colors.HexColor('#2D2D2D')),
         ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#E0D5C7')),
+        ('VALIGN', (0,0), (-1,-1), 'TOP'),
         ('FONTNAME', (0,0), (-1,-1), FONT_REGULAR),
         ('FONTSIZE', (0,0), (-1,-1), 10),
         ('BOTTOMPADDING', (0,0), (-1,-1), 8),

@@ -14,6 +14,7 @@ from fastapi.responses import HTMLResponse, StreamingResponse
 from db import store, get_db_client, to_date
 from dependencies import now_th, normalize_plate, require_auth
 from services.finance_service import compute_monthly_expenses, normalize_payment_channel
+from services.booking_service import compute_fees
 
 router = APIRouter(tags=["finance"])
 
@@ -326,7 +327,8 @@ def get_finance_summary(month: Optional[str] = None, start_date: Optional[str] =
 
         rent_paid = b.get("rental_paid") or b.get("is_fully_paid") or b.get("status") in ["เสร็จสิ้น", "กำลังเช่า", "รอส่งมอบ", "รอรับคืน"]
         rent_amt = float(b.get("net_price") or b.get("rental_rate") or 0.0)
-        base_rent_amt = max(0.0, rent_amt - ext_total_in_net)
+        fees_amt = compute_fees(b)
+        base_rent_amt = max(0.0, rent_amt - ext_total_in_net - fees_amt)
         if base_rent_amt > 0 and rent_paid:
             r_date = b.get("rental_payment_date") or str(b.get("start_date") or "")
             r_date_clean = str(to_date(r_date) or r_date or "").strip()
@@ -341,11 +343,34 @@ def get_finance_summary(month: Optional[str] = None, start_date: Optional[str] =
                 "date": r_date_clean,
                 "month": r_date_clean[:7],
                 "car_id": b.get("car_id", "-"),
-                "customer": b.get("customer_name", "-"),
+                "customer": b.get("customer") or b.get("customer_name", "-"),
                 "category": "ค่าเช่ารถ",
                 "payment_method": r_method,
                 "amount": base_rent_amt,
                 "note": f"ค่าเช่ารถ {b.get('car_id', '')}"
+            })
+
+        if fees_amt > 0 and rent_paid:
+            f_date = b.get("rental_payment_date") or str(b.get("start_date") or "")
+            f_date_clean = str(to_date(f_date) or f_date or "").strip()
+            if not f_date_clean or len(f_date_clean) < 10:
+                f_date_clean = now_th().date().isoformat()
+            f_method = normalize_payment_channel(b.get("rental_payment_method") or b.get("deposit_method") or "โอนเงิน / สแกน QR")
+            fee_key = f"fee_{bid}"
+            seen_refs.add(fee_key)
+            del_f = float(b.get("delivery_fee") or 0.0)
+            pic_f = float(b.get("pickup_fee") or 0.0)
+            tx_list.append({
+                "id": fee_key,
+                "ref": bid,
+                "date": f_date_clean,
+                "month": f_date_clean[:7],
+                "car_id": b.get("car_id", "-"),
+                "customer": b.get("customer") or b.get("customer_name", "-"),
+                "category": "ค่ารับ-ส่งรถ",
+                "payment_method": f_method,
+                "amount": fees_amt,
+                "note": f"ค่ารับ-ส่งนอกสถานที่ {b.get('car_id', '')} (ส่ง ฿{del_f:,.0f} / รับคืน ฿{pic_f:,.0f})"
             })
 
         for idx, ext in enumerate(ext_list):
@@ -379,9 +404,11 @@ def get_finance_summary(month: Optional[str] = None, start_date: Optional[str] =
         tx_key = f"rent_{cbid}"
         if tx_key not in seen_refs:
             c_amt = float(cj.get("net_price") or cj.get("rental_rate") or 0.0)
-            if c_amt > 0:
-                c_date = str(to_date(cj.get("completed_date") or cj.get("end_date") or cj.get("start_date") or "") or now_th().date().isoformat())
-                c_method = normalize_payment_channel(cj.get("rental_payment_method") or cj.get("deposit_method") or "โอนเงิน / สแกน QR")
+            c_fees = compute_fees(cj)
+            c_rent_only = max(0.0, c_amt - c_fees)
+            c_date = str(to_date(cj.get("completed_date") or cj.get("end_date") or cj.get("start_date") or "") or now_th().date().isoformat())
+            c_method = normalize_payment_channel(cj.get("rental_payment_method") or cj.get("deposit_method") or "โอนเงิน / สแกน QR")
+            if c_rent_only > 0:
                 seen_refs.add(tx_key)
                 tx_list.append({
                     "id": tx_key,
@@ -389,21 +416,44 @@ def get_finance_summary(month: Optional[str] = None, start_date: Optional[str] =
                     "date": c_date,
                     "month": c_date[:7],
                     "car_id": cj.get("car_id", "-"),
-                    "customer": cj.get("customer_name", "-"),
+                    "customer": cj.get("customer") or cj.get("customer_name", "-"),
                     "category": "ค่าเช่ารถ",
                     "payment_method": c_method,
-                    "amount": c_amt,
+                    "amount": c_rent_only,
                     "note": f"งานเสร็จสิ้น {cj.get('car_id', '')}"
+                })
+            if c_fees > 0 and f"fee_{cbid}" not in seen_refs:
+                seen_refs.add(f"fee_{cbid}")
+                tx_list.append({
+                    "id": f"fee_{cbid}",
+                    "ref": cbid,
+                    "date": c_date,
+                    "month": c_date[:7],
+                    "car_id": cj.get("car_id", "-"),
+                    "customer": cj.get("customer") or cj.get("customer_name", "-"),
+                    "category": "ค่ารับ-ส่งรถ",
+                    "payment_method": c_method,
+                    "amount": c_fees,
+                    "note": f"ค่ารับ-ส่งนอกสถานที่ {cj.get('car_id', '')}"
                 })
 
     for f in store.financial_records:
-        if f.get("type") in ["รายรับ", "Income", "income"]:
-            f_ref = f.get("ref_id") or f.get("ref", "")
-            if not f_ref or (f"rent_{f_ref}" not in seen_refs and f"dep_{f_ref}" not in seen_refs and f"ext_{f_ref}" not in seen_refs):
+        f_type = str(f.get("type") or "").strip()
+        f_cat = str(f.get("category") or "").strip()
+        f_det = str(f.get("detail") or f.get("description") or "").strip()
+        f_ref = f.get("ref_id") or f.get("ref", "")
+        if f_type in ["รายรับ", "Income", "income"]:
+            if not f_ref or (
+                f"rent_{f_ref}" not in seen_refs
+                and f"dep_{f_ref}" not in seen_refs
+                and f"ext_{f_ref}" not in seen_refs
+                and f"fee_{f_ref}" not in seen_refs
+            ):
                 f_amt = float(f.get("amount") or 0.0)
                 if f_amt > 0:
-                    f_date = str(to_date(f.get("date")) or f.get("date") or now_th().date().isoformat())
-                    f_method = normalize_payment_channel(f.get("detail", "") or f.get("category", ""))
+                    f_date = str(to_date(f.get("date")) or f.get("date") or now_th().date().isoformat())[:10]
+                    f_method = normalize_payment_channel(f.get("payment_method") or f_det or f_cat)
+                    norm_cat = "ค่ารับ-ส่งรถ" if "ค่ารับ-ส่ง" in f_cat else (f_cat or "รายรับอื่นๆ")
                     tx_list.append({
                         "id": f"fin_{len(tx_list)}",
                         "ref": f_ref or "-",
@@ -411,10 +461,31 @@ def get_finance_summary(month: Optional[str] = None, start_date: Optional[str] =
                         "month": f_date[:7],
                         "car_id": "-",
                         "customer": "-",
-                        "category": f.get("category", "รายรับอื่นๆ"),
+                        "category": norm_cat,
                         "payment_method": f_method,
                         "amount": f_amt,
-                        "note": f.get("detail", "")
+                        "note": f_det
+                    })
+        elif f_type in ["รายจ่าย", "Expense", "expense"]:
+            is_fee_refund = ("คืนค่ารับ-ส่ง" in f_cat) or ("คืนค่ารับ-ส่ง" in f_det)
+            is_dep_refund = ("คืนเงินมัดจำ" in f_cat) or ("คืนมัดจำ" in f_cat) or ("คืนเงินมัดจำ" in f_det) or ("คืนมัดจำ" in f_det)
+            if is_fee_refund or is_dep_refund:
+                f_amt = abs(float(f.get("amount") or 0.0))
+                if f_amt > 0:
+                    f_date = str(to_date(f.get("date")) or f.get("date") or now_th().date().isoformat())[:10]
+                    f_method = normalize_payment_channel(f.get("payment_method") or f_det or "โอนเงิน / สแกน QR")
+                    ref_cat = "คืนค่ารับ-ส่ง" if is_fee_refund else "คืนเงินมัดจำประกันสัญญา"
+                    tx_list.append({
+                        "id": f"refund_{len(tx_list)}",
+                        "ref": f_ref or "-",
+                        "date": f_date,
+                        "month": f_date[:7],
+                        "car_id": "-",
+                        "customer": "-",
+                        "category": ref_cat,
+                        "payment_method": f_method,
+                        "amount": -f_amt,
+                        "note": f_det or ref_cat
                     })
 
     if month:
@@ -430,14 +501,37 @@ def get_finance_summary(month: Optional[str] = None, start_date: Optional[str] =
 
     all_methods = ["โอนเงิน / สแกน QR", "เงินสด", "บัตรเครดิต", "PayPal", "ชำระวันคืนรถ"]
     method_totals = {m: 0.0 for m in all_methods}
+    category_totals = {
+        "ค่าเช่ารถ": 0.0,
+        "ค่ารับ-ส่งรถ": 0.0,
+        "ค่าต่อสัญญา": 0.0,
+        "เงินมัดจำ": 0.0,
+        "คืนค่ารับ-ส่ง": 0.0,
+        "คืนเงินมัดจำประกันสัญญา": 0.0,
+        "รายรับอื่นๆ": 0.0,
+    }
+    gross_rev = 0.0
     total_rev = 0.0
     for t in tx_list:
         m = t["payment_method"]
         if m not in method_totals:
             m = "โอนเงิน / สแกน QR"
         amt = float(t["amount"])
+        cat = str(t.get("category") or "รายรับอื่นๆ")
         method_totals[m] += amt
         total_rev += amt
+        if amt > 0:
+            gross_rev += amt
+            if cat in category_totals:
+                category_totals[cat] += amt
+            else:
+                category_totals["รายรับอื่นๆ"] += amt
+        elif amt < 0:
+            if cat in category_totals:
+                category_totals[cat] += abs(amt)
+
+    delivery_fee_net = round(max(0.0, category_totals["ค่ารับ-ส่งรถ"] - category_totals["คืนค่ารับ-ส่ง"]), 2)
+    deposit_held_net = round(max(0.0, category_totals["เงินมัดจำ"] - category_totals["คืนเงินมัดจำประกันสัญญา"]), 2)
 
     daily_map = {}
     for t in tx_list:
@@ -447,12 +541,25 @@ def get_finance_summary(month: Optional[str] = None, start_date: Optional[str] =
                 "date": d,
                 "month": d[:7],
                 "total": 0.0,
+                "delivery_fee_total": 0.0,
+                "refund_total": 0.0,
                 "by_method": {m: 0.0 for m in all_methods},
+                "by_category": {},
                 "count": 0,
                 "records": []
             }
-        daily_map[d]["total"] += float(t["amount"])
-        daily_map[d]["by_method"][t["payment_method"]] += float(t["amount"])
+        amt = float(t["amount"])
+        cat = str(t.get("category") or "รายรับอื่นๆ")
+        daily_map[d]["total"] += amt
+        daily_map[d]["by_method"][t["payment_method"]] += amt
+        daily_map[d]["by_category"][cat] = round(daily_map[d]["by_category"].get(cat, 0.0) + amt, 2)
+        if cat == "ค่ารับ-ส่งรถ":
+            daily_map[d]["delivery_fee_total"] = round(daily_map[d]["delivery_fee_total"] + amt, 2)
+        elif cat == "คืนค่ารับ-ส่ง":
+            daily_map[d]["delivery_fee_total"] = round(daily_map[d]["delivery_fee_total"] + amt, 2)
+            daily_map[d]["refund_total"] = round(daily_map[d]["refund_total"] + abs(amt), 2)
+        elif amt < 0:
+            daily_map[d]["refund_total"] = round(daily_map[d]["refund_total"] + abs(amt), 2)
         daily_map[d]["count"] += 1
         daily_map[d]["records"].append(t)
 
@@ -466,11 +573,24 @@ def get_finance_summary(month: Optional[str] = None, start_date: Optional[str] =
             monthly_map[mo] = {
                 "month": mo,
                 "total": 0.0,
+                "delivery_fee_total": 0.0,
+                "refund_total": 0.0,
                 "by_method": {m: 0.0 for m in all_methods},
+                "by_category": {},
                 "count": 0
             }
-        monthly_map[mo]["total"] += float(t["amount"])
-        monthly_map[mo]["by_method"][t["payment_method"]] += float(t["amount"])
+        amt = float(t["amount"])
+        cat = str(t.get("category") or "รายรับอื่นๆ")
+        monthly_map[mo]["total"] += amt
+        monthly_map[mo]["by_method"][t["payment_method"]] += amt
+        monthly_map[mo]["by_category"][cat] = round(monthly_map[mo]["by_category"].get(cat, 0.0) + amt, 2)
+        if cat == "ค่ารับ-ส่งรถ":
+            monthly_map[mo]["delivery_fee_total"] = round(monthly_map[mo]["delivery_fee_total"] + amt, 2)
+        elif cat == "คืนค่ารับ-ส่ง":
+            monthly_map[mo]["delivery_fee_total"] = round(monthly_map[mo]["delivery_fee_total"] + amt, 2)
+            monthly_map[mo]["refund_total"] = round(monthly_map[mo]["refund_total"] + abs(amt), 2)
+        elif amt < 0:
+            monthly_map[mo]["refund_total"] = round(monthly_map[mo]["refund_total"] + abs(amt), 2)
         monthly_map[mo]["count"] += 1
 
     monthly_list = list(monthly_map.values())
@@ -479,7 +599,11 @@ def get_finance_summary(month: Optional[str] = None, start_date: Optional[str] =
     return {
         "success": True,
         "total_revenue": round(total_rev, 2),
+        "gross_revenue": round(gross_rev, 2),
+        "delivery_pickup_revenue": delivery_fee_net,
+        "deposit_held_net": deposit_held_net,
         "by_method": {m: round(amt, 2) for m, amt in method_totals.items()},
+        "by_category": {c: round(amt, 2) for c, amt in category_totals.items()},
         "daily": daily_list,
         "monthly": monthly_list,
         "total_transactions": len(tx_list)

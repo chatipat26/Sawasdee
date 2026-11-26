@@ -102,16 +102,22 @@ def build_line_command_reply(raw_text: str, user_obj: Dict[str, Any]) -> Optiona
         if dispatch_today:
             lines.append("\n🚚 คิวส่งมอบรถวันนี้:")
             for b in dispatch_today[:8]:
+                del_fee = float(b.get("delivery_fee") or 0.0)
+                is_off = str(b.get("delivery_mode") or "branch").lower() == "offsite" or del_fee > 0
+                off_badge = f" [🚚 ส่งนอกสถานที่ +฿{del_fee:,.0f}]" if is_off else ""
                 lines.append(
                     f"- {b.get('booking_id')} | {b.get('car_id')} ({b.get('customer')}) "
-                    f"เวลา {b.get('start_time') or '10:00'} @ {b.get('loc_delivery') or '-'}"
+                    f"เวลา {b.get('start_time') or '10:00'} @ {b.get('loc_delivery') or '-'}{off_badge}"
                 )
         if return_today:
             lines.append("\n🏁 คิวรับรถคืนวันนี้:")
             for b in return_today[:8]:
+                pic_fee = float(b.get("pickup_fee") or 0.0)
+                is_off = str(b.get("pickup_mode") or "branch").lower() == "offsite" or pic_fee > 0
+                off_badge = f" [🚚 รับคืนนอกสถานที่ +฿{pic_fee:,.0f}]" if is_off else ""
                 lines.append(
                     f"- {b.get('booking_id')} | {b.get('car_id')} ({b.get('customer')}) "
-                    f"เวลา {b.get('end_time') or '10:00'} @ {b.get('loc_return') or '-'}"
+                    f"เวลา {b.get('end_time') or '10:00'} @ {b.get('loc_return') or '-'}{off_badge}"
                 )
         if maint_today:
             lines.append("\n🛠️ งานซ่อม/เช็กระยะวันนี้:")
@@ -134,9 +140,12 @@ def build_line_command_reply(raw_text: str, user_obj: Dict[str, Any]) -> Optiona
             lines.append("✨ ไม่มีคิวรอส่งมอบรถค้างอยู่ครับ")
         for b in queue[:10]:
             s_dmy = format_date_dmy(b.get("start_date")) or "-"
+            del_fee = float(b.get("delivery_fee") or 0.0)
+            is_off = str(b.get("delivery_mode") or "branch").lower() == "offsite" or del_fee > 0
+            off_badge = f" [🚚 ส่งนอกสถานที่ +฿{del_fee:,.0f}]" if is_off else ""
             lines.append(
                 f"• {b.get('booking_id')} | {b.get('car_id')} ({b.get('customer')})\n"
-                f"  นัด {s_dmy} {b.get('start_time') or '10:00'} @ {b.get('loc_delivery') or '-'} "
+                f"  นัด {s_dmy} {b.get('start_time') or '10:00'} @ {b.get('loc_delivery') or '-'}{off_badge} "
                 f"[{b.get('worker_delivery') or 'รอมอบหมาย'}]"
             )
         return "\n".join(lines)
@@ -193,9 +202,16 @@ def build_line_command_reply(raw_text: str, user_obj: Dict[str, Any]) -> Optiona
         f"• ภาษีหมด: {format_date_dmy(tax_exp) or tax_exp or '-'} | ประกันหมด: {format_date_dmy(ins_exp) or ins_exp or '-'}",
     ]
     if active_bk:
+        del_fee = float(active_bk.get("delivery_fee") or 0.0)
+        pic_fee = float(active_bk.get("pickup_fee") or 0.0)
+        is_del_off = str(active_bk.get("delivery_mode") or "branch").lower() == "offsite" or del_fee > 0
+        is_pic_off = str(active_bk.get("pickup_mode") or "branch").lower() == "offsite" or pic_fee > 0
+        loc_info = f"  📍 ส่งรถ: {active_bk.get('loc_delivery') or '-'}" + (f" [🚚 นอกสถานที่ ฿{del_fee:,.0f}]" if is_del_off else "")
+        ret_info = f"  🏁 รับคืน: {active_bk.get('loc_return') or '-'}" + (f" [🚚 นอกสถานที่ ฿{pic_fee:,.0f}]" if is_pic_off else "")
         lines.append(
             f"📌 การจองปัจจุบัน: {active_bk.get('booking_id')} ({active_bk.get('status')})\n"
-            f"  ผู้เช่า: {active_bk.get('customer')} | {format_date_dmy(active_bk.get('start_date'))} ถึง {format_date_dmy(active_bk.get('end_date'))}"
+            f"  ผู้เช่า: {active_bk.get('customer')} | {format_date_dmy(active_bk.get('start_date'))} ถึง {format_date_dmy(active_bk.get('end_date'))}\n"
+            f"{loc_info}\n{ret_info}"
         )
     else:
         lines.append("📌 การจองปัจจุบัน: ไม่มีคิวเช่าที่ใช้งานอยู่")

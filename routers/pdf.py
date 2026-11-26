@@ -14,7 +14,7 @@ import pdf_engine
 from db import store, format_date_dmy
 from dependencies import static_dir, verify_booking_portal_token
 from services.google_drive_service import async_upload_pdf_to_drive
-from services.booking_service import _resolve_cust_and_car
+from services.booking_service import _resolve_cust_and_car, compute_remaining_rental
 
 router = APIRouter(tags=["pdf"])
 
@@ -50,7 +50,7 @@ def get_contract_pdf(bk_id: str, download: int = 0):
 
     cust, car = _resolve_cust_and_car(target)
     try:
-        pdf_bytes = pdf_engine.generate_filled_pdf("rental_template_blank_v2.pdf", target, cust, car)
+        pdf_bytes = pdf_engine.generate_filled_pdf(pdf_engine.CONTRACT_TEMPLATE_V4, target, cust, car)
     except Exception as e:
         print(f"PDF Error: {str(e)}")
         import traceback
@@ -135,8 +135,13 @@ def get_deposit_receipt_pdf(bk_id: str):
     amt = float(target.get("deposit_amount", 5000.0))
     method = target.get("deposit_method", "เงินสด")
     ref_no = target.get("deposit_ref")
+    dep_desc = (
+        "เงินประกันสัญญา (ขอคืนได้) / Security Deposit (Refundable)"
+        if int(target.get("pricing_version") or 1) >= 2
+        else "เงินมัดจำประกันสัญญา (Security Deposit)"
+    )
 
-    pdf_bytes = pdf_engine.generate_receipt_bytes(f"DEP{bk_id}", target, cust, car, amt, method, "เงินมัดจำประกันสัญญา (Security Deposit)", ref_no=ref_no)
+    pdf_bytes = pdf_engine.generate_receipt_bytes(f"DEP{bk_id}", target, cust, car, amt, method, dep_desc, ref_no=ref_no)
 
     # Isolated Feature: Auto-upload Deposit Receipt PDF to Google Drive in background thread
     try:
@@ -296,15 +301,17 @@ def get_customer_booking_portal(token: str):
     loc_ret = str(target.get("loc_return") or "-")
 
     net_price = float(target.get("net_price") or 0.0)
+    del_fee = float(target.get("delivery_fee") or 0.0)
+    pic_fee = float(target.get("pickup_fee") or 0.0)
+    fees_total = del_fee + pic_fee
     dep_amount = float(target.get("deposit_amount") or 5000.0)
     dep_paid = bool(target.get("deposit_paid"))
     rent_paid = bool(target.get("rental_paid") or target.get("is_fully_paid"))
-    if rent_paid:
-        rem_rental = 0.0
-    elif dep_paid:
-        rem_rental = max(0.0, net_price - dep_amount)
-    else:
-        rem_rental = float(target.get("remaining_rental") if target.get("remaining_rental") is not None else net_price)
+    rem_rental = compute_remaining_rental(target)
+    fees_note_html = (
+        f'<div style="font-size:12px; color:#475569; margin-top:3px;">🚚 รวมค่ารับ-ส่งนอกสถานที่ ฿{fees_total:,.2f}</div>'
+        if fees_total > 0 else ""
+    )
 
     dep_badge = (
         '<span class="pill pill-ok">✅ ชำระมัดจำแล้ว</span>'
@@ -448,6 +455,7 @@ def get_customer_booking_portal(token: str):
         <div class="kv-box">
           <div class="kv-lbl">ยอดค่าเช่าสุทธิ (Net Rental)</div>
           <div class="kv-val" style="color:#1E3A8A;">฿{net_price:,.2f}</div>
+          {fees_note_html}
           <div style="margin-top:6px;">{rent_badge}</div>
         </div>
         <div class="kv-box">

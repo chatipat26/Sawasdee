@@ -314,26 +314,47 @@ def compute_dashboard_statistics() -> Dict[str, Any]:
         "maintenance": maint_count
     }
 
-    # Real-time revenue calculation from jobs and bookings
+    # Real-time revenue calculation from jobs and bookings (including off-site delivery/pickup breakdown)
+    from services.booking_service import compute_fees
     total_rev = 0.0
+    delivery_pickup_rev = 0.0
     seen_bids = set()
     for cj in getattr(store, "completed_jobs", []):
         bid = cj.get("booking_id")
         if bid:
             seen_bids.add(bid)
         total_rev += float(cj.get("net_price") or 0.0) + float(cj.get("late_fee") or 0.0)
+        delivery_pickup_rev += compute_fees(cj)
 
     for b in all_bookings:
         bid = b.get("booking_id")
         if bid and bid not in seen_bids:
             if b.get("rental_paid") or b.get("is_fully_paid") or str(b.get("status")) in ["กำลังเช่า", "รอรับคืน", "เสร็จสิ้น"]:
                 total_rev += float(b.get("net_price") or b.get("rental_rate") or 0.0)
+                delivery_pickup_rev += compute_fees(b)
                 seen_bids.add(bid)
+
+    fee_refund_total = 0.0
+    deposit_refund_total = 0.0
+    for f in getattr(store, "financial_records", []):
+        f_type = str(f.get("type", "")).strip()
+        f_cat = str(f.get("category", "")).strip()
+        f_det = str(f.get("detail", "") or f.get("description", "")).strip()
+        f_amt = float(f.get("amount", 0) or 0)
+        if f_type in ["รายจ่าย", "Expense", "expense"]:
+            if "คืนค่ารับ-ส่ง" in f_cat or "คืนค่ารับ-ส่ง" in f_det:
+                fee_refund_total += abs(f_amt)
+            elif "คืนเงินมัดจำ" in f_cat or "คืนมัดจำ" in f_cat or "คืนเงินมัดจำ" in f_det or "คืนมัดจำ" in f_det:
+                deposit_refund_total += abs(f_amt)
 
     if total_rev == 0.0:
         for f in getattr(store, "financial_records", []):
             if f.get("type") in ["รายรับ", "income", "Income"] or str(f.get("type", "")).strip().lower() in ["รายรับ", "income"]:
                 total_rev += float(f.get("amount", 0) or 0)
+                if "ค่ารับ-ส่ง" in str(f.get("category", "")):
+                    delivery_pickup_rev += float(f.get("amount", 0) or 0)
+
+    delivery_pickup_rev = max(0.0, delivery_pickup_rev - fee_refund_total)
 
     # Monthly revenue trend (past 6 months)
     th_months = ["", "ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."]
@@ -391,6 +412,9 @@ def compute_dashboard_statistics() -> Dict[str, Any]:
         "active_rentals": active_rentals,
         "utilization_rate": utilization_rate,
         "total_revenue": round(total_rev, 2),
+        "delivery_pickup_revenue": round(delivery_pickup_rev, 2),
+        "delivery_fee_refunds": round(fee_refund_total, 2),
+        "deposit_refunds": round(deposit_refund_total, 2),
         "total_cars": total_fleet,
         "available_cars": avail_count,
         "rented_cars": on_rent_count,

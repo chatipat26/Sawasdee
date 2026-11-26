@@ -592,6 +592,38 @@ class DataStore:
                                     b_copy["deposit_method"] = item["deposit_method"]
                                 if item.get("deposit_date") and not b_copy.get("deposit_date"):
                                     b_copy["deposit_date"] = item["deposit_date"]
+                                if item.get("rental_payment_date") and not b_copy.get("rental_payment_date"):
+                                    b_copy["rental_payment_date"] = item["rental_payment_date"]
+                                if item.get("received_by") and not b_copy.get("received_by"):
+                                    b_copy["received_by"] = item["received_by"]
+                                if item.get("deposit_waived") is not None and b_copy.get("deposit_waived") is None:
+                                    b_copy["deposit_waived"] = bool(item["deposit_waived"])
+                                if item.get("pricing_version") is not None and not b_copy.get("pricing_version"):
+                                    b_copy["pricing_version"] = int(item["pricing_version"])
+                                if item.get("delivery_mode") and not b_copy.get("delivery_mode"):
+                                    b_copy["delivery_mode"] = item["delivery_mode"]
+                                if item.get("pickup_mode") and not b_copy.get("pickup_mode"):
+                                    b_copy["pickup_mode"] = item["pickup_mode"]
+                                if item.get("delivery_fee") is not None and not b_copy.get("delivery_fee"):
+                                    b_copy["delivery_fee"] = float(item["delivery_fee"] or 0.0)
+                                if item.get("pickup_fee") is not None and not b_copy.get("pickup_fee"):
+                                    b_copy["pickup_fee"] = float(item["pickup_fee"] or 0.0)
+                                if item.get("fees_paid_amount") is not None and not b_copy.get("fees_paid_amount"):
+                                    b_copy["fees_paid_amount"] = float(item["fees_paid_amount"] or 0.0)
+                                if item.get("delivery_zone") and not b_copy.get("delivery_zone"):
+                                    b_copy["delivery_zone"] = item["delivery_zone"]
+                                if item.get("pickup_zone") and not b_copy.get("pickup_zone"):
+                                    b_copy["pickup_zone"] = item["pickup_zone"]
+                                if item.get("delivery_map_url") and not b_copy.get("delivery_map_url"):
+                                    b_copy["delivery_map_url"] = item["delivery_map_url"]
+                                if item.get("pickup_map_url") and not b_copy.get("pickup_map_url"):
+                                    b_copy["pickup_map_url"] = item["pickup_map_url"]
+                                if item.get("driver2_name") and not b_copy.get("driver2_name"):
+                                    b_copy["driver2_name"] = item["driver2_name"]
+                                if item.get("driver2_licence") and not b_copy.get("driver2_licence"):
+                                    b_copy["driver2_licence"] = item["driver2_licence"]
+                                if item.get("driver2_dob") and not b_copy.get("driver2_dob"):
+                                    b_copy["driver2_dob"] = item["driver2_dob"]
                                 if item.get("payment_type") and not b_copy.get("payment_type"):
                                     b_copy["payment_type"] = item["payment_type"]
                                 if item.get("google_drive_link") and not b_copy.get("google_drive_link"):
@@ -618,15 +650,9 @@ class DataStore:
                         if b_copy.get("rental_slip") and not b_copy.get("remaining_slip_link"):
                             b_copy["remaining_slip_link"] = b_copy["rental_slip"]
                         
-                        # TARGET MISSION 3: Safe balance calculation (net_price - deposit_amount)
-                        if b_copy.get("rental_paid"):
-                            b_copy["remaining_rental"] = 0.0
-                        elif b_copy.get("deposit_paid"):
-                            np_val = float(b_copy.get("net_price") or 0.0)
-                            dep_val = float(b_copy.get("deposit_amount") or 5000.0)
-                            cur_rem = float(b_copy.get("remaining_rental") or 0.0)
-                            if (cur_rem >= np_val and np_val > 0) or b_copy.get("remaining_rental") is None:
-                                b_copy["remaining_rental"] = max(0.0, np_val - dep_val)
+                        # Single source of truth for balance calculation (v1 legacy vs v2 refundable deposit)
+                        from services.booking_service import compute_remaining_rental
+                        b_copy["remaining_rental"] = compute_remaining_rental(b_copy)
 
                         fresh_b.append(b_copy)
                     with self.lock:
@@ -960,7 +986,23 @@ class DataStore:
                     "remaining_slip_link": row.get("remaining_slip_link", "") or row.get("rental_slip", ""),
                     "payment_slip_url": row.get("payment_slip_url", "") or row.get("deposit_slip", ""),
                     "deposit_method": row.get("deposit_method", ""),
-                    "deposit_date": row.get("deposit_date", ""),
+                    "deposit_date": str(row.get("deposit_date") or ""),
+                    "rental_payment_date": str(row.get("rental_payment_date") or ""),
+                    "received_by": row.get("received_by", ""),
+                    "deposit_waived": bool(row.get("deposit_waived", False)),
+                    "pricing_version": int(row.get("pricing_version") or 1),
+                    "delivery_mode": row.get("delivery_mode", "branch"),
+                    "pickup_mode": row.get("pickup_mode", "branch"),
+                    "delivery_fee": float(row.get("delivery_fee") or 0.0),
+                    "pickup_fee": float(row.get("pickup_fee") or 0.0),
+                    "fees_paid_amount": float(row.get("fees_paid_amount") or 0.0),
+                    "delivery_zone": row.get("delivery_zone") or "",
+                    "pickup_zone": row.get("pickup_zone") or "",
+                    "delivery_map_url": row.get("delivery_map_url") or "",
+                    "pickup_map_url": row.get("pickup_map_url") or "",
+                    "driver2_name": row.get("driver2_name") or "",
+                    "driver2_licence": row.get("driver2_licence") or "",
+                    "driver2_dob": str(row.get("driver2_dob") or ""),
                     "payment_type": row.get("payment_type", ""),
                     "google_drive_link": row.get("google_drive_link", ""),
                     "contract_issued": bool(row.get("contract_issued", False))
@@ -1005,8 +1047,16 @@ class DataStore:
                     'loc_return', 'extension_history', 'is_fully_paid', 'rental_payment_method',
                     'payment_type', 'google_drive_link', 'payment_slip_url', 'remaining_slip_link',
                     'contract_pdf_url', 'checkout_pdf_url', 'checkin_pdf_url',
-                    'checkin_img_front', 'checkin_img_left', 'checkin_img_rear', 'checkin_img_right'
+                    'checkin_img_front', 'checkin_img_left', 'checkin_img_rear', 'checkin_img_right',
+                    'pricing_version', 'delivery_mode', 'pickup_mode', 'delivery_fee', 'pickup_fee',
+                    'fees_paid_amount', 'delivery_zone', 'pickup_zone', 'delivery_map_url', 'pickup_map_url',
+                    'received_by', 'rental_payment_date', 'deposit_date', 'deposit_waived',
+                    'driver2_name', 'driver2_licence', 'driver2_dob'
                 }
+                if "rental_payment_date" in row:
+                    row["rental_payment_date"] = str(row["rental_payment_date"]).strip() if row["rental_payment_date"] else None
+                if "deposit_date" in row:
+                    row["deposit_date"] = str(row["deposit_date"]).strip() if row["deposit_date"] else None
                 row["is_fully_paid"] = bool(row.get("is_fully_paid", False) or row.get("rental_paid", False))
                 if "payment_slip_url" in row:
                     row["payment_slip_url"] = str(row["payment_slip_url"]).strip() if row["payment_slip_url"] else None
@@ -1291,12 +1341,25 @@ class DataStore:
                     'booking_id', 'car_id', 'customer', 'start_date', 'end_date',
                     'completed_date', 'base_price', 'discount', 'net_price', 'fuel_level',
                     'inspection_notes', 'inspection_photos', 'mileage', 'worker_delivery',
-                    'worker_return', 'status', 'contract_type'
+                    'worker_return', 'status', 'contract_type',
+                    'pricing_version', 'delivery_mode', 'pickup_mode', 'delivery_fee', 'pickup_fee',
+                    'fees_paid_amount', 'delivery_zone', 'pickup_zone', 'delivery_map_url', 'pickup_map_url',
+                    'received_by', 'rental_payment_date', 'deposit_date', 'deposit_waived', 'data'
                 }
                 row = {k: v for k, v in job_dict.items() if k in VALID_CJ_COLS}
                 if "start_date" in row and row["start_date"]: row["start_date"] = str(row["start_date"])
                 if "end_date" in row and row["end_date"]: row["end_date"] = str(row["end_date"])
                 if "completed_date" in row and row["completed_date"]: row["completed_date"] = str(row["completed_date"])
+                if "rental_payment_date" in row and row["rental_payment_date"]: row["rental_payment_date"] = str(row["rental_payment_date"])
+                if "deposit_date" in row and row["deposit_date"]: row["deposit_date"] = str(row["deposit_date"])
+                if hasattr(sb, "run"):
+                    from psycopg import sql as _sql
+                    col_rows = sb.run([(_sql.SQL(
+                        "SELECT column_name FROM information_schema.columns "
+                        "WHERE table_schema = 'public' AND table_name = 'completed_jobs'"), [])])
+                    db_cols = {r["column_name"] for r in col_rows} or None
+                    if db_cols:
+                        row = {k: v for k, v in row.items() if k in db_cols}
                 sb.table("completed_jobs").upsert(row).execute()
             except Exception as e:
                 print(f"sb_sync_completed_job error: {e}")
@@ -1958,7 +2021,13 @@ class DataStore:
             b_comp = b_car.get("company", "Sawasdee Rent A Car")
             net_p = float(target.get("net_price", 0))
             car_id = target.get("car_id")
-            dep_amt = 5000.0 # STRICT RULE: Fixed 5,000 THB deposit for all bookings
+            dep_amt = 0.0 if target.get("deposit_waived") else float(target.get("deposit_amount") or 5000.0)
+            do_refund = bool(kwargs.get("refund_deposit", True))
+            refund_method = str(kwargs.get("refund_method") or "").strip()
+            refund_ref = str(kwargs.get("refund_ref") or "").strip()
+            refund_suffix = f" ({refund_method})" if refund_method else ""
+            if refund_ref:
+                refund_suffix += f" [Ref: {refund_ref}]"
             repair_cost = float(repair_cost or 0.0)
             pending_damage = float(target.get("pending_damage_cost") or 0.0)
             total_damage = repair_cost + pending_damage
@@ -1967,7 +2036,7 @@ class DataStore:
             # Branching logic: Branch A (normal) vs Branch B (needs repair or has deferred damage)
             if condition == "needs_repair" or total_damage > 0:
                 deducted = min(total_damage, dep_amt) if dep_amt > 0 else 0.0
-                refund_rem = max(0.0, dep_amt - deducted)
+                refund_rem = max(0.0, dep_amt - deducted) if do_refund else 0.0
                 target["needs_repair"] = bool(repair_cost > 0)
                 full_damage_desc = damage_desc
                 if pending_damage > 0:
@@ -1975,7 +2044,7 @@ class DataStore:
                     full_damage_desc = f"{damage_desc} {note_pending}".strip() if damage_desc else note_pending
                 target["damage_desc"] = full_damage_desc
                 target["repair_cost_deducted"] = deducted
-                target["deposit_refunded"] = True
+                target["deposit_refunded"] = bool(do_refund)
                 target["deposit_refund_amount"] = refund_rem
 
                 # Car transitions to Maintenance status if current vehicle has damage
@@ -2031,7 +2100,7 @@ class DataStore:
                     }
                     self.async_sync_financial(f_deduct)
 
-                if refund_rem > 0:
+                if refund_rem > 0 and do_refund:
                     f_ref_rem = {
                         "company": b_comp,
                         "type": "รายจ่าย",
@@ -2039,13 +2108,13 @@ class DataStore:
                         "amount": refund_rem,
                         "ref": booking_id,
                         "date": today_str,
-                        "detail": f"คืนมัดจำคงเหลือหลังหักค่าซ่อม {booking_id} ({car_id})"
+                        "detail": f"คืนมัดจำคงเหลือหลังหักค่าซ่อม {booking_id} ({car_id}){refund_suffix}"
                     }
                     self.async_sync_financial(f_ref_rem)
             else:
                 # Branch A: Normal condition -> refund full deposit & release car
-                target["deposit_refunded"] = True
-                target["deposit_refund_amount"] = dep_amt
+                target["deposit_refunded"] = bool(do_refund)
+                target["deposit_refund_amount"] = dep_amt if do_refund else 0.0
 
                 if car_id in self.cars:
                     has_queue = any(
@@ -2059,7 +2128,7 @@ class DataStore:
                         self.cars[car_id]["mileage"] = mileage
                     self.async_sync_car(car_id, self.cars[car_id])
 
-                if dep_amt > 0:
+                if dep_amt > 0 and do_refund:
                     f_refund = {
                         "company": b_comp,
                         "type": "รายจ่าย",
@@ -2067,7 +2136,7 @@ class DataStore:
                         "amount": dep_amt,
                         "ref": booking_id,
                         "date": today_str,
-                        "detail": f"คืนเงินมัดจำเต็มจำนวนหลังตรวจสภาพผ่าน {booking_id} ({car_id})"
+                        "detail": f"คืนเงินมัดจำเต็มจำนวนหลังตรวจสภาพผ่าน {booking_id} ({car_id}){refund_suffix}"
                     }
                     self.async_sync_financial(f_refund)
 
@@ -2097,6 +2166,20 @@ class DataStore:
                 "checkin_img_left": target.get("checkin_img_left"),
                 "checkin_img_rear": target.get("checkin_img_rear"),
                 "checkin_img_right": target.get("checkin_img_right"),
+                "pricing_version": int(target.get("pricing_version") or 1),
+                "delivery_mode": target.get("delivery_mode", "branch"),
+                "pickup_mode": target.get("pickup_mode", "branch"),
+                "delivery_fee": float(target.get("delivery_fee") or 0.0),
+                "pickup_fee": float(target.get("pickup_fee") or 0.0),
+                "fees_paid_amount": float(target.get("fees_paid_amount") or 0.0),
+                "delivery_zone": target.get("delivery_zone"),
+                "pickup_zone": target.get("pickup_zone"),
+                "delivery_map_url": target.get("delivery_map_url"),
+                "pickup_map_url": target.get("pickup_map_url"),
+                "received_by": target.get("received_by"),
+                "rental_payment_date": target.get("rental_payment_date"),
+                "deposit_date": target.get("deposit_date"),
+                "deposit_waived": bool(target.get("deposit_waived", False)),
                 "mileage": mileage or b_car.get("mileage", "-"),
                 "status": "เสร็จสิ้น"
             }
@@ -2106,22 +2189,38 @@ class DataStore:
 
             # Target Mission 2: Auto-log rental income to financial_records upon booking completion
             has_logged_income = any(
-                (f.get("ref") == booking_id and (f.get("category") == "ค่าเช่ารถ" or f.get("type") in ["income", "รายรับ"]))
+                (f.get("ref") == booking_id and (f.get("category") in ("ค่าเช่ารถ", "ค่ารับ-ส่งรถ") or f.get("type") in ["income", "รายรับ"]))
                 or (booking_id in str(f.get("description", "")) and "ค่าเช่า" in str(f.get("category", "")))
                 for f in self.financial_records
             )
             if not has_logged_income:
+                from services.booking_service import compute_fees, pricing_version_of
+                fees_amt = compute_fees(target)
+                is_v2 = pricing_version_of(target) >= 2 and fees_amt > 0
+                rent_only = round(max(0.0, float(net_p) - fees_amt), 2) if is_v2 else float(net_p)
                 f_item = {
                     "company": b_comp or "บจก.สวัสดี เรนทัล (Sawasdee Rental)",
                     "type": "income",
                     "category": "ค่าเช่ารถ",
-                    "amount": float(net_p),
+                    "amount": rent_only,
                     "ref": booking_id,
                     "date": str(end_d or datetime.now().strftime("%Y-%m-%d")),
                     "description": f"รายได้ค่าเช่ารถ รหัสการจอง [{booking_id}] - ทะเบียน [{target.get('car_id', '-')}]",
                     "detail": f"รายได้ค่าเช่ารถ รหัสการจอง [{booking_id}] - ทะเบียน [{target.get('car_id', '-')}]"
                 }
                 self.async_sync_financial(f_item)
+                if is_v2:
+                    f_fee = {
+                        "company": b_comp or "บจก.สวัสดี เรนทัล (Sawasdee Rental)",
+                        "type": "income",
+                        "category": "ค่ารับ-ส่งรถ",
+                        "amount": round(fees_amt, 2),
+                        "ref": booking_id,
+                        "date": str(end_d or datetime.now().strftime("%Y-%m-%d")),
+                        "description": f"รายได้ค่ารับ-ส่งรถนอกสถานที่ รหัสการจอง [{booking_id}] - ทะเบียน [{target.get('car_id', '-')}]",
+                        "detail": f"รายได้ค่ารับ-ส่งรถนอกสถานที่ รหัสการจอง [{booking_id}] - ทะเบียน [{target.get('car_id', '-')}]"
+                    }
+                    self.async_sync_financial(f_fee)
 
             actual_late = float(target.get("late_fee", late_fee or 0))
             if actual_late > 0 and not any(f.get("ref") == booking_id and "ล่าช้า" in f.get("category", "") for f in self.financial_records):

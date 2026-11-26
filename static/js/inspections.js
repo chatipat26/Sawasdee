@@ -108,16 +108,20 @@ Object.assign(App.prototype, {
         color = "#EA580C"; // Orange for maintenance/renewal
         startStr = j.start_date || j.date_iso;
       } else if (isDisp) {
-        title = `[🚚 ${isEn ? 'Dispatch' : 'ส่ง'}] ${j.car_id || ''} - ${j.customer || ''} (${j.booking_id})`;
-        color = "#2563EB"; // Blue for dispatch
+        const offTag = j.is_offsite ? (isEn ? '🚚 Off-site' : '🚚 ส่งนอกสถานที่') : `🚚 ${isEn ? 'Dispatch' : 'ส่ง'}`;
+        const feeTag = (j.fee && parseFloat(j.fee) > 0) ? ` (+฿${parseFloat(j.fee).toLocaleString()})` : '';
+        title = `[${offTag}${feeTag}] ${j.car_id || ''} - ${j.customer || ''} (${j.booking_id})`;
+        color = j.is_offsite ? "#D97706" : "#2563EB";
         if (j.start_date && j.start_time) {
           startStr = `${j.start_date}T${j.start_time}`;
         } else if (j.start_date) {
           startStr = j.start_date;
         }
       } else {
-        title = `[🔙 ${isEn ? 'Return' : 'รับคืน'}] ${j.car_id || ''} - ${j.customer || ''} (${j.booking_id})`;
-        color = "#16A34A"; // Green for return
+        const offTag = j.is_offsite ? (isEn ? '🚚 Off-site Return' : '🚚 รับคืนนอกสถานที่') : `🔙 ${isEn ? 'Return' : 'รับคืน'}`;
+        const feeTag = (j.fee && parseFloat(j.fee) > 0) ? ` (+฿${parseFloat(j.fee).toLocaleString()})` : '';
+        title = `[${offTag}${feeTag}] ${j.car_id || ''} - ${j.customer || ''} (${j.booking_id})`;
+        color = j.is_offsite ? "#0D9488" : "#16A34A";
         if (j.end_date && j.end_time) {
           startStr = `${j.end_date}T${j.end_time}`;
         } else if (j.end_date) {
@@ -278,8 +282,16 @@ Object.assign(App.prototype, {
       typeBadge = `<span class="badge" style="background:#F0FDF4; color:#15803D; border:1px solid #BBF7D0; font-weight:700;">${isEn ? 'Renewal' : 'ต่อทะเบียน/พรบ./ประกัน'}</span>`;
     } else if (isDisp) {
       typeBadge = `<span class="badge badge-info">${isEn ? 'Dispatch' : 'ส่งมอบรถ (Dispatch)'}</span>`;
+      if (j.is_offsite) {
+        const feeVal = parseFloat(j.fee || j.delivery_fee || 0);
+        typeBadge += `<div style="margin-top:3px;"><span class="badge" style="background:#FFF7ED; color:#C2410C; border:1px solid #FDBA74; font-size:10.5px; font-weight:700;">🚚 ${isEn ? 'Off-site' : 'ส่งนอกสถานที่'}${feeVal > 0 ? ` ฿${feeVal.toLocaleString()}` : ''}</span></div>`;
+      }
     } else {
       typeBadge = `<span class="badge badge-warning">${isEn ? 'Return' : 'รับรถคืน (Return)'}</span>`;
+      if (j.is_offsite) {
+        const feeVal = parseFloat(j.fee || j.pickup_fee || 0);
+        typeBadge += `<div style="margin-top:3px;"><span class="badge" style="background:#F0FDFA; color:#0F766E; border:1px solid #99F6E4; font-size:10.5px; font-weight:700;">🚚 ${isEn ? 'Off-site Return' : 'รับคืนนอกสถานที่'}${feeVal > 0 ? ` ฿${feeVal.toLocaleString()}` : ''}</span></div>`;
+      }
     }
 
     let actionButtons = '';
@@ -331,8 +343,9 @@ Object.assign(App.prototype, {
         </td>
         <td style="font-size:12px;">${j.schedule}</td>
         <td><span style="font-weight:600; color:#334155;">${j.worker}</span></td>
-        <td style="max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${j.location}">
-          ${j.location.startsWith("http") ? `<a href="${j.location}" target="_blank" style="color:#2563EB;">📍 แผนที่นัดหมาย</a>` : j.location}
+        <td style="max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${j.location}">
+          ${j.is_offsite ? `<span style="color:#D97706; font-weight:700;">🚚</span> ` : ''}${j.location.startsWith("http") ? `<a href="${j.location}" target="_blank" style="color:#2563EB;">📍 แผนที่นัดหมาย</a>` : j.location}
+          ${j.map_url ? `<br><a href="${j.map_url}" target="_blank" style="color:#2563EB; font-size:11px;">🗺️ แผนที่</a>` : ''}
         </td>
         <td>${statusBadge}</td>
         <td style="text-align:center; white-space:nowrap;">
@@ -569,6 +582,12 @@ Object.assign(App.prototype, {
         swapBadge.innerHTML = "";
       }
 
+      // Q2: Reset Security Deposit Refund Confirmation checkbox & fields
+      const chkRefund = document.getElementById("insp-confirm-refund-deposit");
+      if (chkRefund) chkRefund.checked = true;
+      const refRefEl = document.getElementById("insp-refund-ref");
+      if (refRefEl) refRefEl.value = "";
+
       this.onInspConditionChange("normal");
     }
 
@@ -760,8 +779,28 @@ Object.assign(App.prototype, {
     const repCost = parseFloat(document.getElementById("insp-repair-cost")?.value || 0);
     const isRepair = document.getElementById("insp-cond-repair")?.checked;
     const isSwap = document.getElementById("insp-sub-swap-car")?.checked;
+    const confirmRefund = document.getElementById("insp-confirm-refund-deposit")?.checked !== false;
 
     const prevEl = document.getElementById("insp-deposit-calc-preview");
+    const refundBox = document.getElementById("insp-deposit-refund-confirm-box");
+    const badgeEl = document.getElementById("insp-refund-amount-badge");
+
+    const deducted = isRepair ? Math.min(repCost, depAmt) : 0;
+    const refund = Math.max(0, depAmt - deducted);
+
+    if (refundBox) {
+      refundBox.style.display = (isRepair && isSwap) ? "none" : "block";
+    }
+    if (badgeEl) {
+      if (!confirmRefund) {
+        badgeEl.textContent = "ยังไม่คืนตอนนี้ (฿0.00)";
+        badgeEl.style.background = "#64748B";
+      } else {
+        badgeEl.textContent = `คืนสุทธิ ฿${refund.toLocaleString('th-TH', {minimumFractionDigits: 2})}`;
+        badgeEl.style.background = refund > 0 ? "#059669" : "#DC2626";
+      }
+    }
+
     if (!prevEl) return;
 
     if (isRepair) {
@@ -770,8 +809,6 @@ Object.assign(App.prototype, {
         return;
       }
       prevEl.style.display = "block";
-      const deducted = Math.min(repCost, depAmt);
-      const refund = Math.max(0, depAmt - deducted);
       prevEl.innerHTML = `
         💵 <b>สรุปการเงินมัดจำ:</b> มัดจำเดิม ฿5,000 | หักค่าซ่อม ฿${deducted.toLocaleString()} | <b>คืนมัดจำสุทธิ: <span style="color:#15803D;">฿${refund.toLocaleString()}</span></b>
       `;
@@ -790,15 +827,23 @@ Object.assign(App.prototype, {
     const depAmt = parseFloat(b.deposit_amount || 5000);
     const isDep = Boolean(b.deposit_paid);
     const isRent = Boolean(b.rental_paid);
-    // TARGET MISSION 3: ยอดเงินคงเหลือ = ราคาค่าเช่าที่ตกลง (net_price) - เงินมัดจำที่ชำระแล้ว (deposit_amount)
-    const remP = isRent ? 0 : (isDep ? Math.max(0, netP - depAmt) : parseFloat(b.remaining_rental !== undefined ? b.remaining_rental : netP));
+    const ver = parseInt(b.pricing_version || 1, 10);
+    const remP = this.computeBookingRemainingBalance
+      ? this.computeBookingRemainingBalance(b)
+      : (isRent ? 0 : (ver >= 2 ? netP : (isDep ? Math.max(0, netP - depAmt) : parseFloat(b.remaining_rental !== undefined ? b.remaining_rental : netP))));
     
     document.getElementById("modal-settle-bk-id").value = bkId;
     const sumEl = document.getElementById("modal-settle-summary");
     if (sumEl) {
+      const delFee = parseFloat(b.delivery_fee || 0);
+      const picFee = parseFloat(b.pickup_fee || 0);
+      const feeNote = (delFee + picFee > 0) ? ` (รวมค่ารับ-ส่ง ฿${(delFee + picFee).toLocaleString()})` : '';
+      const depNote = isDep
+        ? (ver >= 2 ? `| <b>เงินประกันรับแล้ว:</b> ฿${depAmt.toLocaleString()} (แยกต่างหาก)` : `| <b>หักเงินมัดจำ:</b> ฿${depAmt.toLocaleString()}`)
+        : '';
       sumEl.innerHTML = `
         <b>รหัสการจอง:</b> <span style="color:#C2410C;">${b.booking_id}</span> | <b>ทะเบียน:</b> ${b.car_id}<br/>
-        <b>ผู้เช่า:</b> ${b.customer} | <b>ยอดสัญญาเต็ม:</b> ฿${netP.toLocaleString()} ${isDep ? `| <b>หักเงินมัดจำ:</b> ฿${depAmt.toLocaleString()}` : ''}
+        <b>ผู้เช่า:</b> ${b.customer} | <b>ยอดบริการรวม:</b> ฿${netP.toLocaleString()}${feeNote} ${depNote}
       `;
     }
     const amtEl = document.getElementById("modal-settle-amount");
@@ -1020,6 +1065,9 @@ Object.assign(App.prototype, {
       payload.checkin_img_left = imgLeft;
       payload.checkin_img_rear = imgRear;
       payload.checkin_img_right = imgRight;
+      payload.refund_deposit = document.getElementById("insp-confirm-refund-deposit")?.checked !== false;
+      payload.refund_method = document.getElementById("insp-refund-method")?.value || "โอนเงินคืนบัญชีลูกค้า";
+      payload.refund_ref = (document.getElementById("insp-refund-ref")?.value || "").trim();
     }
 
     // TARGET MISSION 2 & 3: Generate official inspection checklist PDF

@@ -177,7 +177,36 @@ class Booking(Base):
     inspection_categories = Column(JSON, nullable=True)
     inspection_categories_out = Column(JSON, nullable=True)
     inspection_categories_in = Column(JSON, nullable=True)
+    pricing_version = Column(Integer, default=1)
+    delivery_mode = Column(String(10), default="branch")
+    pickup_mode = Column(String(10), default="branch")
+    delivery_fee = Column(Numeric, default=0.0)
+    pickup_fee = Column(Numeric, default=0.0)
+    fees_paid_amount = Column(Numeric, default=0.0)
+    delivery_zone = Column(String(100), nullable=True)
+    pickup_zone = Column(String(100), nullable=True)
+    delivery_map_url = Column(Text, nullable=True)
+    pickup_map_url = Column(Text, nullable=True)
+    received_by = Column(String(100), nullable=True)
+    rental_payment_date = Column(Date, nullable=True)
+    deposit_date = Column(Date, nullable=True)
+    deposit_waived = Column(Boolean, default=False)
+    driver2_name = Column(String(200), nullable=True)
+    driver2_licence = Column(String(50), nullable=True)
+    driver2_dob = Column(String(20), nullable=True)
     created_by = Column(String(100), default="admin")
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class DeliveryZone(Base):
+    __tablename__ = "delivery_zones"
+
+    id = Column(Integer, primary_key=True, index=True)
+    zone_name = Column(String(100), unique=True, nullable=False)
+    default_delivery_fee = Column(Numeric, default=0.0)
+    default_pickup_fee = Column(Numeric, default=0.0)
+    is_active = Column(Boolean, default=True)
+    sort_order = Column(Integer, default=0)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 

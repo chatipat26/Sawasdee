@@ -1450,11 +1450,15 @@
               </div>
             </div>
 
-            <!-- 5 Channel Revenue Summary Mini-Cards -->
-            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:12px; margin-bottom:18px;">
+            <!-- 6 Channel & Category Revenue Summary Mini-Cards -->
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap:12px; margin-bottom:18px;">
               <div style="background:#FFF7ED; border:1.5px solid #FDBA74; border-radius:10px; padding:12px; text-align:center;">
-                <div style="font-size:11.5px; color:#9A3412; font-weight:700; text-transform:uppercase;">💰 รายได้รวมทั้งหมด</div>
+                <div style="font-size:11.5px; color:#9A3412; font-weight:700; text-transform:uppercase;">💰 รายได้รวมสุทธิ</div>
                 <div id="shift-sum-total" style="font-size:20px; font-weight:800; color:#EA580C; margin-top:4px;">฿0.00</div>
+              </div>
+              <div style="background:#FFFBEB; border:1.5px solid #FCD34D; border-radius:10px; padding:12px; text-align:center;">
+                <div style="font-size:11.5px; color:#B45309; font-weight:700; text-transform:uppercase;">🚚 รายได้ค่ารับ-ส่งรถ</div>
+                <div id="shift-sum-delivery-fee" style="font-size:19px; font-weight:800; color:#D97706; margin-top:4px;">฿0.00</div>
               </div>
               <div style="background:#EFF6FF; border:1.5px solid #BFDBFE; border-radius:10px; padding:12px; text-align:center;">
                 <div style="font-size:11.5px; color:#1E40AF; font-weight:700; text-transform:uppercase;">🏦 โอนเงิน / QR Code</div>
@@ -2016,6 +2020,32 @@
           ℹ️ สภาพรถปกติ: ระบบจะปรับสถานะรถกลับเป็น <b>"ว่างพร้อมใช้งาน"</b> และบันทึกคืนเงินมัดจำประกันสัญญาเต็มจำนวนให้ลูกค้า
         </div>
 
+        <!-- Q2: Explicit Security Deposit Refund Confirmation & Accounting Box (5,000 THB) -->
+        <div id="insp-deposit-refund-confirm-box" style="margin-top:10px; background:#ECFDF5; border:1.5px solid #10B981; border-radius:8px; padding:10px 12px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:6px;">
+            <label style="font-size:12.5px; font-weight:800; color:#065F46; cursor:pointer; display:flex; align-items:center; gap:6px; margin:0;">
+              <input type="checkbox" id="insp-confirm-refund-deposit" checked onchange="app.recalcInspRefundPreview()" style="transform:scale(1.15);">
+              <span>💸 บันทึกคืนเงินประกันสัญญา (Security Deposit Refund) ลงบัญชีอัตโนมัติ</span>
+            </label>
+            <span id="insp-refund-amount-badge" style="background:#059669; color:#FFFFFF; font-size:12.5px; font-weight:800; padding:2px 10px; border-radius:999px;">
+              คืนสุทธิ ฿5,000.00
+            </span>
+          </div>
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-top:6px;">
+            <div>
+              <label style="font-size:11.5px; color:#047857; font-weight:700; display:block; margin-bottom:2px;">ช่องทางคืนเงินประกัน:</label>
+              <select id="insp-refund-method" class="form-control" style="font-size:12px; padding:4px 8px; height:30px;">
+                <option value="โอนเงินคืนบัญชีลูกค้า">โอนเงินคืนบัญชีลูกค้า (Bank Transfer)</option>
+                <option value="เงินสด">เงินสด (Cash)</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size:11.5px; color:#047857; font-weight:700; display:block; margin-bottom:2px;">เลขอ้างอิงสลิปคืนมัดจำ / หมายเหตุ:</label>
+              <input type="text" id="insp-refund-ref" class="form-control" placeholder="เช่น เลขสลิปโอนคืนลูกค้า" style="font-size:12px; padding:4px 8px; height:30px;">
+            </div>
+          </div>
+        </div>
+
         <!-- Repair details form (hidden unless Branch B selected) -->
         <div id="insp-cond-repair-info" style="display:none; margin-top:8px; background:#FEF2F2; border:1px solid #FECACA; border-radius:6px; padding:10px;">
           <div style="font-size:12px; font-weight:700; color:#991B1B; margin-bottom:8px;">
@@ -2284,7 +2314,7 @@
         </select>
       </div>
 
-      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:14px;">
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:12px;">
         <div class="form-group">
           <label>ยอดค่าเช่า (บาท):</label>
           <input type="number" id="book-price-input" class="form-control" value="1000" oninput="app.recalcBookingModalPrice()">
@@ -2295,9 +2325,66 @@
         </div>
       </div>
 
-      <div style="background:#FFF7ED; padding:10px 14px; border-radius:8px; border:1px solid #FED7AA; margin-bottom:20px; display:flex; justify-content:space-between; align-items:center;">
-        <span style="font-size:13px; color:#9A3412;">ยอดค่าเช่าสุทธิ:</span>
-        <b id="book-modal-net-price" style="font-size:18px; color:#D97706;">฿1,000.00</b>
+      <!-- P3c: Off-site Delivery & Pickup Mode + Independent Fees (Max 10,000 THB) -->
+      <div style="background:#F8FAFC; border:1px solid #CBD5E1; border-radius:10px; padding:12px; margin-bottom:14px;">
+        <div style="font-size:12.5px; font-weight:800; color:#1E3A8A; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
+          <span>🚚 รูปแบบการรับรถ & คืนรถ (Delivery & Pickup Options)</span>
+          <span style="font-size:11px; color:#64748B; font-weight:600;">แยกคิดค่าส่งและค่ารับคืนอิสระ (สูงสุด ฿10,000/เที่ยว)</span>
+        </div>
+
+        <!-- 1. Delivery (ขาไปส่งมอบรถ) -->
+        <div style="background:#FFFFFF; border:1px solid #E2E8F0; border-radius:8px; padding:10px; margin-bottom:8px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:6px;">
+            <span style="font-size:12px; font-weight:700; color:#0F172A;">📍 1. การรับรถวันเริ่มสัญญา (Pick-up / Delivery):</span>
+            <div style="display:flex; gap:10px; font-size:12px;">
+              <label style="cursor:pointer; display:inline-flex; align-items:center; gap:4px; font-weight:600; color:#334155;">
+                <input type="radio" name="book-delivery-mode" id="book-del-mode-branch" value="branch" checked onchange="app.onBookDeliveryModeChange()">
+                รับที่สาขา (ฟรี)
+              </label>
+              <label style="cursor:pointer; display:inline-flex; align-items:center; gap:4px; font-weight:700; color:#D97706;">
+                <input type="radio" name="book-delivery-mode" id="book-del-mode-offsite" value="offsite" onchange="app.onBookDeliveryModeChange()">
+                🚚 ส่งนอกสถานที่
+              </label>
+            </div>
+          </div>
+          <div style="display:grid; grid-template-columns: 1fr 145px; gap:8px; align-items:center;">
+            <input type="text" id="book-loc-delivery" class="form-control" value="Sukhumvit" placeholder="ระบุสถานที่ส่งมอบรถ / จุดนัดหมาย..." style="font-size:12.5px; padding:6px 10px;">
+            <div id="book-delivery-fee-wrap" style="display:none;">
+              <input type="number" id="book-delivery-fee-input" class="form-control" value="0" min="0" max="10000" step="50" placeholder="ค่าส่งรถ (฿)" oninput="app.recalcBookingModalPrice()" style="font-size:12.5px; padding:6px 10px; border-color:#F59E0B; font-weight:700;">
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. Pickup / Return (ขารับรถคืน) -->
+        <div style="background:#FFFFFF; border:1px solid #E2E8F0; border-radius:8px; padding:10px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:6px;">
+            <span style="font-size:12px; font-weight:700; color:#0F172A;">🏁 2. การคืนรถวันสิ้นสุดสัญญา (Return / Collection):</span>
+            <div style="display:flex; gap:10px; font-size:12px;">
+              <label style="cursor:pointer; display:inline-flex; align-items:center; gap:4px; font-weight:600; color:#334155;">
+                <input type="radio" name="book-pickup-mode" id="book-pic-mode-branch" value="branch" checked onchange="app.onBookDeliveryModeChange()">
+                คืนที่สาขา (ฟรี)
+              </label>
+              <label style="cursor:pointer; display:inline-flex; align-items:center; gap:4px; font-weight:700; color:#D97706;">
+                <input type="radio" name="book-pickup-mode" id="book-pic-mode-offsite" value="offsite" onchange="app.onBookDeliveryModeChange()">
+                🚚 รับคืนนอกสถานที่
+              </label>
+            </div>
+          </div>
+          <div style="display:grid; grid-template-columns: 1fr 145px; gap:8px; align-items:center;">
+            <input type="text" id="book-loc-return" class="form-control" value="Sukhumvit" placeholder="ระบุสถานที่รับรถคืน / จุดนัดหมาย..." style="font-size:12.5px; padding:6px 10px;">
+            <div id="book-pickup-fee-wrap" style="display:none;">
+              <input type="number" id="book-pickup-fee-input" class="form-control" value="0" min="0" max="10000" step="50" placeholder="ค่ารับคืน (฿)" oninput="app.recalcBookingModalPrice()" style="font-size:12.5px; padding:6px 10px; border-color:#F59E0B; font-weight:700;">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="background:#FFF7ED; padding:10px 14px; border-radius:8px; border:1px solid #FED7AA; margin-bottom:20px;">
+        <div id="book-modal-fee-breakdown" style="display:none; font-size:12px; color:#7C2D12; margin-bottom:6px; padding-bottom:6px; border-bottom:1px dashed #FDBA74;"></div>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-size:13px; color:#9A3412; font-weight:700;">ยอดค่าเช่าและบริการสุทธิ (ไม่รวมเงินประกัน ฿5,000):</span>
+          <b id="book-modal-net-price" style="font-size:18px; color:#D97706;">฿1,000.00</b>
+        </div>
       </div>
 
       <div style="display:flex; justify-content:flex-end; gap:10px;">

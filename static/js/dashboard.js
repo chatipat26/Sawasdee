@@ -1056,14 +1056,14 @@ Object.assign(App.prototype, {
       }
 
       if (matchedPl) {
-        if (fType === "รายรับ" && fCat === "ค่าเช่ารถ" && !completedBids.has(fRef)) {
+        if ((fType === "รายรับ" || fType === "Income" || fType === "income") && (fCat === "ค่าเช่ารถ" || fCat === "ค่ารับ-ส่งรถ") && !completedBids.has(fRef)) {
           revByCar[matchedPl] = (revByCar[matchedPl] || 0) + fAmt;
-        } else if (fType === "รายจ่าย") {
-          const isDepositRefund = (
-            fCat.includes("คืนเงินมัดจำ") || fCat.includes("คืนมัดจำ") ||
-            fDet.includes("คืนเงินมัดจำ") || fDet.includes("คืนมัดจำ")
+        } else if (fType === "รายจ่าย" || fType === "Expense" || fType === "expense") {
+          const isNonOperatingRefund = (
+            fCat.includes("คืนเงินมัดจำ") || fCat.includes("คืนมัดจำ") || fCat.includes("คืนค่ารับ-ส่ง") ||
+            fDet.includes("คืนเงินมัดจำ") || fDet.includes("คืนมัดจำ") || fDet.includes("คืนค่ารับ-ส่ง")
           );
-          if (!isDepositRefund && !mntIds.has(fRef)) {
+          if (!isNonOperatingRefund && !mntIds.has(fRef)) {
             expByCar[matchedPl] = (expByCar[matchedPl] || 0) + fAmt;
           }
         }

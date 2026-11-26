@@ -1233,6 +1233,7 @@ ${e.message}`);
     const data = this.financeSummaryData;
 
     const sumTotalEl = document.getElementById("shift-sum-total");
+    const sumDelFeeEl = document.getElementById("shift-sum-delivery-fee");
     const sumQrEl = document.getElementById("shift-sum-qr");
     const sumCashEl = document.getElementById("shift-sum-cash");
     const sumCardEl = document.getElementById("shift-sum-card");
@@ -1240,6 +1241,7 @@ ${e.message}`);
 
     const byMethod = data.by_method || {};
     if (sumTotalEl) sumTotalEl.textContent = "฿" + Number(data.total_revenue || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    if (sumDelFeeEl) sumDelFeeEl.textContent = "฿" + Number(data.delivery_pickup_revenue || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
     if (sumQrEl) sumQrEl.textContent = "฿" + Number(byMethod["โอนเงิน / สแกน QR"] || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
     if (sumCashEl) sumCashEl.textContent = "฿" + Number(byMethod["เงินสด"] || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
     if (sumCardEl) sumCardEl.textContent = "฿" + Number(byMethod["บัตรเครดิต"] || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
@@ -1349,16 +1351,25 @@ ${e.message}`);
             </tr>
           </thead>
           <tbody>
-            ${row.records.map(rec => `
+            ${row.records.map(rec => {
+              const amtVal = Number(rec.amount || 0);
+              const isRefund = amtVal < 0;
+              const isDelCat = String(rec.category || '').includes('ค่ารับ-ส่ง');
+              const catStyle = isRefund
+                ? 'background:#FEF2F2; color:#DC2626;'
+                : (isDelCat ? 'background:#FFF7ED; color:#C2410C;' : 'background:#EFF6FF; color:#1D4ED8;');
+              const amtColor = isRefund ? '#DC2626' : '#EA580C';
+              return `
               <tr>
                 <td style="font-weight:700;">${rec.ref || '-'}</td>
                 <td>${rec.car_id || '-'}</td>
                 <td>${rec.customer || '-'}</td>
-                <td><span style="background:#EFF6FF; color:#1D4ED8; padding:1px 6px; border-radius:4px; font-size:10.5px; font-weight:600;">${rec.category || '-'}</span></td>
+                <td><span style="${catStyle} padding:1px 6px; border-radius:4px; font-size:10.5px; font-weight:600;">${rec.category || '-'}</span></td>
                 <td><span style="font-weight:600;">${rec.payment_method || '-'}</span></td>
-                <td style="text-align:right; font-weight:700; color:#EA580C;">฿${Number(rec.amount || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                <td style="text-align:right; font-weight:700; color:${amtColor};">${amtVal < 0 ? '-' : ''}฿${Math.abs(amtVal).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
               </tr>
-            `).join("")}
+              `;
+            }).join("")}
           </tbody>
         </table>
       </div>

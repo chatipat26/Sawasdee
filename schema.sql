@@ -152,6 +152,23 @@ CREATE TABLE IF NOT EXISTS public.bookings (
     checkin_img_left TEXT,
     checkin_img_rear TEXT,
     checkin_img_right TEXT,
+    pricing_version SMALLINT DEFAULT 1,
+    delivery_mode VARCHAR(10) DEFAULT 'branch',
+    pickup_mode VARCHAR(10) DEFAULT 'branch',
+    delivery_fee NUMERIC DEFAULT 0,
+    pickup_fee NUMERIC DEFAULT 0,
+    fees_paid_amount NUMERIC DEFAULT 0,
+    delivery_zone VARCHAR(100),
+    pickup_zone VARCHAR(100),
+    delivery_map_url TEXT,
+    pickup_map_url TEXT,
+    received_by VARCHAR(100),
+    rental_payment_date DATE,
+    deposit_date DATE,
+    deposit_waived BOOLEAN DEFAULT FALSE,
+    driver2_name VARCHAR(200),
+    driver2_licence VARCHAR(50),
+    driver2_dob VARCHAR(20),
     created_by VARCHAR(100),
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
@@ -167,6 +184,34 @@ ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS checkin_img_front TEXT;
 ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS checkin_img_left TEXT;
 ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS checkin_img_rear TEXT;
 ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS checkin_img_right TEXT;
+ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS pricing_version SMALLINT DEFAULT 1;
+ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS delivery_mode VARCHAR(10) DEFAULT 'branch';
+ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS pickup_mode VARCHAR(10) DEFAULT 'branch';
+ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS delivery_fee NUMERIC DEFAULT 0;
+ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS pickup_fee NUMERIC DEFAULT 0;
+ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS fees_paid_amount NUMERIC DEFAULT 0;
+ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS delivery_zone VARCHAR(100);
+ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS pickup_zone VARCHAR(100);
+ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS delivery_map_url TEXT;
+ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS pickup_map_url TEXT;
+ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS received_by VARCHAR(100);
+ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS rental_payment_date DATE;
+ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS deposit_date DATE;
+ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS deposit_waived BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS driver2_name VARCHAR(200);
+ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS driver2_licence VARCHAR(50);
+ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS driver2_dob VARCHAR(20);
+
+-- 4b. Delivery Zones Table (Preset Zone Rates)
+CREATE TABLE IF NOT EXISTS public.delivery_zones (
+    id SERIAL PRIMARY KEY,
+    zone_name VARCHAR(100) UNIQUE NOT NULL,
+    default_delivery_fee NUMERIC DEFAULT 0,
+    default_pickup_fee NUMERIC DEFAULT 0,
+    is_active BOOLEAN DEFAULT TRUE,
+    sort_order INTEGER DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
 
 -- 5. Completed Jobs Table (Historical Archive)
 CREATE TABLE IF NOT EXISTS public.completed_jobs (

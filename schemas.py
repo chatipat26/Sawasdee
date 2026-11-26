@@ -260,6 +260,23 @@ class BookingBase(BaseModel):
     inspection_categories: Optional[Union[dict, list, str]] = None
     inspection_categories_out: Optional[Union[dict, list, str]] = None
     inspection_categories_in: Optional[Union[dict, list, str]] = None
+    pricing_version: Optional[int] = 1
+    delivery_mode: Optional[str] = "branch"
+    pickup_mode: Optional[str] = "branch"
+    delivery_fee: Optional[float] = 0.0
+    pickup_fee: Optional[float] = 0.0
+    fees_paid_amount: Optional[float] = 0.0
+    delivery_zone: Optional[str] = None
+    pickup_zone: Optional[str] = None
+    delivery_map_url: Optional[str] = None
+    pickup_map_url: Optional[str] = None
+    received_by: Optional[str] = None
+    rental_payment_date: Optional[Union[date, str]] = None
+    deposit_date: Optional[Union[date, str]] = None
+    deposit_waived: Optional[bool] = False
+    driver2_name: Optional[str] = None
+    driver2_licence: Optional[str] = None
+    driver2_dob: Optional[str] = None
     created_by: Optional[str] = "admin"
     created_at: Optional[Union[datetime, str]] = None
 

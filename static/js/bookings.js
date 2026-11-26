@@ -52,6 +52,21 @@ Object.assign(App.prototype, {
       const discInp = document.getElementById("book-discount-input");
       if (discInp) discInp.value = 0;
 
+      // Reset off-site delivery & pickup controls
+      const delBranchRad = document.getElementById("book-del-mode-branch");
+      const picBranchRad = document.getElementById("book-pic-mode-branch");
+      if (delBranchRad) delBranchRad.checked = true;
+      if (picBranchRad) picBranchRad.checked = true;
+      const delFeeInp = document.getElementById("book-delivery-fee-input");
+      const picFeeInp = document.getElementById("book-pickup-fee-input");
+      if (delFeeInp) delFeeInp.value = 0;
+      if (picFeeInp) picFeeInp.value = 0;
+      const locDelInp = document.getElementById("book-loc-delivery");
+      const locRetInp = document.getElementById("book-loc-return");
+      if (locDelInp) locDelInp.value = "Sukhumvit";
+      if (locRetInp) locRetInp.value = "Sukhumvit";
+      this.onBookDeliveryModeChange();
+
       this.recalcBookingModalFromDates(true);
       this.populateCustomerDropdowns(this.lastAddedCustomerName || null);
       this.openModal("modal-book-car");
@@ -233,11 +248,67 @@ Object.assign(App.prototype, {
     this.recalcBookingModalPrice();
   },
 
+  onBookDeliveryModeChange() {
+    const isDelOffsite = Boolean(document.getElementById("book-del-mode-offsite")?.checked);
+    const isPicOffsite = Boolean(document.getElementById("book-pic-mode-offsite")?.checked);
+    const delWrap = document.getElementById("book-delivery-fee-wrap");
+    const picWrap = document.getElementById("book-pickup-fee-wrap");
+    const delFeeInp = document.getElementById("book-delivery-fee-input");
+    const picFeeInp = document.getElementById("book-pickup-fee-input");
+    const locDelInp = document.getElementById("book-loc-delivery");
+    const locRetInp = document.getElementById("book-loc-return");
+
+    if (delWrap) delWrap.style.display = isDelOffsite ? "block" : "none";
+    if (!isDelOffsite && delFeeInp) delFeeInp.value = 0;
+    if (!isDelOffsite && locDelInp && !locDelInp.value.trim()) locDelInp.value = "Sukhumvit";
+
+    if (picWrap) picWrap.style.display = isPicOffsite ? "block" : "none";
+    if (!isPicOffsite && picFeeInp) picFeeInp.value = 0;
+    if (!isPicOffsite && locRetInp && !locRetInp.value.trim()) locRetInp.value = "Sukhumvit";
+
+    this.recalcBookingModalPrice();
+  },
+
   recalcBookingModalPrice() {
     const p = parseFloat(document.getElementById("book-price-input")?.value || 0);
     const d = parseFloat(document.getElementById("book-discount-input")?.value || 0);
-    const net = Math.max(0, p - d);
-    document.getElementById("book-modal-net-price").textContent = `฿${net.toLocaleString('th-TH', {minimumFractionDigits: 2})}`;
+    const isDelOffsite = Boolean(document.getElementById("book-del-mode-offsite")?.checked);
+    const isPicOffsite = Boolean(document.getElementById("book-pic-mode-offsite")?.checked);
+    let delFee = isDelOffsite ? parseFloat(document.getElementById("book-delivery-fee-input")?.value || 0) : 0;
+    let picFee = isPicOffsite ? parseFloat(document.getElementById("book-pickup-fee-input")?.value || 0) : 0;
+
+    if (delFee < 0) delFee = 0;
+    if (picFee < 0) picFee = 0;
+    if (delFee > 10000) {
+      delFee = 10000;
+      const el = document.getElementById("book-delivery-fee-input");
+      if (el) el.value = 10000;
+      this.showToast("⚠️ ค่าส่งรถต่อเที่ยวจำกัดไม่เกิน ฿10,000", "warning");
+    }
+    if (picFee > 10000) {
+      picFee = 10000;
+      const el = document.getElementById("book-pickup-fee-input");
+      if (el) el.value = 10000;
+      this.showToast("⚠️ ค่ารับรถคืนต่อเที่ยวจำกัดไม่เกิน ฿10,000", "warning");
+    }
+
+    const rentalNet = Math.max(0, p - d);
+    const net = rentalNet + delFee + picFee;
+    const netEl = document.getElementById("book-modal-net-price");
+    if (netEl) netEl.textContent = `฿${net.toLocaleString('th-TH', {minimumFractionDigits: 2})}`;
+
+    const brkEl = document.getElementById("book-modal-fee-breakdown");
+    if (brkEl) {
+      if (delFee > 0 || picFee > 0) {
+        brkEl.style.display = "block";
+        brkEl.innerHTML = `ค่าเช่าหลังหักส่วนลด: <b>฿${rentalNet.toLocaleString()}</b>`
+          + (delFee > 0 ? ` + ค่าส่งรถนอกสถานที่: <b>฿${delFee.toLocaleString()}</b>` : "")
+          + (picFee > 0 ? ` + ค่ารับรถคืนนอกสถานที่: <b>฿${picFee.toLocaleString()}</b>` : "");
+      } else {
+        brkEl.style.display = "none";
+        brkEl.innerHTML = "";
+      }
+    }
   },
 
   findBookingConflict(plate, sDate, eDate, excludeId = null) {
@@ -284,6 +355,18 @@ Object.assign(App.prototype, {
       return;
     }
 
+    const isDelOffsite = Boolean(document.getElementById("book-del-mode-offsite")?.checked);
+    const isPicOffsite = Boolean(document.getElementById("book-pic-mode-offsite")?.checked);
+    const delFee = isDelOffsite ? parseFloat(document.getElementById("book-delivery-fee-input")?.value || 0) : 0;
+    const picFee = isPicOffsite ? parseFloat(document.getElementById("book-pickup-fee-input")?.value || 0) : 0;
+    const locDel = (document.getElementById("book-loc-delivery")?.value || "").trim() || "Sukhumvit";
+    const locRet = (document.getElementById("book-loc-return")?.value || "").trim() || locDel;
+
+    if (delFee < 0 || picFee < 0 || delFee > 10000 || picFee > 10000) {
+      alert("⚠️ ค่ารับ-ส่งรถนอกสถานที่ต้องอยู่ระหว่าง 0 ถึง 10,000 บาทต่อเที่ยว");
+      return;
+    }
+
     const payload = {
       car_id: plate,
       customer: cust,
@@ -294,6 +377,12 @@ Object.assign(App.prototype, {
       end_time: eTime,
       base_price: baseP,
       discount: disc,
+      delivery_mode: isDelOffsite ? "offsite" : "branch",
+      pickup_mode: isPicOffsite ? "offsite" : "branch",
+      delivery_fee: delFee,
+      pickup_fee: picFee,
+      loc_delivery: locDel,
+      loc_return: locRet,
       deposit_amount: 5000.0,
       created_by: this.user ? this.user.username : "admin"
     };
@@ -334,7 +423,18 @@ Object.assign(App.prototype, {
     }
   },
 
-  populateBookingDropdowns() {
+  computeBookingRemainingBalance(b) {
+    if (!b) return 0;
+    if (b.rental_paid || b.is_fully_paid) return 0;
+    if (b.remaining_rental !== undefined && b.remaining_rental !== null && b.remaining_rental !== "") {
+      return Math.max(0, parseFloat(b.remaining_rental) || 0);
+    }
+    const netP = parseFloat(b.net_price || 0);
+    const depAmt = parseFloat(b.deposit_amount || 5000);
+    const ver = parseInt(b.pricing_version || 1, 10);
+    if (ver >= 2) return Math.max(0, netP);
+    return b.deposit_paid ? Math.max(0, netP - depAmt) : Math.max(0, netP);
+  },
     const isEn = (this.currentLang === "EN");
     const depSel = document.getElementById("deposit-sel-booking");
     const assignDispSel = document.getElementById("assign-disp-bk");
@@ -403,6 +503,9 @@ Object.assign(App.prototype, {
     const isRent = b.rental_paid;
     const netP = parseFloat(b.net_price || 0);
     const depAmt = parseFloat(b.deposit_amount || 5000);
+    const delFee = parseFloat(b.delivery_fee || 0);
+    const picFee = parseFloat(b.pickup_fee || 0);
+    const feesTotal = delFee + picFee;
 
     // 1. Populate amount & payment method (Fixed 5,000 THB)
     const amtEl = document.getElementById("deposit-amount-input");
@@ -477,6 +580,7 @@ Object.assign(App.prototype, {
         <div class="deposit-summary-row"><span>${isEn ? 'ID' : 'รหัส'}</span><b>${b.booking_id}</b><span>${b.car_id || ''}</span></div>
         <div class="deposit-summary-row"><span>${isEn ? 'Customer' : 'ลูกค้า'}</span><b>${b.customer || '-'}</b><span>${b.customer_phone || ''}</span></div>
         <div class="deposit-summary-row"><span>${isEn ? 'Dates' : 'ระยะเวลา'}</span><b>${b.start_date_formatted || b.start_date || '-'} – ${b.end_date_formatted || b.end_date || '-'}</b></div>
+        ${feesTotal > 0 ? `<div class="deposit-summary-row"><span>🚚 ${isEn ? 'Delivery/Pickup Fee' : 'ค่ารับ-ส่งนอกสถานที่'}</span><b style="color:#D97706;">฿${feesTotal.toLocaleString()}</b><span>${delFee > 0 ? `ส่ง ฿${delFee.toLocaleString()}` : ''}${delFee > 0 && picFee > 0 ? ' / ' : ''}${picFee > 0 ? `รับคืน ฿${picFee.toLocaleString()}` : ''}</span></div>` : ''}
         <div class="deposit-summary-row"><span>${isEn ? 'Net' : 'ค่าเช่าสุทธิ'}</span><b class="deposit-summary-price">฿${netP.toLocaleString()}</b><span style="color:${isDep ? '#059669' : '#DC2626'};">${isDep ? (isEn ? 'Deposit paid' : 'มัดจำชำระแล้ว') : (isEn ? 'Deposit pending' : 'รอมัดจำ')}</span></div>
         ${b.payment_type ? `<div class="deposit-summary-row"><span>${isEn ? 'Type' : 'ประเภท'}</span><b>${b.payment_type}</b></div>` : ''}
         ${b.google_drive_link ? `<a class="deposit-summary-slip" href="${b.google_drive_link}" target="_blank">${isEn ? 'Google Drive' : 'Google Drive'}</a>` : ''}
@@ -488,7 +592,7 @@ Object.assign(App.prototype, {
 
     if (btnSaveSlip) btnSaveSlip.style.display = isDep ? "inline-flex" : "none";
     if (btnSettle) { 
-      const remVal = isRent ? 0 : (isDep ? Math.max(0, netP - depAmt) : parseFloat(b.remaining_rental !== undefined ? b.remaining_rental : netP));
+      const remVal = this.computeBookingRemainingBalance(b);
       btnSettle.style.display = ((!isRent && isDep) || remVal > 0) ? "inline-flex" : "none"; 
     }
     if (btnDlDep) btnDlDep.style.display = isDep ? "inline-flex" : "none";
@@ -1002,17 +1106,25 @@ Object.assign(App.prototype, {
         const isRent = Boolean(b.rental_paid);
         const netP = parseFloat(b.net_price || 0);
         const depAmt = parseFloat(b.deposit_amount || 5000);
-        // TARGET MISSION 3: ยอดเงินคงเหลือ = ราคาค่าเช่าที่ตกลง (net_price) - เงินมัดจำที่ชำระแล้ว (deposit_amount)
-        const remP = isRent ? 0 : (isDep ? Math.max(0, netP - depAmt) : parseFloat(b.remaining_rental !== undefined ? b.remaining_rental : netP));
+        const remP = this.computeBookingRemainingBalance(b);
         const wDel = String(b.worker_delivery || "").trim();
         const hasDriver = wDel && wDel !== "Wait" && wDel !== "-";
         const sFmt = b.start_date_formatted || sVal;
         const eFmt = b.end_date_formatted || eVal;
+        const delFee = parseFloat(b.delivery_fee || 0);
+        const isDelOffsite = String(b.delivery_mode || "").toLowerCase() === "offsite" || delFee > 0;
+        const offsiteDispHtml = isDelOffsite
+          ? `<div style="background:#FFF7ED; border:1.5px solid #FDBA74; border-radius:8px; padding:8px 12px; margin-bottom:8px; font-size:12.5px; color:#9A3412;">
+               🚚 <b>${isEn ? 'Off-site Vehicle Delivery:' : 'งานจัดส่งรถนอกสถานที่:'}</b> 📍 <b>${b.loc_delivery || '-'}</b>
+               ${delFee > 0 ? `<span style="background:#EA580C; color:#FFF; padding:1px 8px; border-radius:999px; font-size:11.5px; font-weight:700; margin-left:6px;">ค่าส่ง ฿${delFee.toLocaleString()} (${isRent ? 'ชำระแล้ว' : 'รวมในบิล'})</span>` : ''}
+             </div>`
+          : '';
 
         let html = `
           <div style="background:#FAF7F2; border:1px solid #E5E7EB; border-radius:8px; padding:8px 12px; margin-bottom:8px; font-size:12.5px; color:#1F2937;">
             📅 <b>${isEn ? 'Pick-up Schedule:' : 'กำหนดส่งมอบรถ:'}</b> <span style="color:#EA580C; font-weight:700;">${sFmt} (${b.start_time || '10:00'}${isEn ? '' : ' น.'})</span> &nbsp;|&nbsp; <b>${isEn ? 'Return Schedule:' : 'กำหนดคืนรถ:'}</b> <span style="font-weight:700;">${eFmt} (${b.end_time || '10:00'}${isEn ? '' : ' น.'})</span>
           </div>
+          ${offsiteDispHtml}
         `;
         if (!isDep) {
           html += `
@@ -1144,7 +1256,12 @@ Object.assign(App.prototype, {
         const outOdoFmt = b.odometer_out ? `${Number(b.odometer_out).toLocaleString()} กม.` : 'ไม่ได้ระบุ';
         const outFuelFmt = b.fuel_out || 'ไม่ได้ระบุ';
         const outNotesFmt = b.inspection_notes_out ? `"${b.inspection_notes_out}"` : 'ไม่มีบันทึก';
-        badgeEl.innerHTML = `📌 <b>ข้อมูลตอนส่งมอบ (Outbound):</b> เลขไมล์: <span style="font-weight:700; color:#B45309;">${outOdoFmt}</span> | ระดับน้ำมัน: <span style="font-weight:700; color:#B45309;">${outFuelFmt}</span> | ตำหนิเดิม: <span style="font-style:italic;">${outNotesFmt}</span>`;
+        const picFee = parseFloat(b.pickup_fee || 0);
+        const isPicOffsite = String(b.pickup_mode || "").toLowerCase() === "offsite" || picFee > 0;
+        const offsiteRetNote = isPicOffsite
+          ? `<div style="margin-top:4px; color:#0F766E; font-weight:700;">🚚 รับรถคืนนอกสถานที่ @ ${b.loc_return || b.loc_delivery || '-'}${picFee > 0 ? ` (ค่ารับคืน ฿${picFee.toLocaleString()})` : ''}</div>`
+          : '';
+        badgeEl.innerHTML = `📌 <b>ข้อมูลตอนส่งมอบ (Outbound):</b> เลขไมล์: <span style="font-weight:700; color:#B45309;">${outOdoFmt}</span> | ระดับน้ำมัน: <span style="font-weight:700; color:#B45309;">${outFuelFmt}</span> | ตำหนิเดิม: <span style="font-style:italic;">${outNotesFmt}</span>${offsiteRetNote}`;
       }
       this.recalcReturnInspectionDiff();
 
@@ -1607,8 +1724,7 @@ Object.assign(App.prototype, {
     const depAmt = parseFloat(b.deposit_amount || 5000);
     const isDep = !!b.deposit_paid;
     const isRent = !!b.rental_paid;
-    // TARGET MISSION 3: ยอดเงินคงเหลือ = ราคาค่าเช่าที่ตกลง (net_price) - เงินมัดจำที่ชำระแล้ว (deposit_amount)
-    const remP = isRent ? 0 : (isDep ? Math.max(0, netP - depAmt) : parseFloat(b.remaining_rental !== undefined ? b.remaining_rental : netP));
+    const remP = this.computeBookingRemainingBalance(b);
 
     // Header with badges
     const header = document.getElementById("contract-header-info");
@@ -1661,6 +1777,11 @@ Object.assign(App.prototype, {
       const curEDate = b.end_date || this.getThaiDateTime(3).dateStr;
       const curETime = b.end_time || thNow.timeStr;
       const curLoc = b.loc_delivery || (isEn ? 'Front Office / Branch' : 'หน้าร้าน / สาขา');
+      const curRetLoc = b.loc_return || curLoc;
+      const curDelMode = (b.delivery_mode || (parseFloat(b.delivery_fee || 0) > 0 ? 'offsite' : 'branch')).toLowerCase();
+      const curPicMode = (b.pickup_mode || (parseFloat(b.pickup_fee || 0) > 0 ? 'offsite' : 'branch')).toLowerCase();
+      const curDelFee = parseFloat(b.delivery_fee || 0);
+      const curPicFee = parseFloat(b.pickup_fee || 0);
       const isBackdated = curSDate < thNow.dateStr;
 
       schedEl.innerHTML = `
@@ -1684,9 +1805,24 @@ Object.assign(App.prototype, {
               <input type="time" id="contract-edit-end-time" class="form-control" style="padding:4px 8px; font-size:12.5px; max-width:115px;" value="${curETime}">
             </div>
           </div>
-          <div>
-            • <b>${isEn ? 'Delivery Location:' : 'สถานที่ส่งมอบ:'}</b>
-            <input type="text" id="contract-edit-loc" class="form-control" style="padding:4px 8px; font-size:12.5px; margin-top:3px;" value="${curLoc}">
+          <div style="background:#F8FAFC; border:1px solid #CBD5E1; border-radius:8px; padding:8px 10px; margin-top:4px;">
+            <div style="font-size:12px; font-weight:800; color:#1E3A8A; margin-bottom:6px;">🚚 สถานที่ & ค่ารับ-ส่งรถนอกสถานที่ (ปรับยอดอัตโนมัติ):</div>
+            <div style="display:grid; grid-template-columns: 115px 1fr 110px; gap:6px; align-items:center; margin-bottom:6px;">
+              <select id="contract-edit-del-mode" class="form-control" style="padding:4px 6px; font-size:12px;" onchange="document.getElementById('contract-edit-del-fee').disabled=(this.value==='branch'); if(this.value==='branch') document.getElementById('contract-edit-del-fee').value=0;">
+                <option value="branch" ${curDelMode === 'branch' ? 'selected' : ''}>รับที่สาขา</option>
+                <option value="offsite" ${curDelMode === 'offsite' ? 'selected' : ''}>🚚 ส่งนอกสถานที่</option>
+              </select>
+              <input type="text" id="contract-edit-loc" class="form-control" style="padding:4px 8px; font-size:12px;" value="${curLoc}" placeholder="สถานที่ส่งมอบรถ">
+              <input type="number" id="contract-edit-del-fee" class="form-control" style="padding:4px 8px; font-size:12px; font-weight:700;" value="${curDelFee}" min="0" max="10000" step="50" ${curDelMode === 'branch' ? 'disabled' : ''} title="ค่าส่งรถ (บาท)">
+            </div>
+            <div style="display:grid; grid-template-columns: 115px 1fr 110px; gap:6px; align-items:center;">
+              <select id="contract-edit-pic-mode" class="form-control" style="padding:4px 6px; font-size:12px;" onchange="document.getElementById('contract-edit-pic-fee').disabled=(this.value==='branch'); if(this.value==='branch') document.getElementById('contract-edit-pic-fee').value=0;">
+                <option value="branch" ${curPicMode === 'branch' ? 'selected' : ''}>คืนที่สาขา</option>
+                <option value="offsite" ${curPicMode === 'offsite' ? 'selected' : ''}>🚚 รับคืนนอกสถานที่</option>
+              </select>
+              <input type="text" id="contract-edit-ret-loc" class="form-control" style="padding:4px 8px; font-size:12px;" value="${curRetLoc}" placeholder="สถานที่รับรถคืน">
+              <input type="number" id="contract-edit-pic-fee" class="form-control" style="padding:4px 8px; font-size:12px; font-weight:700;" value="${curPicFee}" min="0" max="10000" step="50" ${curPicMode === 'branch' ? 'disabled' : ''} title="ค่ารับรถคืน (บาท)">
+            </div>
           </div>
           <div>• <b>${isEn ? 'Assigned Staff:' : 'พนักงานส่งมอบ:'}</b> ${b.worker_delivery || (isEn ? 'Unassigned' : 'ยังไม่ได้มอบหมาย')}</div>
           <div>• <b>${isEn ? 'Current Booking Status:' : 'สถานะการจองปัจจุบัน:'}</b> <span class="badge ${b.status === 'กำลังเช่า' ? 'badge-primary' : (b.status === 'เสร็จสิ้น' ? 'badge-success' : 'badge-info')}">${b.status}</span></div>
@@ -1819,6 +1955,16 @@ Object.assign(App.prototype, {
     const eDate = document.getElementById("contract-edit-end-date")?.value;
     const eTime = document.getElementById("contract-edit-end-time")?.value;
     const loc = document.getElementById("contract-edit-loc")?.value;
+    const retLoc = document.getElementById("contract-edit-ret-loc")?.value;
+    const delMode = document.getElementById("contract-edit-del-mode")?.value || "branch";
+    const picMode = document.getElementById("contract-edit-pic-mode")?.value || "branch";
+    const delFee = delMode === "offsite" ? parseFloat(document.getElementById("contract-edit-del-fee")?.value || 0) : 0;
+    const picFee = picMode === "offsite" ? parseFloat(document.getElementById("contract-edit-pic-fee")?.value || 0) : 0;
+
+    if (delFee < 0 || picFee < 0 || delFee > 10000 || picFee > 10000) {
+      alert("⚠️ ค่ารับ-ส่งรถนอกสถานที่ต้องอยู่ระหว่าง 0 ถึง 10,000 บาทต่อเที่ยว");
+      return;
+    }
 
     const thNow = this.getThaiDateTime(0);
 
@@ -1845,8 +1991,28 @@ Object.assign(App.prototype, {
     if (eDate) payload.end_date = eDate;
     if (eTime) payload.end_time = eTime;
     if (loc !== undefined) payload.loc_delivery = loc;
+    if (retLoc !== undefined) payload.loc_return = retLoc;
 
     try {
+      // 1. Update delivery/pickup mode, location, and fees via dedicated PATCH endpoint
+      const feeRes = await fetch(`/api/bookings/${bkId}/delivery`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          delivery_mode: delMode,
+          pickup_mode: picMode,
+          delivery_fee: delFee,
+          pickup_fee: picFee,
+          loc_delivery: loc || "Sukhumvit",
+          loc_return: retLoc || loc || "Sukhumvit"
+        })
+      });
+      const feeData = await feeRes.json();
+      if (!feeRes.ok) {
+        throw new Error(feeData.detail || "บันทึกค่ารับ-ส่งรถไม่สำเร็จ");
+      }
+
+      // 2. Update schedule dates & times
       const res = await fetch(`/api/bookings/${bkId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },

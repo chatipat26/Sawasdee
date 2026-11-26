@@ -34,6 +34,15 @@ from services.booking_service import (
     record_booking_completion_income,
     _update_car_mileage_on_return,
     _resolve_cust_and_car,
+    is_pricing_v2_enabled,
+    pricing_version_of,
+    compute_fees,
+    compute_rental_amount,
+    compute_remaining_rental,
+    compute_total_due_at_booking,
+    validate_and_normalize_delivery_fields,
+    resolve_staff_display_name,
+    adjust_booking_delivery_fees,
 )
 
 router = APIRouter(tags=["bookings"])
@@ -93,15 +102,9 @@ def list_bookings():
         if b_copy.get("rental_slip") and not b_copy.get("remaining_slip_link"):
             b_copy["remaining_slip_link"] = b_copy["rental_slip"]
 
-        # TARGET MISSION 3: Safe balance calculation (net_price - deposit_amount)
-        if b_copy.get("rental_paid"):
-            b_copy["remaining_rental"] = 0.0
-        elif b_copy.get("deposit_paid"):
-            np_val = float(b_copy.get("net_price") or 0.0)
-            dep_val = float(b_copy.get("deposit_amount") or 5000.0)
-            cur_rem = float(b_copy.get("remaining_rental") or 0.0)
-            if (cur_rem >= np_val and np_val > 0) or b_copy.get("remaining_rental") is None:
-                b_copy["remaining_rental"] = max(0.0, np_val - dep_val)
+        # Single source of truth for balance calculation (v1 legacy vs v2 refundable deposit)
+        b_copy["remaining_rental"] = compute_remaining_rental(b_copy)
+        b_copy["total_due_at_booking"] = compute_total_due_at_booking(b_copy)
 
         bk_id_val = str(b_copy.get("booking_id") or "").strip()
         ptok = create_booking_portal_token(bk_id_val) if bk_id_val else ""
@@ -158,15 +161,9 @@ def get_booking(bk_id: str):
     if b_copy.get("rental_slip") and not b_copy.get("remaining_slip_link"):
         b_copy["remaining_slip_link"] = b_copy["rental_slip"]
 
-    # TARGET MISSION 3: Safe balance calculation (net_price - deposit_amount)
-    if b_copy.get("rental_paid"):
-        b_copy["remaining_rental"] = 0.0
-    elif b_copy.get("deposit_paid"):
-        np_val = float(b_copy.get("net_price") or 0.0)
-        dep_val = float(b_copy.get("deposit_amount") or 5000.0)
-        cur_rem = float(b_copy.get("remaining_rental") or 0.0)
-        if (cur_rem >= np_val and np_val > 0) or b_copy.get("remaining_rental") is None:
-            b_copy["remaining_rental"] = max(0.0, np_val - dep_val)
+    # Single source of truth for balance calculation (v1 legacy vs v2 refundable deposit)
+    b_copy["remaining_rental"] = compute_remaining_rental(b_copy)
+    b_copy["total_due_at_booking"] = compute_total_due_at_booking(b_copy)
 
     bk_id_val = str(b_copy.get("booking_id") or "").strip()
     ptok = create_booking_portal_token(bk_id_val) if bk_id_val else ""
@@ -260,10 +257,25 @@ def create_booking(payload: Dict[str, Any], _user: Dict[str, Any] = Depends(requ
                 base_price = price_day * billable_days
 
         discount = float(payload.get("discount", 0))
-        net_price = max(0.0, float(base_price) - discount)
-        deposit_amount = 5000.0  # STRICT RULE: Fixed 5,000 THB deposit
+        if discount < 0:
+            raise HTTPException(status_code=400, detail="ส่วนลดต้องไม่ติดลบ")
+
+        delivery_norm = validate_and_normalize_delivery_fields(payload)
+        del_fee = delivery_norm["delivery_fee"]
+        pic_fee = delivery_norm["pickup_fee"]
+        fees_total = round(del_fee + pic_fee, 2)
+
+        # Server-side net_price calculation: discount applies only to rental base_price, then off-site fees are added
+        rental_net = max(0.0, float(base_price) - discount)
+        net_price = round(rental_net + fees_total, 2)
+
+        pricing_ver = 2 if is_pricing_v2_enabled() else int(payload.get("pricing_version") or 1)
+        deposit_waived = bool(payload.get("deposit_waived", False))
+        deposit_amount = 0.0 if deposit_waived else 5000.0  # STRICT RULE: Fixed 5,000 THB deposit unless waived
         deposit_paid = bool(payload.get("deposit_paid", False))
         rental_paid = bool(payload.get("rental_paid", False))
+        staff_name = resolve_staff_display_name(_user)
+        th_today_iso = now.date().isoformat()
 
         dep_slip_url = convert_gdrive_url(payload.get("deposit_slip", "") or payload.get("slip_url", "") or payload.get("payment_slip_url", ""))
         rent_slip_url = convert_gdrive_url(payload.get("rental_slip", "") or payload.get("remaining_slip_link", ""))
@@ -280,29 +292,47 @@ def create_booking(payload: Dict[str, Any], _user: Dict[str, Any] = Depends(requ
             "base_price": base_price,
             "discount": discount,
             "net_price": net_price,
+            "pricing_version": pricing_ver,
+            "delivery_mode": delivery_norm["delivery_mode"],
+            "pickup_mode": delivery_norm["pickup_mode"],
+            "delivery_fee": del_fee,
+            "pickup_fee": pic_fee,
+            "fees_paid_amount": fees_total if rental_paid else 0.0,
+            "delivery_zone": delivery_norm["delivery_zone"],
+            "pickup_zone": delivery_norm["pickup_zone"],
+            "delivery_map_url": delivery_norm["delivery_map_url"],
+            "pickup_map_url": delivery_norm["pickup_map_url"],
             "deposit_amount": deposit_amount,
             "deposit_paid": deposit_paid,
+            "deposit_waived": deposit_waived,
+            "deposit_date": th_today_iso if deposit_paid else None,
             "deposit_ref": payload.get("deposit_ref", "") or payload.get("payment_ref", ""),
             "deposit_slip": dep_slip_url,
             "payment_slip_url": dep_slip_url,
             "rental_paid": rental_paid,
-            "remaining_rental": 0.0 if rental_paid else (max(0.0, net_price - deposit_amount) if deposit_paid else net_price),
+            "rental_payment_date": th_today_iso if rental_paid else None,
+            "received_by": staff_name if (deposit_paid or rental_paid) else None,
+            "remaining_rental": None,
             "rental_ref": payload.get("rental_ref", ""),
             "rental_slip": rent_slip_url,
             "remaining_slip_link": rent_slip_url,
-            "created_by": payload.get("created_by", "admin"),
-            "status": "รอส่งมอบ" if deposit_paid else "รอชำระมัดจำ",
+            "created_by": payload.get("created_by") or (_user.get("username") if _user else "admin") or "admin",
+            "status": "รอส่งมอบ" if (deposit_paid or deposit_waived) else "รอชำระมัดจำ",
             "dispatch_closed": False,
             "return_closed": False,
             "worker_delivery": payload.get("worker_delivery", ""),
             "worker_return": payload.get("worker_return", ""),
-            "loc_delivery": payload.get("loc_delivery", "Sukhumvit"),
-            "loc_return": payload.get("loc_return", payload.get("loc_delivery", "Sukhumvit")),
+            "loc_delivery": delivery_norm["loc_delivery"],
+            "loc_return": delivery_norm["loc_return"],
+            "driver2_name": str(payload.get("driver2_name") or "").strip() or None,
+            "driver2_licence": str(payload.get("driver2_licence") or "").strip() or None,
+            "driver2_dob": str(payload.get("driver2_dob") or "").strip() or None,
             "extension_history": [],
             "is_fully_paid": rental_paid,
             "rental_payment_method": payload.get("rental_payment_method", "เงินสด"),
             "created_at": now.isoformat()
         }
+        booking["remaining_rental"] = compute_remaining_rental(booking)
 
         with store.lock:
             store.bookings.insert(0, booking)
@@ -319,6 +349,11 @@ def create_booking(payload: Dict[str, Any], _user: Dict[str, Any] = Depends(requ
                     store.async_sync_car(c_key, store.cars[c_key])
 
         store.async_sync_booking(booking)
+        try:
+            from line_service import notify_line_work_order
+            notify_line_work_order(booking, job_type="booking", location=booking.get("loc_delivery", ""))
+        except Exception as line_bk_err:
+            print(f"[LINE] Booking notification note: {line_bk_err}")
         return {"success": True, "booking_id": bk_id, "booking": booking}
     except HTTPException:
         raise
@@ -369,7 +404,20 @@ def update_booking(bk_id: str, payload: Dict[str, Any], _user: Dict[str, Any] = 
     if new_status == "เสร็จสิ้น" and prev_status not in ("กำลังเช่า", "เตรียมรับคืน", "เสร็จสิ้น"):
         raise HTTPException(status_code=400, detail="⚠️ ไม่สามารถรับคืนรถได้: รถยังไม่ได้ส่งมอบ (สถานะต้องเป็น \"กำลังเช่า\" ก่อน)")
 
+    # Guard financial integrity: block direct overwrite of pricing/fee fields via generic PUT
+    PROTECTED_PRICING_FIELDS = {"net_price", "delivery_fee", "pickup_fee", "pricing_version", "fees_paid_amount"}
     for k, v in payload.items():
+        if k in PROTECTED_PRICING_FIELDS:
+            cur_val = target.get(k)
+            try:
+                if cur_val is not None and float(cur_val) == float(v):
+                    continue
+            except Exception:
+                pass
+            raise HTTPException(
+                status_code=400,
+                detail=f"ไม่อนุญาตให้แก้ไขฟิลด์ '{k}' โดยตรง กรุณาใช้เมนูแก้ไขค่ารับ-ส่งรถ (PATCH /api/bookings/{bk_id}/delivery)"
+            )
         if k in ["start_date", "end_date"]:
             target[k] = to_date(v)
         else:
@@ -682,7 +730,7 @@ def extend_booking(bk_id: str, payload: Dict[str, Any], _user: Dict[str, Any] = 
         "created_at": now_th().isoformat()
     })
 
-    prev_outstanding = 0.0 if target.get("rental_paid") else float(target.get("remaining_rental") or 0.0)
+    prev_outstanding = compute_remaining_rental(target)
     total_due = prev_outstanding + extra_price
     target["extension_history"] = ext_list
     target["end_date"] = new_end
@@ -694,6 +742,7 @@ def extend_booking(bk_id: str, payload: Dict[str, Any], _user: Dict[str, Any] = 
         target["rental_paid"] = True
         target["is_fully_paid"] = True
         target["rental_payment_date"] = th_today
+        target["received_by"] = resolve_staff_display_name(_user)
         target["last_extension_payment_method"] = pay_method
         if not was_rental_already_paid or not orig_rental_method:
             target["rental_payment_method"] = pay_method
@@ -767,13 +816,24 @@ def delete_booking(bk_id: str, _user: Dict[str, Any] = Depends(require_auth)):
 # -------------------------------------------------------------------------
 # DEPOSIT & PAYMENT WORKFLOW
 # -------------------------------------------------------------------------
+@router.patch("/api/bookings/{bk_id}/delivery")
+def update_booking_delivery(bk_id: str, payload: Dict[str, Any], _user: Dict[str, Any] = Depends(require_auth)):
+    """Adjust off-site delivery/pickup mode, locations, and fees with automatic balance & ledger reconciliation."""
+    target = next((b for b in store.bookings if b.get("booking_id") == bk_id), None)
+    if not target:
+        raise HTTPException(status_code=404, detail="ไม่พบรายการจอง")
+    result = adjust_booking_delivery_fees(target, payload, user_claims=_user)
+    return {"success": True, "booking": target, **result}
+
+
 @router.post("/api/bookings/{bk_id}/deposit")
 def record_deposit(bk_id: str, payload: Dict[str, Any], _user: Dict[str, Any] = Depends(require_auth)):
     target = next((b for b in store.bookings if b.get("booking_id") == bk_id), None)
     if not target:
         raise HTTPException(status_code=404, detail="ไม่พบรายการจอง")
 
-    dep_amount = float(payload.get("amount") or payload.get("deposit_amount") or 5000.0)  # STRICT RULE: Fixed 5,000 THB deposit
+    dep_waived = bool(payload.get("deposit_waived", target.get("deposit_waived", False)))
+    dep_amount = 0.0 if dep_waived else float(payload.get("amount") or payload.get("deposit_amount") or 5000.0)  # STRICT RULE: Fixed 5,000 THB deposit
     dep_method = str(payload.get("payment_method", "โอนเงิน / สแกน QR"))
     dep_ref = str(payload.get("ref_id") or payload.get("payment_ref") or payload.get("deposit_ref") or "").strip()
     dep_slip = convert_gdrive_url(str(payload.get("slip_image_url") or payload.get("slip_url") or payload.get("deposit_slip") or "").strip())
@@ -781,9 +841,14 @@ def record_deposit(bk_id: str, payload: Dict[str, Any], _user: Dict[str, Any] = 
     gdrive_link = str(payload.get("google_drive_link") or "").strip()
     also_pay_rental = bool(payload.get("also_pay_rental", False))
     net_p = float(target.get("net_price", 0.0))
+    staff_name = resolve_staff_display_name(_user)
+    is_v2 = pricing_version_of(target) >= 2
+    total_fees = compute_fees(target)
+    prev_fees_paid = float(target.get("fees_paid_amount") or 0.0)
 
     th_today = now_th().date().isoformat()
-    target["deposit_paid"] = True
+    target["deposit_paid"] = not dep_waived
+    target["deposit_waived"] = dep_waived
     target["deposit_amount"] = dep_amount
     target["deposit_date"] = th_today
     target["deposit_method"] = dep_method
@@ -792,6 +857,7 @@ def record_deposit(bk_id: str, payload: Dict[str, Any], _user: Dict[str, Any] = 
     target["payment_slip_url"] = dep_slip
     target["payment_type"] = pay_type
     target["google_drive_link"] = gdrive_link
+    target["received_by"] = staff_name
     if "ชำระวันคืนรถ" in dep_method:
         target["payment_status_note"] = "รอชำระวันคืนรถ"
 
@@ -804,9 +870,10 @@ def record_deposit(bk_id: str, payload: Dict[str, Any], _user: Dict[str, Any] = 
         target["rental_ref"] = dep_ref
         target["rental_slip"] = dep_slip
         target["remaining_slip_link"] = dep_slip
+        target["fees_paid_amount"] = total_fees
     else:
-        # TARGET MISSION 3: ยอดเงินคงเหลือ = ราคาค่าเช่าที่ตกลง (net_price) - เงินมัดจำที่ชำระแล้ว (deposit_amount)
-        target["remaining_rental"] = max(0.0, net_p - dep_amount)
+        target["remaining_rental"] = None
+        target["remaining_rental"] = compute_remaining_rental(target)
 
     if target.get("status") == "รอชำระมัดจำ":
         target["status"] = "รอส่งมอบ"
@@ -829,32 +896,36 @@ def record_deposit(bk_id: str, payload: Dict[str, Any], _user: Dict[str, Any] = 
 
     # Record financial: Deposit (Strict mapping to financial_records per Mission 2)
     car_comp = store.cars.get(car_id, {}).get("company", "Sawasdee Rent A Car")
-    dep_detail = f"รับเงินมัดจำประกันสัญญาตอนจองรถ ({dep_method})"
+    dep_label = "เงินประกันสัญญา (ขอคืนได้)" if is_v2 else "รับเงินมัดจำประกันสัญญาตอนจองรถ"
+    dep_detail = f"{dep_label} ({dep_method})"
     if dep_ref:
         dep_detail += f" [Ref/สลิป: {dep_ref}]"
 
     now_ts = now_th().strftime("%Y-%m-%d %H:%M:%S")
-    f_dep = {
-        "date": now_ts,
-        "type": "Income",
-        "category": "Deposit",
-        "amount": dep_amount,
-        "ref_id": bk_id,
-        "description": dep_detail,
-        # Backward-compatible & schema aliases
-        "ref": bk_id,
-        "detail": dep_detail,
-        "company": car_comp,
-        "payment_method": dep_method,
-        "slip_image_url": dep_slip,
-        "slip_url": dep_slip
-    }
-    try:
-        store.sync_financial(f_dep)
-    except Exception as fin_err:
-        print(f"Error recording financial deposit: {fin_err}")
+    if dep_amount > 0 and not dep_waived:
+        f_dep = {
+            "date": now_ts,
+            "type": "Income",
+            "category": "Deposit",
+            "amount": dep_amount,
+            "ref_id": bk_id,
+            "description": dep_detail,
+            # Backward-compatible & schema aliases
+            "ref": bk_id,
+            "detail": dep_detail,
+            "company": car_comp,
+            "payment_method": dep_method,
+            "slip_image_url": dep_slip,
+            "slip_url": dep_slip
+        }
+        try:
+            store.sync_financial(f_dep)
+        except Exception as fin_err:
+            print(f"Error recording financial deposit: {fin_err}")
 
     if also_pay_rental:
+        unpaid_fees = round(max(0.0, total_fees - prev_fees_paid), 2) if (is_v2 or total_fees > 0) else 0.0
+        rent_only_amt = round(max(0.0, net_p - unpaid_fees), 2)
         rent_detail = f"ชำระค่าเช่ารถพร้อมมัดจำ {car_id} ({dep_method})"
         if dep_ref:
             rent_detail += f" [Ref/สลิป: {dep_ref}]"
@@ -862,7 +933,7 @@ def record_deposit(bk_id: str, payload: Dict[str, Any], _user: Dict[str, Any] = 
             "date": now_ts,
             "type": "Income",
             "category": "Rental",
-            "amount": net_p,
+            "amount": rent_only_amt,
             "ref_id": bk_id,
             "description": rent_detail,
             "ref": bk_id,
@@ -877,11 +948,28 @@ def record_deposit(bk_id: str, payload: Dict[str, Any], _user: Dict[str, Any] = 
         except Exception as fin_rent_err:
             print(f"Error recording financial rental: {fin_rent_err}")
 
-    # Deposit confirmation no longer sends LINE. Receipt PDF and DB save stay unchanged.
-    # try:
-    #     notify_line_deposit(target, dep_amount, dep_method, dep_ref, dep_slip, also_pay_rental)
-    # except Exception as line_err:
-    #     print(f"Error sending LINE deposit notification: {line_err}")
+        if unpaid_fees > 0:
+            fee_detail = f"ค่ารับ-ส่งรถนอกสถานที่ {car_id} ({dep_method})"
+            if dep_ref:
+                fee_detail += f" [Ref/สลิป: {dep_ref}]"
+            f_fee = {
+                "date": now_ts,
+                "type": "Income",
+                "category": "ค่ารับ-ส่งรถ",
+                "amount": unpaid_fees,
+                "ref_id": bk_id,
+                "description": fee_detail,
+                "ref": bk_id,
+                "detail": fee_detail,
+                "company": car_comp,
+                "payment_method": dep_method,
+                "slip_image_url": dep_slip,
+                "slip_url": dep_slip
+            }
+            try:
+                store.sync_financial(f_fee)
+            except Exception as fin_fee_err:
+                print(f"Error recording financial delivery fee: {fin_fee_err}")
 
     return {"success": True, "booking": target}
 
@@ -895,13 +983,16 @@ def settle_rental(bk_id: str, payload: Dict[str, Any], _user: Dict[str, Any] = D
     settle_method = str(payload.get("payment_method", "โอนเงิน / สแกน QR"))
     settle_ref = str(payload.get("payment_ref") or payload.get("rental_ref") or "").strip()
     settle_slip = convert_gdrive_url(str(payload.get("slip_url") or payload.get("rental_slip") or payload.get("remaining_slip_link") or payload.get("slip_image_url") or "").strip())
-    # Amount due = outstanding balance (covers extension top-ups); falls back to net_price - deposit
+    # Amount due = outstanding balance from single source of truth (covers v1, v2, and fee/extension top-ups)
     rem_due = float(target.get("remaining_rental") if target.get("remaining_rental") is not None else 0.0)
     if rem_due <= 0.0 and not target.get("rental_paid"):
-        net_val = float(target.get("net_price") or 0.0)
-        dep_val = float(target.get("deposit_amount") or 5000.0) if target.get("deposit_paid") else 0.0
-        rem_due = max(0.0, net_val - dep_val)
+        rem_due = compute_remaining_rental(target)
     net_p = rem_due
+
+    total_fees = compute_fees(target)
+    prev_fees_paid = float(target.get("fees_paid_amount") or 0.0)
+    unpaid_fees = round(min(net_p, max(0.0, total_fees - prev_fees_paid)), 2)
+    rent_only_amt = round(max(0.0, net_p - unpaid_fees), 2)
 
     th_today = now_th().date().isoformat()
     target["rental_paid"] = True
@@ -909,6 +1000,8 @@ def settle_rental(bk_id: str, payload: Dict[str, Any], _user: Dict[str, Any] = D
     target["is_fully_paid"] = True
     target["rental_payment_date"] = th_today
     target["rental_payment_method"] = settle_method
+    target["received_by"] = resolve_staff_display_name(_user)
+    target["fees_paid_amount"] = round(prev_fees_paid + unpaid_fees, 2)
     if settle_ref:
         target["rental_ref"] = settle_ref
     if settle_slip:
@@ -922,33 +1015,51 @@ def settle_rental(bk_id: str, payload: Dict[str, Any], _user: Dict[str, Any] = D
     car_id = target.get("car_id")
     car_comp = store.cars.get(car_id, {}).get("company", "Sawasdee Rent A Car")
     now_ts = now_th().strftime("%Y-%m-%d %H:%M:%S")
-    rent_detail = f"ชำระค่าเช่ารถคงเหลือ {car_id} ({settle_method})"
-    if settle_ref:
-        rent_detail += f" [Ref/สลิป: {settle_ref}]"
-    f_rent = {
-        "date": now_ts,
-        "type": "Income",
-        "category": "Rental",
-        "amount": net_p,
-        "ref_id": bk_id,
-        "description": rent_detail,
-        "ref": bk_id,
-        "detail": rent_detail,
-        "company": car_comp,
-        "payment_method": settle_method,
-        "slip_image_url": settle_slip,
-        "slip_url": settle_slip
-    }
-    try:
-        store.sync_financial(f_rent)
-    except Exception as fin_settle_err:
-        print(f"Error recording financial settle: {fin_settle_err}")
+    if rent_only_amt > 0:
+        rent_detail = f"ชำระค่าเช่ารถคงเหลือ {car_id} ({settle_method})"
+        if settle_ref:
+            rent_detail += f" [Ref/สลิป: {settle_ref}]"
+        f_rent = {
+            "date": now_ts,
+            "type": "Income",
+            "category": "Rental",
+            "amount": rent_only_amt,
+            "ref_id": bk_id,
+            "description": rent_detail,
+            "ref": bk_id,
+            "detail": rent_detail,
+            "company": car_comp,
+            "payment_method": settle_method,
+            "slip_image_url": settle_slip,
+            "slip_url": settle_slip
+        }
+        try:
+            store.sync_financial(f_rent)
+        except Exception as fin_settle_err:
+            print(f"Error recording financial settle: {fin_settle_err}")
 
-    # LINE notification disabled for deposit/rental payments (kept only for work orders)
-    # try:
-    #     notify_line_deposit(target, net_p, settle_method, settle_ref, settle_slip, also_rent=True, is_settle_only=True)
-    # except Exception as line_err:
-    #     print(f"Error sending LINE settle notification: {line_err}")
+    if unpaid_fees > 0:
+        fee_detail = f"ชำระค่ารับ-ส่งรถนอกสถานที่ {car_id} ({settle_method})"
+        if settle_ref:
+            fee_detail += f" [Ref/สลิป: {settle_ref}]"
+        f_fee = {
+            "date": now_ts,
+            "type": "Income",
+            "category": "ค่ารับ-ส่งรถ",
+            "amount": unpaid_fees,
+            "ref_id": bk_id,
+            "description": fee_detail,
+            "ref": bk_id,
+            "detail": fee_detail,
+            "company": car_comp,
+            "payment_method": settle_method,
+            "slip_image_url": settle_slip,
+            "slip_url": settle_slip
+        }
+        try:
+            store.sync_financial(f_fee)
+        except Exception as fin_fee_err:
+            print(f"Error recording financial settle delivery fee: {fin_fee_err}")
 
     return {"success": True, "booking": target}
 
@@ -1064,7 +1175,8 @@ def assign_worker(bk_id: str, payload: Dict[str, Any], _user: Dict[str, Any] = D
 
     if job_type == "Dispatch":
         target["worker_delivery"] = worker
-        target["loc_delivery"] = location
+        if location and str(location).strip():
+            target["loc_delivery"] = str(location).strip()
         target["start_time"] = time_val
         if odometer is not None and str(odometer).strip() != "":
             target["odometer_out"] = str(odometer).strip()
@@ -1094,7 +1206,8 @@ def assign_worker(bk_id: str, payload: Dict[str, Any], _user: Dict[str, Any] = D
             target["status"] = "เตรียมส่งมอบ"
     else:
         target["worker_return"] = worker
-        target["loc_return"] = location
+        if location and str(location).strip():
+            target["loc_return"] = str(location).strip()
         target["end_time"] = time_val
         if odometer is not None and str(odometer).strip() != "":
             disp_km = target.get("odometer_out") or target.get("dispatch_mileage")
@@ -1195,7 +1308,18 @@ def assign_worker(bk_id: str, payload: Dict[str, Any], _user: Dict[str, Any] = D
     except Exception as wo_err:
         print(f"Work order log note: {wo_err}")
 
-    # Work order LINE notification retired per system rule
+    # Format and trigger LINE OA work order notification (includes off-site location & fee breakdown)
+    try:
+        from line_service import notify_line_work_order
+        notify_line_work_order(
+            target,
+            job_type=job_type,
+            worker_name=worker,
+            location=target.get("loc_delivery" if job_type == "Dispatch" else "loc_return") or "",
+            appointment_time=time_val or "",
+        )
+    except Exception as line_wo_err:
+        print(f"[LINE] Work order notification note: {line_wo_err}")
 
     return {"success": True, "booking": target}
 
@@ -1221,9 +1345,12 @@ def list_backoffice_jobs():
         if not is_disp_closed:
             s_d = b.get('start_date')
             s_d_str = s_d.strftime("%Y-%m-%d") if isinstance(s_d, (date, datetime)) else str(s_d or "")
+            del_fee = float(b.get("delivery_fee") or 0.0)
+            del_mode = str(b.get("delivery_mode") or ("offsite" if del_fee > 0 else "branch")).strip().lower()
+            is_del_offsite = del_mode == "offsite" or del_fee > 0
             jobs.append({
                 "job_type": "Dispatch",
-                "job_type_label": "จัดส่งรถ (Dispatch)",
+                "job_type_label": "จัดส่งรถนอกสถานที่ (Dispatch)" if is_del_offsite else "จัดส่งรถ (Dispatch)",
                 "booking_id": b.get("booking_id"),
                 "car_id": b.get("car_id"),
                 "customer": b.get("customer"),
@@ -1234,6 +1361,12 @@ def list_backoffice_jobs():
                 "start_time": b.get("start_time", "10:00"),
                 "worker": b.get("worker_delivery") or "Wait",
                 "location": b.get("loc_delivery") or "-",
+                "is_offsite": is_del_offsite,
+                "delivery_mode": del_mode,
+                "fee": del_fee,
+                "delivery_fee": del_fee,
+                "pickup_fee": float(b.get("pickup_fee") or 0.0),
+                "map_url": b.get("delivery_map_url") or "",
                 "status": b.get("status", "รอส่งมอบ"),
                 "is_locked": False,
                 "deposit_paid": b.get("deposit_paid", False),
@@ -1247,9 +1380,12 @@ def list_backoffice_jobs():
             e_d_str = e_d.strftime("%Y-%m-%d") if isinstance(e_d, (date, datetime)) else str(e_d or "")
             is_ret_locked = not is_disp_closed
             ret_status = "🔒 รอส่งรถก่อน" if is_ret_locked else (b.get("status") if b.get("status") != "รอชำระมัดจำ" else "รอรับคืน")
+            pic_fee = float(b.get("pickup_fee") or 0.0)
+            pic_mode = str(b.get("pickup_mode") or ("offsite" if pic_fee > 0 else "branch")).strip().lower()
+            is_pic_offsite = pic_mode == "offsite" or pic_fee > 0
             jobs.append({
                 "job_type": "Return",
-                "job_type_label": "รับรถคืน (Return)",
+                "job_type_label": "รับรถคืนนอกสถานที่ (Return)" if is_pic_offsite else "รับรถคืน (Return)",
                 "booking_id": b.get("booking_id"),
                 "car_id": b.get("car_id"),
                 "customer": b.get("customer"),
@@ -1260,6 +1396,12 @@ def list_backoffice_jobs():
                 "end_time": b.get("end_time", "10:00"),
                 "worker": b.get("worker_return") or "Wait",
                 "location": b.get("loc_return") or b.get("loc_delivery") or "-",
+                "is_offsite": is_pic_offsite,
+                "pickup_mode": pic_mode,
+                "fee": pic_fee,
+                "delivery_fee": float(b.get("delivery_fee") or 0.0),
+                "pickup_fee": pic_fee,
+                "map_url": b.get("pickup_map_url") or "",
                 "status": ret_status,
                 "is_locked": is_ret_locked,
                 "deposit_paid": b.get("deposit_paid", False),
@@ -1426,7 +1568,10 @@ def close_return(bk_id: str, payload: Dict[str, Any], _user: Dict[str, Any] = De
         checkin_img_front=img_f,
         checkin_img_left=img_l,
         checkin_img_rear=img_re,
-        checkin_img_right=img_ri
+        checkin_img_right=img_ri,
+        refund_deposit=bool(payload.get("refund_deposit", True)),
+        refund_method=str(payload.get("refund_method") or "โอนเงินคืนบัญชีลูกค้า").strip(),
+        refund_ref=str(payload.get("refund_ref") or "").strip(),
     )
     if not success:
         raise HTTPException(status_code=404, detail="ไม่สามารถปิดงานรับคืนได้ หรือไม่พบรหัสการจอง")

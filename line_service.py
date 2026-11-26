@@ -389,11 +389,132 @@ def _fmt_dmy(d_val) -> str:
         return s
 
 
+def _format_offsite_line_block(booking_obj: dict, job_type: str = "Dispatch", location: str = "") -> list:
+    """Build LINE message lines describing off-site delivery/pickup location, map link, and service fee."""
+    b = booking_obj or {}
+    is_ret = str(job_type or "").strip().lower() in ("return", "checkin", "pickup", "in")
+    del_mode = str(b.get("delivery_mode") or "branch").strip().lower()
+    pic_mode = str(b.get("pickup_mode") or "branch").strip().lower()
+    try:
+        del_fee = float(b.get("delivery_fee") or 0.0)
+    except Exception:
+        del_fee = 0.0
+    try:
+        pic_fee = float(b.get("pickup_fee") or 0.0)
+    except Exception:
+        pic_fee = 0.0
+
+    is_del_off = del_mode == "offsite" or del_fee > 0
+    is_pic_off = pic_mode == "offsite" or pic_fee > 0
+    loc_del = str(location if not is_ret and location else (b.get("loc_delivery") or "Sukhumvit")).strip()
+    loc_ret = str(location if is_ret and location else (b.get("loc_return") or loc_del)).strip()
+    map_del = str(b.get("delivery_map_url") or "").strip()
+    map_ret = str(b.get("pickup_map_url") or "").strip()
+    paid_tag = "ชำระแล้ว" if (b.get("rental_paid") or b.get("is_fully_paid")) else "รอชำระในบิล"
+
+    out = []
+    if str(job_type).lower() == "booking":
+        del_tag = f"🚚 ส่งนอกสถานที่ @ {loc_del} (ค่าส่ง ฿{del_fee:,.0f})" if is_del_off else f"🏢 รับที่สาขา ({loc_del})"
+        pic_tag = f"🚚 รับคืนนอกสถานที่ @ {loc_ret} (ค่ารับคืน ฿{pic_fee:,.0f})" if is_pic_off else f"🏢 คืนที่สาขา ({loc_ret})"
+        out.append(f"📍 จุดรับรถ: {del_tag}")
+        if is_del_off and map_del:
+            out.append(f"🗺️ แผนที่ส่งรถ: {map_del}")
+        out.append(f"🏁 จุดคืนรถ: {pic_tag}")
+        if is_pic_off and map_ret:
+            out.append(f"🗺️ แผนที่รับคืน: {map_ret}")
+        if (del_fee + pic_fee) > 0:
+            out.append(f"💰 รวมค่ารับ-ส่งนอกสถานที่: ฿{(del_fee + pic_fee):,.2f} ({paid_tag})")
+    elif is_ret:
+        if is_pic_off:
+            out.append(f"🚚 รูปแบบ: รับรถคืนนอกสถานที่ @ {loc_ret}")
+            out.append(f"💰 ค่ารับรถคืนนอกสถานที่: ฿{pic_fee:,.2f} ({paid_tag})")
+            if map_ret:
+                out.append(f"🗺️ แผนที่จุดนัดรับคืน: {map_ret}")
+        else:
+            out.append(f"🏢 สถานที่รับรถคืน: คืนที่สาขา ({loc_ret})")
+    else:
+        if is_del_off:
+            out.append(f"🚚 รูปแบบ: จัดส่งรถนอกสถานที่ @ {loc_del}")
+            out.append(f"💰 ค่าส่งรถนอกสถานที่: ฿{del_fee:,.2f} ({paid_tag})")
+            if map_del:
+                out.append(f"🗺️ แผนที่จุดนัดส่งมอบ: {map_del}")
+        else:
+            out.append(f"🏢 สถานที่ส่งมอบ: รับที่สาขา ({loc_del})")
+    return out
+
+
+def format_line_work_order_message(
+    booking_obj: dict,
+    job_type: str = "Dispatch",
+    worker_name: str = "",
+    location: str = "",
+    appointment_time: str = "",
+) -> str:
+    """Format standardized LINE Official Account notification message for booking / dispatch / return work orders."""
+    b = booking_obj or {}
+    bk_id = b.get("booking_id", "-")
+    car_id = b.get("car_id", "-")
+    cust = b.get("customer", "-")
+    j_low = str(job_type or "Dispatch").strip().lower()
+
+    if j_low == "booking":
+        title = "🆕 แจ้งรายการจองรถใหม่ (New Booking)"
+        sched_str = f"{_fmt_dmy(b.get('start_date'))} ({b.get('start_time') or '10:00'}) ➔ {_fmt_dmy(b.get('end_date'))} ({b.get('end_time') or '10:00'})"
+        worker_disp = b.get("worker_delivery") or "รอมอบหมาย"
+    elif j_low in ("return", "checkin", "pickup", "in"):
+        title = "🏁 ใบงานรับรถคืน (Return Work Order)"
+        sched_str = f"{_fmt_dmy(b.get('end_date'))} เวลา {appointment_time or b.get('end_time') or '10:00'} น."
+        worker_disp = worker_name or b.get("worker_return") or "รอมอบหมาย"
+    else:
+        title = "🚚 ใบงานจัดส่งรถ (Dispatch Work Order)"
+        sched_str = f"{_fmt_dmy(b.get('start_date'))} เวลา {appointment_time or b.get('start_time') or '10:00'} น."
+        worker_disp = worker_name or b.get("worker_delivery") or "รอมอบหมาย"
+
+    net_p = float(b.get("net_price") or 0.0)
+    lines = [
+        f"🔔 {title}",
+        "────────────────────",
+        f"📋 รหัสการจอง: {bk_id}",
+        f"🚗 ทะเบียนรถ: {car_id}",
+        f"👤 ลูกค้า: {cust}",
+        f"📅 กำหนดการ: {sched_str}",
+        f"🧑‍🔧 พนักงานผู้รับผิดชอบ: {worker_disp}",
+    ]
+    lines.extend(_format_offsite_line_block(b, job_type=job_type, location=location))
+    lines.extend([
+        f"💳 ยอดสุทธิในสัญญา: ฿{net_p:,.2f}",
+        "────────────────────",
+        "ระบบบริหารจัดการ SawasdeeRental",
+    ])
+    return "\n".join(lines)
+
+
 def notify_line_work_order(booking_obj, job_type="Dispatch", worker_name="", location="", appointment_time=""):
     """
-    Disabled per system rule: Work order LINE notifications have been retired.
+    Build work order notification message with off-site location & fee breakdown.
+    Pushes to worker/admin when LINE_WORK_ORDER_NOTIFY=true or when token is configured and active.
+    Always stores last formatted message on booking_obj['_last_line_message'] for verification.
     """
-    return False
+    try:
+        msg = format_line_work_order_message(
+            booking_obj or {},
+            job_type=job_type,
+            worker_name=worker_name,
+            location=location,
+            appointment_time=appointment_time,
+        )
+        if isinstance(booking_obj, dict):
+            booking_obj["_last_line_message"] = msg
+        enable_push = str(os.getenv("LINE_WORK_ORDER_NOTIFY", "false")).strip().lower() in ("true", "1", "yes", "on")
+        if not enable_push:
+            return False
+        if worker_name and str(worker_name).strip() not in ("", "-", "Wait", "รอมอบหมาย"):
+            return send_line_to_worker_async(msg, worker_name)
+        send_line_to_admin_async(msg)
+        return True
+    except Exception as e:
+        print(f"[LINE] notify_line_work_order notice: {e}")
+        return False
 
 
 def notify_line_maintenance(record: dict):
