@@ -435,6 +435,8 @@ Object.assign(App.prototype, {
     if (ver >= 2) return Math.max(0, netP);
     return b.deposit_paid ? Math.max(0, netP - depAmt) : Math.max(0, netP);
   },
+
+  populateBookingDropdowns() {
     const isEn = (this.currentLang === "EN");
     const depSel = document.getElementById("deposit-sel-booking");
     const assignDispSel = document.getElementById("assign-disp-bk");
